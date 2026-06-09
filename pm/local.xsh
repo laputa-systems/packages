@@ -540,7 +540,7 @@ export proc write_package_db(root: Path, pkg: Package, manifest: List[Path], etc
 }
 
 export proc call_pkg_hook(pkg: Package, hook_name: Str, root: Path) [error] {
-  let exports = pkg.exports.require(PackageExports)?
+  let exports = pkg.exports
 
   if exports.has(hook_name) {
     let hook: Proc = exports.get(hook_name)?
@@ -560,7 +560,7 @@ export proc call_installed_hook(metadata: Record, hook_name: Str, root: Path) [f
     return
   }
 
-  let exports = module.load(pkgbuild)?.require(PackageExports)?
+  let exports = module.load(pkgbuild)?
 
   if exports.has(hook_name) {
     let hook: Proc = exports.get(hook_name)?
@@ -574,15 +574,15 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
 
   for dir in dirs {
     let pkgbuild = fp"${dir}/PKGBUILD.xsh"
-    let exports = module.load(pkgbuild)?.require(PackageExports)?
-    let name = exports.name
-    let ver = exports.ver
-    let rel = exports.rel
-    let deps = exports.deps
-    let mkdeps = exports.mkdeps
+    let exports = module.load(pkgbuild)?
+    let name: Str = exports.get("name")?
+    let ver: Str = exports.get("ver")?
+    let rel: Str = exports.get("rel")?
+    let deps: List[Str] = exports.get("deps")?
+    let mkdeps: List[Str] = exports.get("mkdeps")?
     var target_build_deps: List[Str] = []
-    let sources = exports.sources
-    let base_checksums = exports.checksums
+    let sources: List[Path] = exports.get("sources")?
+    let base_checksums: List[Str] = exports.get("checksums")?
     let checksums = select_checksums(exports, base_checksums)?
     var nostrip = false
     var extract_install = false
@@ -800,14 +800,12 @@ proc pm_source_root() [fs, env, error] -> Result[Path] {
 
 proc seed_chroot_runner(root: Path) [fs, process, env, error] {
   let xsh = xsh_runner()?
-  let bindir = xsh.parent
+  let xsh_source = regular_xsh_source(xsh)?
+  fs.install(xsh_source, fp"${root}/usr/local/bin/xsh-multicall", 0o755, parents: true, overwrite: true)?
 
   for name in ["xsh", "xshi", "xsht"] {
-    let source = fp"${bindir}/${name}"
-
-    if fs.exists(source)? {
-      fs.install(source, fp"${root}/usr/local/bin/${name}", 0o755, parents: true, overwrite: true)?
-    }
+    fs.remove(fp"${root}/usr/local/bin/${name}", missing_ok: true)?
+    fs.symlink(p"xsh-multicall", fp"${root}/usr/local/bin/${name}")?
   }
 
   if fs.exists(/usr/lib/xsh)? {
@@ -898,7 +896,7 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
     XSH_PM_QUIET = "1"
     MAKEFLAGS = makeflags
   } {
-    let exports = pkg.exports.require(PackageExports)?
+    let exports = pkg.exports
 
     if exports.has("prepare") {
       let prepare_fn: Proc = exports.get("prepare")?
@@ -1141,7 +1139,7 @@ export proc build_packages(
       XSH_PM_QUIET = "1"
       MAKEFLAGS = makeflags
     } {
-      let exports = pkg.exports.require(PackageExports)?
+      let exports = pkg.exports
 
       if exports.has("prepare") {
         let prepare_fn: Proc = exports.get("prepare")?
@@ -1238,9 +1236,31 @@ proc xsh_runner() [fs, process, env, error] -> Result[Path] {
   process.which("xsh")?
 }
 
+proc regular_xsh_source(xsh: Path) [fs, error] -> Result[Path] {
+  let metadata = fs.metadata(xsh)?
+
+  if metadata.kind != "symlink" {
+    return xsh
+  }
+
+  let target = xsh.readlink()?
+
+  if target.display().starts_with("/") {
+    return target
+  }
+
+  fp"${xsh.parent}/${target}"
+}
+
 proc seed_package_proof_shell(proof_root: Path, xsh: Path) [fs, error] {
-  let proof_xsh = fp"${proof_root}/usr/local/bin/xsh"
-  fs.install(xsh, proof_xsh, 0o755, parents: true, overwrite: true)?
+  let proof_multicall = fp"${proof_root}/usr/local/bin/xsh-multicall"
+  fs.install(regular_xsh_source(xsh)?, proof_multicall, 0o755, parents: true, overwrite: true)?
+
+  for name in ["xsh", "xshi", "xsht"] {
+    fs.remove(fp"${proof_root}/usr/local/bin/${name}", missing_ok: true)?
+    fs.symlink(p"xsh-multicall", fp"${proof_root}/usr/local/bin/${name}")?
+  }
+
   let proof_sh = fp"${proof_root}/usr/bin/sh"
 
   if ! fs.exists(proof_sh)? {

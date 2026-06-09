@@ -16,16 +16,9 @@ export type PackageExports = module {
   export optional let target_build_deps: List[Str]
   export let sources: List[Path]
   export let checksums: List[Str]
-  export proc build(dest: Path) [fs, process, env, error]
   export optional let nostrip: Bool
   export optional let checksums_aarch64: List[Str]
   export optional let checksums_x86_64: List[Str]
-  export optional proc prepare(src: Path) [fs, process, env, error]
-  export optional proc process_sources(src: Path) [fs, process, env, error]
-  export optional proc pre_install(root: Path) [fs, process, env, error]
-  export optional proc post_install(root: Path) [fs, process, env, error]
-  export optional proc pre_remove(root: Path) [fs, process, env, error]
-  export optional proc post_remove(root: Path) [fs, process, env, error]
   export optional let extract_install: Bool
 }
 

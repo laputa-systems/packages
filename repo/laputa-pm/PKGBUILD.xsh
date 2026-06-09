@@ -15,32 +15,10 @@ export let sources: List[Path] = [
 
 export let checksums: List[Str] = ["SKIP", "SKIP"]
 
-proc install_core_link_dir(dest: Path, dir: Path, target_prefix: Path) [fs, env, error] {
-  let root = env.get("LAPUTA_ROOT") ?? "/"
-  let core = if root == "/" { p"/usr/lib/xsh/core" } else { fp"${Path.parse(root)?}/usr/lib/xsh/core" }
-
-  if ! fs.exists(core)? {
-    return
-  }
-
-  fs.mkdir(fp"${dest}/${dir}")?
-
-  for entry in fs.children(core)? {
-    if entry.kind == "file" and entry.name.ends_with(".xsh") {
-      let command_name = entry.name.replace(".xsh", "")
-      continue when command_name == "xinit"
-      let link = fp"${dest}/${dir}/${command_name}"
-      fs.remove(link, missing_ok: true)?
-      fs.symlink(fp"${target_prefix}/${entry.name}", link)?
-    }
-  }
-}
-
 export proc build(dest: Path) [fs, env, error] {
   fs.install(p"pm.xsh", fp"${dest}/usr/lib/pm/pm.xsh", 0o644, parents: true, overwrite: true)?
   let _ = fs.copy_tree(p"pm", fp"${dest}/usr/lib/pm/pm", parents: true, overwrite: true)?
   fs.mkdir(fp"${dest}/usr/bin")?
-  install_core_link_dir(dest, p"usr/bin", p"../lib/xsh/core")?
 
   fs.write(
     fp"${dest}/usr/bin/pm",

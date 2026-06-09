@@ -1,7 +1,7 @@
 use types
 use util
 
-export proc select_checksums(exports: PackageChecksumsContract, fallback: List[Str]) [env, error] -> Result[List[Str]] {
+export proc select_checksums(exports: Any, fallback: List[Str]) [env, error] -> Result[List[Str]] {
   let arch = machine_arch()?
 
   if arch == "x86_64" and exports.has("checksums_x86_64") {
@@ -359,7 +359,7 @@ export proc prune_git_dirs(src: Path) [fs, error] {
 }
 
 export proc process_source_tree(pkg: Package, src: Path) [fs, process, env, error] {
-  let exports = pkg.exports.require(PackageExports)?
+  let exports = pkg.exports
 
   if exports.has("process_sources") {
     let process_sources_fn: Proc = exports.get("process_sources")?
@@ -496,7 +496,7 @@ export proc collect_checksum_updates(
 ) [fs, net, process, env, time, error] -> Result[List[ChecksumUpdate]] {
   var updates: List[ChecksumUpdate] = []
   var added = false
-  let exports = pkg.exports.require(PackageExports)?
+  let exports = pkg.exports
 
   if exports.has("checksums_aarch64") {
     let stored: List[Str] = exports.get("checksums_aarch64")?
