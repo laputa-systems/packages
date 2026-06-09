@@ -1,0 +1,4 @@
+#!/usr/local/bin/xsh
+if fs.exists(/usr/bin/mdevd)? {
+  run /usr/bin/xinit supervise mdevd ?
+}

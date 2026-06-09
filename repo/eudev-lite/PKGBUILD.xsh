@@ -1,0 +1,76 @@
+use pm.make as make
+
+export let name: Str = "eudev-lite"
+
+export let ver: Str = "3.2.14"
+
+export let rel: Str = "3"
+
+export let deps: List[Str] = ["musl"]
+
+export let mkdeps: List[Str] = ["llvm-toolchain"]
+
+export let sources: List[Path] = [
+  p"https://github.com/eudev-project/eudev/releases/download/vVERSION/eudev-VERSION.tar.gz",
+]
+
+export let checksums: List[Str] = ["8da4319102f24abbf7fff5ce9c416af848df163b29590e666d334cc1927f006f"]
+
+proc write_udev_stub() [fs, error] {
+  fs.write(
+    p"laputa-udev.c",
+    f"""#include <stdio.h>
+#include <string.h>
+
+static int wants_version(int argc, char **argv)
+{{
+    return argc >= 2 && (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0);
+}}
+
+int main(int argc, char **argv)
+{{
+    const char *name = argc > 0 && argv[0] != 0 ? argv[0] : "udevadm";
+    const char *base = strrchr(name, '/');
+
+    if (base != 0)
+        name = base + 1;
+
+    if (wants_version(argc, argv)) {{
+        printf("${ver}\\n");
+        return 0;
+    }}
+
+    if (strcmp(name, "udevd") == 0 || strcmp(name, "systemd-udevd") == 0)
+        return 0;
+
+    if (argc >= 2 && (strcmp(argv[1], "trigger") == 0 || strcmp(argv[1], "settle") == 0 || strcmp(argv[1], "control") == 0))
+        return 0;
+
+    fprintf(stderr, "%s: Laputa currently packages a minimal native udev command surface\\n", name);
+    return 1;
+}}
+""",
+  )?
+}
+
+export proc build(dest: Path) [fs, process, env, error] {
+  let cc = process.which("cc")?
+  let os = system.uname()?
+  let triple = f"${os.machine}-linux-musl"
+  let src = p"laputa-udev.c"
+  let obj = p"obj/laputa-udev.o"
+  let bin = p"obj/udev"
+  let compile = make.compile_c_task(cc, triple, ["-std=c99", "-Wall", "-Wextra"], [], [], src, obj)
+  let link = make.link_executable_task(cc, triple, [obj], [], [], bin, [compile.name])
+
+  write_udev_stub()?
+  make.run_tasks([compile, link], make.jobs()?)?
+
+  fs.install(bin, fp"${dest}/usr/bin/udevadm", 0o755, parents: true, overwrite: true)?
+  fs.install(bin, fp"${dest}/usr/bin/udevd", 0o755, parents: true, overwrite: true)?
+  fs.install(bin, fp"${dest}/usr/lib/udev/systemd-udevd", 0o755, parents: true, overwrite: true)?
+  fs.mkdir(fp"${dest}/run")?
+  fs.mkdir(fp"${dest}/run/udev")?
+  fs.mkdir(fp"${dest}/usr/lib/udev")?
+  fs.mkdir(fp"${dest}/usr/lib/udev/rules.d")?
+}

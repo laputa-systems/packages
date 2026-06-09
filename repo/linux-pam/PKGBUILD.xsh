@@ -1,0 +1,99 @@
+export let name: Str = "linux-pam"
+
+export let ver: Str = "1.7.2"
+
+export let rel: Str = "2"
+
+export let deps: List[Str] = ["musl"]
+
+export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon"]
+
+export let sources: List[Path] = [
+  p"https://github.com/linux-pam/linux-pam/releases/download/vVERSION/Linux-PAM-VERSION.tar.xz",
+]
+
+export let checksums: List[Str] = ["3d86b6383fb5fd9eb9578d2cd47d92801191f4bf3f9bc61419bfefc8aa1e531a"]
+
+proc patch_modules() [fs, error] {
+  let root_build = p"meson.build"
+  var root_text = root_build.read_text()?
+
+  root_text = root_text.replace(
+    """subdir('conf' / 'pam_conv1')
+""",
+    "",
+  )
+
+  root_text = root_text.replace(
+    """libcrypt = dependency('libcrypt', 'libxcrypt', required: false)
+if not libcrypt.found()
+  libcrypt = cc.find_library('crypt')
+endif
+""",
+    """libcrypt = declare_dependency(link_args: ['-lcrypt'])
+""",
+  )
+
+  root_build.write_atomic(root_text)?
+  let modules_build = p"modules/meson.build"
+
+  let modules_text = modules_build.read_text()?.replace(
+    """subdir('pam_setquota')
+""",
+    "",
+  )
+
+  modules_build.write_atomic(modules_text)?
+}
+
+export proc build(dest: Path) [fs, process, error] {
+  let muon = process.which("muon")?
+  let jobs_flag = f"-j${cpu.count()}"
+  patch_modules()?
+
+  let setup_args = [
+    "setup",
+    "-Dprefix=/usr",
+    "-Dlibdir=lib",
+    "-Dsysconfdir=/etc",
+    "-Dsbindir=/usr/bin",
+    "-Di18n=disabled",
+    "-Ddocs=disabled",
+    "-Daudit=disabled",
+    "-Deconf=disabled",
+    "-Dlogind=disabled",
+    "-Delogind=disabled",
+    "-Dopenssl=disabled",
+    "-Dpwaccess=disabled",
+    "-Dselinux=disabled",
+    "-Dnis=disabled",
+    "-Dexamples=false",
+    "-Dxtests=false",
+    "-Dpam_userdb=disabled",
+    "-Dpam_lastlog=disabled",
+    "-Dpam_unix=enabled",
+    "-Dvendordir=",
+    "build",
+  ]
+
+  run $muon ${setup_args} ?
+  run $muon "-C" "build" samu $jobs_flag ?
+
+  env {
+    DESTDIR = dest.display()
+  } {
+    run $muon "-C" "build" install ?
+  } ?
+
+  fs.remove(fp"${dest}/etc/environment", missing_ok: true)?
+  fs.chmod(fp"${dest}/usr/bin/unix_chkpwd", 0o4755)?
+  fs.mkdir(fp"${dest}/etc/pam.d")?
+
+  fs.write(
+    fp"${dest}/etc/pam.d/sudo",
+    """auth required /usr/lib/security/pam_unix.so
+account required /usr/lib/security/pam_permit.so
+session required /usr/lib/security/pam_permit.so
+""",
+  )?
+}

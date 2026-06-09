@@ -1,0 +1,54 @@
+#!/usr/local/bin/xsh
+pure entry_matches(database: Str, line: Str, key: Str) -> Bool {
+  if key == "" {
+    return true
+  }
+
+  let fields = line.split(":")
+
+  if fields.get(0, "") == key {
+    return true
+  }
+
+  if database == "passwd" and fields.get(2, "") == key {
+    return true
+  }
+
+  if database == "group" and fields.get(2, "") == key {
+    return true
+  }
+
+  return false
+}
+
+proc main(database: Str = "", key: Str = "") [fs, error] {
+  if database == "" {
+    abort(2)
+  }
+
+  var path_value: Path = /etc/passwd
+
+  if database == "passwd" {
+    path_value = /etc/passwd
+  } else if database == "group" {
+    path_value = /etc/group
+  } else {
+    abort(2)
+  }
+
+  var found = false
+
+  for raw in fs.read_text(path_value)?.lines() {
+    let line = raw.trim()
+    continue when line == "" or line.starts_with("#")
+
+    if entry_matches(database, line, key) {
+      print ${line}
+      found = true
+    }
+  }
+
+  if ! found {
+    abort(2)
+  }
+}

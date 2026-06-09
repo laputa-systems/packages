@@ -1,0 +1,10 @@
+target
+.env
+.out
+/repo/.work/
+/repo/.set-root/
+/repo/.set-build-root/
+/repo/packages/
+/repo/metadata/
+/repo/index.json
+/repo/llvm-toolchain/files/work-*

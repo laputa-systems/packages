@@ -1,0 +1,637 @@
+use kbuild
+
+proc write_fixture(root: Path) [fs, error] {
+  fs.mkdir(fp"${root}/init/lib")?
+  fs.mkdir(fp"${root}/block")?
+  fs.mkdir(fp"${root}/net")?
+  fs.mkdir(fp"${root}/arch/arm64/kernel")?
+
+  fs.write(
+    fp"${root}/.config",
+    """CONFIG_BLOCK=y
+CONFIG_NET=y
+CONFIG_INET=y
+CONFIG_HYPERV=m
+# CONFIG_UNUSED is not set
+""",
+  )?
+
+  fs.write(
+    fp"${root}/Kbuild",
+    """core-y += arch/$(SRCARCH)/kernel/
+obj-y += init/
+obj-y += core.o $(core-y)
+helper_files = libhelper.o
+lib-y += $(helper_files)
+combo-y += combo-a.o combo-b.o
+obj-y += combo.o
+obj-$(CONFIG_BLOCK) += block/
+obj-$(CONFIG_NET) += net/
+obj-$(CONFIG_UNUSED) += unused/
+obj-$(subst m,y,$(CONFIG_HYPERV)) += hyperv.o
+ifeq ($(CONFIG_BLOCK),y)
+obj-y += conditional.o
+endif
+ifeq ($(CONFIG_UNUSED),y)
+obj-y += skipped.o
+endif
+""",
+  )?
+
+  fs.write(
+    fp"${root}/init/Kbuild",
+    """obj-y += main.o \\
+  lib/
+""",
+  )?
+
+  fs.write(
+    fp"${root}/init/lib/Makefile",
+    """obj-y += helper.o
+""",
+  )?
+
+  fs.write(
+    fp"${root}/block/Kbuild",
+    """obj-y := blk-core.o
+""",
+  )?
+
+  fs.write(
+    fp"${root}/net/Kbuild",
+    """obj-$(CONFIG_INET) += ipv4.o
+""",
+  )?
+
+  fs.write(
+    fp"${root}/arch/arm64/kernel/Kbuild",
+    """obj-y += head.o
+""",
+  )?
+}
+
+pure has_path(paths: List[Path], target: Str) -> Bool {
+  for path_value in paths {
+    if path_value.display() == target {
+      return true
+    }
+  }
+
+  return false
+}
+
+proc test_kbuild_discovers_configured_obj_y_dirs_and_objects(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-kbuild")?
+  write_fixture(root)?
+  let config = kbuild.load_config(fp"${root}/.config")?
+  let plan = kbuild.discover_plan(root, config, "arm64")?
+  test.ok(has_path(plan.dirs, "."))?
+  test.ok(has_path(plan.dirs, "init"))?
+  test.ok(has_path(plan.dirs, "init/lib"))?
+  test.ok(has_path(plan.dirs, "block"))?
+  test.ok(has_path(plan.dirs, "net"))?
+  test.ok(has_path(plan.dirs, "arch/arm64/kernel"))?
+  test.eq(has_path(plan.dirs, "unused"), false)?
+  test.ok(has_path(plan.objects, "core.o"))?
+  test.ok(has_path(plan.lib_objects, "libhelper.o"))?
+  test.ok(has_path(plan.objects, "combo.o"))?
+  test.eq(plan.composites.len(), 1)?
+  test.eq(plan.composites[0].object.display(), "combo.o")?
+  test.ok(has_path(plan.composites[0].members, "combo-a.o"))?
+  test.ok(has_path(plan.composites[0].members, "combo-b.o"))?
+  test.ok(has_path(plan.objects, "hyperv.o"))?
+  test.ok(has_path(plan.objects, "conditional.o"))?
+  test.eq(has_path(plan.objects, "skipped.o"), false)?
+  test.ok(has_path(plan.objects, "init/main.o"))?
+  test.ok(has_path(plan.objects, "init/lib/helper.o"))?
+  test.ok(has_path(plan.objects, "block/blk-core.o"))?
+  test.ok(has_path(plan.objects, "net/ipv4.o"))?
+  test.ok(has_path(plan.objects, "arch/arm64/kernel/head.o"))?
+  test.eq(plan.unsupported.len(), 0)?
+}
+
+proc test_kbuild_writes_text_plan(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-kbuild-text")?
+  let out = test.temp_path(ctx, name: "plan.json")
+  write_fixture(root)?
+  let plan = kbuild.write_plan(root, fp"${root}/.config", out, "arm64")?
+  let stored = out.read_text()?
+  test.ok(stored.contains("obj\tinit/main.o"))?
+  let loaded = kbuild.read_discovered_plan(out)?
+  test.eq(loaded.objects.len(), plan.objects.len())?
+  test.ok(has_path(loaded.objects, "init/main.o"))?
+}
+
+proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-archive-tasks")?
+  write_fixture(root)?
+
+  fs.write(
+    fp"${root}/core.c",
+    """int core(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/libhelper.c",
+    """int libhelper(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/hyperv.c",
+    """int hyperv(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/conditional.c",
+    """int conditional(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/combo-a.c",
+    """int combo_a(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/combo-b.c",
+    """int combo_b(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/init/main.c",
+    """int init_main(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/init/lib/helper.S",
+    """.text
+""",
+  )?
+
+  fs.write(
+    fp"${root}/block/blk-core.c",
+    """int blk_core(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/net/ipv4.c",
+    """int ipv4(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/arch/arm64/kernel/head.S",
+    """.text
+""",
+  )?
+
+  let config = kbuild.load_config(fp"${root}/.config")?
+  let plan = kbuild.discover_plan(root, config, "arm64")?
+
+  cd root {
+    let archive_plan = kbuild.plan_builtin_archives(
+      plan,
+      /usr/bin/cc,
+      "aarch64-linux-gnu",
+      ["-D__KERNEL__", "-O2", "-mgeneral-regs-only", "-mbranch-protection=pac-ret"],
+      [],
+      [
+        "-Iinclude",
+        "-nostdinc",
+        "-include",
+        "include/linux/compiler-version.h",
+        "-include",
+        "include/linux/kconfig.h",
+        "-include",
+        "include/generated/utsversion.h",
+        "-include",
+        "include/linux/compiler_types.h",
+      ],
+    )?
+
+    test.eq(archive_plan.missing_sources.len(), 0)?
+    test.eq(archive_plan.generated_objects.len(), 0)?
+    test.eq(archive_plan.tasks.len(), 18)?
+    test.ok(has_path(archive_plan.archives, ".xsh-kbuild/built-in.a"))?
+    test.ok(has_path(archive_plan.archives, ".xsh-kbuild/lib.a"))?
+    test.ok(has_path(archive_plan.archives, ".xsh-kbuild/init/built-in.a"))?
+    test.ok(has_path(archive_plan.archives, ".xsh-kbuild/init/lib/built-in.a"))?
+    let report = fp"${root}/archive-plan.json"
+    kbuild.write_archive_plan_report(archive_plan, report)?
+    let stored: Record = json.read(report)?
+    let task_count: Int = stored.get("task_count")?
+    let tasks: List[Record] = stored.get("tasks")?
+    test.eq(task_count, archive_plan.tasks.len())?
+    test.eq(tasks.len(), archive_plan.tasks.len())?
+    let first: Record = tasks[0]
+    let argv: List[Str] = first.get("argv")?
+    let outputs: List[Str] = first.get("outputs")?
+    test.ok(argv.len() > 0)?
+    test.ok(outputs.len() > 0)?
+    let asm_task: Record = tasks[7]
+    let asm_argv: List[Str] = asm_task.get("argv")?
+    test.ok(asm_argv.contains("-D__ASSEMBLY__"))?
+    test.ok(asm_argv.contains("-fno-PIE"))?
+    test.ok(asm_argv.contains("-DKASAN_SHADOW_SCALE_SHIFT="))?
+    test.ok(asm_argv.contains("-nostdinc"))?
+    test.ok(asm_argv.contains("include/linux/compiler-version.h"))?
+    test.ok(asm_argv.contains("include/linux/kconfig.h"))?
+    test.eq(asm_argv.contains("-O2"), false)?
+    test.eq(asm_argv.contains("-mgeneral-regs-only"), false)?
+    test.eq(asm_argv.contains("-mbranch-protection=pac-ret"), false)?
+    test.eq(asm_argv.contains("include/generated/utsversion.h"), false)?
+    test.eq(asm_argv.contains("include/linux/compiler_types.h"), false)?
+  } ?
+}
+
+proc test_kbuild_plans_pi_relacheck_after_objcopy(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-pi-relacheck")?
+  fs.mkdir(fp"${root}/arch/arm64/kernel/pi")?
+  fs.write(fp"${root}/.config", "")?
+
+  fs.write(
+    fp"${root}/Kbuild",
+    """obj-y += arch/arm64/kernel/pi/
+""",
+  )?
+
+  fs.write(
+    fp"${root}/arch/arm64/kernel/pi/Makefile",
+    """obj-y += idreg-override.pi.o
+""",
+  )?
+
+  fs.write(
+    fp"${root}/arch/arm64/kernel/pi/idreg-override.c",
+    """int idreg_override;
+""",
+  )?
+
+  fs.write(
+    fp"${root}/arch/arm64/kernel/pi/relacheck.c",
+    """int main(int argc, char **argv) { return argc < 3; }
+""",
+  )?
+
+  cd root {
+    let config = kbuild.load_config(p".config")?
+    let plan = kbuild.discover_plan(p".", config, "arm64")?
+
+    let archive_plan = kbuild.plan_builtin_archives(
+      plan,
+      /usr/bin/cc,
+      "aarch64-linux-gnu",
+      ["-fno-function-sections", "-fno-data-sections"],
+      [],
+      [],
+    )?
+
+    let relacheck = ".xsh-kbuild/host/arch/arm64/kernel/pi/relacheck"
+    let pi_object = p".xsh-kbuild/obj/arch/arm64/kernel/pi/idreg-override.pi.o"
+    let relacheck_task_name = f"${pi_object.display()}:relacheck"
+    var saw_build_task = false
+    var saw_check_task = false
+    var saw_archive_dep = false
+
+    for task in archive_plan.tasks {
+      if task.name == relacheck {
+        saw_build_task = true
+      }
+
+      if task.name == relacheck_task_name {
+        saw_check_task = true
+        test.ok(task.argv.contains(relacheck))?
+        test.ok(task.argv.contains(pi_object.display()))?
+        test.ok(task.outputs.contains(fp"${pi_object}.relacheck.cmd"))?
+        test.ok(task.deps.contains(pi_object.display()))?
+        test.ok(task.deps.contains(relacheck))?
+      }
+
+      if task.name == ".xsh-kbuild/arch/arm64/kernel/pi/built-in.a" {
+        saw_archive_dep = task.deps.contains(relacheck_task_name)
+      }
+    }
+
+    test.ok(saw_build_task)?
+    test.ok(saw_check_task)?
+    test.ok(saw_archive_dep)?
+  } ?
+}
+
+proc test_kbuild_runs_archive_plan_output_from_json(ctx: TestContext) [fs, process, error] {
+  let root = test.temp_dir(ctx, name: "linux-archive-runner")?
+  let first = fp"${root}/first.txt"
+  let second = fp"${root}/second.txt"
+  let plan = fp"${root}/archive-plan.json"
+  let no_strings: List[Str] = []
+
+  json.write(
+    plan,
+    {
+      archives: no_strings,
+      generated_objects: no_strings,
+      missing_sources: no_strings,
+      task_count: 2,
+      tasks: [
+        {
+          name: "first",
+          outputs: [first.display()],
+          inputs: no_strings,
+          deps: no_strings,
+          argv: ["/bin/sh", "-c", f"printf first > ${first.display()}"],
+          env: {},
+          cwd: root.display(),
+          depfile: "",
+          stamp: fp"${root}/first.cmd".display(),
+        },
+        {
+          name: "second",
+          outputs: [second.display()],
+          inputs: [first.display()],
+          deps: ["first"],
+          argv: ["/bin/sh", "-c", f"cat ${first.display()} > ${second.display()}; printf second >> ${second.display()}"],
+          env: {},
+          cwd: root.display(),
+          depfile: "",
+          stamp: fp"${root}/second.cmd".display(),
+        },
+      ],
+    },
+  )?
+
+  kbuild.run_archive_plan_output(plan, second, 1)?
+  test.eq(first.read_text()?, "first")?
+  test.eq(second.read_text()?, "firstsecond")?
+}
+
+proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-archive-missing")?
+
+  fs.write(
+    fp"${root}/present.c",
+    """int present(void) { return 0; }
+""",
+  )?
+
+  let plan: kbuild.KbuildPlan = {
+    dirs: [p"."],
+    objects: [p"present.o", p"missing.o"],
+    lib_objects: [],
+    composites: [],
+    unsupported: [],
+  }
+
+  cd root {
+    let archive_plan = kbuild.plan_builtin_archives(plan, /usr/bin/cc, "aarch64-linux-gnu", [], [], [])?
+    test.eq(archive_plan.missing_sources.len(), 1)?
+    test.eq(archive_plan.generated_objects.len(), 0)?
+    test.ok(has_path(archive_plan.missing_sources, "missing.o"))?
+    test.eq(archive_plan.archives.len(), 1)?
+  } ?
+}
+
+proc test_kbuild_adds_x86_kvm_local_include(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-x86-kvm-include")?
+  fs.mkdir(fp"${root}/arch/x86/kvm/mmu")?
+
+  fs.write(
+    fp"${root}/arch/x86/kvm/mmu/mmu.c",
+    """#include "irq.h"
+int mmu(void) { return 0; }
+""",
+  )?
+
+  let plan: kbuild.KbuildPlan = {
+    dirs: [p"arch/x86/kvm"],
+    objects: [p"arch/x86/kvm/kvm.o"],
+    lib_objects: [],
+    composites: [{object: p"arch/x86/kvm/kvm.o", members: [p"arch/x86/kvm/mmu/mmu.o"]}],
+    unsupported: [],
+  }
+
+  cd root {
+    let archive_plan = kbuild.plan_builtin_archives(plan, /usr/bin/cc, "x86_64-linux-gnu", [], [], [])?
+    var saw_mmu = false
+
+    for task in archive_plan.tasks {
+      if task.name == ".xsh-kbuild/obj/arch/x86/kvm/mmu/mmu.o" {
+        saw_mmu = true
+        test.ok(task.argv.contains("-I./arch/x86/kvm"))?
+      }
+    }
+
+    test.ok(saw_mmu)?
+  } ?
+}
+
+proc test_kbuild_applies_object_and_subdir_cflags(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-cflags")?
+  fs.mkdir(fp"${root}/sound/hda/common")?
+  fs.mkdir(fp"${root}/sound/hda/controllers")?
+
+  fs.write(fp"${root}/.config", "")?
+
+  fs.write(
+    fp"${root}/sound/hda/common/Makefile",
+    """CFLAGS_controller.o := -I$(src)
+""",
+  )?
+
+  fs.write(
+    fp"${root}/sound/hda/controllers/Makefile",
+    """subdir-ccflags-y += -I$(src)/../common
+CFLAGS_intel.o := -I$(src)
+""",
+  )?
+
+  fs.write(
+    fp"${root}/sound/hda/common/controller.c",
+    """int controller(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/sound/hda/controllers/intel.c",
+    """int intel(void) { return 0; }
+""",
+  )?
+
+  let plan: kbuild.KbuildPlan = {
+    dirs: [p"sound/hda/common", p"sound/hda/controllers"],
+    objects: [p"sound/hda/common/controller.o", p"sound/hda/controllers/intel.o"],
+    lib_objects: [],
+    composites: [],
+    unsupported: [],
+  }
+
+  cd root {
+    let archive_plan = kbuild.plan_builtin_archives(plan, /usr/bin/cc, "x86_64-linux-gnu", [], [], [])?
+    var saw_controller = false
+    var saw_intel = false
+
+    for task in archive_plan.tasks {
+      if task.name == ".xsh-kbuild/obj/sound/hda/common/controller.o" {
+        saw_controller = true
+        test.ok(task.argv.contains("-I./sound/hda/common"))?
+      }
+
+      if task.name == ".xsh-kbuild/obj/sound/hda/controllers/intel.o" {
+        saw_intel = true
+        test.ok(task.argv.contains("-I./sound/hda/controllers"))?
+        test.ok(task.argv.contains("-I./sound/hda/controllers/../common"))?
+      }
+    }
+
+    test.ok(saw_controller)?
+    test.ok(saw_intel)?
+  } ?
+}
+
+proc test_kbuild_generates_config_headers(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-config-headers")?
+  let config = fp"${root}/.config"
+
+  fs.write(
+    config,
+    """CONFIG_ALPHA=y
+CONFIG_NUMBER=12
+CONFIG_TEXT="value"
+""",
+  )?
+
+  kbuild.write_config_headers(config, root, "7.0.5", "arm64")?
+  let autoconf = fp"${root}/include/generated/autoconf.h".read_text()?
+  let auto_conf = fp"${root}/include/config/auto.conf".read_text()?
+  test.contains(autoconf, "#define CONFIG_ALPHA 1")?
+  test.contains(autoconf, "#define CONFIG_NUMBER 12")?
+  test.contains(autoconf, "#define CONFIG_TEXT \"value\"")?
+  test.contains(auto_conf, "CONFIG_ALPHA=y")?
+  test.contains(auto_conf, "CONFIG_NUMBER=12")?
+}
+
+proc test_kbuild_generates_syscall_table(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-syscalls")?
+  let table = fp"${root}/syscall.tbl"
+  let out = fp"${root}/syscall_table.h"
+  let numbers = fp"${root}/unistd.h"
+
+  fs.write(
+    table,
+    """0 common read sys_read
+2 common open sys_open compat_sys_open
+3 64 exit sys_exit - noreturn
+4 32 skip32 sys_skip32
+""",
+  )?
+
+  kbuild.generate_syscall_table(table, out, ["common", "64"])?
+
+  test.eq(
+    out.read_text()?,
+    """__SYSCALL(0, sys_read)
+__SYSCALL(1, sys_ni_syscall)
+__SYSCALL_WITH_COMPAT(2, sys_open, compat_sys_open)
+__SYSCALL_NORETURN(3, sys_exit)
+""",
+  )?
+
+  kbuild.generate_syscall_numbers(table, numbers, "_ASM_UNISTD_H", "__NR_syscalls", "", ["common", "64"])?
+  test.contains(numbers.read_text()?, "#define __NR_read 0")?
+  test.contains(numbers.read_text()?, "#define __NR_exit 3")?
+  test.contains(numbers.read_text()?, "#define __NR_syscalls 4")?
+}
+
+proc test_kbuild_generates_offsets_header(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-offsets")?
+  let asm_path = fp"${root}/asm-offsets.s"
+  let out = fp"${root}/include/generated/asm-offsets.h"
+
+  fs.write(
+    asm_path,
+    """.ascii "->FOO 8 offsetof(struct demo, foo)"
+.ascii "->"
+.ascii "->BAR 16 sizeof(struct demo)"
+""",
+  )?
+
+  kbuild.generate_offsets_header(asm_path, out, "__ASM_OFFSETS_H__")?
+
+  test.eq(
+    out.read_text()?,
+    """#ifndef __ASM_OFFSETS_H__
+#define __ASM_OFFSETS_H__
+/*
+ * DO NOT MODIFY.
+ *
+ * This file was generated by Kbuild
+ */
+
+#define FOO 8 /* offsetof(struct demo, foo) */
+
+#define BAR 16 /* sizeof(struct demo) */
+
+#endif
+""",
+  )?
+}
+
+proc test_kbuild_models_final_link_tasks(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-link-tasks")?
+  let ar = /usr/bin/ar
+  let ld = /usr/bin/ld
+  let objcopy = /usr/bin/objcopy
+  let built_in = fp"${root}/built-in.a"
+  let arch_lib = fp"${root}/arch/arm64/lib/lib.a"
+  let efi_lib = fp"${root}/drivers/firmware/efi/libstub/lib.a"
+  let vmlinux_a = fp"${root}/vmlinux.a"
+  let vmlinux_o = fp"${root}/vmlinux.o"
+  let script = fp"${root}/arch/arm64/kernel/vmlinux.lds"
+  let export_obj = fp"${root}/.vmlinux.export.o"
+  let version_obj = fp"${root}/init/version-timestamp.o"
+  let unstripped = fp"${root}/vmlinux.unstripped"
+  let vmlinux = fp"${root}/vmlinux"
+  let image = fp"${root}/arch/arm64/boot/Image"
+  let archive_task = kbuild.vmlinux_archive_task(ar, [built_in, arch_lib], vmlinux_a)
+  test.eq(archive_task.argv, ["/usr/bin/ar", "cDPrST", vmlinux_a.display(), built_in.display(), arch_lib.display()])?
+  let reloc = kbuild.vmlinux_o_task(ld, ["-EL", "-maarch64elf"], vmlinux_a, [efi_lib], vmlinux_o)
+  test.ok(reloc.argv.contains("--whole-archive"))?
+  test.ok(reloc.argv.contains("--start-group"))?
+  test.ok(reloc.inputs.contains(efi_lib))?
+
+  let linked = kbuild.vmlinux_unstripped_task(
+    ld,
+    ["-EL", "-maarch64elf"],
+    ["--no-undefined", "-X", "--pic-veneer"],
+    script,
+    vmlinux_a,
+    [efi_lib],
+    export_obj,
+    version_obj,
+    unstripped,
+  )
+
+  test.ok(linked.argv.contains("--script"))?
+  test.ok(linked.inputs.contains(version_obj))?
+  let stripped = kbuild.vmlinux_strip_task(objcopy, unstripped, vmlinux)
+  test.ok(stripped.argv.contains("--remove-section=.modinfo"))?
+  let image_task = kbuild.image_task(objcopy, vmlinux, image)
+  test.eq(image_task.argv.get(1)?, "-O")?
+  test.eq(image_task.argv.get(2)?, "binary")?
+  let llvm_image_task = kbuild.image_argv_task(["llvm-objcopy"], vmlinux, image)
+  test.eq(llvm_image_task.argv.get(0)?, "llvm-objcopy")?
+  let nonrel_config: kbuild.Kconfig = {enabled: map.empty(), values: map.empty().set("RELR", "y")}
+  let nonrel_flags = kbuild.arm64_vmlinux_ldflags(nonrel_config)
+  test.eq(nonrel_flags.contains("-shared"), false)?
+  test.ok(nonrel_flags.contains("--pack-dyn-relocs=relr"))?
+  let rel_config: kbuild.Kconfig = {enabled: map.empty(), values: map.empty().set("RELOCATABLE", "y").set("RELR", "y")}
+  let rel_flags = kbuild.arm64_vmlinux_ldflags(rel_config)
+  test.ok(rel_flags.contains("-shared"))?
+  test.ok(rel_flags.contains("--no-apply-dynamic-relocs"))?
+}

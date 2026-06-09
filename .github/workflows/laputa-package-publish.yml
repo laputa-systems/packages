@@ -1,0 +1,95 @@
+name: Laputa Package Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_arch:
+        description: Architecture to build and publish
+        required: true
+        type: choice
+        default: arm64
+        options:
+          - arm64
+          - amd64
+      package_name:
+        description: Package directory name under repo
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: laputa-package-publish-mirror
+  cancel-in-progress: false
+
+env:
+  LAPUTA_REPO_URL: https://laputa.17166969.xyz
+  LAPUTA_MIRROR_URL: https://laputa.17166969.xyz
+  LAPUTA_DOCKER_PLATFORM: ${{ inputs.target_arch == 'amd64' && 'linux/amd64' || 'linux/arm64' }}
+  LAPUTA_PACKAGE_ARCH: ${{ inputs.target_arch == 'amd64' && 'x86_64' || 'aarch64' }}
+  XSH_RELEASE: release-f9034b48f96f49f42914498cd7bbe8a080b945b3
+  XSH_RELEASE_SHA256: ${{ inputs.target_arch == 'amd64' && '11b035a88c4bac2672da3dbdb400a6258d24d944a990659776e8850619e9369c' || 'a660ca00a215960d4d70ae2fbd329796793b1357ac693da517a7bdec45265d98' }}
+
+jobs:
+  publish:
+    name: Publish ${{ inputs.package_name }} / ${{ inputs.target_arch }}
+    runs-on: ${{ inputs.target_arch == 'amd64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    steps:
+      - name: Checkout packages
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+
+      - name: Checkout integration
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          repository: laputa-systems/laputa
+          path: integration
+
+      - name: Check mirror build-essential package
+        run: |
+          set -euo pipefail
+          curl -fsSL "$LAPUTA_REPO_URL/index.json" -o /tmp/laputa-index.json
+          tarball="$(jq -r --arg arch "$LAPUTA_PACKAGE_ARCH" '.[] | select(.name == "build-essential-native" and ((.arch // "aarch64") == $arch)) | .tarball' /tmp/laputa-index.json | head -n1)"
+          test -n "$tarball"
+          curl -fsSL "$LAPUTA_REPO_URL/$tarball" -o /tmp/build-essential-native.tar.gz
+          test -s /tmp/build-essential-native.tar.gz
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+
+      - name: Build package image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: integration
+          file: integration/Dockerfile.build-essential-native
+          platforms: ${{ env.LAPUTA_DOCKER_PLATFORM }}
+          target: build-essential-native
+          build-contexts: packages=${{ github.workspace }}
+          build-args: |
+            LAPUTA_REPO_URL=${{ env.LAPUTA_REPO_URL }}
+            XSH_RELEASE=${{ env.XSH_RELEASE }}
+            XSH_RELEASE_ARCH=${{ env.LAPUTA_PACKAGE_ARCH }}
+            XSH_RELEASE_SHA256=${{ env.XSH_RELEASE_SHA256 }}
+          cache-from: type=gha,scope=laputa-package-publish-${{ inputs.target_arch }}
+          cache-to: type=gha,scope=laputa-package-publish-${{ inputs.target_arch }},mode=max
+          load: true
+          tags: laputa-package-publish:${{ inputs.target_arch }}-${{ github.run_id }}
+
+      - name: Build, prove, and publish package
+        env:
+          PKGNAME: ${{ inputs.package_name }}
+          LAPUTA_TOKEN: ${{ secrets.LAPUTA_TOKEN || secrets.LAPUTA_MIRROR_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$LAPUTA_TOKEN"
+          docker run --rm \
+            --platform "$LAPUTA_DOCKER_PLATFORM" \
+            -e XSH_MODULE_PATH=/src/packages \
+            -e XSH_PM_REPO="$LAPUTA_MIRROR_URL" \
+            -e XSH_PM_PUBLIC_REPO="$LAPUTA_MIRROR_URL" \
+            -e LAPUTA_TOKEN \
+            -v "$PWD:/src/packages:ro" \
+            "laputa-package-publish:${{ inputs.target_arch }}-${{ github.run_id }}" \
+            /usr/local/bin/xsh /src/packages/pm.xsh -- build-upload-set \
+            /src/target/repo \
+            "/src/packages/repo/$PKGNAME"
