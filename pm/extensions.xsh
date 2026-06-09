@@ -19,27 +19,30 @@ export proc read_extension_summary(candidate: Path) [fs] -> Result[Str] {
   ""
 }
 
-export proc discover_extensions() [fs, error] -> Result[List[Extension]] {
+export proc discover_extensions() [fs, env, error] -> Result[List[Extension]] {
   var extensions: List[Extension] = []
   var seen: Map[Bool] = map.empty()
-  let path_list = env.PathList.PATH?
+  let path_entries = env.path_entries("PATH")?
 
-  for dir in path_list {
+  for entry in path_entries {
+    continue when entry.empty
+    let dir = entry.path
+
     if fs.exists(dir)? {
       let dir_metadata = fs.metadata(dir)?
 
       if dir_metadata.kind == "dir" {
         let entries = fs.children(dir)
-          |> where .name.starts_with("pm-") and fs.executable(.path)?
+          |> where .name.starts_with("pm-") and .executable
           |> sort-by .name
 
         for entry in entries {
           let action = entry.name.replace("pm-", "")
 
-          if ! seen.get(action, false) {
+          if ! set.has(seen, action) {
             let summary = read_extension_summary(entry.path)?
             extensions = extensions.push({name: action, path: entry.path, summary})
-            seen = seen.set(action, true)
+            seen = set.add(seen, action)
           }
         }
       }
@@ -50,7 +53,7 @@ export proc discover_extensions() [fs, error] -> Result[List[Extension]] {
   sorted
 }
 
-export proc find_extension(action: Str) [fs, error] -> Result[Extension] {
+export proc find_extension(action: Str) [fs, env, error] -> Result[Extension] {
   let extensions = discover_extensions()?
 
   for extension in extensions {
@@ -62,7 +65,7 @@ export proc find_extension(action: Str) [fs, error] -> Result[Extension] {
   return Err(PmError.Usage(f"usage: pm ACTION ROOT WORK OUT [ARGS...]; unknown command ${action}"))
 }
 
-export proc print_extension_help() [fs, error] {
+export proc print_extension_help() [fs, env, error] {
   let extensions = discover_extensions()?
 
   if extensions.len() == 0 {
@@ -102,7 +105,7 @@ export proc run_extension_process(
   }
 }
 
-export proc invoke_extension(action: Str, ctx: PmContext, raw: List[Str]) [fs, process, error] {
+export proc invoke_extension(action: Str, ctx: PmContext, raw: List[Str]) [fs, process, env, error] {
   let extension = find_extension(action)?
   var argv = [extension.path.name]
 
@@ -120,19 +123,25 @@ export proc invoke_extension(action: Str, ctx: PmContext, raw: List[Str]) [fs, p
   )?
 }
 
-export proc load_hook_paths() [env] -> Result[List[Str]] {
-  var hook_paths: List[Str] = []
-  let raw = (env.get("XSH_PM_HOOKS") ?? env.get("LAPUTA_HOOK") ?? "").trim()
+export proc load_hook_paths() [env, error] -> Result[List[Path]] {
+  var hook_paths: List[Path] = []
+  var hook_var = ""
 
-  if raw == "" {
+  if (env.get("XSH_PM_HOOKS") ?? "").trim() != "" {
+    hook_var = "XSH_PM_HOOKS"
+  } else if (env.get("LAPUTA_HOOK") ?? "").trim() != "" {
+    hook_var = "LAPUTA_HOOK"
+  }
+
+  if hook_var == "" {
     return hook_paths
   }
 
-  for item in raw.split(":") {
-    let trimmed = item.trim()
+  for entry in env.path_entries(hook_var)? {
+    let trimmed = entry.raw.trim()
 
     if trimmed != "" {
-      hook_paths = hook_paths.push(trimmed)
+      hook_paths = hook_paths.push(Path.parse(trimmed)?)
     }
   }
 
@@ -142,9 +151,7 @@ export proc load_hook_paths() [env] -> Result[List[Str]] {
 export proc run_lifecycle_hooks(hook_name: Str, pkg_name: Str, ctx: PmContext, extra: Str) [fs, process, env, error] {
   let hook_paths = load_hook_paths()?
 
-  for hook_text in hook_paths {
-    let hook = Path.parse(hook_text)?
-
+  for hook in hook_paths {
     if ! fs.exists(hook)? {
       return Err(PmError.LifecycleHook(f"${hook_name} hook not found: ${hook.display()}"))
     }

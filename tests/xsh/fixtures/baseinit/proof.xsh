@@ -1,9 +1,9 @@
 error ProofError = Failed(kind: Str, message: Str)
 
 proc require_file(root: Path, rel: Str) [fs, error] {
-  let path = fp"${root}/${rel}"
+  let path_value = fp"${root}/${rel}"
 
-  if ! fs.exists(path)? {
+  if ! fs.exists(path_value)? {
     return Err(ProofError.Failed("proof-baseinit", f"missing ${rel}"))
   }
 }

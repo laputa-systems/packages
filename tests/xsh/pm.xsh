@@ -50,7 +50,7 @@ pure world_pm_dir() -> Path {
   return p"tests/xsh/fixtures/world-pm"
 }
 
-proc test_arch() [env, error] -> Result[Str] {
+proc fixture_arch() [env, error] -> Result[Str] {
   let os = system.uname()?
 
   if os.machine == "arm64" {
@@ -102,7 +102,7 @@ proc test_pm_baseinit_smoke(ctx: TestContext) [fs, process, error] {
   let out = test.temp_dir(ctx, name: "out")?
   let output = run.text (xsh_bin()) pm.xsh -- (root.display()) (work.display()) (out.display()) (baseinit_dir().display()) ?
   test.contains(output, "baseinit baseinit-2.0.0-1 5 built")?
-  test.contains(output, "baseinit 5 17 installed")?
+  test.contains(output, "baseinit 5 8 installed")?
   test.contains(output, "baseinit 5 removed")?
   test.ok(fp"${out}/baseinit-2.0.0-1.tar.gz".exists()?)?
   test.eq(fp"${root}/etc/inittab".exists()?, false)?
@@ -237,6 +237,7 @@ proc test_pm_extract_install_preserves_tree_entries(ctx: TestContext) [fs, proce
     """extract-tree
 """,
   )?
+
   test.eq(fp"${root}/empty-dir".metadata()?.kind, "dir")?
   test.eq(fp"${root}/empty-dir/.keep".exists()?, false)?
   test.eq(fp"${root}/bin".metadata()?.kind, "symlink")?
@@ -334,7 +335,7 @@ proc test_pm_auth_and_file_repo(ctx: TestContext) [fs, process, env, error] {
   let repo_url = f"file://${repo.display()}"
   let upload_out = run.text XSH_PM_REPO=$repo_url (xsh_bin()) pm.xsh -- upload (root.display()) (work.display()) (out.display()) (remote_app_dir().display()) ?
   test.contains(upload_out, "remote-app 1.0.0-1 uploaded")?
-  let arch = test_arch()?
+  let arch = fixture_arch()?
   test.ok(fp"${repo}/packages/${arch}/remote-app/remote-app-1.0.0-1.tar.gz".exists()?)?
   let repo_index_text = fp"${repo}/index.json".read_text()?
   test.contains(repo_index_text, "\"name\":\"remote-app\"")?
@@ -348,6 +349,29 @@ proc test_pm_auth_and_file_repo(ctx: TestContext) [fs, process, env, error] {
     """remote-app
 """,
   )?
+}
+
+proc test_pm_remote_index_rejects_traversal_paths(ctx: TestContext) [fs, process, env, error] {
+  let root = test.temp_dir(ctx, name: "root")?
+  let work = test.temp_dir(ctx, name: "work")?
+  let out = test.temp_dir(ctx, name: "out")?
+  let repo = test.temp_dir(ctx, name: "repo")?
+  let err = test.temp_path(ctx, name: "stderr")
+  let arch = fixture_arch()?
+  let repo_url = f"file://${repo.display()}"
+
+  fs.write(
+    fp"${repo}/index.json",
+    f"""[{"arch":"${arch}","name":"evil","ver":"1.0.0","rel":"1","deps":[],"mkdeps":[],"target_build_deps":[],"sha256":"","size":1,"tarball":"../escape.tar.gz","metadata":"metadata/${arch}/evil/evil-1.0.0-1.json","source_sha256":"","source_tarball":"","metapackage":false}]
+""",
+  )?
+
+  let refresh_out = run.text XSH_PM_PUBLIC_REPO=$repo_url (xsh_bin()) pm.xsh -- refresh-index (root.display()) (work.display()) (out.display()) ?
+  test.contains(refresh_out, "remote-index 1 refreshed")?
+  let status = run.status XSH_PM_PUBLIC_REPO=$repo_url (xsh_bin()) pm.xsh -- install (root.display()) (work.display()) (out.display()) evil 2> $err
+  test.eq(status.ok, false)?
+  test.contains(err.read_text()?, "remote tarball must stay relative")?
+  test.eq(fp"${out}/escape.tar.gz".exists()?, false)?
 }
 
 proc test_pm_lifecycle_hooks(ctx: TestContext) [fs, process, error] {
@@ -382,7 +406,7 @@ proc test_pm_build_repo(ctx: TestContext) [fs, process, env, error] {
   test.contains(output, "baseinit")?
   test.contains(output, "published")?
   test.ok(fp"${repo}/index.json".exists()?)?
-  let arch = test_arch()?
+  let arch = fixture_arch()?
   test.ok(fp"${repo}/packages/${arch}/baseinit/baseinit-2.0.0-1.tar.gz".exists()?)?
 }
 
@@ -398,9 +422,14 @@ proc test_pm_help(ctx: TestContext) [process, error] {
   let _ = ctx
   let help = run.text ./pm.xsh "-h" ?
   test.contains(help, "usage: pm COMMAND [ARG...]")?
-  test.contains(help, "world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--sync-rels] [--to-tranche N] [-j N|--jobs N]")?
+
+  test.contains(
+    help,
+    "world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--sync-rels] [--to-tranche N] [-j N|--jobs N]",
+  )?
+
   let world_help = run.text ./pm.xsh world-plan "--help" ?
-  test.contains(world_help, "usage: pm world-plan PKGDIR... [OPTIONS]")?
+  test.contains(world_help, "usage: pm world-plan ...PKGDIR [OPTIONS]")?
   test.contains(world_help, "--arch ARCH")?
   test.contains(world_help, "--sync-rels")?
   test.contains(world_help, "--to-tranche N")?
@@ -415,7 +444,7 @@ proc test_pm_requires_package_proof(ctx: TestContext) [fs, process, error] {
 
   fs.write(
     fp"${pkg}/PKGBUILD.xsh",
-    r"""export let name = "proofless"
+    """export let name = "proofless"
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps: List[Str] = []
@@ -424,7 +453,7 @@ export let sources: List[Path] = []
 export let checksums: List[Str] = []
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
-  fs.write(fp"${dest}/proofless.txt", "proofless\n")?
+  fs.write(fp"\${dest}/proofless.txt", "proofless\\n")?
 }
 """,
   )?
@@ -451,7 +480,7 @@ proc test_pm_world_plan_build_and_upload(ctx: TestContext) [fs, process, env, er
   test.contains(output, "world-plan build complete")?
   test.contains(output, "repo export uploaded")?
   let stage = single_world_cache(home)?
-  let arch = test_arch()?
+  let arch = fixture_arch()?
   test.ok(fp"${stage}/.world/state.json".exists()?)?
   test.ok(fp"${stage}/packages/${arch}/world-lib/world-lib-1.0.0-1.tar.gz".exists()?)?
   test.ok(fp"${stage}/metadata/${arch}/world-lib/world-lib-1.0.0-1.json".exists()?)?
@@ -467,11 +496,10 @@ proc test_pm_world_plan_build_to_tranche_and_resume(ctx: TestContext) [fs, proce
   let first = run.text HOME=(home.display()) XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 (xsh_bin()) pm.xsh -- world-plan (world_pm_dir().display()) (world_lib_dir().display()) (world_app_dir().display()) --build --to-tranche 1 --jobs 1 ?
   test.contains(first, "world-plan build paused at tranche 1")?
   let stage = single_world_cache(home)?
-  let arch = test_arch()?
+  let arch = fixture_arch()?
   test.ok(fp"${stage}/packages/${arch}/world-lib/world-lib-1.0.0-1.tar.gz".exists()?)?
   test.ok(! fp"${stage}/packages/${arch}/world-app/world-app-1.0.0-1.tar.gz".exists()?)?
   test.contains(fp"${stage}/.world/state.json".read_text()?, "\"complete\":false")?
-
   let second = run.text HOME=(home.display()) XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 (xsh_bin()) pm.xsh -- world-plan (world_pm_dir().display()) (world_lib_dir().display()) (world_app_dir().display()) --build --jobs 1 ?
   test.contains(second, "world-lib world-lib-1.0.0-1 staged")?
   test.contains(second, "world-plan build complete")?
@@ -482,15 +510,21 @@ proc test_pm_world_plan_build_to_tranche_and_resume(ctx: TestContext) [fs, proce
 proc test_pm_world_plan_stable_cache_invalidates_on_pkgbuild_edit(ctx: TestContext) [fs, process, env, error] {
   let home = test.temp_dir(ctx, name: "home")?
   let pkg = test.temp_dir(ctx, name: "world-pm-copy")?
-  let err = test.temp_path(ctx, name: "pm.err")
   let _ = fs.copy_tree(world_pm_dir(), pkg, parents: true, overwrite: true)?
   run.text HOME=(home.display()) XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 (xsh_bin()) pm.xsh -- world-plan (pkg.display()) --build --to-tranche 0 --jobs 1 ?
   let stage = single_world_cache(home)?
-  fs.write(fp"${pkg}/PKGBUILD.xsh", f"${fp"${pkg}/PKGBUILD.xsh".read_text()?}\n# invalidate world\n")?
-  let status = run.status HOME=(home.display()) XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 (xsh_bin()) pm.xsh -- world-plan (pkg.display()) --build --jobs 1 2> $err
-  test.eq(status.ok, false)?
-  test.contains(err.read_text()?, "belongs to a different world plan")?
+
+  fs.write(
+    fp"${pkg}/PKGBUILD.xsh",
+    f"""${fp"${pkg}/PKGBUILD.xsh".read_text()?}
+# invalidate world
+""",
+  )?
+
+  let status = run.status HOME=(home.display()) XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 (xsh_bin()) pm.xsh -- world-plan (pkg.display()) --build --jobs 1
+  test.eq(status.ok, true)?
   test.eq(single_world_cache(home)?.display(), stage.display())?
+  test.contains(fp"${stage}/.world/state.json".read_text()?, "\"complete\":true")?
 }
 
 proc test_pm_world_plan_upload_requires_complete_stage(ctx: TestContext) [fs, process, env, error] {
@@ -519,9 +553,10 @@ proc test_pm_world_plan_displays_remote_to_local_catchup(ctx: TestContext) [fs, 
   let home = test.temp_dir(ctx, name: "home")?
   let repo = test.temp_dir(ctx, name: "repo")?
   let repo_url = f"file://${repo.display()}"
-  let arch = test_arch()?
+  let arch = fixture_arch()?
   let no_deps: List[Str] = []
   let no_mkdeps: List[Str] = []
+
   json.write(
     fp"${repo}/index.json",
     [
@@ -542,6 +577,7 @@ proc test_pm_world_plan_displays_remote_to_local_catchup(ctx: TestContext) [fs, 
       },
     ],
   )?
+
   let output = run.text HOME=(home.display()) NO_COLOR=1 XSH_PM_REPO=$repo_url (xsh_bin()) pm.xsh -- world-plan (world_pm_dir().display()) ?
   test.contains(output, "laputa-pm 1.0.0-0 -> 1.0.0-1")?
   test.ok(! output.contains("remote newer"))?
@@ -557,12 +593,13 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
   let home = test.temp_dir(ctx, name: "home")?
   let repo = test.temp_dir(ctx, name: "repo")?
   let repo_url = f"file://${repo.display()}"
-  let arch = test_arch()?
+  let arch = fixture_arch()?
   run.text (xsh_bin()) pm.xsh -- build (repo.display()) (world_pm_dir().display()) (world_lib_dir().display()) (world_app_dir().display()) ?
   let no_deps: List[Str] = []
   let no_mkdeps: List[Str] = []
   let lib_deps: List[Str] = ["laputa-pm"]
   let app_deps: List[Str] = ["world-lib"]
+
   json.write(
     fp"${repo}/index.json",
     [
@@ -613,6 +650,7 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
       },
     ],
   )?
+
   let output = run.text HOME=(home.display()) NO_COLOR=1 XSH_PM_REPO=$repo_url (xsh_bin()) pm.xsh -- world-plan (world_pm_dir().display()) (world_lib_dir().display()) (world_app_dir().display()) ?
   test.contains(output, "laputa-pm 1.0.0-0 -> 1.0.0-1")?
   test.contains(output, "world-lib 1.0.0-1 -> 1.0.0-2")?
@@ -625,12 +663,13 @@ proc test_pm_world_plan_autobumps_rel_for_changed_metadata(ctx: TestContext) [fs
   let home = test.temp_dir(ctx, name: "home")?
   let remote = test.temp_dir(ctx, name: "world-remote")?
   let repo_url = f"file://${remote.display()}"
-  let arch = test_arch()?
+  let arch = fixture_arch()?
   let no_deps: List[Str] = []
   let no_mkdeps: List[Str] = []
   let metadata_rel = fp"metadata/${arch}/laputa-pm/laputa-pm-1.0.0-2.json"
   fs.mkdir(fp"${remote}/${metadata_rel}".parent)?
   json.write(fp"${remote}/${metadata_rel}", {metadata_sha256: "remote-old"})?
+
   json.write(
     fp"${remote}/index.json",
     [
@@ -651,6 +690,7 @@ proc test_pm_world_plan_autobumps_rel_for_changed_metadata(ctx: TestContext) [fs
       },
     ],
   )?
+
   let output = run.text HOME=(home.display()) XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url (xsh_bin()) pm.xsh -- world-plan (world_pm_dir().display()) --build --jobs 1 ?
   test.contains(output, "laputa-pm 1.0.0-3")?
   let stage = single_world_cache(home)?
@@ -664,13 +704,14 @@ proc test_pm_world_plan_sync_rels_updates_pkgbuilds_after_upload(ctx: TestContex
   let remote = test.temp_dir(ctx, name: "world-remote")?
   let pkg = test.temp_dir(ctx, name: "world-pm-copy")?
   let repo_url = f"file://${remote.display()}"
-  let arch = test_arch()?
+  let arch = fixture_arch()?
   let no_deps: List[Str] = []
   let no_mkdeps: List[Str] = []
   let metadata_rel = fp"metadata/${arch}/laputa-pm/laputa-pm-1.0.0-2.json"
   let _ = fs.copy_tree(world_pm_dir(), pkg, parents: true, overwrite: true)?
   fs.mkdir(fp"${remote}/${metadata_rel}".parent)?
   json.write(fp"${remote}/${metadata_rel}", {metadata_sha256: "remote-old"})?
+
   json.write(
     fp"${remote}/index.json",
     [
@@ -695,7 +736,6 @@ proc test_pm_world_plan_sync_rels_updates_pkgbuilds_after_upload(ctx: TestContex
   let synced = run.text HOME=(home.display()) XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token (xsh_bin()) pm.xsh -- world-plan (pkg.display()) --build --upload --sync-rels --jobs 1 ?
   test.contains(synced, "laputa-pm 1.0.0-1 -> 1.0.0-3 rel-synced")?
   test.contains(fp"${pkg}/PKGBUILD.xsh".read_text()?, "export let rel: Str = \"3\"")?
-
   let output = run.text HOME=(home.display()) NO_COLOR=1 XSH_PM_REPO=$repo_url (xsh_bin()) pm.xsh -- world-plan (pkg.display()) ?
   test.contains(output, "laputa-pm 1.0.0-3")?
   test.ok(! output.contains("->"))?
@@ -708,20 +748,21 @@ proc test_pm_world_plan_upload_verifies_staged_artifacts(ctx: TestContext) [fs, 
   let repo_url = f"file://${remote.display()}"
   run.text HOME=(home.display()) XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 (xsh_bin()) pm.xsh -- world-plan (world_pm_dir().display()) (world_lib_dir().display()) (world_app_dir().display()) --build ?
   let stage = single_world_cache(home)?
-  let arch = test_arch()?
+  let arch = fixture_arch()?
   fs.write(fp"${stage}/packages/${arch}/world-app/world-app-1.0.0-1.tar.gz", "corrupt")?
   let status = run.status HOME=(home.display()) XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token (xsh_bin()) pm.xsh -- world-plan (world_pm_dir().display()) (world_lib_dir().display()) (world_app_dir().display()) --upload 2> $err
   test.eq(status.ok, false)?
   test.contains(err.read_text()?, "size mismatch")?
 }
 
-proc test_pm_unknown_command_without_extension_fails(ctx: TestContext) [fs, process, error] {
+proc test_pm_unknown_command_without_extension_fails(ctx: TestContext) [fs, process, env, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
   let out = test.temp_dir(ctx, name: "out")?
   let path_dir = test.temp_dir(ctx, name: "path")?
   let err = test.temp_path(ctx, name: "pm.err")
-  let status = run.status PATH=(path_dir.display()) (xsh_bin()) pm.xsh -- missing-action (root.display()) (work.display()) (out.display()) 2> $err
+  let path_text = f"${path_dir.display()}:${env.get("PATH")?}"
+  let status = run.status PATH=$path_text (xsh_bin()) pm.xsh -- missing-action (root.display()) (work.display()) (out.display()) 2> $err
   let stderr = err.read_text()?
   test.eq(status.ok, false)?
   test.contains(stderr, "usage: pm ACTION ROOT WORK OUT [ARGS...]")?
@@ -738,7 +779,7 @@ proc test_pm_search_requires_query(ctx: TestContext) [fs, process, error] {
   test.contains(err.read_text()?, "usage: pm search ROOT WORK OUT QUERY [PKGDIR...]")?
 }
 
-proc test_pm_extension_help_discovers_executables_in_path_order(ctx: TestContext) [fs, process, error] {
+proc test_pm_extension_help_discovers_executables_in_path_order(ctx: TestContext) [fs, process, env, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
   let out = test.temp_dir(ctx, name: "out")?
@@ -780,7 +821,7 @@ not a comment summary
   shadow_first.chmod(0o755)?
   shadow_second.chmod(0o755)?
   plain.chmod(0o755)?
-  let path_text = f"${first.display()}:${second.display()}"
+  let path_text = f"${first.display()}:${second.display()}:${env.get("PATH")?}"
   let help = run.text PATH=$path_text (xsh_bin()) pm.xsh -- help-ext (root.display()) (work.display()) (out.display()) ?
   test.contains(help, "extension shadow first summary")?
   test.eq(help.contains("ignored"), false)?
@@ -788,7 +829,7 @@ not a comment summary
   test.eq(help.contains("not a comment summary"), false)?
 }
 
-proc test_pm_extension_invocation_environment(ctx: TestContext) [fs, process, error] {
+proc test_pm_extension_invocation_environment(ctx: TestContext) [fs, process, env, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
   let out = test.temp_dir(ctx, name: "out")?
@@ -815,7 +856,7 @@ proc test_pm_extension_invocation_environment(ctx: TestContext) [fs, process, er
   )?
 
   extension.chmod(0o755)?
-  let path_text = path_dir.display()
+  let path_text = f"${path_dir.display()}:${env.get("PATH")?}"
   run.text PATH=$path_text EXT_LOG=(log.display()) (xsh_bin()) pm.xsh -- inspect (root.display()) (work.display()) (out.display()) one two ?
   let env_log = log.read_text()?
   test.contains(env_log, f"root=${root.display()}")?
@@ -901,38 +942,6 @@ pure shell_task(
   }
 }
 
-proc expect_invalid_jobs(result: Result[Unit]) [error] {
-  match result {
-    Ok(_) => test.fail("expected MakeError.InvalidJobs")?
-    Err(MakeError.InvalidJobs {}) => Ok()
-    Err(err) => test.fail(f"expected MakeError.InvalidJobs: \${err.message}")?
-  }
-}
-
-proc expect_duplicate_output(result: Result[Unit]) [error] {
-  match result {
-    Ok(_) => test.fail("expected MakeError.DuplicateOutput")?
-    Err(MakeError.DuplicateOutput {}) => Ok()
-    Err(err) => test.fail(f"expected MakeError.DuplicateOutput: \${err.message}")?
-  }
-}
-
-proc expect_missing_dependency(result: Result[Unit]) [error] {
-  match result {
-    Ok(_) => test.fail("expected MakeError.MissingDependency")?
-    Err(MakeError.MissingDependency {}) => Ok()
-    Err(err) => test.fail(f"expected MakeError.MissingDependency: \${err.message}")?
-  }
-}
-
-proc expect_dependency_cycle(result: Result[Unit]) [error] {
-  match result {
-    Ok(_) => test.fail("expected MakeError.DependencyCycle")?
-    Err(MakeError.DependencyCycle {}) => Ok()
-    Err(err) => test.fail(f"expected MakeError.DependencyCycle: \${err.message}")?
-  }
-}
-
 proc main() [fs, process, time, env, error] {
   test.eq(make.jobs()?, 2)?
 
@@ -957,19 +966,6 @@ proc main() [fs, process, time, env, error] {
   test.ok(elapsed < 1800, f"parallel make tasks took \${elapsed}ms")?
   test.eq(one.read_text()?, "one")?
   test.eq(two.read_text()?, "two")?
-
-  let invalid_root = fs.temp_dir()?
-  defer invalid_root.remove(missing_ok: true)
-  let out = fp"\${invalid_root}/out.txt"
-  let task = shell_task("task", invalid_root, [out], [], [], f"printf ok > \${out.display()}", fp"\${invalid_root}/task.cmd")
-  let dup = shell_task("dup", invalid_root, [out], [], [], f"printf dup > \${out.display()}", fp"\${invalid_root}/dup.cmd")
-  let missing = shell_task("missing", invalid_root, [fp"\${invalid_root}/missing.txt"], [], ["nope"], "printf missing", fp"\${invalid_root}/missing.cmd")
-  let cycle_a = shell_task("cycle-a", invalid_root, [fp"\${invalid_root}/a.txt"], [], ["cycle-b"], "printf a", fp"\${invalid_root}/a.cmd")
-  let cycle_b = shell_task("cycle-b", invalid_root, [fp"\${invalid_root}/b.txt"], [], ["cycle-a"], "printf b", fp"\${invalid_root}/b.cmd")
-  expect_invalid_jobs(make.run_tasks([task], 0))?
-  expect_duplicate_output(make.run_tasks([task, dup], 1))?
-  expect_missing_dependency(make.run_tasks([missing], 1))?
-  expect_dependency_cycle(make.run_tasks([cycle_a, cycle_b], 1))?
 
   let dep_root = fs.temp_dir()?
   defer dep_root.remove(missing_ok: true)

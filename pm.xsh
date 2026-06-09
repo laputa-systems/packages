@@ -264,17 +264,19 @@ proc effective_world_build_dependencies(pkg: Package, cross_build: Bool) [] -> L
   effective_world_dependencies(pkg, true)
 }
 
-proc copy_world_seed_path(source_root: Path, dest_root: Path, rel_path: Path) [fs, error] {
-  let source = fp"${source_root}/${rel_path}"
-  let dest = fp"${dest_root}/${rel_path}"
-  let meta = fs.metadata(source)?
+proc copy_world_seed_path(source_root: FsRoot, dest_root: FsRoot, rel_path: Path) [fs, error] {
+  match fs.root_readlink(source_root, rel_path) {
+    Ok(target) => {
+      fs.root_symlink(dest_root, target, rel_path, overwrite: true)?
+      return
+    }
+    Err(_) => {}
+  }
 
-  if meta.kind == "symlink" {
-    fs.mkdir(dest.parent)?
-    fs.remove(dest, missing_ok: true)?
-    fs.symlink(source.readlink()?, dest)?
-  } else if meta.kind == "file" {
-    fs.install(source, dest, meta.mode % 4096, parents: true, overwrite: true)?
+  let meta = fs.root_metadata(source_root, rel_path)?
+
+  if meta.kind == "file" {
+    fs.root_install_file(source_root, rel_path, dest_root, rel_path, meta.mode % 4096, overwrite: true)?
   }
 }
 
@@ -282,20 +284,19 @@ proc copy_world_seed_package(source_root: Path, dest_root: Path, name: Str) [fs,
   let source_db = package_db_path(source_root, name)
   let dest_db = package_db_path(dest_root, name)
   let manifest = load_manifest(source_db)?
+  let source_handle = fs.open_root(source_root)?
+  defer fs.close_root(source_handle)
+  let dest_handle = fs.open_root(dest_root)?
+  defer fs.close_root(dest_handle)
 
   for rel_path in manifest {
-    copy_world_seed_path(source_root, dest_root, rel_path)?
+    copy_world_seed_path(source_handle, dest_handle, rel_path)?
   }
 
   let _ = fs.copy_tree(source_db, dest_db, parents: true, overwrite: true)?
 }
 
-proc seed_world_package_dependency_set(
-  staged_root: Path,
-  package_root: Path,
-  owner: Str,
-  deps: List[Str],
-) [fs, error] {
+proc seed_world_package_dependency_set(staged_root: Path, package_root: Path, owner: Str, deps: List[Str]) [fs, error] {
   var names = ["baselayout", "xsh", "laputa-pm", "zlib"]
   var required = [false, false, false, false]
 
@@ -356,7 +357,12 @@ proc seed_world_package_root(
   include_mkdeps: Bool,
   include_target_build_deps: Bool,
 ) [fs, error] {
-  seed_world_package_dependency_set(staged_root, package_root, pkg.name, effective_world_seed_dependencies(pkg, include_mkdeps, include_target_build_deps))?
+  seed_world_package_dependency_set(
+    staged_root,
+    package_root,
+    pkg.name,
+    effective_world_seed_dependencies(pkg, include_mkdeps, include_target_build_deps),
+  )?
 }
 
 proc seed_world_package_tool_root(staged_root: Path, package_root: Path, pkg: Package) [fs, error] {
@@ -1085,8 +1091,8 @@ proc remote_metadata_sha256(repo: Str, out: Path, entry: RemotePackage) [fs, net
     return ""
   }
 
-  let rel = Path.parse(entry.metadata)?
-  let cache = fp"${out}/remote-metadata/${entry.metadata}"
+  let rel = ensure_relative_path(Path.parse(entry.metadata)?, "remote metadata")?
+  let cache = fp"${out}/remote-metadata/${rel.display()}"
   let failure = fetch_repo_file_with_retry(repo, rel, cache)?
 
   if failure != "" {
@@ -1138,7 +1144,6 @@ proc world_remote_metadata_hashes(
   for row in rows {
     hashes = hashes.set(row.name, row.sha256)
   }
-
 
   hashes
 }
@@ -1198,7 +1203,6 @@ exec "$real" --target="$target" --sysroot="$target_root" -resource-dir "$build_r
 """
 }
 
-
 proc write_native_cross_tool_shims(build_root: Path, target_root: Path, target_arch: Str) [fs, error] {
   let bin = fp"${build_root}/.native-cross/bin"
   fs.mkdir(bin)?
@@ -1241,17 +1245,24 @@ proc build_world_package(
   fs.mkdir(package_work)?
   fs.mkdir(package_out)?
   seed_world_package_root(target_staged_root, package_root, pkg, ! cross_build, true)?
-
   let package_path_root = if cross_build { package_build_root } else { package_root }
   var package_path = f"${package_path_root}/usr/bin:${env.get("PATH") ?? ""}"
   let build_chroot = if cross_build { "0" } else { env.get("XSH_PM_BUILD_CHROOT") ?? "1" }
 
   if cross_build {
     fs.mkdir(package_build_root)?
-    seed_world_package_dependency_set(build_staged_root, package_build_root, pkg.name, effective_world_build_dependencies(pkg, cross_build))?
+
+    seed_world_package_dependency_set(
+      build_staged_root,
+      package_build_root,
+      pkg.name,
+      effective_world_build_dependencies(pkg, cross_build),
+    )?
+
     write_native_cross_tool_shims(package_build_root, package_root, target_arch)?
     package_path = f"${package_build_root}/.native-cross/bin:${package_path}"
   }
+
   env {
     LAPUTA_ROOT = package_root.display()
     PATH = package_path
@@ -1815,8 +1826,17 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
       arch: {form: "--arch ARCH", default: host_world_arch()?, help: "plan for ARCH (arm64 maps to aarch64)"},
       build: {form: "--build", default: false, help: "build all planned packages into the world staging repo"},
       upload: {form: "--upload", default: false, help: "upload only after the world staging repo is complete"},
-      sync_rels: {form: "--sync-rels", default: false, help: "update PKGBUILD rels to exact planned rels present in remote"},
-      to_tranche: {form: "--to-tranche N", default: -1, min: -1, help: "with --build, stop after tranche N and leave stage resumable"},
+      sync_rels: {
+        form: "--sync-rels",
+        default: false,
+        help: "update PKGBUILD rels to exact planned rels present in remote",
+      },
+      to_tranche: {
+        form: "--to-tranche N",
+        default: -1,
+        min: -1,
+        help: "with --build, stop after tranche N and leave stage resumable",
+      },
       jobs: {form: "-j --jobs N", kind: "Uint", default: default_world_jobs()?, min: 1, help: "build jobs per tranche"},
     },
     "pm world-plan",
@@ -1829,7 +1849,6 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let world_jobs = opts.jobs
   let target_arch = validate_world_arch(opts.arch)?
   let to_tranche = parse_world_to_tranche(f"${opts.to_tranche}", "--to-tranche")?
-
   let host_arch = host_world_arch()?
   let world_build_arch = validate_world_arch(build_arch()?)?
   let native_cross_requested = (env.get("XSH_PM_NATIVE_CROSS") ?? "0") == "1"
@@ -1940,7 +1959,12 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
         let build_pkg: Package = planned_by_name.get(pkg.name)?
         let id = world_package_id(build_pkg)
 
-        if recorded_unchanged.contains(id) and world_stage_package_present_in_roots(root, build_root, pkg.name, cross_build)? {
+        if recorded_unchanged.contains(id) and world_stage_package_present_in_roots(
+          root,
+          build_root,
+          pkg.name,
+          cross_build,
+        )? {
           built_names = built_names.set(pkg.name, true)
           unchanged_names = unchanged_names.set(pkg.name, true)
           print ${pkg.name} ${id} unchanged
@@ -1954,6 +1978,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
           print ${pkg.name} ${id} staged
         } else {
           let build_dependency_names = effective_world_build_dependencies(pkg, cross_build)
+
           install_remote_dependency_set_for_arch(
             root_ctx,
             missing_world_dependencies(
@@ -1966,17 +1991,18 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
           )?
 
           let missing_build_dependencies = if cross_build {
-            missing_fresh_world_dependencies(build_root, build_dependency_names, build_local_names, built_names, build_remote_latest)?
+            missing_fresh_world_dependencies(
+              build_root,
+              build_dependency_names,
+              build_local_names,
+              built_names,
+              build_remote_latest,
+            )?
           } else {
             missing_world_dependencies(build_root, build_dependency_names, build_local_names, built_names)?
           }
 
-          install_remote_dependency_set_for_arch(
-            build_ctx,
-            missing_build_dependencies,
-            world_build_arch,
-          )?
-
+          install_remote_dependency_set_for_arch(build_ctx, missing_build_dependencies, world_build_arch)?
           pending = pending.push(build_pkg)
           pending_originals = pending_originals.push(pkg)
         }
@@ -2026,6 +2052,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
                 if ! cross_build {
                   install_remote_dependency_set_for_arch(build_ctx, [original_pkg.name], world_build_arch)?
                 }
+
                 built_names = built_names.set(original_pkg.name, true)
                 unchanged_names = unchanged_names.set(original_pkg.name, true)
                 unchanged = true
@@ -2259,7 +2286,7 @@ proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, error] {
         return Err(PmError.PackageTarball(f"${entry.name} ${version_id(entry.ver, entry.rel)} has no tarball"))
       }
 
-      let tarball_rel = Path.parse(entry.tarball)?
+      let tarball_rel = ensure_relative_path(Path.parse(entry.tarball)?, "remote tarball")?
       let tarball = fp"${repo_dir}/${tarball_rel.display()}"
 
       if ! fs.exists(tarball)? {
@@ -2271,7 +2298,7 @@ proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, error] {
       uploaded = {...uploaded, sha256: hash.sha256(tarball)?.hex(), size: tarball_metadata.size}
 
       if entry.metadata != "" {
-        let metadata_rel = Path.parse(entry.metadata)?
+        let metadata_rel = ensure_relative_path(Path.parse(entry.metadata)?, "remote metadata")?
         let metadata = fp"${repo_dir}/${metadata_rel.display()}"
 
         if ! fs.exists(metadata)? {

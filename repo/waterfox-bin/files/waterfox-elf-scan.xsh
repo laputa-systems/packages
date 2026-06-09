@@ -47,7 +47,7 @@ proc private_sonames(root: Path) [fs, error] -> Result[Map[Bool]] {
   var sonames: Map[Bool] = map.empty()
 
   for entry in fs.walk(root, gitignore: false)? |> where .kind == "file" {
-    if is_elf_candidate(entry.name, fs.executable(entry.path)?) {
+    if is_elf_candidate(entry.name, entry.executable) {
       let info = elf.inspect(entry.path)?
 
       if info.type != "not-elf" {
@@ -77,7 +77,7 @@ export proc scan_waterfox_elf(
   var external: Map[Bool] = map.empty()
 
   for entry in fs.walk(root, gitignore: false)? |> where .kind == "file" {
-    if is_elf_candidate(entry.name, fs.executable(entry.path)?) {
+    if is_elf_candidate(entry.name, entry.executable) {
       let info = elf.inspect(entry.path)?
 
       if info.type != "not-elf" {

@@ -40,7 +40,7 @@ proc private_sonames(root: Path) [fs, error] -> Result[Map[Path]] {
   var sonames: Map[Path] = map.empty()
 
   for entry in fs.walk(root, gitignore: false)? |> where .kind == "file" {
-    if is_elf_candidate(entry.name, fs.executable(entry.path)?) {
+    if is_elf_candidate(entry.name, entry.executable) {
       let info = elf.inspect(entry.path)?
 
       if info.type != "not-elf" {
@@ -66,7 +66,7 @@ export proc verify_private_needed(
   var files: List[PrivateNeededFile] = []
 
   for entry in fs.walk(root, gitignore: false)? |> where .kind == "file" {
-    if is_elf_candidate(entry.name, fs.executable(entry.path)?) {
+    if is_elf_candidate(entry.name, entry.executable) {
       let info = elf.inspect(entry.path)?
 
       if info.type != "not-elf" {

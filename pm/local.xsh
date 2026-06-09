@@ -259,21 +259,29 @@ export proc collect_etcsums(dest: Path, manifest: List[Path]) [fs, error] -> Res
 
 export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error] -> Result[List[Record]] {
   var files: List[Record] = []
+  let root_handle = fs.open_root(root)?
+  defer fs.close_root(root_handle)
 
   for rel_path in manifest {
-    let full = fp"${root}/${rel_path}"
-    let meta = fs.metadata(full)?
-    let mode = meta.mode % 4096
-    var sha256 = ""
-    var target = ""
+    match fs.root_readlink(root_handle, rel_path) {
+      Ok(target) => {
+        files = files.push(
+          {path: rel_path.display(), kind: "symlink", mode: 0o777, sha256: "", target: target.display()},
+        )
 
-    if meta.kind == "file" {
-      sha256 = hash.sha256(full)?.hex()
-    } else if meta.kind == "symlink" {
-      target = full.readlink()?.display()
+        continue
+      }
+      Err(_) => {}
     }
 
-    files = files.push({path: rel_path.display(), kind: meta.kind, mode, sha256, target})
+    let meta = fs.root_metadata(root_handle, rel_path)?
+    var sha256 = ""
+
+    if meta.kind == "file" {
+      sha256 = fs.root_read(root_handle, rel_path)?.sha256().hex()
+    }
+
+    files = files.push({path: rel_path.display(), kind: meta.kind, mode: meta.mode % 4096, sha256, target: ""})
   }
 
   files
@@ -377,27 +385,10 @@ pure can_replace_installed_owner(pkg: Package, owner: Str) -> Bool {
   return pkg.name == "ca-certificates" or pkg.name == "libffi" or pkg.name == "libunwind"
 }
 
-export proc install_regular_file(source: Path, dest: Path, mode: Int, overwrite: Bool) [fs, error] {
-  if overwrite {
-    fs.remove(dest, missing_ok: true)?
-  }
-
-  fs.install(source, dest, mode, parents: true, overwrite: overwrite)?
-}
-
-export proc install_symlink(source: Path, dest: Path, overwrite: Bool) [fs, error] {
-  let target = source.readlink()?
-  fs.mkdir(dest.parent)?
-
-  if overwrite {
-    fs.remove(dest, missing_ok: true)?
-  }
-
-  fs.symlink(target, dest)?
-}
-
 export proc install_etc_file(
+  source_root: FsRoot,
   source: Path,
+  dest_root: FsRoot,
   dest: Path,
   mode: Int,
   key: Str,
@@ -414,8 +405,8 @@ export proc install_etc_file(
 
   var sys_sum = ""
 
-  if fs.exists(dest)? {
-    sys_sum = hash.sha256(dest)?.hex()
+  if fs.root_exists(dest_root, dest)? {
+    sys_sum = fs.root_read(dest_root, dest)?.sha256().hex()
   }
 
   if old_sum == new_sum and new_sum != sys_sum {
@@ -423,11 +414,11 @@ export proc install_etc_file(
   }
 
   if sys_sum == "" or old_sum == sys_sum or sys_sum == new_sum {
-    install_regular_file(source, dest, mode, true)?
+    fs.root_install_file(source_root, source, dest_root, dest, mode, overwrite: true)?
     return
   }
 
-  install_regular_file(source, fp"${dest.parent}/${dest.name}.new", mode, true)?
+  fs.root_install_file(source_root, source, dest_root, fp"${dest.parent}/${dest.name}.new", mode, overwrite: true)?
 }
 
 export proc install_manifest_entries(
@@ -439,10 +430,12 @@ export proc install_manifest_entries(
   new_sums: Map[Str],
   installed_owners: Map[Str],
 ) [fs, error] {
+  let source_root = fs.open_root(stage)?
+  defer fs.close_root(source_root)
+  let dest_root = fs.open_root(root)?
+  defer fs.close_root(dest_root)
+
   for rel_path in manifest {
-    let source = fp"${stage}/${rel_path}"
-    let dest = fp"${root}/${rel_path}"
-    let metadata = fs.metadata(source)?
     let key = rel_path.display()
     var overwrite = false
 
@@ -454,16 +447,24 @@ export proc install_manifest_entries(
       }
     }
 
+    match fs.root_readlink(source_root, rel_path) {
+      Ok(target) => {
+        fs.root_symlink(dest_root, target, rel_path, overwrite: overwrite)?
+        continue
+      }
+      Err(_) => {}
+    }
+
+    let metadata = fs.root_metadata(source_root, rel_path)?
+
     if metadata.kind == "file" {
       let file_mode = metadata.mode % 4096
 
       if is_etc_file(rel_path) {
-        install_etc_file(source, dest, file_mode, key, old_sums, new_sums)?
+        install_etc_file(source_root, rel_path, dest_root, rel_path, file_mode, key, old_sums, new_sums)?
       } else {
-        install_regular_file(source, dest, file_mode, overwrite)?
+        fs.root_install_file(source_root, rel_path, dest_root, rel_path, file_mode, overwrite: overwrite)?
       }
-    } else if metadata.kind == "symlink" {
-      install_symlink(source, dest, overwrite)?
     }
   }
 }
@@ -495,14 +496,16 @@ export proc collect_removable_manifest(
   etcsums: Map[Str],
 ) [fs, error] -> Result[List[Path]] {
   var removable: List[Path] = []
+  let root_handle = fs.open_root(root)?
+  defer fs.close_root(root_handle)
 
   for rel_path in manifest {
     let key = rel_path.display()
 
-    if is_etc_file(rel_path) and etcsums.has(key) and fs.exists(fp"${root}/${rel_path}")? {
+    if is_etc_file(rel_path) and etcsums.has(key) and fs.root_exists(root_handle, rel_path)? {
       let expected: Str = etcsums.get(key)?
 
-      if hash.sha256(fp"${root}/${rel_path}")?.hex() == expected {
+      if fs.root_read(root_handle, rel_path)?.sha256().hex() == expected {
         removable = removable.push(rel_path)
       }
     } else {
@@ -572,7 +575,6 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
   for dir in dirs {
     let pkgbuild = fp"${dir}/PKGBUILD.xsh"
     let exports = module.load(pkgbuild)?.require(PackageExports)?
-
     let name = exports.name
     let ver = exports.ver
     let rel = exports.rel
@@ -724,10 +726,15 @@ export proc collect_upgrade_names(root: Path, packages: List[Package]) [fs, erro
 }
 
 export pure collect_local_index(packages: List[Package]) -> Result[List[PackageIndex]] {
-  let index = [
-    {name: pkg.name, ver: pkg.ver, rel: pkg.rel, deps: pkg.deps, mkdeps: pkg.mkdeps, target_build_deps: pkg.target_build_deps}
-    for pkg in packages
-  ]
+  let index = [{
+    name: pkg.name,
+    ver: pkg.ver,
+    rel: pkg.rel,
+    deps: pkg.deps,
+    mkdeps: pkg.mkdeps,
+    target_build_deps: pkg.target_build_deps,
+  } for pkg in packages]
+
   index
 }
 
@@ -1457,7 +1464,13 @@ export proc print_package_info(root: Path, name: Str) [fs, error] {
   let deps: List[Str] = metadata.get("deps")?
   let mkdeps: List[Str] = metadata.get("mkdeps")?
   let empty_target_build_deps: List[Str] = []
-  let target_build_deps: List[Str] = if metadata.has("target_build_deps") { metadata.get("target_build_deps")? } else { empty_target_build_deps }
+
+  let target_build_deps: List[Str] = if metadata.has("target_build_deps") {
+    metadata.get("target_build_deps")?
+  } else {
+    empty_target_build_deps
+  }
+
   let manifest = load_manifest(db)?
   print ${name} ${version_id(ver, rel)}
   print deps ${deps.join(" ")}

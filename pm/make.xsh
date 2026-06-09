@@ -132,7 +132,9 @@ proc native_cross_active() [env] -> Bool {
   let target = native_cross_target_arch()
   let build = normalize_cross_arch(env_value("XSH_PM_BUILD_ARCH"))
 
-  return target != "" and build != "" and target != build and env_value("LAPUTA_ROOT") != "" and env_value("XSH_PM_BUILD_ROOT") != ""
+  return target != "" and build != "" and target != build and env_value("LAPUTA_ROOT") != "" and env_value(
+    "XSH_PM_BUILD_ROOT",
+  ) != ""
 }
 
 proc task_disables_native_cross(task_env: Record) [error] -> Result[Bool] {
@@ -204,7 +206,6 @@ pure musl_ldso_name(arch: Str) -> Str {
 
 proc native_cross_cxx_include_args(target_root: Path, target: Str) [fs, error] -> Result[List[Str]] {
   let base = fp"${target_root}/usr/include/c++/15.2.0"
-
   var include_args: List[Str] = []
 
   if ! fs.exists(base)? {
@@ -265,7 +266,13 @@ export proc effective_task_argv(argv: List[Str], task_env: Record) [fs, env, err
   let target = native_cross_target_arch()
   let target_root = Path.parse(env_value("LAPUTA_ROOT"))?
   let build_root = Path.parse(env_value("XSH_PM_BUILD_ROOT"))?
-  let driver = if cxx { fp"${build_root}/usr/lib/llvm22/bin/clang++" } else { fp"${build_root}/usr/lib/llvm22/bin/clang-22" }
+
+  let driver = if cxx {
+    fp"${build_root}/usr/lib/llvm22/bin/clang++"
+  } else {
+    fp"${build_root}/usr/lib/llvm22/bin/clang-22"
+  }
+
   let stripped = strip_cross_driver_args(argv)
   var out: List[Str] = [driver.display(), f"--target=${target}-linux-musl", f"--sysroot=${target_root.display()}"]
 
@@ -306,10 +313,12 @@ export proc effective_task_argv(argv: List[Str], task_env: Record) [fs, env, err
   if has_exact_argv(argv, "-shared") {
     return out.extend(link_args).extend(cxx_lib_args).push("-lc")
   }
+
   out = out.push(fp"${lib_dir}/Scrt1.o".display()).push(fp"${lib_dir}/crti.o".display())
   out = out.extend(link_args).extend(cxx_lib_args).push("-lc").push(fp"${lib_dir}/crtn.o".display())
   return out.push(f"-Wl,-dynamic-linker,/usr/lib/${musl_ldso_name(target)}")
 }
+
 export proc effective_task_env(argv: List[Str], task_env: Record) [env, error] -> Result[Record] {
   if argv.len() == 0 or task_disables_native_cross(task_env)? or ! native_cross_active() {
     return task_env
@@ -324,7 +333,6 @@ export proc effective_task_env(argv: List[Str], task_env: Record) [env, error] -
   let build_root = Path.parse(env_value("XSH_PM_BUILD_ROOT"))?
   let ld_library_path = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
   let path_value = f"${build_root}/usr/lib/llvm-toolchain/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}"
-
   return {...task_env, LD_LIBRARY_PATH: ld_library_path, PATH: path_value}
 }
 
@@ -471,7 +479,13 @@ proc input_newer(task: Record) [fs, error] -> Result[Bool] {
 }
 
 proc command_signature(task: Record) [fs, env, error] -> Result[Str] {
-  return json.encode({argv: effective_task_argv(task.argv, task.env)?, cwd: task.cwd.display(), env: effective_task_env(task.argv, task.env)?})?
+  return json.encode(
+    {
+      argv: effective_task_argv(task.argv, task.env)?,
+      cwd: task.cwd.display(),
+      env: effective_task_env(task.argv, task.env)?,
+    },
+  )?
 }
 
 proc stamp_changed(task: Record) [fs, env, error] -> Result[Bool] {
@@ -648,15 +662,21 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
         if should_run(task)? {
           running = running.push(spawn_task(task)?)
           spawn_count += 1
+
           if should_log_dynamic_progress(tasks.len(), spawn_count, running.len(), jobs_count) {
-            make_progress(f"xsh-make-dynamic-spawn done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} spawned ${spawn_count} task ${task.name}")
+            make_progress(
+              f"xsh-make-dynamic-spawn done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} spawned ${spawn_count} task ${task.name}",
+            )
           }
         } else {
           done = done.set(task.name, true)
           done_count += 1
           skip_count += 1
+
           if should_log_dynamic_progress(tasks.len(), skip_count, running.len(), jobs_count) {
-            make_progress(f"xsh-make-dynamic-skip done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} skipped ${skip_count} task ${task.name}")
+            make_progress(
+              f"xsh-make-dynamic-skip done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} skipped ${skip_count} task ${task.name}",
+            )
           }
 
           for dependent in dependents.get(task.name, empty_strings()) {
@@ -671,11 +691,17 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
       }
     }
 
+    if done_count >= tasks.len() {
+      break
+    }
+
     if running.len() == 0 {
       return Err(MakeError.DependencyCycle(message: "cycle in make task graph"))
     }
 
-    make_progress(f"xsh-make-dynamic-wait done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} jobs ${jobs_count}")
+    make_progress(
+      f"xsh-make-dynamic-wait done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} jobs ${jobs_count}",
+    )
 
     let completed_rows = process.wait_ready([row.handle for row in running])?
     var completed_indices: Map[Bool] = map.empty()
@@ -698,7 +724,6 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
 
     for row in completed_tasks {
       pending_stamps = pending_stamps.push(row)
-
       done = done.set(row.task.name, true)
       done_count += 1
 
@@ -722,15 +747,21 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
           if should_run(task)? {
             running = running.push(spawn_task(task)?)
             spawn_count += 1
+
             if should_log_dynamic_progress(tasks.len(), spawn_count, running.len(), jobs_count) {
-              make_progress(f"xsh-make-dynamic-spawn done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} spawned ${spawn_count} task ${task.name}")
+              make_progress(
+                f"xsh-make-dynamic-spawn done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} spawned ${spawn_count} task ${task.name}",
+              )
             }
           } else {
             done = done.set(task.name, true)
             done_count += 1
             skip_count += 1
+
             if should_log_dynamic_progress(tasks.len(), skip_count, running.len(), jobs_count) {
-              make_progress(f"xsh-make-dynamic-skip done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} skipped ${skip_count} task ${task.name}")
+              make_progress(
+                f"xsh-make-dynamic-skip done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} skipped ${skip_count} task ${task.name}",
+              )
             }
 
             for dependent in dependents.get(task.name, empty_strings()) {
@@ -747,7 +778,9 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
     }
 
     if should_log_dynamic_progress(tasks.len(), done_count, running.len(), jobs_count) {
-      make_progress(f"xsh-make-dynamic-complete done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} batch ${completed_rows.len()}")
+      make_progress(
+        f"xsh-make-dynamic-complete done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} batch ${completed_rows.len()}",
+      )
     }
   }
 

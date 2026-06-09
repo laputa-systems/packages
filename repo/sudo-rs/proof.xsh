@@ -7,7 +7,6 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   proof.target_elf(rootfs, p"usr/bin/sudo", "sudo-rs")?
   proof.target_elf(rootfs, p"usr/bin/visudo", "sudo-rs")?
   proof.target_elf(rootfs, p"usr/lib/security/pam_unix.so", "sudo-rs")?
-
   let readelf = proof.readelf_tool()?
   let pam_unix_so = fp"${rootfs}/usr/lib/security/pam_unix.so"
   let pam_unix = run.text $readelf "-d" $pam_unix_so ?
@@ -16,15 +15,15 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
     return Err(SudoRsProofError.Failed("proof-sudo-rs", "pam_unix.so depends on build-env path"))
   }
 
-  let sudo_mode = fp"${rootfs}/usr/bin/sudo".metadata()?.mode % 4096
+  let sudo_meta = fp"${rootfs}/usr/bin/sudo".metadata()?
 
-  if sudo_mode < 2048 {
+  if ! sudo_meta.setuid {
     return Err(SudoRsProofError.Failed("proof-sudo-rs", "sudo is not setuid"))
   }
 
-  let chkpwd_mode = fp"${rootfs}/usr/bin/unix_chkpwd".metadata()?.mode % 4096
+  let chkpwd_meta = fp"${rootfs}/usr/bin/unix_chkpwd".metadata()?
 
-  if chkpwd_mode < 2048 {
+  if ! chkpwd_meta.setuid {
     return Err(SudoRsProofError.Failed("proof-sudo-rs", "unix_chkpwd is not setuid"))
   }
 
@@ -45,6 +44,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   }
 
   var sudo = ""
+
   env {
     LD_LIBRARY_PATH = fp"${rootfs}/usr/lib".display()
   } {

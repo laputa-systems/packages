@@ -56,9 +56,27 @@ export pure remote_source_rel_for_arch(arch: Str, name: Str, ver: Str, rel: Str)
   fp"sources/${name}/${remote_source_tarball_name_for_arch(name, ver, rel, arch)}"
 }
 
-export pure remote_cache_tarball_path(out: Path, pkg: RemotePackage) -> Path {
+export pure ensure_relative_path(path_value: Path, label: Str) -> Result[Path] {
+  let normalized = path_value.normalize()
+  let text = normalized.display()
+
+  if text.starts_with("/") {
+    return Err(PmError.SourceDestination(f"${label} must stay relative: ${path_value.display()}"))
+  }
+
+  for component in text.split("/") {
+    if component == ".." {
+      return Err(PmError.SourceDestination(f"${label} must stay relative: ${path_value.display()}"))
+    }
+  }
+
+  normalized
+}
+
+export pure remote_cache_tarball_path(out: Path, pkg: RemotePackage) -> Result[Path] {
   if pkg.tarball != "" {
-    return fp"${out}/remote-cache/${pkg.tarball}"
+    let rel = ensure_relative_path(Path.parse(pkg.tarball)?, "remote tarball")?
+    return fp"${out}/remote-cache/${rel}"
   }
 
   fp"${out}/remote-cache/${pkg.arch}/${pkg.name}/${remote_tarball_name(pkg.name, pkg.ver, pkg.rel)}"
@@ -73,11 +91,11 @@ export pure file_url_path(url: Str) -> Result[Path] {
 }
 
 export pure repo_file_path(repo: Str, rel: Path) -> Result[Path] {
-  fp"${file_url_path(repo)?}/${rel}"
+  fp"${file_url_path(repo)?}/${ensure_relative_path(rel, "repo path")?}"
 }
 
-export pure repo_url_for(repo: Str, rel: Path) -> Str {
-  f"${repo}/${rel.display()}"
+export pure repo_url_for(repo: Str, rel: Path) -> Result[Str] {
+  f"${repo}/${ensure_relative_path(rel, "repo path")?.display()}"
 }
 
 export pure is_tar_source(candidate: Path) -> Bool {
@@ -266,7 +284,14 @@ export proc parse_pm_cli(argv: List[Str]) [error] -> Result[Cli] {
     },
   )?
 
-  parsed
+  {
+    command: parsed.command.replace("_", "-"),
+    action: parsed.action,
+    root: parsed.root,
+    work: parsed.work,
+    out: parsed.out,
+    raw: parsed.raw,
+  }
 }
 
 export proc paths_from_args(raw: List[Str]) [error] -> Result[List[Path]] {

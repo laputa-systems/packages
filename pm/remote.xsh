@@ -209,11 +209,12 @@ export proc try_fetch_repo_file(repo: Str, rel: Path, dest: Path) [fs, net, erro
       return ""
     }
 
-    return f"${repo_url_for(repo, rel)}: missing file"
+    let missing_url = repo_url_for(repo, rel)?
+    return f"${missing_url}: missing file"
   }
 
   fs.remove(dest, missing_ok: true)?
-  let url = repo_url_for(repo, rel)
+  let url = repo_url_for(repo, rel)?
   let download_url = resolve_download_redirect(url)
 
   let response = net.download(
@@ -301,7 +302,7 @@ export proc upload_repo_file(repo: Str, rel: Path, source: Path, token: Str, _: 
     return
   }
 
-  net_put_file(repo_url_for(repo, rel), source, token)?
+  net_put_file(repo_url_for(repo, rel)?, source, token)?
 }
 
 export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: Str, _: Path) [fs, net, time, error] {
@@ -320,7 +321,7 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
   let chunks = data.chunks(25 * 1024 * 1024)
 
   if chunks.len() == 0 {
-    net_put_file(repo_url_for(repo, rel), source, token)?
+    net_put_file(repo_url_for(repo, rel)?, source, token)?
     return
   }
 
@@ -331,7 +332,7 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
     let response = net.request(
       {
         method: "PUT",
-        url: repo_url_for(repo, fp"_uploads/${upload_id}/${chunk_index}"),
+        url: repo_url_for(repo, fp"_uploads/${upload_id}/${chunk_index}")?,
         body: chunk,
         headers: [{name: "Authorization", value: f"Bearer ${token}"}],
         pool: "pm",
@@ -349,7 +350,7 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
   let response = net.request(
     {
       method: "POST",
-      url: repo_url_for(repo, fp"_uploads/${upload_id}/complete"),
+      url: repo_url_for(repo, fp"_uploads/${upload_id}/complete")?,
       body_text: json.encode({rel: rel.display(), chunks: chunks.len()})?,
       headers: [{name: "Authorization", value: f"Bearer ${token}"}, {name: "Content-Type", value: "application/json"}],
       pool: "pm",
@@ -380,7 +381,7 @@ proc try_load_remote_index_from_repo(repo: Str, out: Path) [fs, net, error] -> R
   let response = net.request(
     {
       method: "GET",
-      url: repo_url_for(repo, p"index.json"),
+      url: repo_url_for(repo, p"index.json")?,
       pool: "pm",
       timeout: 15s,
       connect_timeout: 5s,
@@ -652,7 +653,7 @@ export proc downloaded_tarball_failure(tarball: Path, pkg: RemotePackage, url: S
 }
 
 export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env, time, error] -> Result[Path] {
-  let tarball = remote_cache_tarball_path(out, pkg)
+  let tarball = remote_cache_tarball_path(out, pkg)?
 
   if verify_cached_tarball(tarball, pkg)? {
     return tarball
@@ -664,7 +665,7 @@ export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env
 
   if repo_urls.public_repo != "" {
     let rel = Path.parse(pkg.tarball)?
-    let url = repo_url_for(repo_urls.public_repo, rel)
+    let url = repo_url_for(repo_urls.public_repo, rel)?
     let failure = fetch_repo_file_with_retry(repo_urls.public_repo, rel, tarball)?
 
     if failure != "" {
@@ -682,7 +683,7 @@ export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env
 
   if ! fetched and repo_urls.repo != "" {
     let rel = Path.parse(pkg.tarball)?
-    let url = repo_url_for(repo_urls.repo, rel)
+    let url = repo_url_for(repo_urls.repo, rel)?
     let failure = fetch_repo_file_with_retry(repo_urls.repo, rel, tarball)?
 
     if failure != "" {

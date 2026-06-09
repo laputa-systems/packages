@@ -18,12 +18,7 @@ export proc select_checksums(exports: PackageChecksumsContract, fallback: List[S
 }
 
 export pure ensure_source_dest(dest: Path) -> Result[Unit] {
-  let normalized = dest.normalize()
-  let dest_text = normalized.display()
-
-  if dest_text.starts_with("/") or dest_text == ".." or dest_text.starts_with("../") or "/.." in dest_text {
-    return Err(PmError.SourceDestination(f"source destination must stay relative: ${dest.display()}"))
-  }
+  let _ = ensure_relative_path(dest, "source destination")?
 }
 
 export proc response_header(headers: List[Record], name: Str) [] -> Str {
@@ -401,7 +396,7 @@ export proc try_fetch_source_mirror_from_repo(out: Path, pkg: Package) [fs, net,
           fs.copy(source, mirror, overwrite: true)?
           return
         }
-      } else if try_download_url_to_cache(repo_url_for(repo, rel), mirror)? {
+      } else if try_download_url_to_cache(repo_url_for(repo, rel)?, mirror)? {
         return
       }
     }
