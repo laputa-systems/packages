@@ -1,15 +1,15 @@
 export let name: Str = "xinit"
 
-export let ver: Str = "fbd5008b9928808ed815849d9a44f43bc8b2bfd5"
+export let ver: Str = "release-f9034b48f96f49f42914498cd7bbe8a080b945b3"
 
-export let rel: Str = "2"
+export let rel: Str = "4"
 
 export let deps: List[Str] = ["xsh"]
 
 export let mkdeps: List[Str] = []
 
 export let sources: List[Path] = [
-  p"https://raw.githubusercontent.com/laputa-systems/xinit/VERSION/xinit.xsh => xinit",
+  p"https://raw.githubusercontent.com/laputa-systems/xinit/fbd5008b9928808ed815849d9a44f43bc8b2bfd5/xinit.xsh => xinit",
 ]
 
 export let checksums: List[Str] = ["74c81ca48e466fed707dd52d5d4d59671cc73b5aa8ce9d8c6f53d14fc082da59"]

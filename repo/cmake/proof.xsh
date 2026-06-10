@@ -11,11 +11,11 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   proof.target_elf(rootfs, p"usr/bin/cpack", "cpack")?
   proof.target_elf(rootfs, p"usr/bin/ctest", "ctest")?
 
-  if pm_util.build_arch()? != pm_util.target_arch()? {
-    if ! fs.exists(fp"${rootfs}/usr/share/cmake/Modules/CMake.cmake")? {
-      Err(ScriptError.Failed("cmake-proof", "missing CMake module tree"))?
-    }
+  if ! fs.exists(fp"${rootfs}/usr/share/cmake/Modules/CMake.cmake")? {
+    Err(ScriptError.Failed("cmake-proof", "missing CMake module tree"))?
+  }
 
+  if pm_util.build_arch()? != pm_util.target_arch()? {
     print "cmake ok: cross-built "${pm_util.target_arch()?}
     return
   }

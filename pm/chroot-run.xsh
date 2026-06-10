@@ -35,8 +35,12 @@ proc main(root: Path, ...argv: List[Str]) [fs, process, env, error] {
       XSH_LINUX_KBUILD_USE_PLAN_TEXT_INLINE = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT_INLINE") ?? ""
       XSH_PM_ARCH = env.get("XSH_PM_ARCH") ?? ""
       XSH_PM_BUILD_ARCH = env.get("XSH_PM_BUILD_ARCH") ?? ""
+      XSH_PM_BUILD_ROOT = env.get("XSH_PM_BUILD_ROOT") ?? ""
+      XSH_PM_PROOF_HOST_PATH = env.get("XSH_PM_PROOF_HOST_PATH") ?? ""
+      XSH_PM_PROOF_ROOT = env.get("XSH_PM_PROOF_ROOT") ?? ""
       XSH_PM_TARGET_ARCH = env.get("XSH_PM_TARGET_ARCH") ?? ""
       XSH_PM_IN_CHROOT = env.get("XSH_PM_IN_CHROOT") ?? ""
+      SHELL = env.get("SHELL") ?? ""
     } {
       let status = process.run(process.command_argv(target, argv, /))?
 

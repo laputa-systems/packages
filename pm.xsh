@@ -101,6 +101,10 @@ proc order_repo_build_packages(
   ordered
 }
 
+pure world_dependency_is_seeded(pkg: Package, dep: Str, cross_build: Bool) -> Bool {
+  ! cross_build and pkg.name == "musl" and (dep == "llvm-toolchain" or dep == "zlib")
+}
+
 proc order_world_build_packages(
   root: Path,
   packages: List[Package],
@@ -132,11 +136,14 @@ proc order_world_build_packages(
         var ready = true
 
         for dep in effective_world_seed_dependencies(pkg, include_mkdeps, true) {
-          if local_names.get(dep, false) {
+          if local_names.get(dep, false) and ! world_dependency_is_seeded(pkg, dep, ! include_mkdeps) {
             if ! added.get(dep, false) {
               ready = false
             }
-          } else if ! repo_names.get(dep, false) and ! fs.exists(package_db_path(root, dep))? {
+          } else if ! world_dependency_is_seeded(pkg, dep, ! include_mkdeps) and ! repo_names.get(
+            dep,
+            false,
+          ) and ! fs.exists(package_db_path(root, dep))? {
             return Err(PmError.MissingDependency(f"${pkg.name} depends on missing ${dep}"))
           }
         }
@@ -168,6 +175,31 @@ proc missing_world_dependencies(
 
   for dep in deps {
     if local_names.get(dep, false) and ! built_names.get(dep, false) {
+      return Err(PmError.MissingDependency(f"${dep} has not been built yet"))
+    }
+
+    if ! seen.get(dep, false) and ! fs.exists(package_db_path(root, dep))? {
+      missing = missing.push(dep)
+      seen = seen.set(dep, true)
+    }
+  }
+
+  missing
+}
+
+proc missing_world_build_dependencies(
+  root: Path,
+  pkg: Package,
+  deps: List[Str],
+  local_names: Map[Bool],
+  built_names: Map[Bool],
+  cross_build: Bool,
+) [fs, error] -> Result[List[Str]] {
+  var missing: List[Str] = []
+  var seen: Map[Bool] = map.empty()
+
+  for dep in deps {
+    if local_names.get(dep, false) and ! built_names.get(dep, false) and ! world_dependency_is_seeded(pkg, dep, cross_build) {
       return Err(PmError.MissingDependency(f"${dep} has not been built yet"))
     }
 
@@ -514,7 +546,7 @@ proc world_local_dependency_names(pkg: Package, local_names: Map[Bool]) [] -> Li
   var seen: Map[Bool] = map.empty()
 
   for dep in effective_world_dependencies(pkg, true) {
-    if local_names.get(dep, false) and ! seen.get(dep, false) {
+    if local_names.get(dep, false) and ! seen.get(dep, false) and ! world_dependency_is_seeded(pkg, dep, false) {
       names = names.push(dep)
       seen = seen.set(dep, true)
     }
@@ -1977,16 +2009,24 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
           built_names = built_names.set(pkg.name, true)
           print ${pkg.name} ${id} staged
         } else {
-          let build_dependency_names = effective_world_build_dependencies(pkg, cross_build)
+          var build_dependency_names = effective_world_build_dependencies(pkg, cross_build)
+          if world_dependency_is_seeded(pkg, "zlib", cross_build) and ! build_dependency_names.contains("zlib") {
+            build_dependency_names = build_dependency_names.push("zlib")
+          }
+          let root_dependency_names = if cross_build {
+            effective_world_target_dependencies(pkg, cross_build)
+          } else {
+            build_dependency_names
+          }
+          let missing_root_dependencies = if cross_build {
+            missing_world_dependencies(root, root_dependency_names, local_names, built_names)?
+          } else {
+            missing_world_build_dependencies(root, pkg, root_dependency_names, local_names, built_names, cross_build)?
+          }
 
           install_remote_dependency_set_for_arch(
             root_ctx,
-            missing_world_dependencies(
-              root,
-              effective_world_target_dependencies(pkg, cross_build),
-              local_names,
-              built_names,
-            )?,
+            missing_root_dependencies,
             target_arch,
           )?
 
@@ -1999,7 +2039,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
               build_remote_latest,
             )?
           } else {
-            missing_world_dependencies(build_root, build_dependency_names, build_local_names, built_names)?
+            missing_world_build_dependencies(build_root, pkg, build_dependency_names, build_local_names, built_names, cross_build)?
           }
 
           install_remote_dependency_set_for_arch(build_ctx, missing_build_dependencies, world_build_arch)?

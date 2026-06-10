@@ -1,28 +1,28 @@
 export let name: Str = "xsh"
 
-export let ver: Str = "release-d9d48a1c79aed3d2891014acb175284b6993bc52"
+export let ver: Str = "release-f9034b48f96f49f42914498cd7bbe8a080b945b3"
 
-export let rel: Str = "2"
+export let rel: Str = "3"
 
 export let deps: List[Str] = []
 
 export let mkdeps: List[Str] = []
 
 export let sources: List[Path] = [
-  p"https://github.com/laputa-systems/xsh/releases/download/VERSION/xsh-multicall-VERSION-ARCH-linux-musl.xz => xsh-multicall",
-  p"https://github.com/laputa-systems/xsh/archive/d9d48a1c79aed3d2891014acb175284b6993bc52.tar.gz => xsh-src",
+  p"https://laputa.17166969.xyz/packages/ARCH/xsh/xsh-VERSION-2.tar.gz => xsh-package",
+  p"https://github.com/laputa-systems/xsh/archive/f9034b48f96f49f42914498cd7bbe8a080b945b3.tar.gz => xsh-src",
 ]
 
-export let checksums: List[Str] = ["SKIP", "58aec0a39887e9f9220b001f8ce59561e26f0ab1262c0353d79ad5f6d780760b"]
+export let checksums: List[Str] = ["SKIP", "83abe51d669bf6e9f52c47c4b86bb7101136ba1955181ed094b59b4baa55c625"]
 
 export let checksums_aarch64: List[Str] = [
-  "14e66fb85e4971441a193adb96d4cb8bf2158e48d95e7952a5b7874d1284be29",
-  "58aec0a39887e9f9220b001f8ce59561e26f0ab1262c0353d79ad5f6d780760b",
+  "51884dd28bc8ac2d62e7639ca9d8307c6eb0b0b325c31771c43b5f0a73fa2d8a",
+  "83abe51d669bf6e9f52c47c4b86bb7101136ba1955181ed094b59b4baa55c625",
 ]
 
 export let checksums_x86_64: List[Str] = [
-  "cb86e7537e32915b245c92e01434d465a936cd807c46c9bbe644818a55b07e49",
-  "58aec0a39887e9f9220b001f8ce59561e26f0ab1262c0353d79ad5f6d780760b",
+  "963bf3e1b80a774919b7776905140bb4a58081cb4f8692f11efaa982c9e895d5",
+  "83abe51d669bf6e9f52c47c4b86bb7101136ba1955181ed094b59b4baa55c625",
 ]
 
 export let nostrip: Bool = true
@@ -30,29 +30,20 @@ export let nostrip: Bool = true
 error XshPackageError = Source(message: Str)
 
 export proc process_sources(src: Path) [fs, process, env, error] {
-  let candidates = fs.files(fp"${src}/xsh-multicall", gitignore: false) |> where .ext == "xz"
-
-  if candidates.len() != 1 {
-    return Err(XshPackageError.Source("expected one xsh-multicall .xz source"))
+  if ! fs.exists(fp"${src}/xsh-package/usr/local/bin/xsh")? {
+    return Err(XshPackageError.Source("expected staged xsh package tree"))
   }
-
-  fs.remove(fp"${src}/xsh-multicall/xsh-multicall", missing_ok: true)?
-  archive.decompress(candidates[0].path, fp"${src}/xsh-multicall/xsh-multicall")?
-  fp"${src}/xsh-multicall/xsh-multicall".chmod(0o755)?
 }
 
 export proc build(dest: Path) [fs, error] {
-  fs.install(
-    p"xsh-multicall/xsh-multicall",
-    fp"${dest}/usr/local/bin/xsh-multicall",
-    0o755,
-    parents: true,
-    overwrite: true,
-  )?
-
   for command_name in ["xsh", "xshi", "xsht"] {
-    fs.remove(fp"${dest}/usr/local/bin/${command_name}", missing_ok: true)?
-    fs.symlink(p"xsh-multicall", fp"${dest}/usr/local/bin/${command_name}")?
+    fs.install(
+      fp"xsh-package/usr/local/bin/${command_name}",
+      fp"${dest}/usr/local/bin/${command_name}",
+      0o755,
+      parents: true,
+      overwrite: true,
+    )?
   }
 
   let _ = fs.copy_tree(p"xsh-src/core", fp"${dest}/usr/lib/xsh/core", parents: true, overwrite: true)?
@@ -73,6 +64,19 @@ export proc build(dest: Path) [fs, error] {
     }
   }
 
-  fs.remove(fp"${dest}/usr/bin/sh", missing_ok: true)?
-  fs.symlink(p"../local/bin/xshi", fp"${dest}/usr/bin/sh")?
+  fs.write(
+    fp"${dest}/usr/bin/sh",
+    """#!/usr/local/bin/xsh
+run /usr/local/bin/xshi @args ?
+""",
+  )?
+  fs.chmod(fp"${dest}/usr/bin/sh", 0o755)?
+}
+
+export proc pre_install(root: Path) [fs, error] {
+  fs.remove(fp"${root}/usr/local/bin/xsh-multicall", missing_ok: true)?
+
+  for command_name in ["xsh", "xshi", "xsht"] {
+    fs.remove(fp"${root}/usr/local/bin/${command_name}", missing_ok: true)?
+  }
 }

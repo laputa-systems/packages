@@ -26,7 +26,12 @@ proc build_root_path() [env, error] -> Result[Path] {
   return Path.parse(build_root_value)?
 }
 
-proc build_readelf_path() [env, error] -> Result[Path] {
+proc proof_readelf_path(root: Path) [fs, env, error] -> Result[Path] {
+  let target_readelf = fp"${root}/usr/bin/readelf"
+  if fs.exists(target_readelf)? {
+    return target_readelf
+  }
+
   let build_root = build_root_path()?
   return fp"${build_root}/usr/bin/readelf"
 }
@@ -81,8 +86,8 @@ proc prove_explicit_aarch64_target() [fs, process, error] {
   ensure(header.contains("AArch64"), "proof-llvm-toolchain", "explicit aarch64 target did not produce an AArch64 object")?
 }
 
-proc prove_target_tools(root: Path, arch: Str) [process, env, error] {
-  let readelf = build_readelf_path()?
+proc prove_target_tools(root: Path, arch: Str) [fs, process, env, error] {
+  let readelf = proof_readelf_path(root)?
   let machine = elf_machine_name(arch)
   let cc = fp"${root}/usr/bin/cc"
   let clang = fp"${root}/usr/lib/llvm22/bin/clang-22"

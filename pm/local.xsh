@@ -800,12 +800,12 @@ proc pm_source_root() [fs, env, error] -> Result[Path] {
 
 proc seed_chroot_runner(root: Path) [fs, process, env, error] {
   let xsh = xsh_runner()?
-  let xsh_source = regular_xsh_source(xsh)?
-  fs.install(xsh_source, fp"${root}/usr/local/bin/xsh-multicall", 0o755, parents: true, overwrite: true)?
+  fs.remove(fp"${root}/usr/local/bin/xsh-multicall", missing_ok: true)?
 
   for name in ["xsh", "xshi", "xsht"] {
-    fs.remove(fp"${root}/usr/local/bin/${name}", missing_ok: true)?
-    fs.symlink(p"xsh-multicall", fp"${root}/usr/local/bin/${name}")?
+    let dest = fp"${root}/usr/local/bin/${name}"
+    fs.remove(dest, missing_ok: true)?
+    fs.install(xsh_command_source(xsh, name)?, dest, 0o755, parents: true, overwrite: true)?
   }
 
   if fs.exists(/usr/lib/xsh)? {
@@ -817,9 +817,16 @@ proc seed_chroot_runner(root: Path) [fs, process, env, error] {
   fs.remove(fp"${root}/usr/lib/pm/pm", missing_ok: true)?
   let _ = fs.copy_tree(fp"${pm_root}/pm", fp"${root}/usr/lib/pm/pm", parents: true, overwrite: true)?
 
-  if ! fs.exists(fp"${root}/usr/bin/sh")? {
-    fs.mkdir(fp"${root}/usr/bin")?
-    fs.symlink(../local/bin/xshi, fp"${root}/usr/bin/sh")?
+  for sh in [fp"${root}/usr/bin/sh", fp"${root}/bin/sh"] {
+    fs.mkdir(sh.parent)?
+    fs.remove(sh, missing_ok: true)?
+    fs.write(
+      sh,
+      """#!/usr/local/bin/xsh
+run /usr/local/bin/xshi @args ?
+""",
+    )?
+    fs.chmod(sh, 0o755)?
   }
 
   for tmp in [fp"${root}/tmp", fp"${root}/var/tmp"] {
@@ -895,6 +902,7 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
     XSH_PM_RELEASE = pkg.rel
     XSH_PM_QUIET = "1"
     MAKEFLAGS = makeflags
+    SHELL = "/usr/local/bin/xshi"
   } {
     let exports = pkg.exports
 
@@ -1065,8 +1073,10 @@ proc build_packages_in_chroot(
       XSH_MAKE_PROGRESS = env.get("XSH_MAKE_PROGRESS") ?? ""
       XSH_PM_ARCH = env.get("XSH_PM_ARCH") ?? ""
       XSH_PM_BUILD_ARCH = env.get("XSH_PM_BUILD_ARCH") ?? ""
+      XSH_PM_BUILD_ROOT = "/"
       XSH_PM_TARGET_ARCH = env.get("XSH_PM_TARGET_ARCH") ?? ""
       XSH_PM_IN_CHROOT = "1"
+      SHELL = "/usr/local/bin/xshi"
     } {
       let status = process.run(process.command_argv(host_xsh, chroot_argv))?
       preserve_chroot_build_cache(ctx, pkg, src)?
@@ -1252,21 +1262,47 @@ proc regular_xsh_source(xsh: Path) [fs, error] -> Result[Path] {
   fp"${xsh.parent}/${target}"
 }
 
-proc seed_package_proof_shell(proof_root: Path, xsh: Path) [fs, error] {
-  let proof_multicall = fp"${proof_root}/usr/local/bin/xsh-multicall"
-  fs.install(regular_xsh_source(xsh)?, proof_multicall, 0o755, parents: true, overwrite: true)?
+proc xsh_command_source(xsh: Path, name: Str) [fs, process, error] -> Result[Path] {
+  let sibling = fp"${xsh.parent}/${name}"
+  if fs.exists(sibling)? {
+    return regular_xsh_source(sibling)?
+  }
+
+  var source = regular_xsh_source(xsh)?
+
+  match process.which(name) {
+    Ok(found) => source = regular_xsh_source(found)?
+    Err(_) => {}
+  }
+
+  source
+}
+
+proc seed_package_proof_shell(proof_root: Path, xsh: Path) [fs, process, env, error] {
+  fs.remove(fp"${proof_root}/usr/local/bin/xsh-multicall", missing_ok: true)?
 
   for name in ["xsh", "xshi", "xsht"] {
-    fs.remove(fp"${proof_root}/usr/local/bin/${name}", missing_ok: true)?
-    fs.symlink(p"xsh-multicall", fp"${proof_root}/usr/local/bin/${name}")?
+    let dest = fp"${proof_root}/usr/local/bin/${name}"
+    fs.remove(dest, missing_ok: true)?
+    fs.install(xsh_command_source(xsh, name)?, dest, 0o755, parents: true, overwrite: true)?
   }
 
-  let proof_sh = fp"${proof_root}/usr/bin/sh"
-
-  if ! fs.exists(proof_sh)? {
+  for proof_sh in [fp"${proof_root}/usr/bin/sh", fp"${proof_root}/bin/sh"] {
     fs.mkdir(proof_sh.parent)?
-    fs.symlink(../local/bin/xsh, proof_sh)?
+    fs.remove(proof_sh, missing_ok: true)?
+    fs.write(
+      proof_sh,
+      """#!/usr/local/bin/xsh
+run /usr/local/bin/xshi @args ?
+""",
+    )?
+    fs.chmod(proof_sh, 0o755)?
   }
+
+  let pm_root = pm_source_root()?
+  fs.install(fp"${pm_root}/pm.xsh", fp"${proof_root}/usr/lib/pm/pm.xsh", 0o644, parents: true, overwrite: true)?
+  fs.remove(fp"${proof_root}/usr/lib/pm/pm", missing_ok: true)?
+  let _ = fs.copy_tree(fp"${pm_root}/pm", fp"${proof_root}/usr/lib/pm/pm", parents: true, overwrite: true)?
 }
 
 proc verify_package_proof_root(root: Path, name: Str) [fs, error] {
@@ -1342,15 +1378,40 @@ proc run_package_proof(
   verify_package_proof_root(proof_root, pkg.name)?
   let xsh = xsh_runner()?
   seed_package_proof_shell(proof_root, xsh)?
+  let native_proof = util.build_arch()? == util.target_arch()?
 
-  env {
-    PATH = f"${proof_root}/usr/bin:${env.get("PATH") ?? ""}"
-    XSH_MODULE_PATH = env.get("XSH_MODULE_PATH") ?? "/usr/lib/pm"
-    XSH_PM_PROOF_ROOT = proof_root.display()
-    XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
-  } {
-    run $xsh $proof "--" $proof_root ?
-  } ?
+  if native_proof {
+    let proof_stage = fp"${proof_root}/var/tmp/pm-proof/${pkg.name}"
+    fs.mkdir(proof_stage)?
+    fs.install(proof, fp"${proof_stage}/proof.xsh", 0o644, parents: true, overwrite: true)?
+    let host_chroot_runner = fp"${pm_source_root()?}/pm/chroot-run.xsh"
+
+    env {
+      LAPUTA_ROOT = "/"
+      PATH = "/usr/local/bin:/usr/bin:/usr/lib/xsh/core:/bin"
+      XSH_MODULE_PATH = "/usr/lib/pm"
+      XSH_LINUX_REAL = "1"
+      XSH_PM_ARCH = env.get("XSH_PM_ARCH") ?? ""
+      XSH_PM_BUILD_ARCH = env.get("XSH_PM_BUILD_ARCH") ?? ""
+      XSH_PM_BUILD_ROOT = "/"
+      XSH_PM_PROOF_ROOT = "/"
+      XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
+      XSH_PM_TARGET_ARCH = env.get("XSH_PM_TARGET_ARCH") ?? ""
+      SHELL = "/usr/local/bin/xshi"
+    } {
+      run $xsh $host_chroot_runner "--" $proof_root "/usr/local/bin/xsh" fp"/var/tmp/pm-proof/${pkg.name}/proof.xsh" "--" "/" ?
+    } ?
+  } else {
+    env {
+      PATH = f"${proof_root}/usr/local/bin:${proof_root}/usr/bin:${env.get("PATH") ?? ""}"
+      XSH_MODULE_PATH = env.get("XSH_MODULE_PATH") ?? "/usr/lib/pm"
+      XSH_PM_PROOF_ROOT = proof_root.display()
+      XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
+      SHELL = fp"${proof_root}/usr/local/bin/xshi".display()
+    } {
+      run $xsh $proof "--" $proof_root ?
+    } ?
+  }
 
   print ${pkg.name} proof ok
 }
