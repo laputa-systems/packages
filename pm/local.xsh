@@ -1305,6 +1305,26 @@ run /usr/local/bin/xshi @args ?
   let _ = fs.copy_tree(fp"${pm_root}/pm", fp"${proof_root}/usr/lib/pm/pm", parents: true, overwrite: true)?
 }
 
+proc mount_package_proof_devpts(proof_root: Path) [fs, process, error] -> Result[Path] {
+  let dev = fp"${proof_root}/dev"
+  let pts = fp"${dev}/pts"
+  fs.mkdir(pts)?
+  fs.remove(fp"${dev}/ptmx", missing_ok: true)?
+  fs.symlink(p"pts/ptmx", fp"${dev}/ptmx")?
+  let mount = process.which("mount")?
+  run $mount "-t" "devpts" "devpts" $pts "-o" "newinstance,ptmxmode=0666,mode=0620" ?
+  pts
+}
+
+proc unmount_package_proof_devpts(pts: Path) [process] {
+  match process.which("umount") {
+    Ok(umount) => {
+      let _ = run.status $umount $pts
+    }
+    Err(_) => {}
+  }
+}
+
 proc verify_package_proof_root(root: Path, name: Str) [fs, error] {
   let db = package_db_path(root, name)
 
@@ -1381,6 +1401,8 @@ proc run_package_proof(
   let native_proof = util.build_arch()? == util.target_arch()?
 
   if native_proof {
+    let proof_devpts = mount_package_proof_devpts(proof_root)?
+    defer unmount_package_proof_devpts(proof_devpts)
     let proof_stage = fp"${proof_root}/var/tmp/pm-proof/${pkg.name}"
     fs.mkdir(proof_stage)?
     fs.install(proof, fp"${proof_stage}/proof.xsh", 0o644, parents: true, overwrite: true)?

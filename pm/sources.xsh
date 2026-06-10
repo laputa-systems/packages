@@ -95,6 +95,7 @@ export proc try_download_url_to_cache(url: Str, dest: Path) [fs, net, error] -> 
       overwrite: true,
       pool: "pm",
       connect_timeout: 10s,
+      timeout: 1800s,
       fail_status: true,
     },
   )

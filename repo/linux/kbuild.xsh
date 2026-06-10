@@ -1453,30 +1453,33 @@ export proc refresh_plan_dirs(
 """,
   )?
 
-  let scans: List[RefreshDirScan] = dirs
-    |> par-map --jobs=jobs { |dir|
-      let vars = vars_for_dir(root, dir, config, srcarch)?
-      var objects: List[Path] = []
-      var composites = empty_composites()
-
-      for obj in active_objects_for_dir(dir, vars) {
-        objects = objects.push(obj)
-        let members = composite_members(dir, obj.name, vars)
-
-        if members.len() > 0 {
-          composites = composites.push({object: obj, members: members})
-        }
-      }
-
-      {dir: dir, objects: objects, composites: composites}
-    }
-
   var objects_by_dir: Map[List[Path]] = map.empty()
   var composites_by_dir: Map[List[CompositeObject]] = map.empty()
+  var scan_index = 0
 
-  for scan in scans {
-    objects_by_dir = objects_by_dir.set(path_key(scan.dir), scan.objects)
-    composites_by_dir = composites_by_dir.set(path_key(scan.dir), scan.composites)
+  for dir in dirs {
+    scan_index += 1
+    write_text_if_changed(
+      fp"${root}/.xsh-kbuild-progress",
+      f"""xsh-kbuild-refresh-plan-dir-scan ${scan_index}/${dirs.len()} ${dir.display()}
+""",
+    )?
+
+    let vars = vars_for_dir(root, dir, config, srcarch)?
+    var objects: List[Path] = []
+    var composites = empty_composites()
+
+    for obj in active_objects_for_dir(dir, vars) {
+      objects = objects.push(obj)
+      let members = composite_members(dir, obj.name, vars)
+
+      if members.len() > 0 {
+        composites = composites.push({object: obj, members: members})
+      }
+    }
+
+    objects_by_dir = objects_by_dir.set(path_key(dir), objects)
+    composites_by_dir = composites_by_dir.set(path_key(dir), composites)
   }
 
   var dirs_all = next.dirs
@@ -2150,16 +2153,12 @@ proc discover_scans(
     emit_batch_progress(root, options, pending)?
     var batch: List[DirScan] = []
 
-    if options.jobs <= 1 {
-      for dir in pending {
-        emit_stage_progress(root, options, f"xsh-kbuild-scan ${path_key(dir)}")?
-        batch = batch.push(scan_discover_dir(root, dir, config, srcarch, options)?)
-      }
-    } else {
-      batch = pending
-        |> par-map --jobs=options.jobs { |dir|
-          scan_discover_dir(root, dir, config, srcarch, options)?
-        }
+    # Parallel discovery currently clones the large Kconfig/runtime context into
+    # each worker and can burn CPU for minutes without returning a batch. Keep
+    # compile/link parallelism, but make discovery deterministic and bounded.
+    for dir in pending {
+      emit_stage_progress(root, options, f"xsh-kbuild-scan ${path_key(dir)}")?
+      batch = batch.push(scan_discover_dir(root, dir, config, srcarch, options)?)
     }
 
     var batch_by_dir: Map[DirScan] = map.empty()

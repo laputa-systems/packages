@@ -657,12 +657,16 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
     PKGBUILD_shared.cached_package_plan(srcarch)?,
   )?
 
-  let plan = if (env.get("XSH_LINUX_KBUILD_TRUST_PLAN_CACHE") ?? "") == "1" {
-    cached_plan
-  } else if srcarch == "x86" {
+  let trust_plan_cache = (env.get("XSH_LINUX_KBUILD_TRUST_PLAN_CACHE") ?? "") == "1"
+  let refreshed_plan = if trust_plan_cache {
     cached_plan
   } else {
-    kbuild.augment_missing_composites(p".", config, cached_plan, srcarch)?
+    kbuild.refresh_x86_kernel_config_objects(config, cached_plan)?
+  }
+  let plan = if trust_plan_cache {
+    refreshed_plan
+  } else {
+    kbuild.augment_missing_composites(p".", config, refreshed_plan, srcarch)?
   }
 
   PKGBUILD_shared.timing_done("discover", discover_start)

@@ -140,10 +140,9 @@ proc order_world_build_packages(
             if ! added.get(dep, false) {
               ready = false
             }
-          } else if ! world_dependency_is_seeded(pkg, dep, ! include_mkdeps) and ! repo_names.get(
-            dep,
-            false,
-          ) and ! fs.exists(package_db_path(root, dep))? {
+          } else if ! world_dependency_is_seeded(pkg, dep, ! include_mkdeps) and ! repo_names.get(dep, false) and ! fs.exists(
+            package_db_path(root, dep),
+          )? {
             return Err(PmError.MissingDependency(f"${pkg.name} depends on missing ${dep}"))
           }
         }
@@ -199,7 +198,11 @@ proc missing_world_build_dependencies(
   var seen: Map[Bool] = map.empty()
 
   for dep in deps {
-    if local_names.get(dep, false) and ! built_names.get(dep, false) and ! world_dependency_is_seeded(pkg, dep, cross_build) {
+    if local_names.get(dep, false) and ! built_names.get(dep, false) and ! world_dependency_is_seeded(
+      pkg,
+      dep,
+      cross_build,
+    ) {
       return Err(PmError.MissingDependency(f"${dep} has not been built yet"))
     }
 
@@ -366,6 +369,22 @@ proc seed_world_package_dependency_set(staged_root: Path, package_root: Path, ow
 
     index += 1
   }
+
+  # The packaged xsh binary is staged into every build root and currently needs
+  # libgcc_s at runtime, but xsh has no graph dependency on the toolchain.
+  if ! fs.exists(fp"${package_root}/lib")? and fs.exists(fp"${package_root}/usr/lib")? {
+    fs.symlink(p"usr/lib", fp"${package_root}/lib")?
+  }
+
+  let xsh_libgcc = p"usr/lib/libgcc_s.so.1"
+
+  if fs.exists(fp"${staged_root}/${xsh_libgcc}")? {
+    let source_handle = fs.open_root(staged_root)?
+    defer fs.close_root(source_handle)
+    let dest_handle = fs.open_root(package_root)?
+    defer fs.close_root(dest_handle)
+    copy_world_seed_path(source_handle, dest_handle, xsh_libgcc)?
+  }
 }
 
 proc effective_world_seed_dependencies(
@@ -434,7 +453,19 @@ proc world_package_rows(packages: List[Package]) [] -> List[Record] {
   rows
 }
 
-proc pm_module_root_path() [fs, error] -> Result[Path] {
+proc pm_module_root_path() [fs, env, error] -> Result[Path] {
+  for entry in (env.get("XSH_MODULE_PATH") ?? "").split(":") {
+    let raw = entry.trim()
+
+    if raw != "" {
+      let candidate = Path.parse(raw)?
+
+      if fs.exists(fp"${candidate}/pm.xsh")? and fs.exists(fp"${candidate}/pm")? {
+        return path.absolute(candidate)?
+      }
+    }
+  }
+
   for candidate in [p".", p"laputa", /usr/lib/pm] {
     if fs.exists(fp"${candidate}/pm.xsh")? and fs.exists(fp"${candidate}/pm")? {
       return path.absolute(candidate)?
@@ -1125,7 +1156,7 @@ proc remote_metadata_sha256(repo: Str, out: Path, entry: RemotePackage) [fs, net
 
   let rel = ensure_relative_path(Path.parse(entry.metadata)?, "remote metadata")?
   let cache = fp"${out}/remote-metadata/${rel.display()}"
-  let failure = fetch_repo_file_with_retry(repo, rel, cache)?
+  let failure = fetch_repo_file_with_retry(repo, rel, cache, timeout: 60s)?
 
   if failure != "" {
     return Err(PmError.RemoteFetch(failure))
@@ -1166,8 +1197,12 @@ proc world_remote_metadata_hashes(
     return empty
   }
 
+  # Metadata files are small; keep the remote preflight from opening too many
+  # concurrent HTTP reads before the package scheduler starts real build work.
+  let metadata_jobs = if jobs > 8 { 8 } else { jobs }
+
   let rows: List[RemoteMetadataHash] = candidates
-    |> par-map --jobs=jobs { |entry|
+    |> par-map --jobs=metadata_jobs { |entry|
       {name: entry.name, sha256: remote_metadata_sha256(repo, out, entry)?}
     }
 
@@ -1781,7 +1816,7 @@ proc install_chroot_base(
   }
 
   if include_tool_runtime {
-    install_remote_dependency_set(ctx, ["zlib"])?
+    install_remote_dependency_set(ctx, ["musl", "zlib", "llvm-toolchain"])?
   }
 }
 
@@ -1978,7 +2013,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     let max_level = world_plan_max_level(ordered, levels)
     let build_max_level = if to_tranche >= 0 and to_tranche < max_level { to_tranche } else { max_level }
     let build_local_names: Map[Bool] = if cross_build { map.empty() } else { local_names }
-    install_chroot_base_for_arch(root_ctx, local_names, false, target_arch)?
+    install_chroot_base_for_arch(root_ctx, local_names, true, target_arch)?
     install_chroot_base_for_arch(build_ctx, build_local_names, true, world_build_arch)?
     var level = 0
 
@@ -2010,25 +2045,24 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
           print ${pkg.name} ${id} staged
         } else {
           var build_dependency_names = effective_world_build_dependencies(pkg, cross_build)
+
           if world_dependency_is_seeded(pkg, "zlib", cross_build) and ! build_dependency_names.contains("zlib") {
             build_dependency_names = build_dependency_names.push("zlib")
           }
+
           let root_dependency_names = if cross_build {
             effective_world_target_dependencies(pkg, cross_build)
           } else {
             build_dependency_names
           }
+
           let missing_root_dependencies = if cross_build {
             missing_world_dependencies(root, root_dependency_names, local_names, built_names)?
           } else {
             missing_world_build_dependencies(root, pkg, root_dependency_names, local_names, built_names, cross_build)?
           }
 
-          install_remote_dependency_set_for_arch(
-            root_ctx,
-            missing_root_dependencies,
-            target_arch,
-          )?
+          install_remote_dependency_set_for_arch(root_ctx, missing_root_dependencies, target_arch)?
 
           let missing_build_dependencies = if cross_build {
             missing_fresh_world_dependencies(
@@ -2039,7 +2073,14 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
               build_remote_latest,
             )?
           } else {
-            missing_world_build_dependencies(build_root, pkg, build_dependency_names, build_local_names, built_names, cross_build)?
+            missing_world_build_dependencies(
+              build_root,
+              pkg,
+              build_dependency_names,
+              build_local_names,
+              built_names,
+              cross_build,
+            )?
           }
 
           install_remote_dependency_set_for_arch(build_ctx, missing_build_dependencies, world_build_arch)?

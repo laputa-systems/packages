@@ -194,7 +194,12 @@ export proc resolve_download_redirect(url: Str) [net] -> Str {
   url
 }
 
-export proc try_fetch_repo_file(repo: Str, rel: Path, dest: Path) [fs, net, error] -> Result[Str] {
+export proc try_fetch_repo_file(
+  repo: Str,
+  rel: Path,
+  dest: Path,
+  timeout: Duration = 1800s,
+) [fs, net, error] -> Result[Str] {
   fs.mkdir(dest.parent)?
   let tmp = fp"${dest.parent}/.${dest.name}.tmp"
   fs.remove(tmp, missing_ok: true)?
@@ -225,6 +230,7 @@ export proc try_fetch_repo_file(repo: Str, rel: Path, dest: Path) [fs, net, erro
       overwrite: true,
       pool: "pm",
       connect_timeout: 10s,
+      timeout: timeout,
       fail_status: true,
     },
   )
@@ -243,15 +249,20 @@ export proc try_fetch_repo_file(repo: Str, rel: Path, dest: Path) [fs, net, erro
   ""
 }
 
-export proc fetch_repo_file_with_retry(repo: Str, rel: Path, dest: Path) [fs, net, time, error] -> Result[Str] {
+export proc fetch_repo_file_with_retry(
+  repo: Str,
+  rel: Path,
+  dest: Path,
+  timeout: Duration = 1800s,
+) [fs, net, time, error] -> Result[Str] {
   if is_file_url(repo) {
-    return try_fetch_repo_file(repo, rel, dest)?
+    return try_fetch_repo_file(repo, rel, dest, timeout: timeout)?
   }
 
   var failure = ""
 
   match retry [1s, 2s, 4s, 15s, 60s] {
-    let attempt_failure = try_fetch_repo_file(repo, rel, dest)?
+    let attempt_failure = try_fetch_repo_file(repo, rel, dest, timeout: timeout)?
 
     match attempt_failure {
       "" => Ok("")
