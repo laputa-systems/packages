@@ -80,8 +80,24 @@ proc boot_sector(label: Str, sectors: Int, spc: Int, fat_sectors: Int, serial: I
   return boot
 }
 
-proc format_fat16(image: Path, label: Str) [fs, error] {
+proc image_size(image: Path) [fs, error] -> Result[Int] {
   let size = image.metadata()?.size
+
+  if size > 0 {
+    return size
+  }
+
+  let sectors_path = fp"/sys/class/block/${image.name}/size"
+
+  if fs.exists(sectors_path)? {
+    return fs.read_text(sectors_path)?.trim().parse_int()? * 512
+  }
+
+  return size
+}
+
+proc format_fat16(image: Path, label: Str) [fs, error] {
+  let size = image_size(image)?
   if size < 2 * 1024 * 1024 {
     return Err(FatToolError.Failed("too-small", "FAT16 image must be at least 2MiB"))
   }

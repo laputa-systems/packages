@@ -815,8 +815,24 @@ proc zero_image(image: Path, size: Int) [error] {
   }
 }
 
-proc format_ext_image(image: Path, source_root: Path, label: Str) [fs, error] {
+proc image_size(image: Path) [fs, error] -> Result[Int] {
   let size = image.metadata()?.size
+
+  if size > 0 {
+    return size
+  }
+
+  let sectors_path = fp"/sys/class/block/${image.name}/size"
+
+  if fs.exists(sectors_path)? {
+    return fs.read_text(sectors_path)?.trim().parse_int()? * 512
+  }
+
+  return size
+}
+
+proc format_ext_image(image: Path, source_root: Path, label: Str) [fs, error] {
+  let size = image_size(image)?
 
   if size < 8 * 1024 * 1024 {
     return Err(Ext4ToolError.Failed("too-small", "ext image must be at least 8MiB"))
