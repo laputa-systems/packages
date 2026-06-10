@@ -1,49 +1,62 @@
 export let name: Str = "xsh"
 
-export let ver: Str = "release-f9034b48f96f49f42914498cd7bbe8a080b945b3"
+export let ver: Str = "release-84765816d8736232f5ad77fde364c974a8001b54"
 
-export let rel: Str = "3"
+export let rel: Str = "2"
 
 export let deps: List[Str] = []
 
 export let mkdeps: List[Str] = []
 
 export let sources: List[Path] = [
-  p"https://laputa.17166969.xyz/packages/ARCH/xsh/xsh-VERSION-2.tar.gz => xsh-package",
-  p"https://github.com/laputa-systems/xsh/archive/f9034b48f96f49f42914498cd7bbe8a080b945b3.tar.gz => xsh-src",
+  p"https://github.com/laputa-systems/xsh/releases/download/VERSION/xsh-multicall-VERSION-ARCH-linux-musl.xz => xsh-multicall",
+  p"https://github.com/laputa-systems/xsh/archive/84765816d8736232f5ad77fde364c974a8001b54.tar.gz => xsh-src",
 ]
 
-export let checksums: List[Str] = ["SKIP", "83abe51d669bf6e9f52c47c4b86bb7101136ba1955181ed094b59b4baa55c625"]
+export let checksums: List[Str] = ["SKIP", "bd0fc4a2062c719e389fe24ba6bae22cb07baee3d5123b6d28643bd913f91a26"]
 
 export let checksums_aarch64: List[Str] = [
-  "51884dd28bc8ac2d62e7639ca9d8307c6eb0b0b325c31771c43b5f0a73fa2d8a",
-  "83abe51d669bf6e9f52c47c4b86bb7101136ba1955181ed094b59b4baa55c625",
+  "6c994e626d4f0a3c09a9d003ff1ec153bd4d9138d0e93b087dd8df4cc9f9d62b",
+  "bd0fc4a2062c719e389fe24ba6bae22cb07baee3d5123b6d28643bd913f91a26",
 ]
 
 export let checksums_x86_64: List[Str] = [
-  "963bf3e1b80a774919b7776905140bb4a58081cb4f8692f11efaa982c9e895d5",
-  "83abe51d669bf6e9f52c47c4b86bb7101136ba1955181ed094b59b4baa55c625",
+  "ba2545fabe74551431d68ec13b86f960ddab9c24e42f82440b08f4a02a4965a7",
+  "bd0fc4a2062c719e389fe24ba6bae22cb07baee3d5123b6d28643bd913f91a26",
 ]
 
 export let nostrip: Bool = true
 
 error XshPackageError = Source(message: Str)
 
-export proc process_sources(src: Path) [fs, process, env, error] {
-  if ! fs.exists(fp"${src}/xsh-package/usr/local/bin/xsh")? {
-    return Err(XshPackageError.Source("expected staged xsh package tree"))
+export proc process_sources(src: Path) [fs, error] {
+  let staged = fs.children(fp"${src}/xsh-multicall")? |> where .kind == "file" and .name.ends_with(".xz")
+
+  if staged.len() != 1 {
+    return Err(XshPackageError.Source("expected one staged xsh multicall release artifact"))
+  }
+
+  let binary = fp"${src}/xsh-multicall/${staged[0].name.replace(".xz", "")}"
+  archive.decompress(staged[0].path, binary, "auto", true)?
+
+  if ! fs.exists(binary)? {
+    return Err(XshPackageError.Source("expected decompressed xsh multicall release artifact"))
   }
 }
 
 export proc build(dest: Path) [fs, error] {
-  for command_name in ["xsh", "xshi", "xsht"] {
-    fs.install(
-      fp"xsh-package/usr/local/bin/${command_name}",
-      fp"${dest}/usr/local/bin/${command_name}",
-      0o755,
-      parents: true,
-      overwrite: true,
-    )?
+  let staged = fs.children(p"xsh-multicall")? |> where .kind == "file" and ! .name.ends_with(".xz")
+
+  if staged.len() != 1 {
+    return Err(XshPackageError.Source("expected one decompressed xsh multicall release artifact"))
+  }
+
+  fs.install(staged[0].path, fp"${dest}/usr/local/bin/xsh", 0o755, parents: true, overwrite: true)?
+
+  for command_name in ["xshi", "xsht"] {
+    let link = fp"${dest}/usr/local/bin/${command_name}"
+    fs.remove(link, missing_ok: true)?
+    fs.symlink(p"xsh", link)?
   }
 
   let _ = fs.copy_tree(p"xsh-src/core", fp"${dest}/usr/lib/xsh/core", parents: true, overwrite: true)?
@@ -53,24 +66,6 @@ export proc build(dest: Path) [fs, error] {
     fs.chmod(entry.path, 0o755)?
   }
 
-  fs.mkdir(fp"${dest}/usr/bin")?
-
-  for entry in fs.children(fp"${dest}/usr/lib/xsh/core")? {
-    if entry.kind == "file" and entry.name.ends_with(".xsh") {
-      let command_name = entry.name.replace(".xsh", "")
-      let link = fp"${dest}/usr/bin/${command_name}"
-      fs.remove(link, missing_ok: true)?
-      fs.symlink(fp"../lib/xsh/core/${entry.name}", link)?
-    }
-  }
-
-  fs.write(
-    fp"${dest}/usr/bin/sh",
-    """#!/usr/local/bin/xsh
-run /usr/local/bin/xshi @args ?
-""",
-  )?
-  fs.chmod(fp"${dest}/usr/bin/sh", 0o755)?
 }
 
 export proc pre_install(root: Path) [fs, error] {
