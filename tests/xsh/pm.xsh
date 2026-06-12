@@ -311,6 +311,17 @@ proc test_pm_source_checksum(ctx: TestContext) [fs, process, error] {
   test.contains(update_out, "source-pkg checksums updated")?
   let pkgbuild = fp"${pkg}/PKGBUILD.xsh".read_text()?
   test.contains(pkgbuild, "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
+
+  let shorthand_pkg = test.temp_dir(ctx, name: "shorthand-pkg")?
+  let _shorthand_copy = fs.copy_tree(source_pkg_dir(), shorthand_pkg, parents: true, overwrite: true)?
+  let shorthand_out = run.text (xsh_bin()) pm.xsh -- update-checksums (shorthand_pkg.display()) ?
+  fs.remove(p".root", missing_ok: true)?
+  fs.remove(p".work", missing_ok: true)?
+  fs.remove(p".out", missing_ok: true)?
+  test.contains(shorthand_out, "source-pkg checksums updated")?
+  let shorthand_pkgbuild = fp"${shorthand_pkg}/PKGBUILD.xsh".read_text()?
+  test.contains(shorthand_pkgbuild, "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
+
   run.text (xsh_bin()) pm.xsh -- install (root.display()) (work.display()) (out.display()) (pkg.display()) ?
 
   test.eq(

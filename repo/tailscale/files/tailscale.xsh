@@ -32,13 +32,15 @@ pure tailscale_service(state: Path, socket: Path, userspace_networking: Bool) ->
   }
 }
 
-export let services: List[Record] = [
-  tailscale_service(/var/lib/tailscale/tailscaled.state, /run/tailscale/tailscaled.sock, false),
-]
+let state = env.path("XINIT_TAILSCALE_STATE", /var/lib/tailscale/tailscaled.state)?
+let socket = env.path("XINIT_TAILSCALE_SOCKET", /run/tailscale/tailscaled.sock)?
+let userspace_networking = env.bool("XINIT_TAILSCALE_USERSPACE_NETWORKING", false)?
+let service_record = tailscale_service(state, socket, userspace_networking)
 
-export proc service_records() [env, error] -> Result[List[Record]] {
-  let state = env.path("XINIT_TAILSCALE_STATE", /var/lib/tailscale/tailscaled.state)?
-  let socket = env.path("XINIT_TAILSCALE_SOCKET", /run/tailscale/tailscaled.sock)?
-  let userspace_networking = env.bool("XINIT_TAILSCALE_USERSPACE_NETWORKING", false)?
-  return [tailscale_service(state, socket, userspace_networking)]
+export let service = {
+  name: service_record.name,
+  kind: "longrun",
+  command: service_record.command,
+  restart: service_record.restart,
+  logging: "append",
 }

@@ -10,7 +10,7 @@ export let name: Str = "linux"
 
 export let ver: Str = "7.0.5"
 
-export let rel: Str = "28"
+export let rel: Str = "30"
 
 export let deps: List[Str] = []
 
@@ -38,7 +38,7 @@ export let sources: List[Path] = [
 export let checksums: List[Str] = [
   "965fb0a1c1675399fc60c6063b227c0523041b5f9a662b66462f1212c438ac3c",
   "4ae5a43efcd369d8e457053c2279362df70e6d39820a4f5a2a5988e6d2bc15ba",
-  "518765adeb5de0b384580fec2156ea5d0e7fc71bb4f0647e9ce3a2b726aeab00",
+  "d7db8438d9840892bc6e491df49d580c5e7ec74d287087c51bdcdeb6017cc4cc",
   "7578877f5978e66b4ac04d66a2fcdbd6d183ae56d2786f4538d32af0c477e317",
   "664c2e5a8ed45eb327f0f1b1ee83249a24f98ee67f3bcb313a4d0bf99202ceed",
   "c7daffc2aa5a964969421942bb000e65a2b9866d2a2a11529689c379005ef1f1",
@@ -183,6 +183,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let srcarch = linux_srcarch(arch)?
   linux_config.write_resolved_config(p".", srcarch, build_kernel_config_fragments_for(arch)?, p".config")?
   parser_gen.generate_linux_parsers()?
+
   build_native_scratch(cc, srcarch)?
   let image = kernel_image_for(arch)?
   fs.install(image, fp"${dest}/boot/vmlinuz-${ver}", 0o644, parents: true, overwrite: true)?

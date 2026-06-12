@@ -15,11 +15,15 @@ pure dropbear_service(bind: Str, port: Int, host_key: Path) -> Record {
   return {name: "dropbear", command: process.command_argv(/usr/bin/dropbear, argv), restart: restart_policy()}
 }
 
-export let services: List[Record] = [dropbear_service("0.0.0.0", 22, p"")]
+let bind: Str = env.get("XINIT_DROPBEAR_BIND") ?? "0.0.0.0"
+let port = (env.get("XINIT_DROPBEAR_PORT") ?? "22").parse_int()?
+let host_key: Path = Path.parse(env.get("XINIT_DROPBEAR_HOST_KEY") ?? "")?
+let service_record = dropbear_service(bind, port, host_key)
 
-export proc service_records() [env, error] -> Result[List[Record]] {
-  let bind: Str = env.get("XINIT_DROPBEAR_BIND") ?? "0.0.0.0"
-  let port = (env.get("XINIT_DROPBEAR_PORT") ?? "22").parse_int()?
-  let host_key: Path = Path.parse(env.get("XINIT_DROPBEAR_HOST_KEY") ?? "")?
-  return [dropbear_service(bind, port, host_key)]
+export let service = {
+  name: service_record.name,
+  kind: "longrun",
+  command: service_record.command,
+  restart: service_record.restart,
+  logging: "append",
 }

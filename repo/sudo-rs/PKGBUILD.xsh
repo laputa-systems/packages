@@ -1,10 +1,12 @@
 use pm.util as pm_util
 
+error SudoRsBuildError = MissingRustStd(path: Str)
+
 export let name: Str = "sudo-rs"
 
 export let ver: Str = "0.2.13"
 
-export let rel: Str = "9"
+export let rel: Str = "10"
 
 export let deps: List[Str] = ["linux-pam", "libunwind"]
 
@@ -39,6 +41,29 @@ pure rust_triple(arch: Str) -> Str {
   return f"${arch}-unknown-linux-musl"
 }
 
+proc stage_rustlib(source: Path, dest: Path) [fs, error] {
+  fs.remove(dest, missing_ok: true)?
+  fs.mkdir(dest, parents: true)?
+
+  for entry in fs.walk(source, gitignore: false)? |> sort-by .path {
+    continue when entry.path == source
+
+    let rel = entry.path.relative_to(source)
+    let out = fp"${dest}/${rel}"
+
+    if entry.kind == "dir" {
+      fs.mkdir(out, parents: true)?
+    } else if entry.kind == "file" {
+      let mode = if entry.path.executable()? { 0o755 } else { 0o644 }
+      fs.install(entry.path, out, mode, parents: true, overwrite: true)?
+    } else if entry.kind == "symlink" {
+      fs.mkdir(out.parent, parents: true)?
+      fs.remove(out, missing_ok: true)?
+      fs.symlink(entry.path.readlink()?, out)?
+    }
+  }
+}
+
 export proc build(dest: Path) [fs, process, env, error] {
   let cargo = process.which("cargo")?
   let cc = process.which("cc")?
@@ -61,10 +86,15 @@ export proc build(dest: Path) [fs, process, env, error] {
     cc
   }
   let host_libdir = fp"${build_root}/usr/lib"
-  let target_rustlib = fp"rust-std/rust-std-${target_arch}-unknown-linux-musl/lib/rustlib/${triple}"
+  let target_rustlib = fp"rust-std/rust-std-${triple}/lib/rustlib/${triple}"
+  let staged_rustlib = fp"${target_root}/usr/lib/rustlib/${triple}"
 
-  if fs.exists(target_rustlib)? {
-    let _ = fs.copy_tree(target_rustlib, fp"${build_root}/usr/lib64/rustlib/${triple}", parents: true, overwrite: true)?
+  if ! fs.exists(fp"${staged_rustlib}/lib")? {
+    if ! fs.exists(target_rustlib)? {
+      return Err(SudoRsBuildError.MissingRustStd(target_rustlib.display()))
+    }
+
+    stage_rustlib(target_rustlib, staged_rustlib)?
   }
 
   let target_rustflags = f"-C panic=abort -C target-feature=-crt-static -C linker=${cc.display()} -L native=${libdir.display()} -C link-arg=-Wl,--as-needed -C link-arg=-Wl,-rpath,/usr/lib"
@@ -90,10 +120,10 @@ export proc build(dest: Path) [fs, process, env, error] {
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS = aarch64_rustflags
     CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS = x86_64_rustflags
   } {
-    run $cargo build "--release" "--target" $triple "--bin" "sudo" "--bin" "visudo" ?
+    run $cargo build "--release" "--target" $triple "--bin" "sudo" "--bin" "su" ?
   } ?
 
   fs.install(fp"target/${triple}/release/sudo", fp"${dest}/usr/bin/sudo", 0o4755, parents: true, overwrite: true)?
-  fs.install(fp"target/${triple}/release/visudo", fp"${dest}/usr/bin/visudo", 0o755, parents: true, overwrite: true)?
+  fs.install(fp"target/${triple}/release/su", fp"${dest}/usr/bin/su", 0o4755, parents: true, overwrite: true)?
   fs.symlink(p"sudo", fp"${dest}/usr/bin/sudoedit")?
 }

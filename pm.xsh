@@ -10,7 +10,7 @@ pure usage(message: Str) -> Error {
 }
 
 proc print_help() [] {
-  print "usage: pm COMMAND [ARG...]\n\ntop-level commands:\n  build REPO_DIR PKGDIR...\n  world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--sync-rels] [--to-tranche N] [-j N|--jobs N]\n  build-install ROOT BUILD_ROOT WORK OUT PKGDIR...\n  build-set REPO_DIR PKGDIR...\n  build-upload-set REPO_DIR PKGDIR...\n  upload-set REPO_DIR PKGDIR...\n  upload-repo-export REPO_DIR\n\nroot commands:\n  install ROOT WORK OUT PKG...\n  remove ROOT WORK OUT PKG...\n  list ROOT WORK OUT\n  info ROOT WORK OUT PKG...\n  tree ROOT WORK OUT [PKG...]\n  search ROOT WORK OUT QUERY [PKGDIR...]\n  outdated ROOT WORK OUT PKGDIR...\n  update ROOT WORK OUT PKGDIR...\n  upgrade ROOT WORK OUT PKGDIR...\n  checksum ROOT WORK OUT PKGDIR...\n  update-checksums ROOT WORK OUT PKGDIR...\n  download ROOT WORK OUT PKGDIR...\n  refresh-index ROOT WORK OUT\n  auth ROOT WORK OUT [TOKEN]\n  upload ROOT WORK OUT PKGDIR...\n  help-ext ROOT WORK OUT\n\nworld-plan stores its staging repo under ~/.cache/laputa/world-<hash>, where\nthe hash covers the selected package set and arch. The state fingerprint covers\nselected PKGBUILD.xsh files so package edits invalidate an in-progress world.\n"
+  print "usage: pm COMMAND [ARG...]\n\ntop-level commands:\n  build REPO_DIR PKGDIR...\n  world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--sync-rels] [--to-tranche N] [-j N|--jobs N]\n  build-install ROOT BUILD_ROOT WORK OUT PKGDIR...\n  build-set REPO_DIR PKGDIR...\n  build-upload-set REPO_DIR PKGDIR...\n  upload-set REPO_DIR PKGDIR...\n  upload-repo-export REPO_DIR\n\nroot commands:\n  install [ROOT WORK OUT] PKG...\n  remove [ROOT WORK OUT] PKG...\n  list [ROOT WORK OUT]\n  info [ROOT WORK OUT] PKG...\n  tree [ROOT WORK OUT] [PKG...]\n  search [ROOT WORK OUT] QUERY [PKGDIR...]\n  outdated [ROOT WORK OUT] PKGDIR...\n  update [ROOT WORK OUT] PKGDIR...\n  upgrade [ROOT WORK OUT] PKGDIR...\n  checksum [ROOT WORK OUT] PKGDIR...\n  update-checksums [ROOT WORK OUT] PKGDIR...\n  download [ROOT WORK OUT] PKGDIR...\n  refresh-index [ROOT WORK OUT]\n  auth [ROOT WORK OUT] [TOKEN]\n  upload [ROOT WORK OUT] PKGDIR...\n  help-ext [ROOT WORK OUT]\n\nWhen run from inside this package repo, root commands default ROOT, WORK, and OUT\nto .root, .work, and .out at the repo root.\n\nworld-plan stores its staging repo under ~/.cache/laputa/world-<hash>, where\nthe hash covers the selected package set and arch. The state fingerprint covers\nselected PKGBUILD.xsh files so package edits invalidate an in-progress world.\n"
 }
 
 type WorldPlanOptions = {
@@ -2406,6 +2406,111 @@ proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, error] {
   print repo export uploaded
 }
 
+pure supports_repo_default_context(command: Str) -> Bool {
+  [
+    "install",
+    "remove",
+    "list",
+    "info",
+    "tree",
+    "search",
+    "outdated",
+    "update",
+    "upgrade",
+    "checksum",
+    "update-checksums",
+    "download",
+    "refresh-index",
+    "auth",
+    "upload",
+    "help-ext",
+  ].contains(command)
+}
+
+pure command_requires_package_dirs(command: Str) -> Bool {
+  ["outdated", "update", "upgrade", "checksum", "update-checksums", "download", "upload"].contains(command)
+}
+
+pure arg_looks_like_path(value: Str) -> Bool {
+  value.starts_with("/") or value.starts_with(".") or value.contains("/")
+}
+
+pure explicit_context_is_likely(argv: List[Str]) -> Bool {
+  argv.len() >= 4 and (arg_looks_like_path(argv[1]) or arg_looks_like_path(argv[2]) or arg_looks_like_path(argv[3]))
+}
+
+proc all_args_are_package_dirs(argv: List[Str], start: Int) [fs, error] -> Result[Bool] {
+  if argv.len() <= start {
+    return false
+  }
+
+  var i = start
+
+  while i < argv.len() {
+    let dir = Path.parse(argv[i])?
+
+    if ! fs.exists(fp"${dir}/PKGBUILD.xsh")? {
+      return false
+    }
+
+    i += 1
+  }
+
+  true
+}
+
+proc current_pm_repo_root() [fs, error] -> Result[Path] {
+  var dir = fs.cwd()?
+
+  while true {
+    if fs.exists(fp"${dir}/pm.xsh")? and fs.exists(fp"${dir}/pm")? {
+      return dir
+    }
+
+    let parent = dir.parent
+
+    if parent.display() == dir.display() {
+      return Path("")
+    }
+
+    dir = parent
+  }
+
+  Path("")
+}
+
+proc default_root_command_argv(argv: List[Str]) [fs, error] -> Result[List[Str]] {
+  if ! supports_repo_default_context(argv[0]) {
+    return argv
+  }
+
+  let args_are_pkgdirs = all_args_are_package_dirs(argv, 1)?
+
+  if ! args_are_pkgdirs and command_requires_package_dirs(argv[0]) {
+    return argv
+  }
+
+  if ! args_are_pkgdirs and explicit_context_is_likely(argv) {
+    return argv
+  }
+
+  let repo_root = current_pm_repo_root()?
+
+  if repo_root.display() == "" {
+    return argv
+  }
+
+  var expanded: List[Str] = [argv[0], fp"${repo_root}/.root".display(), fp"${repo_root}/.work".display(), fp"${repo_root}/.out".display()]
+  var i = 1
+
+  while i < argv.len() {
+    expanded = expanded.push(argv[i])
+    i += 1
+  }
+
+  expanded
+}
+
 proc handle_cli_command(parsed: Cli) [fs, net, process, env, time, error] {
   let command = parsed.command
   let ctx: PmContext = {command, root: parsed.root, work: parsed.work, out: parsed.out}
@@ -2531,5 +2636,5 @@ proc main(...argv: List[Str]) [fs, net, process, env, time, error] {
     return
   }
 
-  handle_cli_command(parse_pm_cli(argv)?)?
+  handle_cli_command(parse_pm_cli(default_root_command_argv(argv)?)?)?
 }

@@ -2,7 +2,7 @@ export let name: Str = "linux-pam"
 
 export let ver: Str = "1.7.2"
 
-export let rel: Str = "2"
+export let rel: Str = "4"
 
 export let deps: List[Str] = ["musl"]
 
@@ -92,6 +92,24 @@ export proc build(dest: Path) [fs, process, error] {
   fs.write(
     fp"${dest}/etc/pam.d/sudo",
     """auth required /usr/lib/security/pam_unix.so
+account required /usr/lib/security/pam_permit.so
+session required /usr/lib/security/pam_permit.so
+""",
+  )?
+
+  fs.write(
+    fp"${dest}/etc/pam.d/su",
+    """auth sufficient /usr/lib/security/pam_rootok.so
+auth required /usr/lib/security/pam_unix.so
+account required /usr/lib/security/pam_permit.so
+session required /usr/lib/security/pam_permit.so
+""",
+  )?
+
+  fs.write(
+    fp"${dest}/etc/pam.d/su-l",
+    """auth sufficient /usr/lib/security/pam_rootok.so
+auth required /usr/lib/security/pam_unix.so
 account required /usr/lib/security/pam_permit.so
 session required /usr/lib/security/pam_permit.so
 """,

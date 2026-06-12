@@ -1029,6 +1029,8 @@ proc build_packages_in_chroot(
     let host_xsh = xsh_runner()?
     let host_chroot_runner = fp"${pm_source_root()?}/pm/chroot-run.xsh"
     let makeflags = env.get("MAKEFLAGS") ?? f"-s -j${cpu.count()}"
+    let build_arch = util.build_arch()?
+    let target_arch = util.target_arch()?
     fs.remove(stage, missing_ok: true)?
     fs.mkdir(stage)?
     fs.copy_tree(source_src, src, parents: true, overwrite: true)?
@@ -1071,10 +1073,10 @@ proc build_packages_in_chroot(
       XSH_LINUX_KBUILD_USE_PLAN = env.get("XSH_LINUX_KBUILD_USE_PLAN") ?? ""
       XSH_LINUX_KBUILD_USE_PLAN_TEXT = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT") ?? ""
       XSH_MAKE_PROGRESS = env.get("XSH_MAKE_PROGRESS") ?? ""
-      XSH_PM_ARCH = env.get("XSH_PM_ARCH") ?? ""
-      XSH_PM_BUILD_ARCH = env.get("XSH_PM_BUILD_ARCH") ?? ""
+      XSH_PM_ARCH = target_arch
+      XSH_PM_BUILD_ARCH = build_arch
       XSH_PM_BUILD_ROOT = "/"
-      XSH_PM_TARGET_ARCH = env.get("XSH_PM_TARGET_ARCH") ?? ""
+      XSH_PM_TARGET_ARCH = target_arch
       XSH_PM_IN_CHROOT = "1"
       SHELL = "/usr/local/bin/xshi"
     } {
@@ -1398,7 +1400,9 @@ proc run_package_proof(
   verify_package_proof_root(proof_root, pkg.name)?
   let xsh = xsh_runner()?
   seed_package_proof_shell(proof_root, xsh)?
-  let native_proof = util.build_arch()? == util.target_arch()?
+  let build_arch = util.build_arch()?
+  let target_arch = util.target_arch()?
+  let native_proof = build_arch == target_arch
 
   if native_proof {
     let proof_devpts = mount_package_proof_devpts(proof_root)?
@@ -1413,12 +1417,12 @@ proc run_package_proof(
       PATH = "/usr/local/bin:/usr/bin:/usr/lib/xsh/core:/bin"
       XSH_MODULE_PATH = "/usr/lib/pm"
       XSH_LINUX_REAL = "1"
-      XSH_PM_ARCH = env.get("XSH_PM_ARCH") ?? ""
-      XSH_PM_BUILD_ARCH = env.get("XSH_PM_BUILD_ARCH") ?? ""
+      XSH_PM_ARCH = target_arch
+      XSH_PM_BUILD_ARCH = build_arch
       XSH_PM_BUILD_ROOT = "/"
       XSH_PM_PROOF_ROOT = "/"
       XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
-      XSH_PM_TARGET_ARCH = env.get("XSH_PM_TARGET_ARCH") ?? ""
+      XSH_PM_TARGET_ARCH = target_arch
       SHELL = "/usr/local/bin/xshi"
     } {
       run $xsh $host_chroot_runner "--" $proof_root "/usr/local/bin/xsh" fp"/var/tmp/pm-proof/${pkg.name}/proof.xsh" "--" "/" ?
