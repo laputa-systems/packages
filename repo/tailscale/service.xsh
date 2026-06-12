@@ -41,6 +41,8 @@ export let service = {
   name: service_record.name,
   kind: "longrun",
   command: service_record.command,
+  targets: ["boot"],
+  dependencies: {need: ["net"]},
   restart: service_record.restart,
   logging: "append",
 }

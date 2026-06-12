@@ -1346,6 +1346,98 @@ proc verify_package_proof_root(root: Path, name: Str) [fs, error] {
   }
 }
 
+pure manifest_installs_service(manifest: List[Path]) -> Bool {
+  for rel_path in manifest {
+    let entry = rel_path.display()
+
+    if entry.starts_with("usr/lib/xinit/services/") and entry.ends_with(".xsh") {
+      return true
+    }
+  }
+
+  return false
+}
+
+# Locate an xinit script to validate service definitions with. Prefers an
+# explicit XINIT_HOST override, then an installed /usr/bin/xinit, then PATH.
+# Errors with an actionable PackageContract when none is found, since a package
+# that ships service.xsh cannot be proven without one.
+proc resolve_service_xinit(name: Str) [fs, process, env, error] -> Result[Path] {
+  let host = (env.get("XINIT_HOST") ?? "").trim()
+
+  if host != "" {
+    let host_path = Path.parse(host)?
+
+    if fs.exists(host_path)? {
+      return host_path
+    }
+  }
+
+  if fs.exists(/usr/bin/xinit)? {
+    return /usr/bin/xinit
+  }
+
+  match process.which("xinit") {
+    Ok(found) => return found
+    Err(_) => {}
+  }
+
+  return Err(
+    PmError.PackageContract(
+      f"${name} ships service.xsh but no xinit was found to validate it; install the xinit package or set XINIT_HOST to an xinit script",
+    ),
+  )
+}
+
+# A package is an xinit service when it ships a service.xsh next to its
+# PKGBUILD, mirroring the required proof.xsh. The service definition must be
+# installed under /usr/lib/xinit/services/ and is validated with `xinit check`
+# during the package proof, so a malformed or undeclared service fails the
+# build instead of the running system.
+proc verify_service_contract(pkg: Package, manifest: List[Path]) [fs, process, env, error] {
+  let service_file = fp"${pkg.dir}/service.xsh"
+  let has_service = fs.exists(service_file)?
+  let installs_service = manifest_installs_service(manifest)
+
+  if installs_service and ! has_service {
+    return Err(
+      PmError.PackageContract(
+        f"${pkg.name} installs an xinit service under /usr/lib/xinit/services/ but is missing service.xsh",
+      ),
+    )
+  }
+
+  if has_service and ! installs_service {
+    return Err(
+      PmError.PackageContract(
+        f"${pkg.name} defines service.xsh but build() does not install it under /usr/lib/xinit/services/",
+      ),
+    )
+  }
+
+  if ! has_service {
+    return
+  }
+
+  let xinit = resolve_service_xinit(pkg.name)?
+  let xsh = xsh_runner()?
+  let scratch = fs.temp_dir()?
+  defer scratch.remove(missing_ok: true)?
+  let out_log = fp"${scratch}/service-check.out"
+  let err_log = fp"${scratch}/service-check.err"
+  let status = run.status $xsh $xinit "--" check $service_file > $out_log 2> $err_log
+
+  if ! status.ok {
+    return Err(
+      PmError.PackageContract(
+        f"${pkg.name} service.xsh failed xinit check: ${err_log.read_text()?.trim()} ${out_log.read_text()?.trim()}",
+      ),
+    )
+  }
+
+  print f"${pkg.name} service ${out_log.read_text()?.trim()}"
+}
+
 proc run_package_proof(
   ctx: PmContext,
   pkg: Package,
@@ -1359,6 +1451,8 @@ proc run_package_proof(
   if ! fs.exists(proof)? {
     return Err(PmError.PackageContract(f"${pkg.name} is missing proof.xsh"))
   }
+
+  verify_service_contract(pkg, manifest)?
 
   let proof_root = fp"${ctx.work}/${id}-proof-root"
   fs.remove(proof_root, missing_ok: true)?

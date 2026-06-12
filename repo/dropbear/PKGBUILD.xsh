@@ -4,7 +4,7 @@ export let name: Str = "dropbear"
 
 export let ver: Str = "2025.89"
 
-export let rel: Str = "11"
+export let rel: Str = "12"
 
 export let deps: List[Str] = ["musl", "zlib"]
 
@@ -13,12 +13,12 @@ export let mkdeps: List[Str] = ["llvm-toolchain"]
 # Source is a git commit (no VERSION substitution needed).
 export let sources: List[Path] = [
   p"https://github.com/mkj/dropbear/archive/f5d44406ef2952ca69a68d59c6b0f7f0ff777305.tar.gz",
-  p"files/dropbear.xsh",
+  p"service.xsh",
 ]
 
 export let checksums: List[Str] = [
   "ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c",
-  "b8f3bae8b48bf26f4f1f42199565ae7bb7c654bd365d02387d98e4024be26142",
+  "SKIP",
 ]
 
 pure task_names(paths: List[Path]) -> List[Str] {
@@ -423,5 +423,5 @@ ${default_options_guard}
 
   # Runtime configuration and xinit service module.
   fs.mkdir(fp"${dest}/etc/dropbear")?
-  fs.install(p"dropbear.xsh", fp"${dest}/usr/lib/xinit/services/dropbear.xsh", 0o644, parents: true, overwrite: true)?
+  fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/dropbear.xsh", 0o644, parents: true, overwrite: true)?
 }

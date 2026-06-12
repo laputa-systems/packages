@@ -474,6 +474,46 @@ export proc build(dest: Path) [fs, error] -> Result[Unit] {
   test.contains(err.read_text()?, "proofless is missing proof.xsh")?
 }
 
+proc test_pm_requires_service_definition(ctx: TestContext) [fs, process, error] {
+  let root = test.temp_dir(ctx, name: "root")?
+  let work = test.temp_dir(ctx, name: "work")?
+  let out = test.temp_dir(ctx, name: "out")?
+  let pkg = test.temp_dir(ctx, name: "svcless")?
+  let err = test.temp_path(ctx, name: "pm.err")
+
+  fs.write(
+    fp"${pkg}/PKGBUILD.xsh",
+    """export let name = "svcless"
+export let ver = "1.0.0"
+export let rel = "1"
+export let deps: List[Str] = []
+export let mkdeps: List[Str] = []
+export let sources: List[Path] = []
+export let checksums: List[Str] = []
+
+export proc build(dest: Path) [fs, error] -> Result[Unit] {
+  fs.mkdir(fp"\${dest}/usr/lib/xinit/services")?
+  fs.write(fp"\${dest}/usr/lib/xinit/services/svcless.xsh", "export let service = {}\\n")?
+}
+""",
+  )?
+
+  fs.write(
+    fp"${pkg}/proof.xsh",
+    """proc main(root: Path = /rootfs) [fs, error] {
+  let _ = root
+  print "svcless ok"
+}
+
+main(@args)?
+""",
+  )?
+
+  let status = run.status (xsh_bin()) pm.xsh -- install (root.display()) (work.display()) (out.display()) (pkg.display()) 2> $err
+  test.eq(status.ok, false)?
+  test.contains(err.read_text()?, "svcless installs an xinit service under /usr/lib/xinit/services/ but is missing service.xsh")?
+}
+
 proc test_pm_world_plan_build_and_upload(ctx: TestContext) [fs, process, env, error] {
   let home = test.temp_dir(ctx, name: "home")?
   let remote = test.temp_dir(ctx, name: "world-remote")?

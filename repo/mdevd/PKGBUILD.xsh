@@ -7,7 +7,7 @@ export let name: Str = "mdevd"
 
 export let ver: Str = "0.1.8.2"
 
-export let rel: Str = "2"
+export let rel: Str = "4"
 
 export let deps: List[Str] = ["musl"]
 
@@ -16,11 +16,13 @@ export let mkdeps: List[Str] = ["llvm-toolchain"]
 export let sources: List[Path] = [
   p"https://skarnet.org/software/mdevd/mdevd-VERSION.tar.gz",
   p"https://skarnet.org/software/skalibs/skalibs-2.15.0.0.tar.gz => skalibs",
+  p"service.xsh",
 ]
 
 export let checksums: List[Str] = [
   "ce1ae0149b6a57a34f608218fd6181aa6aa68135cac2f4d931b5b417b072e244",
   "7fde96e8afb4191593a15328883e9c7726c96891cf071222146821e8c87f8007",
+  "SKIP",
 ]
 
 pure upper_ascii(text: Str) -> Str {
@@ -527,4 +529,5 @@ struct sockaddr_nl {
   make.run_tasks(tasks, make.jobs()?)?
   fs.install(mdevd_bin, fp"${dest}/usr/bin/mdevd", 0o755, parents: true, overwrite: true)?
   fs.install(coldplug_bin, fp"${dest}/usr/bin/mdevd-coldplug", 0o755, parents: true, overwrite: true)?
+  fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/mdevd.xsh", 0o644, parents: true, overwrite: true)?
 }

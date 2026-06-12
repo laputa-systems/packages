@@ -42,6 +42,27 @@ package definitions should not list it just to get `/usr/bin/pm`,
 Source URLs may use `VERSION` and `ARCH`. Arch-specific checksums override the
 base `checksums` list for the matching package arch.
 
+## Service Definitions
+
+A package that provides an `xinit` service must define it in a `service.xsh`
+file next to its `PKGBUILD.xsh`, mirroring the required `proof.xsh`. The file
+exports one `service` record using the `xinit` service contract (see the xinit
+`docs/INIT.md`); `build()` installs it under
+`/usr/lib/xinit/services/<name>.xsh`. List `p"service.xsh"` in `sources` (with a
+`SKIP` checksum, like other repo-local files) so it is staged for `build()`.
+
+The contract is enforced during the package proof and is bidirectional:
+
+- A package whose manifest installs any `/usr/lib/xinit/services/*.xsh` file
+  must ship a `service.xsh`, otherwise the proof fails.
+- A package that ships `service.xsh` must install it under
+  `/usr/lib/xinit/services/`, otherwise the proof fails.
+
+When `service.xsh` is present the proof runs `xinit check` on it, so a malformed
+or undeclared service fails the build instead of the running system. The proof
+locates `xinit` from `XINIT_HOST`, then `/usr/bin/xinit`, then `PATH`; a service
+package proof fails with an actionable error when none is found.
+
 ## Commands
 
 Common commands:

@@ -4,15 +4,21 @@ export let name: Str = "seatd"
 
 export let ver: Str = "0.9.3"
 
-export let rel: Str = "2"
+export let rel: Str = "3"
 
 export let deps: List[Str] = ["musl", "libseat"]
 
 export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "pkgconf"]
 
-export let sources: List[Path] = [p"https://git.sr.ht/~kennylevinsen/seatd/archive/VERSION.tar.gz"]
+export let sources: List[Path] = [
+  p"https://git.sr.ht/~kennylevinsen/seatd/archive/VERSION.tar.gz",
+  p"service.xsh",
+]
 
-export let checksums: List[Str] = ["302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96"]
+export let checksums: List[Str] = [
+  "302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96",
+  "SKIP",
+]
 
 proc patch_linux_headers() [fs, error] {
   fs.mkdir(p"linux")?
@@ -135,22 +141,5 @@ export proc build(dest: Path) [fs, process, env, error] {
     }
   }
 
-  fs.mkdir(fp"${dest}/usr/lib/xinit/services")?
-
-  fs.write(
-    fp"${dest}/usr/lib/xinit/services/seatd.xsh",
-    """pure restart_policy() -> Record {
-  return {mode: "always", delay_ms: 1000, max_delay_ms: 30000, stable_after_ms: 10000}
-}
-
-export let service = {
-  name: "seatd",
-  kind: "longrun",
-  command: process.command_argv(/usr/bin/seatd, ["seatd", "-g", "seat", "-l", "info"], env: {PATH: "/usr/local/bin:/usr/bin:/bin"}),
-  targets: ["boot"],
-  restart: restart_policy(),
-  logging: "append",
-}
-""",
-  )?
+  fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/seatd.xsh", 0o644, parents: true, overwrite: true)?
 }
