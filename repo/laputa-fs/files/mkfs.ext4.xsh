@@ -528,8 +528,8 @@ proc allocate_file(
       create: false,
       truncate: false,
     )?
-    let _ = copied
 
+    let _ = copied
     source_offset += length
     block = first + run_len
     remaining -= run_len
@@ -976,7 +976,9 @@ proc main(...argv: List[Str]) [fs, error] {
   }
 
   if source_root.display() == "" {
-    source_root = fs.temp_dir()?
+    let empty_root = fs.tempdir()?
+    defer fs.close_root(empty_root)?
+    source_root = fs.root_path(empty_root)?
   }
 
   format_ext_image(Path.parse(image)?, source_root, label)?

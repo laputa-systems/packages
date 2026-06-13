@@ -43,7 +43,16 @@ proc cross_cc(default_cc: Path, build_arch: Str, target_arch: Str) [env, error] 
   return fp"${build_root}/usr/lib/llvm22/bin/clang-22"
 }
 
-proc compile_hello(cc: Path, rootfs: Path, hello_src: Path, hello: Path, triple: Str, dynlinker: Path, build_arch: Str, target_arch: Str) [process, env, error] {
+proc compile_hello(
+  cc: Path,
+  rootfs: Path,
+  hello_src: Path,
+  hello: Path,
+  triple: Str,
+  dynlinker: Path,
+  build_arch: Str,
+  target_arch: Str,
+) [process, env, error] {
   let include_dir = fp"${rootfs}/usr/include"
   let lib_dir = fp"${rootfs}/usr/lib"
 
@@ -70,10 +79,11 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   let default_cc = process.which("cc")?
   let cc = cross_cc(default_cc, build_arch, arch)?
   let readelf = process.which("readelf")?
-  let tmp = fs.temp_dir()?
-  defer tmp.remove(missing_ok: true)?
-
+  let tmp_root = fs.tempdir()?
+  defer fs.close_root(tmp_root)?
+  let tmp = fs.root_path(tmp_root)?
   let hello_src = fp"${tmp}/hello.c"
+
   fs.write(
     hello_src,
     """#include <stdio.h>
@@ -84,7 +94,6 @@ int main(void) { puts("hello musl"); return 0; }
   let hello = fp"${tmp}/hello"
   let dynlinker = fp"${rootfs}/usr/lib/${ldso}"
   compile_hello(cc, rootfs, hello_src, hello, triple, dynlinker, build_arch, arch)?
-
   let header = run.text $readelf "-h" $hello ?
   ensure(header.contains(elf_machine_name(arch)), "proof-musl", f"hello binary is not ${arch}")?
 

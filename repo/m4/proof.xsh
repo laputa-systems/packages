@@ -1,8 +1,9 @@
 error ScriptError = Failed(kind: Str, message: Str)
 
 proc main(rootfs: Path = /rootfs) [fs, process, error] {
-  let tmp = fs.temp_dir()?
-  defer tmp.remove(missing_ok: true)?
+  let tmp_root = fs.tempdir()?
+  defer fs.close_root(tmp_root)?
+  let tmp = fs.root_path(tmp_root)?
   let m4 = fp"${rootfs}/usr/bin/m4"
 
   if ! fs.exists(m4)? {

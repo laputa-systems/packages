@@ -6,7 +6,6 @@ error ScriptError = Failed(kind: Str, message: Str)
 proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   let cmake = fp"${rootfs}/usr/bin/cmake"
   let samu = fp"${rootfs}/usr/bin/samu"
-
   proof.target_elf(rootfs, p"usr/bin/cmake", "cmake")?
   proof.target_elf(rootfs, p"usr/bin/cpack", "cpack")?
   proof.target_elf(rootfs, p"usr/bin/ctest", "ctest")?
@@ -24,8 +23,9 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   let arch = os.machine
   let ldso = fp"/usr/lib/ld-musl-${arch}.so.1"
   let dynlinker = fp"${rootfs}${ldso.display()}"
-  let tmp = fs.temp_dir()?
-  defer tmp.remove(missing_ok: true)?
+  let tmp_root = fs.tempdir()?
+  defer fs.close_root(tmp_root)?
+  let tmp = fs.root_path(tmp_root)?
 
   fs.write(
     fp"${tmp}/CMakeLists.txt",
@@ -65,7 +65,6 @@ int main(void) { puts("hello cmake"); return 0; }
     }
 
     run $samu ?
-
     let hello = fp"${tmp}/build/hello"
     let out = run.text $dynlinker $hello ?
     let trimmed = out.trim()

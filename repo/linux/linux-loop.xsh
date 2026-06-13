@@ -98,8 +98,9 @@ proc prove_kconfig(generate: Bool = true) [fs, process, env, error] {
     parser_gen.generate_kconfig_parsers()?
   }
 
-  let tmp = fs.temp_dir()?
-  defer tmp.remove(missing_ok: true)
+  let tmp_root = fs.tempdir()?
+  defer fs.close_root(tmp_root)?
+  let tmp = fs.root_path(tmp_root)?
   let sub = fp"${tmp}/sub"
   sub.mkdir()
   let conf = build_kconfig_conf(tmp)?
@@ -174,8 +175,9 @@ proc prove_dtc(generate: Bool = true) [fs, process, env, error] {
     parser_gen.generate_dtc_parsers()?
   }
 
-  let tmp = fs.temp_dir()?
-  defer tmp.remove(missing_ok: true)
+  let tmp_root = fs.tempdir()?
+  defer fs.close_root(tmp_root)?
+  let tmp = fs.root_path(tmp_root)?
   let dtc = build_dtc(tmp)?
   let source = fp"${tmp}/t.dts"
   let out_dts = fp"${tmp}/t.out.dts"

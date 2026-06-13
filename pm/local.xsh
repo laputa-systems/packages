@@ -820,12 +820,14 @@ proc seed_chroot_runner(root: Path) [fs, process, env, error] {
   for sh in [fp"${root}/usr/bin/sh", fp"${root}/bin/sh"] {
     fs.mkdir(sh.parent)?
     fs.remove(sh, missing_ok: true)?
+
     fs.write(
       sh,
       """#!/usr/local/bin/xsh
 run /usr/local/bin/xshi @args ?
 """,
     )?
+
     fs.chmod(sh, 0o755)?
   }
 
@@ -1266,6 +1268,7 @@ proc regular_xsh_source(xsh: Path) [fs, error] -> Result[Path] {
 
 proc xsh_command_source(xsh: Path, name: Str) [fs, process, error] -> Result[Path] {
   let sibling = fp"${xsh.parent}/${name}"
+
   if fs.exists(sibling)? {
     return regular_xsh_source(sibling)?
   }
@@ -1292,12 +1295,14 @@ proc seed_package_proof_shell(proof_root: Path, xsh: Path) [fs, process, env, er
   for proof_sh in [fp"${proof_root}/usr/bin/sh", fp"${proof_root}/bin/sh"] {
     fs.mkdir(proof_sh.parent)?
     fs.remove(proof_sh, missing_ok: true)?
+
     fs.write(
       proof_sh,
       """#!/usr/local/bin/xsh
 run /usr/local/bin/xshi @args ?
 """,
     )?
+
     fs.chmod(proof_sh, 0o755)?
   }
 
@@ -1320,9 +1325,7 @@ proc mount_package_proof_devpts(proof_root: Path) [fs, process, error] -> Result
 
 proc unmount_package_proof_devpts(pts: Path) [process] {
   match process.which("umount") {
-    Ok(umount) => {
-      let _ = run.status $umount $pts
-    }
+    Ok(umount) => let _ = run.status $umount $pts
     Err(_) => {}
   }
 }
@@ -1421,8 +1424,9 @@ proc verify_service_contract(pkg: Package, manifest: List[Path]) [fs, process, e
 
   let xinit = resolve_service_xinit(pkg.name)?
   let xsh = xsh_runner()?
-  let scratch = fs.temp_dir()?
-  defer scratch.remove(missing_ok: true)?
+  let scratch_root = fs.tempdir()?
+  defer fs.close_root(scratch_root)?
+  let scratch = fs.root_path(scratch_root)?
   let out_log = fp"${scratch}/service-check.out"
   let err_log = fp"${scratch}/service-check.err"
   let status = run.status $xsh $xinit "--" check $service_file > $out_log 2> $err_log
@@ -1453,7 +1457,6 @@ proc run_package_proof(
   }
 
   verify_service_contract(pkg, manifest)?
-
   let proof_root = fp"${ctx.work}/${id}-proof-root"
   fs.remove(proof_root, missing_ok: true)?
   fs.mkdir(proof_root)?

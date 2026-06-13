@@ -28,6 +28,7 @@ proc build_root_path() [env, error] -> Result[Path] {
 
 proc proof_readelf_path(root: Path) [fs, env, error] -> Result[Path] {
   let target_readelf = fp"${root}/usr/bin/readelf"
+
   if fs.exists(target_readelf)? {
     return target_readelf
   }
@@ -39,8 +40,9 @@ proc proof_readelf_path(root: Path) [fs, env, error] -> Result[Path] {
 proc prove_x86_64_v3() [fs, process, error] {
   let cc = process.which("cc")?
   let objdump = process.which("llvm-objdump")?
-  let tmp = fs.temp_dir()?
-  defer tmp.remove(missing_ok: true)?
+  let tmp_root = fs.tempdir()?
+  defer fs.close_root(tmp_root)?
+  let tmp = fs.root_path(tmp_root)?
 
   fs.write(
     fp"${tmp}/v3-toy.c",
@@ -59,7 +61,6 @@ void laputa_v3_toy(const unsigned long long *a, const unsigned long long *b, uns
 
   let object = fp"${tmp}/v3-toy.o"
   run $cc "-O2" "-c" fp"${tmp}/v3-toy.c" "-o" $object ?
-
   let asm = run.text $objdump "-d" "--no-show-raw-insn" $object ?
   ensure(asm.contains("vpaddq"), "proof-llvm-toolchain", "x86-64-v3 proof did not emit AVX2 vpaddq")?
   ensure(asm.contains("pdep"), "proof-llvm-toolchain", "x86-64-v3 proof did not emit BMI2 pdep")?
@@ -68,8 +69,9 @@ void laputa_v3_toy(const unsigned long long *a, const unsigned long long *b, uns
 proc prove_explicit_aarch64_target() [fs, process, error] {
   let cc = process.which("cc")?
   let readelf = process.which("llvm-readelf")?
-  let tmp = fs.temp_dir()?
-  defer tmp.remove(missing_ok: true)?
+  let tmp_root = fs.tempdir()?
+  defer fs.close_root(tmp_root)?
+  let tmp = fs.root_path(tmp_root)?
 
   fs.write(
     fp"${tmp}/aarch64-target-toy.c",
@@ -81,9 +83,13 @@ proc prove_explicit_aarch64_target() [fs, process, error] {
 
   let object = fp"${tmp}/aarch64-target-toy.o"
   run $cc "-target" "aarch64-linux-gnu" "-O2" "-c" fp"${tmp}/aarch64-target-toy.c" "-o" $object ?
-
   let header = run.text $readelf "-h" $object ?
-  ensure(header.contains("AArch64"), "proof-llvm-toolchain", "explicit aarch64 target did not produce an AArch64 object")?
+
+  ensure(
+    header.contains("AArch64"),
+    "proof-llvm-toolchain",
+    "explicit aarch64 target did not produce an AArch64 object",
+  )?
 }
 
 proc prove_target_tools(root: Path, arch: Str) [fs, process, env, error] {

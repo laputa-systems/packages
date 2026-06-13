@@ -311,7 +311,6 @@ proc test_pm_source_checksum(ctx: TestContext) [fs, process, error] {
   test.contains(update_out, "source-pkg checksums updated")?
   let pkgbuild = fp"${pkg}/PKGBUILD.xsh".read_text()?
   test.contains(pkgbuild, "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
-
   let shorthand_pkg = test.temp_dir(ctx, name: "shorthand-pkg")?
   let _shorthand_copy = fs.copy_tree(source_pkg_dir(), shorthand_pkg, parents: true, overwrite: true)?
   let shorthand_out = run.text (xsh_bin()) pm.xsh -- update-checksums (shorthand_pkg.display()) ?
@@ -321,7 +320,6 @@ proc test_pm_source_checksum(ctx: TestContext) [fs, process, error] {
   test.contains(shorthand_out, "source-pkg checksums updated")?
   let shorthand_pkgbuild = fp"${shorthand_pkg}/PKGBUILD.xsh".read_text()?
   test.contains(shorthand_pkgbuild, "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
-
   run.text (xsh_bin()) pm.xsh -- install (root.display()) (work.display()) (out.display()) (pkg.display()) ?
 
   test.eq(
@@ -511,7 +509,11 @@ main(@args)?
 
   let status = run.status (xsh_bin()) pm.xsh -- install (root.display()) (work.display()) (out.display()) (pkg.display()) 2> $err
   test.eq(status.ok, false)?
-  test.contains(err.read_text()?, "svcless installs an xinit service under /usr/lib/xinit/services/ but is missing service.xsh")?
+
+  test.contains(
+    err.read_text()?,
+    "svcless installs an xinit service under /usr/lib/xinit/services/ but is missing service.xsh",
+  )?
 }
 
 proc test_pm_world_plan_build_and_upload(ctx: TestContext) [fs, process, env, error] {
@@ -996,8 +998,9 @@ pure shell_task(
 proc main() [fs, process, time, env, error] {
   test.eq(make.jobs()?, 2)?
 
-  let order_root = fs.temp_dir()?
-  defer order_root.remove(missing_ok: true)
+  let order_root_handle = fs.tempdir()?
+  defer fs.close_root(order_root_handle)?
+  let order_root = fs.root_path(order_root_handle)?
   let first = fp"\${order_root}/first.txt"
   let second = fp"\${order_root}/second.txt"
   let first_task = shell_task("first", order_root, [first], [], [], f"printf first > \${first.display()}", fp"\${order_root}/first.cmd")
@@ -1005,8 +1008,9 @@ proc main() [fs, process, time, env, error] {
   make.run_tasks([second_task, first_task], 2)?
   test.eq(second.read_text()?, "firstsecond")?
 
-  let parallel_root = fs.temp_dir()?
-  defer parallel_root.remove(missing_ok: true)
+  let parallel_root_handle = fs.tempdir()?
+  defer fs.close_root(parallel_root_handle)?
+  let parallel_root = fs.root_path(parallel_root_handle)?
   let one = fp"\${parallel_root}/one.txt"
   let two = fp"\${parallel_root}/two.txt"
   let one_task = shell_task("one", parallel_root, [one], [], [], f"sleep 1; printf one > \${one.display()}", fp"\${parallel_root}/one.cmd")
@@ -1018,8 +1022,9 @@ proc main() [fs, process, time, env, error] {
   test.eq(one.read_text()?, "one")?
   test.eq(two.read_text()?, "two")?
 
-  let dep_root = fs.temp_dir()?
-  defer dep_root.remove(missing_ok: true)
+  let dep_root_handle = fs.tempdir()?
+  defer fs.close_root(dep_root_handle)?
+  let dep_root = fs.root_path(dep_root_handle)?
   let src = fp"\${dep_root}/main.c"
   let header = fp"\${dep_root}/main.h"
   let dep_out = fp"\${dep_root}/main.o"
@@ -1038,8 +1043,9 @@ proc main() [fs, process, time, env, error] {
   make.run_tasks([dep_task], 1)?
   test.eq(dep_count.read_text()?, "2")?
 
-  let stamp_root = fs.temp_dir()?
-  defer stamp_root.remove(missing_ok: true)
+  let stamp_root_handle = fs.tempdir()?
+  defer fs.close_root(stamp_root_handle)?
+  let stamp_root = fs.root_path(stamp_root_handle)?
   let artifact = fp"\${stamp_root}/artifact.txt"
   let stamp_count = fp"\${stamp_root}/count.txt"
   let stamp = fp"\${stamp_root}/artifact.cmd"

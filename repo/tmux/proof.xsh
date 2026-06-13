@@ -15,7 +15,6 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, time, error] {
   let shell = fp"${rootfs}/usr/bin/sh"
   let tmux = fp"${rootfs}/usr/bin/tmux"
   proof.target_elf(rootfs, p"usr/bin/tmux", "tmux")?
-
   let build_arch = pm_util.build_arch()?
   let target_arch = pm_util.target_arch()?
 
@@ -23,8 +22,10 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, time, error] {
     print f"tmux ok: cross-built ${target_arch}"
     return
   }
-  let tmp = fs.temp_dir()?
-  defer tmp.remove(missing_ok: true)?
+
+  let tmp_root = fs.tempdir()?
+  defer fs.close_root(tmp_root)?
+  let tmp = fs.root_path(tmp_root)?
   let label = "laputa-proof"
   let config = fp"${tmp}/tmux.conf"
   fs.mkdir(fp"${tmp}/home")?
@@ -86,7 +87,6 @@ set -g focus-events on
     run $dynlinker $tmux "-L" $label "send-keys" "-t" "proof:0.0" "print \"tmux-proof-alpha\"" "C-m" ?
     run $dynlinker $tmux "-L" $label "send-keys" "-t" "proof:0.0" "print \"tmux-proof-edit:ba" "BSpace" "BSpace" "ok\"" "C-m" ?
     time.sleep(1000ms)?
-
     let pane = run.text $dynlinker $tmux "-L" $label "capture-pane" "-pt" "proof:0.0" ?
     ensure("tmux-proof-alpha" in pane, "tmux-pane", f"tmux pane did not capture alpha output: ${pane.trim()}")?
 

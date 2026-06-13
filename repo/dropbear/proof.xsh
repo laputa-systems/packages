@@ -7,7 +7,6 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   proof.target_elf(rootfs, p"usr/bin/dropbear", "dropbear")?
   proof.target_elf(rootfs, p"usr/bin/dropbearkey", "dropbear")?
   proof.target_elf(rootfs, p"usr/bin/dbclient", "dropbear")?
-
   let build_arch = pm_util.build_arch()?
   let target_arch = pm_util.target_arch()?
 
@@ -20,8 +19,9 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   let arch = os.machine
   let dynlinker = fp"${rootfs}/usr/lib/ld-musl-${arch}.so.1"
   let dropbearkey = fp"${rootfs}/usr/bin/dropbearkey"
-  let tmp = fs.temp_dir()?
-  defer tmp.remove(missing_ok: true)?
+  let tmp_root = fs.tempdir()?
+  defer fs.close_root(tmp_root)?
+  let tmp = fs.root_path(tmp_root)?
 
   # RSA: exercises libtommath (big-integer arithmetic) + libtomcrypt (RSA ops).
   let rsa_key = fp"${tmp}/host_rsa"

@@ -11,8 +11,9 @@ proc ensure(condition: Bool, kind: Str, message: Str) [error] {
 
 proc main(root: Path = /rootfs) [fs, process, env, error] {
   let cc = process.which("cc")?
-  let tmp = fs.temp_dir()?
-  defer tmp.remove(missing_ok: true)?
+  let tmp_root = fs.tempdir()?
+  defer fs.close_root(tmp_root)?
+  let tmp = fs.root_path(tmp_root)?
 
   fs.write(
     fp"${tmp}/proof-zlib.c",
