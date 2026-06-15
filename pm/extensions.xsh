@@ -3,7 +3,7 @@ use types
 export proc read_extension_summary(candidate: Path) [fs] -> Result[Str] {
   match fs.read_text(candidate) {
     Ok(text_value) => {
-      let lines = text_value.lines()
+      let lines = text_value.lines().collect()
 
       if lines.len() > 1 {
         let summary = lines[1].trim()

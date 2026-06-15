@@ -361,7 +361,7 @@ pure group_with_member(line: Str, user_name: Str) -> Str {
 }
 
 proc add_group_member(group_file: Path, group_name: Str, user_name: Str) [fs, error] {
-  let lines = group_file.read_text()?.lines()
+  let lines = group_file.lines()?.collect()
   var output: List[Str] = []
   var found = false
 

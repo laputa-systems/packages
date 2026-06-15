@@ -543,7 +543,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.write(p"lib/textstyle.h", fs.read_text(p"lib/textstyle.in.h")?)?
   var scratch_lines: List[Str] = []
 
-  for line in fs.read_text(p"lib/malloc/scratch_buffer.h")?.lines() {
+  for line in p"lib/malloc/scratch_buffer.h".lines()? {
     if ! line.contains("libc_hidden_proto") {
       var generated = line.replace("__always_inline", "inline _GL_ATTRIBUTE_ALWAYS_INLINE")
       generated = generated.replace("__glibc_likely", "_GL_LIKELY")
@@ -647,7 +647,7 @@ getprogname (void)
   var lib_sources: List[Path] = []
   var in_sources = false
 
-  for line in fs.read_text(p"lib/gnulib.mk")?.lines() {
+  for line in p"lib/gnulib.mk".lines()? {
     var chunk = line
 
     if line.starts_with("lib_libbison_a_SOURCES +=") {
