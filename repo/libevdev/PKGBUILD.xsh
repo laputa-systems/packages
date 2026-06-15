@@ -153,7 +153,7 @@ proc collect_event_defs(path_value: Path) [fs, error] -> Result[Record] {
         for prefix in event_prefixes() {
           if event_name.starts_with(prefix) {
             if event_name.ends_with("_MAX") {
-              max_codes = max_codes.set(event_name, value)
+              max_codes[event_name] = value
             }
 
             if ! (event_name in duplicate_defines()) {
@@ -195,7 +195,7 @@ proc write_event_names() [fs, error] {
     "MT_TOOL_MAX",
   ] {
     if second_max.has(key) {
-      max_codes = max_codes.set(key, second_max.get(key)?)
+      max_codes[key] = second_max.get(key)?
     }
   }
 

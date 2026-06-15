@@ -388,7 +388,7 @@ export proc try_fetch_source_mirror_from_repo(out: Path, pkg: Package) [fs, net,
 
   for repo in urls {
     if repo != "" and ! seen.get(repo, false) {
-      seen = seen.set(repo, true)
+      seen[repo] = true
 
       if is_file_url(repo) {
         let source = repo_file_path(repo, rel)?

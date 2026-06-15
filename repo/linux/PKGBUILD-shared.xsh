@@ -549,7 +549,7 @@ export proc require_valid_archive_plan(archive_plan: Record) [error] {
         )
       }
 
-      outputs = outputs.set(key, true)
+      outputs[key] = true
     }
   }
 }

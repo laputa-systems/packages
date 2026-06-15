@@ -101,16 +101,16 @@ export pure planner_jobs() -> Int {
 
 proc root_vars(srcarch: Str) [] -> Map[Str] {
   var vars: Map[Str] = map.empty()
-  vars = vars.set("ARCH_CORE", "")
-  vars = vars.set("ARCH_DRIVERS", "")
-  vars = vars.set("srctree", ".")
+  vars["ARCH_CORE"] = ""
+  vars["ARCH_DRIVERS"] = ""
+  vars["srctree"] = "."
 
   if srcarch == "arm64" {
-    vars = vars.set("ARCH_LIB", "lib/ arch/arm64/lib/")
+    vars["ARCH_LIB"] = "lib/ arch/arm64/lib/"
   } else {
-    vars = vars.set("ARCH_DRIVERS", "arch/x86/pci/ arch/x86/power/ arch/x86/video/")
-    vars = vars.set("ARCH_LIB", "lib/ arch/x86/lib/")
-    vars = vars.set("BITS", "64")
+    vars["ARCH_DRIVERS"] = "arch/x86/pci/ arch/x86/power/ arch/x86/video/"
+    vars["ARCH_LIB"] = "lib/ arch/x86/lib/"
+    vars["BITS"] = "64"
   }
 
   return vars
@@ -118,10 +118,10 @@ proc root_vars(srcarch: Str) [] -> Map[Str] {
 
 proc global_vars(srcarch: Str) [] -> Map[Str] {
   var vars: Map[Str] = map.empty()
-  vars = vars.set("srctree", ".")
+  vars["srctree"] = "."
 
   if srcarch == "x86" {
-    vars = vars.set("BITS", "64")
+    vars["BITS"] = "64"
   }
 
   return vars
@@ -130,8 +130,8 @@ proc global_vars(srcarch: Str) [] -> Map[Str] {
 proc kbuild_vars_for_dir(dir: Path, srcarch: Str) [] -> Map[Str] {
   let dir_key = path_key(dir)
   var vars = if dir_key == "." { root_vars(srcarch) } else { global_vars(srcarch) }
-  vars = vars.set("src", dir_key)
-  vars = vars.set("obj", dir_key)
+  vars["src"] = dir_key
+  vars["obj"] = dir_key
   return vars
 }
 
@@ -312,10 +312,10 @@ export proc load_config(path_value: Path) [fs, error] -> Result[Kconfig] {
       let parts = line.split("=")
       let name = parts[0].replace("CONFIG_", "")
       let value = clean_config_value(parts.get(1, ""))
-      values = values.set(name, value)
+      values[name] = value
 
       if value == "y" {
-        enabled = enabled.set(name, true)
+        enabled[name] = true
       }
     }
   }
@@ -1007,16 +1007,16 @@ proc vars_for_dir(root: Path, dir: Path, config: Kconfig, srcarch: Str) [fs, err
             "$(patsubst %.o,%.pi.o,$(obj-y))",
           ) {
             var rewritten = [object_item_for_dir(dir, item) for item in vars.get("obj-y", "").fields()]
-            vars = vars.set(lhs, rewritten.join(" "))
+            vars[lhs] = rewritten.join(" ")
             continue
           }
 
           let rhs = expand_vars(assign.rhs, vars, config, srcarch)
 
           if assign.op == "+=" {
-            vars = vars.set(lhs, f"${vars.get(lhs, "")} ${rhs}".trim())
+            vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
           } else if assign.op != "?=" or vars.get(lhs, "") == "" {
-            vars = vars.set(lhs, rhs)
+            vars[lhs] = rhs
           }
         }
       }
@@ -1108,9 +1108,9 @@ proc kbuild_compile_flags_for_dir(
           let current = flags.get(key, empty_strings())
 
           if assign.op == "+=" {
-            flags = flags.set(key, current.extend(rhs.fields()))
+            flags[key] = current.extend(rhs.fields())
           } else if assign.op != "?=" or current.len() == 0 {
-            flags = flags.set(key, rhs.fields())
+            flags[key] = rhs.fields()
           }
 
           continue
@@ -1120,9 +1120,9 @@ proc kbuild_compile_flags_for_dir(
 
         if lhs != "" {
           if assign.op == "+=" {
-            vars = vars.set(lhs, f"${vars.get(lhs, "")} ${rhs}".trim())
+            vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
           } else if assign.op != "?=" or vars.get(lhs, "") == "" {
-            vars = vars.set(lhs, rhs)
+            vars[lhs] = rhs
           }
         }
       }
@@ -1131,7 +1131,7 @@ proc kbuild_compile_flags_for_dir(
   }
 
   if subdir_flags.len() > 0 {
-    flags = flags.set("*", subdir_flags)
+    flags["*"] = subdir_flags
   }
 
   return flags
@@ -1154,7 +1154,7 @@ proc kbuild_compile_flags_for_dirs(
       f"""xsh-kbuild-compile-flags-dir ${dir_index}/${dirs.len()} ${dir.display()}
 """,
     )?
-    by_dir = by_dir.set(path_key(dir), kbuild_compile_flags_for_dir(root, dir, config, srcarch)?)
+    by_dir[path_key(dir)] = kbuild_compile_flags_for_dir(root, dir, config, srcarch)?
   }
 
   return by_dir
@@ -1186,7 +1186,7 @@ pure compile_flags_from_cache_entries(entries: List[Record]) -> Result[Map[Map[L
     let object_key: Str = entry.get("object")?
     let item_flags: List[Str] = entry.get("flags")?
     let dir_flags = flags.get(dir_key, map.empty()).set(object_key, item_flags)
-    flags = flags.set(dir_key, dir_flags)
+    flags[dir_key] = dir_flags
   }
 
   return flags
@@ -1351,7 +1351,7 @@ export proc augment_missing_composites(
                     dirs = dirs.push(dir)
                   }
 
-                  missing_by_dir = missing_by_dir.set(dir_key, current.push(obj))
+                  missing_by_dir[dir_key] = current.push(obj)
                 }
               }
             }
@@ -1380,7 +1380,7 @@ export proc augment_missing_composites(
   var composites_by_dir: Map[List[CompositeObject]] = map.empty()
 
   for scan in scans {
-    composites_by_dir = composites_by_dir.set(path_key(scan.dir), scan.composites)
+    composites_by_dir[path_key(scan.dir)] = scan.composites
   }
 
   for dir in dirs {
@@ -1406,7 +1406,7 @@ export proc prune_inactive_objects(
 
   for row in dir_objects {
     for obj in row.objects {
-      active = active.set(path_key(obj), true)
+      active[path_key(obj)] = true
     }
   }
 
@@ -1478,8 +1478,8 @@ export proc refresh_plan_dirs(
       }
     }
 
-    objects_by_dir = objects_by_dir.set(path_key(dir), objects)
-    composites_by_dir = composites_by_dir.set(path_key(dir), composites)
+    objects_by_dir[path_key(dir)] = objects
+    composites_by_dir[path_key(dir)] = composites
   }
 
   var dirs_all = next.dirs
@@ -1779,10 +1779,10 @@ export proc refresh_plan_composite_members(
     let members = composite_members(dir, obj.name, vars)
 
     if members.len() > 0 {
-      refreshed = refreshed.set(path_key(obj), {object: obj, members: members})
+      refreshed[path_key(obj)] = {object: obj, members: members}
 
       for member in members {
-        member_paths = member_paths.set(path_key(member), true)
+        member_paths[path_key(member)] = true
       }
     }
   }
@@ -1795,7 +1795,7 @@ export proc refresh_plan_composite_members(
 
     if refreshed.has(key) {
       composites = composites.push(refreshed.get(key)?)
-      seen = seen.set(key, true)
+      seen[key] = true
     } else {
       composites = composites.push(composite)
     }
@@ -2079,9 +2079,9 @@ proc scan_discover_dir(
           let rhs = expand_vars(assign.rhs, vars, config, srcarch)
 
           if assign.op == "+=" {
-            vars = vars.set(lhs, f"${vars.get(lhs, "")} ${rhs}".trim())
+            vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
           } else if assign.op != "?=" or vars.get(lhs, "") == "" {
-            vars = vars.set(lhs, rhs)
+            vars[lhs] = rhs
           }
         }
       }
@@ -2120,7 +2120,7 @@ proc unique_unseen_paths(paths: List[Path], seen: Map[Bool]) [] -> List[Path] {
     let key = path_key(path_value)
 
     if ! local_seen.get(key, false) {
-      local_seen = local_seen.set(key, true)
+      local_seen[key] = true
       unique = unique.push(path_value)
     }
   }
@@ -2147,7 +2147,7 @@ proc discover_scans(
     frontier = empty_paths()
 
     for dir in pending {
-      seen = seen.set(path_key(dir), true)
+      seen[path_key(dir)] = true
     }
 
     emit_batch_progress(root, options, pending)?
@@ -2164,12 +2164,12 @@ proc discover_scans(
     var batch_by_dir: Map[DirScan] = map.empty()
 
     for scan in batch {
-      batch_by_dir = batch_by_dir.set(path_key(scan.dir), scan)
+      batch_by_dir[path_key(scan.dir)] = scan
     }
 
     for dir in pending {
       let scan = batch_by_dir.get(path_key(dir))?
-      scans = scans.set(path_key(dir), scan)
+      scans[path_key(dir)] = scan
       aggregate = merge_plan(aggregate, scan.plan)
       visited += 1
       emit_discover_progress(root, options, {plan: aggregate, seen: seen, visited: visited}, dir)?
@@ -2289,7 +2289,7 @@ proc unique_paths(paths: List[Path]) [] -> List[Path] {
     let key = path_key(path_value)
 
     if ! seen.get(key, false) {
-      seen = seen.set(key, true)
+      seen[key] = true
       unique = unique.push(path_value)
     }
   }
@@ -2305,7 +2305,7 @@ proc unique_composites(composites: List[CompositeObject]) [] -> List[CompositeOb
     let key = path_key(composite.object)
 
     if ! seen.get(key, false) {
-      seen = seen.set(key, true)
+      seen[key] = true
       unique = unique.push(composite)
     }
   }
@@ -2544,7 +2544,7 @@ pure duplicate_task_outputs(tasks: List[make.MakeTask]) -> List[Path] {
           duplicates = duplicates.push(output)
         }
       } else {
-        outputs = outputs.set(key, true)
+        outputs[key] = true
       }
     }
   }
@@ -2744,7 +2744,7 @@ proc archive_task_deps_by_name(tasks: List[Record]) [] -> Map[List[Str]] {
   var by_name: Map[List[Str]] = map.empty()
 
   for task in tasks {
-    by_name = by_name.set(task.name, task.deps)
+    by_name[task.name] = task.deps
   }
 
   return by_name
@@ -2819,7 +2819,7 @@ proc composite_map(composites: List[CompositeObject]) [] -> Map[CompositeObject]
   var mapped: Map[CompositeObject] = map.empty()
 
   for composite in composites {
-    mapped = mapped.set(path_key(composite.object), composite)
+    mapped[path_key(composite.object)] = composite
   }
 
   return mapped
@@ -2830,7 +2830,7 @@ proc composite_member_map(composites: List[CompositeObject]) [] -> Map[Composite
 
   for composite in composites {
     for member in composite.members {
-      mapped = mapped.set(path_key(member), composite)
+      mapped[path_key(member)] = composite
     }
   }
 
@@ -5496,7 +5496,7 @@ proc parse_elf_relocations(text: Str) [error] -> Result[ElfRelocTable] {
       addend: parse_readelf_addend(words)?,
     }
 
-    by_offset = by_offset.set(elf_reloc_key(reloc.section, reloc.offset), reloc)
+    by_offset[elf_reloc_key(reloc.section, reloc.offset)] = reloc
 
     if reloc.section == ".rela__jump_table" and reloc.offset % 16 == 8 and reloc.addend % 4 >= 2 {
       keys = keys.push(reloc)
@@ -5706,7 +5706,7 @@ pure archive_rerun_tasks(tasks: List[Record]) -> List[Record] {
 
   for task in tasks {
     if has_archive_output(task) {
-      archive_names = archive_names.set(task.name, true)
+      archive_names[task.name] = true
     }
   }
 
@@ -5846,8 +5846,8 @@ export proc plan_builtin_archives(
         let dir_key = path_key(object_dir(obj))
         tasks = tasks.push(base_task).push(task).push(check_task)
         link_inputs = link_inputs.push(out)
-        objects_by_dir = objects_by_dir.set(dir_key, objects_by_dir.get(dir_key, empty_paths()).push(out))
-        deps_by_dir = deps_by_dir.set(dir_key, deps_by_dir.get(dir_key, empty_strings()).push(check_task.name))
+        objects_by_dir[dir_key] = objects_by_dir.get(dir_key, empty_paths()).push(out)
+        deps_by_dir[dir_key] = deps_by_dir.get(dir_key, empty_strings()).push(check_task.name)
       } else {
         generated_objects = generated_objects.push(obj)
       }
@@ -5890,8 +5890,8 @@ export proc plan_builtin_archives(
         if member_outs.len() > 0 {
           let dir_key = path_key(object_dir(obj))
           link_inputs = link_inputs.extend(member_outs)
-          objects_by_dir = objects_by_dir.set(dir_key, objects_by_dir.get(dir_key, empty_paths()).extend(member_outs))
-          deps_by_dir = deps_by_dir.set(dir_key, deps_by_dir.get(dir_key, empty_strings()).extend(member_deps))
+          objects_by_dir[dir_key] = objects_by_dir.get(dir_key, empty_paths()).extend(member_outs)
+          deps_by_dir[dir_key] = deps_by_dir.get(dir_key, empty_strings()).extend(member_deps)
         }
       }
       Err(_) => {
@@ -5902,8 +5902,8 @@ export proc plan_builtin_archives(
             let dir_key = path_key(object_dir(obj))
             tasks = tasks.push(task)
             link_inputs = link_inputs.push(out)
-            objects_by_dir = objects_by_dir.set(dir_key, objects_by_dir.get(dir_key, empty_paths()).push(out))
-            deps_by_dir = deps_by_dir.set(dir_key, deps_by_dir.get(dir_key, empty_strings()).push(task.name))
+            objects_by_dir[dir_key] = objects_by_dir.get(dir_key, empty_paths()).push(out)
+            deps_by_dir[dir_key] = deps_by_dir.get(dir_key, empty_strings()).push(task.name)
           }
           Err(err) => {
             match err {
@@ -5913,7 +5913,7 @@ export proc plan_builtin_archives(
                   if out.exists()? {
                     let dir_key = path_key(object_dir(obj))
                     link_inputs = link_inputs.push(out)
-                    objects_by_dir = objects_by_dir.set(dir_key, objects_by_dir.get(dir_key, empty_paths()).push(out))
+                    objects_by_dir[dir_key] = objects_by_dir.get(dir_key, empty_paths()).push(out)
                   } else if is_known_generated_object(obj) {
                     generated_objects = generated_objects.push(obj)
                   } else {
@@ -5979,15 +5979,9 @@ export proc plan_builtin_archives(
           let dir_key = path_key(object_dir(obj))
           lib_link_inputs = lib_link_inputs.extend(member_outs)
 
-          lib_objects_by_dir = lib_objects_by_dir.set(
-            dir_key,
-            lib_objects_by_dir.get(dir_key, empty_paths()).extend(member_outs),
-          )
+          lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, empty_paths()).extend(member_outs)
 
-          lib_deps_by_dir = lib_deps_by_dir.set(
-            dir_key,
-            lib_deps_by_dir.get(dir_key, empty_strings()).extend(member_deps),
-          )
+          lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, empty_strings()).extend(member_deps)
         }
       }
       Err(_) => {
@@ -5999,15 +5993,9 @@ export proc plan_builtin_archives(
             tasks = tasks.push(task)
             lib_link_inputs = lib_link_inputs.push(out)
 
-            lib_objects_by_dir = lib_objects_by_dir.set(
-              dir_key,
-              lib_objects_by_dir.get(dir_key, empty_paths()).push(out),
-            )
+            lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, empty_paths()).push(out)
 
-            lib_deps_by_dir = lib_deps_by_dir.set(
-              dir_key,
-              lib_deps_by_dir.get(dir_key, empty_strings()).push(task.name),
-            )
+            lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, empty_strings()).push(task.name)
           }
           Err(err) => {
             match err {
@@ -6017,7 +6005,7 @@ export proc plan_builtin_archives(
                   if out.exists()? {
                     let dir_key = path_key(object_dir(obj))
                     lib_link_inputs = lib_link_inputs.push(out)
-                    lib_objects_by_dir = lib_objects_by_dir.set(dir_key, lib_objects_by_dir.get(dir_key, empty_paths()).push(out))
+                    lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, empty_paths()).push(out)
                   } else if is_known_generated_object(obj) {
                     generated_objects = generated_objects.push(obj)
                   } else {
@@ -6049,7 +6037,7 @@ export proc plan_builtin_archives(
     if path_key(dir) != "." {
       let parent = archive_parent_dir(dir)
       let parent_key = path_key(parent)
-      children_by_dir = children_by_dir.set(parent_key, children_by_dir.get(parent_key, empty_paths()).push(dir))
+      children_by_dir[parent_key] = children_by_dir.get(parent_key, empty_paths()).push(dir)
     }
   }
 
@@ -6068,7 +6056,7 @@ export proc plan_builtin_archives(
       }
     }
 
-    archive_needed = archive_needed.set(dir_key, needed)
+    archive_needed[dir_key] = needed
   }
 
   archive_plan_progress("xsh-kbuild-archive-plan needed-complete")?
@@ -6130,7 +6118,7 @@ export proc plan_builtin_archives(
   for task in tasks {
     if ! task_names.get(task.name, false) {
       unique_tasks = unique_tasks.push(task)
-      task_names = task_names.set(task.name, true)
+      task_names[task.name] = true
     }
   }
 

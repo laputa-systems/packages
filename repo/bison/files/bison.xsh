@@ -116,10 +116,10 @@ proc parse_tokens(decls: Str) [error] -> Result[Map[Int]] {
           let value = literal_code(word)
 
           if value >= 0 {
-            tokens = tokens.set(word, value)
+            tokens[word] = value
           }
         } else {
-          tokens = tokens.set(word, code)
+          tokens[word] = code
           code = code + 1
         }
       }

@@ -51,10 +51,10 @@ proc private_sonames(root: Path) [fs, error] -> Result[Map[Bool]] {
       let info = elf.inspect(entry.path)?
 
       if info.type != "not-elf" {
-        sonames = sonames.set(entry.name, true)
+        sonames[entry.name] = true
 
         if info.soname != "" {
-          sonames = sonames.set(info.soname, true)
+          sonames[info.soname] = true
         }
       }
     }
@@ -88,14 +88,14 @@ export proc scan_waterfox_elf(
         }
 
         for soname in info.needed {
-          all_sonames = all_sonames.set(soname, true)
+          all_sonames[soname] = true
 
           if reject.matches(soname) {
             return Err(WaterfoxScanError.RejectedSoname(f"${entry.path.display()} needs rejected ${soname}"))
           }
 
           if ! private.get(soname, false) and ! list_contains(allowed, soname) {
-            external = external.set(soname, true)
+            external[soname] = true
           }
         }
 

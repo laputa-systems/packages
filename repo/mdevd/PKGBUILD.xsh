@@ -64,7 +64,7 @@ proc read_sysdeps(path_value: Path) [fs, error] -> Result[Map[Str]] {
     let words = line.words()
 
     if words.len() >= 2 {
-      sysdeps = sysdeps.set(words[0].replace(":", ""), words[1])
+      sysdeps[words[0].replace(":", "")] = words[1]
     }
   }
 
@@ -490,7 +490,7 @@ struct sockaddr_nl {
     let task = make.compile_c_task(cc, triple, cflags, defs, includes, Path.parse(src)?, out)
     tasks = tasks.push(task)
     task_deps = task_deps.push(task.name)
-    objs = objs.set(src, out)
+    objs[src] = out
   }
 
   let helper_objs = [

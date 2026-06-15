@@ -25,32 +25,32 @@ export proc build(dest: Path) [fs, process, env, error] {
   # All HAVE_* values are precomputed for Clang + musl on aarch64 and x86_64.
   # Captured from: configure CC="cc" --prefix=/usr --sysconfdir=/etc --disable-dependency-tracking
   var defines: Map[Str] = map.empty()
-  defines = defines.set("HAVE_DECL_PLEDGE", "0")
-  defines = defines.set("HAVE_DECL_REALLOCARRAY", "1")
-  defines = defines.set("HAVE_DECL_STRLCAT", "1")
-  defines = defines.set("HAVE_DECL_STRLCPY", "1")
-  defines = defines.set("HAVE_DECL_STRNDUP", "1")
-  defines = defines.set("HAVE_DECL_UNVEIL", "0")
-  defines = defines.set("HAVE_DLFCN_H", "1")
-  defines = defines.set("HAVE_INTTYPES_H", "1")
-  defines = defines.set("HAVE_STDINT_H", "1")
-  defines = defines.set("HAVE_STDIO_H", "1")
-  defines = defines.set("HAVE_STDLIB_H", "1")
-  defines = defines.set("HAVE_STRINGS_H", "1")
-  defines = defines.set("HAVE_STRING_H", "1")
-  defines = defines.set("HAVE_SYS_STAT_H", "1")
-  defines = defines.set("HAVE_SYS_TYPES_H", "1")
-  defines = defines.set("HAVE_UNISTD_H", "1")
-  defines = defines.set("LT_OBJDIR", "\".libs/\"")
-  defines = defines.set("PACKAGE", "\"pkgconf\"")
-  defines = defines.set("PACKAGE_BUGREPORT", "\"https://github.com/pkgconf/pkgconf/issues/new\"")
-  defines = defines.set("PACKAGE_NAME", "\"pkgconf\"")
-  defines = defines.set("PACKAGE_STRING", f"\"pkgconf ${ver}\"")
-  defines = defines.set("PACKAGE_TARNAME", "\"pkgconf\"")
-  defines = defines.set("PACKAGE_URL", "\"\"")
-  defines = defines.set("PACKAGE_VERSION", f"\"${ver}\"")
-  defines = defines.set("STDC_HEADERS", "1")
-  defines = defines.set("VERSION", f"\"${ver}\"")
+  defines["HAVE_DECL_PLEDGE"] = "0"
+  defines["HAVE_DECL_REALLOCARRAY"] = "1"
+  defines["HAVE_DECL_STRLCAT"] = "1"
+  defines["HAVE_DECL_STRLCPY"] = "1"
+  defines["HAVE_DECL_STRNDUP"] = "1"
+  defines["HAVE_DECL_UNVEIL"] = "0"
+  defines["HAVE_DLFCN_H"] = "1"
+  defines["HAVE_INTTYPES_H"] = "1"
+  defines["HAVE_STDINT_H"] = "1"
+  defines["HAVE_STDIO_H"] = "1"
+  defines["HAVE_STDLIB_H"] = "1"
+  defines["HAVE_STRINGS_H"] = "1"
+  defines["HAVE_STRING_H"] = "1"
+  defines["HAVE_SYS_STAT_H"] = "1"
+  defines["HAVE_SYS_TYPES_H"] = "1"
+  defines["HAVE_UNISTD_H"] = "1"
+  defines["LT_OBJDIR"] = "\".libs/\""
+  defines["PACKAGE"] = "\"pkgconf\""
+  defines["PACKAGE_BUGREPORT"] = "\"https://github.com/pkgconf/pkgconf/issues/new\""
+  defines["PACKAGE_NAME"] = "\"pkgconf\""
+  defines["PACKAGE_STRING"] = f"\"pkgconf ${ver}\""
+  defines["PACKAGE_TARNAME"] = "\"pkgconf\""
+  defines["PACKAGE_URL"] = "\"\""
+  defines["PACKAGE_VERSION"] = f"\"${ver}\""
+  defines["STDC_HEADERS"] = "1"
+  defines["VERSION"] = f"\"${ver}\""
   configure.config_h(p"libpkgconf/config.h.in", p"libpkgconf/config.h", defines)?
 
   # Compile flags matching configure's detected values.

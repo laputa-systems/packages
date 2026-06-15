@@ -571,7 +571,7 @@ export proc collect_remote_packages(
     if ! seen.get(name, false) {
       let pkg = find_remote_package(index, name)?
       packages = packages.push(pkg)
-      seen = seen.set(name, true)
+      seen[name] = true
 
       for dep in pkg.deps {
         if ! fs.exists(package_db_path(root, dep))? and ! seen.get(dep, false) {
@@ -593,7 +593,7 @@ export proc order_remote_packages(
   var pkg_index = 0
 
   for pkg in packages {
-    by_name = by_name.set(pkg.name, pkg_index)
+    by_name[pkg.name] = pkg_index
     pkg_index += 1
   }
 
@@ -618,7 +618,7 @@ export proc order_remote_packages(
 
         if ready {
           ordered = ordered.push(pkg)
-          added = added.set(pkg.name, true)
+          added[pkg.name] = true
           progressed = true
         }
       }

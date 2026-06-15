@@ -65,7 +65,7 @@ export proc install_remote_packages(ctx: PmContext, names: List[Str]) [fs, net, 
       }
 
     for item in downloaded {
-      tarballs = tarballs.set(item.name, item.tarball)
+      tarballs[item.name] = item.tarball
     }
   }
 
@@ -168,7 +168,7 @@ export proc map_etcsums(etcsums: List[EtcSum]) [error] -> Result[Map[Str]] {
   var mapped: Map[Str] = map.empty()
 
   for entry in etcsums {
-    mapped = mapped.set(entry.path, entry.sha256)
+    mapped[entry.path] = entry.sha256
   }
 
   mapped
@@ -181,7 +181,7 @@ export proc load_etcsums(db: Path) [fs, error] -> Result[Map[Str]] {
     let rows: List[EtcSum] = json.read(fp"${db}/etcsums.json")?
 
     for row in rows {
-      mapped = mapped.set(row.path, row.sha256)
+      mapped[row.path] = row.sha256
     }
   }
 
@@ -349,7 +349,7 @@ export proc load_installed_owners(root: Path) [fs, error] -> Result[Map[Str]] {
       let manifest = load_manifest(entry.path)?
 
       for rel_path in manifest {
-        owners = owners.set(rel_path.display(), entry.name)
+        owners[rel_path.display()] = entry.name
       }
     }
   }
@@ -617,7 +617,7 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
       return Err(PmError.PackageContract(f"duplicate package ${name}"))
     }
 
-    seen = seen.set(name, true)
+    seen[name] = true
 
     packages = packages.push(
       {
@@ -650,7 +650,7 @@ export proc order_packages(
   var pkg_index = 0
 
   for pkg in packages {
-    by_name = by_name.set(pkg.name, pkg_index)
+    by_name[pkg.name] = pkg_index
     pkg_index += 1
   }
 
@@ -675,7 +675,7 @@ export proc order_packages(
 
         if ready {
           ordered = ordered.push(pkg)
-          added = added.set(pkg.name, true)
+          added[pkg.name] = true
           progressed = true
         }
       }
@@ -1105,7 +1105,7 @@ proc build_packages_in_chroot(
         return Err(PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
       }
 
-      owners = owners.set(key, pkg.name)
+      owners[key] = pkg.name
     }
 
     run_package_proof(ctx, pkg, id, tarball, item.manifest, built)?
@@ -1186,7 +1186,7 @@ export proc build_packages(
         return Err(PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
       }
 
-      owners = owners.set(key, pkg.name)
+      owners[key] = pkg.name
     }
 
     let etcsums = collect_etcsums(dest, manifest)?
@@ -1771,7 +1771,7 @@ export proc collect_installed_tree_roots(root: Path) [fs, error] -> Result[List[
 
     for dep in deps {
       if installed_names.contains(dep) {
-        depended = depended.set(dep, true)
+        depended[dep] = true
       } else {
         return Err(PmError.MissingDependency(f"${name} depends on missing ${dep}"))
       }

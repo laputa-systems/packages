@@ -53,7 +53,7 @@ proc order_repo_build_packages(
   var pkg_index = 0
 
   for pkg in packages {
-    by_name = by_name.set(pkg.name, pkg_index)
+    by_name[pkg.name] = pkg_index
     pkg_index += 1
   }
 
@@ -62,7 +62,7 @@ proc order_repo_build_packages(
 
   for item in index {
     if item.arch == arch {
-      repo_names = repo_names.set(item.name, true)
+      repo_names[item.name] = true
     }
   }
 
@@ -87,7 +87,7 @@ proc order_repo_build_packages(
 
         if ready {
           ordered = ordered.push(pkg)
-          added = added.set(pkg.name, true)
+          added[pkg.name] = true
           progressed = true
         }
       }
@@ -117,12 +117,12 @@ proc order_world_build_packages(
   var repo_names: Map[Bool] = map.empty()
 
   for pkg in packages {
-    local_names = local_names.set(pkg.name, true)
+    local_names[pkg.name] = true
   }
 
   for item in index {
     if item.arch == arch {
-      repo_names = repo_names.set(item.name, true)
+      repo_names[item.name] = true
     }
   }
 
@@ -149,7 +149,7 @@ proc order_world_build_packages(
 
         if ready {
           ordered = ordered.push(pkg)
-          added = added.set(pkg.name, true)
+          added[pkg.name] = true
           progressed = true
         }
       }
@@ -179,7 +179,7 @@ proc missing_world_dependencies(
 
     if ! seen.get(dep, false) and ! fs.exists(package_db_path(root, dep))? {
       missing = missing.push(dep)
-      seen = seen.set(dep, true)
+      seen[dep] = true
     }
   }
 
@@ -208,7 +208,7 @@ proc missing_world_build_dependencies(
 
     if ! seen.get(dep, false) and ! fs.exists(package_db_path(root, dep))? {
       missing = missing.push(dep)
-      seen = seen.set(dep, true)
+      seen[dep] = true
     }
   }
 
@@ -246,7 +246,7 @@ proc missing_fresh_world_dependencies(
         missing = missing.push(dep)
       }
 
-      seen = seen.set(dep, true)
+      seen[dep] = true
     }
   }
 
@@ -352,7 +352,7 @@ proc seed_world_package_dependency_set(staged_root: Path, package_root: Path, ow
 
       if fs.exists(db)? {
         copy_world_seed_package(staged_root, package_root, name)?
-        copied = copied.set(name, true)
+        copied[name] = true
         let metadata = load_metadata(db)?
         let deps: List[Str] = metadata.get("deps")?
 
@@ -541,7 +541,7 @@ proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]]
 
       if ! seen.get(key, false) {
         dirs = dirs.push(input)
-        seen = seen.set(key, true)
+        seen[key] = true
       }
     } else {
       var children: List[Path] = []
@@ -563,7 +563,7 @@ proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]]
 
         if ! seen.get(key, false) {
           dirs = dirs.push(child)
-          seen = seen.set(key, true)
+          seen[key] = true
         }
       }
     }
@@ -579,7 +579,7 @@ proc world_local_dependency_names(pkg: Package, local_names: Map[Bool]) [] -> Li
   for dep in effective_world_dependencies(pkg, true) {
     if local_names.get(dep, false) and ! seen.get(dep, false) and ! world_dependency_is_seeded(pkg, dep, false) {
       names = names.push(dep)
-      seen = seen.set(dep, true)
+      seen[dep] = true
     }
   }
 
@@ -600,7 +600,7 @@ proc world_plan_levels(ordered: List[Package], local_names: Map[Bool]) [] -> Map
       }
     }
 
-    levels = levels.set(pkg.name, level)
+    levels[pkg.name] = level
   }
 
   levels
@@ -732,10 +732,7 @@ proc planned_world_packages(
         }
       }
 
-      changed = changed.set(
-        pkg.name,
-        compare_version_release(planned_pkg.ver, planned_pkg.rel, remote.ver, remote.rel) != 0,
-      )
+      changed[pkg.name] = compare_version_release(planned_pkg.ver, planned_pkg.rel, remote.ver, remote.rel) != 0
     } else {
       if state_planned_rels.has(pkg.name) {
         let state_rel = state_planned_rels.get(pkg.name)?
@@ -745,7 +742,7 @@ proc planned_world_packages(
         }
       }
 
-      changed = changed.set(pkg.name, true)
+      changed[pkg.name] = true
     }
 
     planned = planned.push(planned_pkg)
@@ -758,7 +755,7 @@ proc planned_world_package_map(planned: List[Package]) [] -> Map[Package] {
   var packages: Map[Package] = map.empty()
 
   for pkg in planned {
-    packages = packages.set(pkg.name, pkg)
+    packages[pkg.name] = pkg
   }
 
   packages
@@ -1088,12 +1085,12 @@ proc world_latest_remote_map(index: List[RemotePackage], arch: Str) [error] -> R
   for entry in index {
     if entry.arch == arch {
       if ! latest.has(entry.name) {
-        latest = latest.set(entry.name, entry)
+        latest[entry.name] = entry
       } else {
         let current: RemotePackage = latest.get(entry.name)?
 
         if compare_version_release(entry.ver, entry.rel, current.ver, current.rel) > 0 {
-          latest = latest.set(entry.name, entry)
+          latest[entry.name] = entry
         }
       }
     }
@@ -1209,7 +1206,7 @@ proc world_remote_metadata_hashes(
   var hashes: Map[Str] = map.empty()
 
   for row in rows {
-    hashes = hashes.set(row.name, row.sha256)
+    hashes[row.name] = row.sha256
   }
 
   hashes
@@ -1491,10 +1488,10 @@ proc ensure_world_state_compatible(
       let id = world_package_id(pkg)
 
       if old_unchanged.contains(id) {
-        built_names = built_names.set(pkg.name, true)
-        unchanged_names = unchanged_names.set(pkg.name, true)
+        built_names[pkg.name] = true
+        unchanged_names[pkg.name] = true
       } else if old_built.contains(id) and old_proofed.contains(id) {
-        built_names = built_names.set(pkg.name, true)
+        built_names[pkg.name] = true
       }
     }
 
@@ -1517,7 +1514,7 @@ proc world_state_planned_rels(repo_dir: Path, packages: List[Package]) [fs, erro
   var versions: Map[Str] = map.empty()
 
   for pkg in packages {
-    versions = versions.set(pkg.name, pkg.ver)
+    versions[pkg.name] = pkg.ver
   }
 
   let rows: List[Record] = state.get("packages")?
@@ -1528,7 +1525,7 @@ proc world_state_planned_rels(repo_dir: Path, packages: List[Package]) [fs, erro
     let rel: Str = row.get("rel")?
 
     if versions.has(name) and versions.get(name)? == ver {
-      rels = rels.set(name, rel)
+      rels[name] = rel
     }
   }
 
@@ -1745,7 +1742,7 @@ proc local_package_names(packages: List[Package]) [] -> Map[Bool] {
   var names: Map[Bool] = map.empty()
 
   for pkg in packages {
-    names = names.set(pkg.name, true)
+    names[pkg.name] = true
   }
 
   names
@@ -1771,7 +1768,7 @@ proc missing_dependency_names(
     for dep in deps {
       if ! local_names.get(dep, false) and ! seen.get(dep, false) and ! fs.exists(package_db_path(root, dep))? {
         names = names.push(dep)
-        seen = seen.set(dep, true)
+        seen[dep] = true
       }
     }
   }
@@ -2032,8 +2029,8 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
           pkg.name,
           cross_build,
         )? {
-          built_names = built_names.set(pkg.name, true)
-          unchanged_names = unchanged_names.set(pkg.name, true)
+          built_names[pkg.name] = true
+          unchanged_names[pkg.name] = true
           print ${pkg.name} ${id} unchanged
         } else if recorded_built.contains(id) and recorded_proofed.contains(id) and world_stage_package_present_in_roots(
           root,
@@ -2041,7 +2038,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
           pkg.name,
           cross_build,
         )? {
-          built_names = built_names.set(pkg.name, true)
+          built_names[pkg.name] = true
           print ${pkg.name} ${id} staged
         } else {
           var build_dependency_names = effective_world_build_dependencies(pkg, cross_build)
@@ -2134,8 +2131,8 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
                   install_remote_dependency_set_for_arch(build_ctx, [original_pkg.name], world_build_arch)?
                 }
 
-                built_names = built_names.set(original_pkg.name, true)
-                unchanged_names = unchanged_names.set(original_pkg.name, true)
+                built_names[original_pkg.name] = true
+                unchanged_names[original_pkg.name] = true
                 unchanged = true
                 print ${original_pkg.name} ${world_package_id(original_pkg)} metadata unchanged
               }
@@ -2156,7 +2153,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
               install_world_built_packages(build_ctx, built)?
             }
 
-            built_names = built_names.set(original_pkg.name, true)
+            built_names[original_pkg.name] = true
           }
 
           write_world_state(repo_dir, fingerprint, planned, built_names, unchanged_names, false)?

@@ -87,7 +87,7 @@ proc source_definitions() [fs, error] -> Result[Map[Str]] {
     let define_name = f"__${entry.name.replace(".c", "")}__"
 
     for name_value in extract_function_names(entry.path)? {
-      definitions = definitions.set(name_value, define_name)
+      definitions[name_value] = define_name
     }
   }
 
@@ -104,7 +104,7 @@ proc alias_declarations(headers: List[Path]) [fs, error] -> Result[List[Declarat
       if ! seen.get(name_value, false) {
         let define_name = definitions.get(name_value)?
         declarations = declarations.push({name: name_value, define_name})
-        seen = seen.set(name_value, true)
+        seen[name_value] = true
       }
     }
   }

@@ -54,7 +54,7 @@ proc merged_rules(ruleset: Str) [fs, error] -> Result[Str] {
 ${lines[0]}
 """
 
-        seen_headers = seen_headers.set(header, true)
+        seen_headers[header] = true
       }
 
       start = 1

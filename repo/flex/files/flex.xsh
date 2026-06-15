@@ -129,7 +129,7 @@ proc parse_definitions(text: Str) [error] -> Result[Map[Str]] {
     match regex_captures(line, "^([A-Za-z_][A-Za-z0-9_]*)[ \t]+(.+)$") {
       Ok(c) => {
         if c.len() >= 3 {
-          defs = defs.set(c[1], c[2].trim())
+          defs[c[1]] = c[2].trim()
         }
       }
       Err(_) => {}

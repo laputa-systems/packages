@@ -44,10 +44,10 @@ proc private_sonames(root: Path) [fs, error] -> Result[Map[Path]] {
       let info = elf.inspect(entry.path)?
 
       if info.type != "not-elf" {
-        sonames = sonames.set(entry.name, entry.path)
+        sonames[entry.name] = entry.path
 
         if info.soname != "" {
-          sonames = sonames.set(info.soname, entry.path)
+          sonames[info.soname] = entry.path
         }
       }
     }

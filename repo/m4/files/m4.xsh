@@ -855,11 +855,11 @@ proc copy_macro(st: Map[Str], src: Str, dst: Str) [error] -> Result[Map[Str]] {
   let dst_body = if src_body == "BUILTIN" { f"BUILTIN:${normalize_builtin_name(src)}" } else { src_body }
   var s2 = mac_set(st, dst, dst_body)
   let depth = si(st, f"pdepth:${src}", 0)
-  s2 = s2.set(f"pdepth:${dst}", f"${depth}")
+  s2[f"pdepth:${dst}"] = f"${depth}"
   var i = 0
 
   while i < depth {
-    s2 = s2.set(f"pval:${dst}:${i}", sg(st, f"pval:${src}:${i}", ""))
+    s2[f"pval:${dst}:${i}"] = sg(st, f"pval:${src}:${i}", "")
     i = i + 1
   }
 
@@ -899,7 +899,7 @@ proc call_builtin(name: Str, margs: List[Str], st: Map[Str]) [fs, process, env, 
     let depth = si(st, f"pdepth:${n}", 0)
     let old = mac_get(st, n)
     var s2 = st.set(f"pval:${n}:${depth}", old)
-    s2 = s2.set(f"pdepth:${n}", f"${depth + 1}")
+    s2[f"pdepth:${n}"] = f"${depth + 1}"
     s2 = mac_set(s2, n, b)
     return {text: "", st: s2}
   }
@@ -912,7 +912,7 @@ proc call_builtin(name: Str, margs: List[Str], st: Map[Str]) [fs, process, env, 
     if depth > 0 {
       let nd = depth - 1
       let saved = sg(st, f"pval:${n}:${nd}", "")
-      s2 = s2.set(f"pdepth:${n}", f"${nd}")
+      s2[f"pdepth:${n}"] = f"${nd}"
       s2 = mac_set(s2, n, saved)
     } else {
       s2 = mac_unset(s2, n)
@@ -1428,7 +1428,7 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
 
         if content != "" {
           s2 = emit(content, s2)
-          s2 = s2.set(f"div:${n}", "")
+          s2[f"div:${n}"] = ""
         }
       }
     }
@@ -2320,17 +2320,18 @@ proc main(margs: List[Str] = []) [fs, process, env, error, io] {
   }
 
   var st: Map[Str] = map.empty()
-  st = st.set("open_q", "`").set("close_q", "'")
-  st = st.set("com_start", "#")
-  st = st.set("cur_div", "0").set("div:0", "")
-  st = st.set("wrap", "").set("sysval", "0")
-  st = st.set("file", "").set("line", "1")
+  st["open_q"] = "`"
+  st["close_q"] = "'"
+  st["com_start"] = "#"
+  st["cur_div"] = "0"
+  st["div:0"] = ""
+  st["wrap"] = ""
+  st["sysval"] = "0"
+  st["file"] = ""
+  st["line"] = "1"
 
-  st = st.set(
-    "include_paths",
-    include_paths.join("""
-"""),
-  )
+  st["include_paths"] = include_paths.join("""
+""")
 
   st = register_builtins(st, prefix)?
   st = mac_set(st, "__gnu__", "")
@@ -2350,13 +2351,13 @@ proc main(margs: List[Str] = []) [fs, process, env, error, io] {
   if files.len() == 0 {
     # No file args: read stdin
     let content = io.stdin_text()?
-    st = st.set("file", "stdin")
+    st["file"] = "stdin"
     let r = expand_full(content, st)?
     st = r.st
   } else {
     for filepath in files {
       let content = if filepath == "-" { io.stdin_text()? } else { fs.read_text(Path.parse(filepath)?)? }
-      st = st.set("file", if filepath == "-" { "stdin" } else { filepath })
+      st["file"] = if filepath == "-" { "stdin" } else { filepath }
       let r = expand_full(content, st)?
       st = r.st
     }
@@ -2366,7 +2367,7 @@ proc main(margs: List[Str] = []) [fs, process, env, error, io] {
   let wrap = sg(st, "wrap", "")
 
   if wrap != "" {
-    st = st.set("wrap", "")
+    st["wrap"] = ""
     let r = expand_full(wrap, st)?
     st = r.st
   }

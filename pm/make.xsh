@@ -357,7 +357,7 @@ proc check_tasks(tasks: List[Record], jobs_count: Int) [error] {
       return Err(MakeError.InvalidTask(message: f"make task '${task.name}' has empty argv"))
     }
 
-    names = names.set(task.name, true)
+    names[task.name] = true
 
     for output in task.outputs {
       let key = output.display()
@@ -370,7 +370,7 @@ proc check_tasks(tasks: List[Record], jobs_count: Int) [error] {
         return Err(MakeError.DuplicateOutput(message: f"duplicate make output '${key}'"))
       }
 
-      outputs = outputs.set(key, true)
+      outputs[key] = true
     }
   }
 
@@ -636,15 +636,15 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
   var skip_count = 0
 
   for task in tasks {
-    task_by_name = task_by_name.set(task.name, task)
-    remaining_deps = remaining_deps.set(task.name, task.deps.len())
+    task_by_name[task.name] = task
+    remaining_deps[task.name] = task.deps.len()
 
     if task.deps.len() == 0 {
       ready = ready.push(task.name)
     }
 
     for dep in task.deps {
-      dependents = dependents.set(dep, dependents.get(dep, empty_strings()).push(task.name))
+      dependents[dep] = dependents.get(dep, empty_strings()).push(task.name)
     }
   }
 
@@ -657,7 +657,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
 
       if ! scheduled.get(task_name, false) {
         let task = task_by_name.get(task_name)?
-        scheduled = scheduled.set(task.name, true)
+        scheduled[task.name] = true
 
         if should_run(task)? {
           running = running.push(spawn_task(task)?)
@@ -669,7 +669,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
             )
           }
         } else {
-          done = done.set(task.name, true)
+          done[task.name] = true
           done_count += 1
           skip_count += 1
 
@@ -681,7 +681,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
 
           for dependent in dependents.get(task.name, empty_strings()) {
             let remaining = remaining_deps.get(dependent, 0) - 1
-            remaining_deps = remaining_deps.set(dependent, remaining)
+            remaining_deps[dependent] = remaining
 
             if remaining == 0 {
               ready = ready.push(dependent)
@@ -710,7 +710,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
     for completed in completed_rows {
       let completed_index: Int = completed.index
       let row = running[completed_index]
-      completed_indices = completed_indices.set(completed_index_key(completed_index), true)
+      completed_indices[completed_index_key(completed_index)] = true
 
       if ! completed.status.ok {
         cancel_running_uncompleted(running, completed_indices)
@@ -724,12 +724,12 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
 
     for row in completed_tasks {
       pending_stamps = pending_stamps.push(row)
-      done = done.set(row.task.name, true)
+      done[row.task.name] = true
       done_count += 1
 
       for dependent in dependents.get(row.task.name, empty_strings()) {
         let remaining = remaining_deps.get(dependent, 0) - 1
-        remaining_deps = remaining_deps.set(dependent, remaining)
+        remaining_deps[dependent] = remaining
 
         if remaining == 0 {
           ready = ready.push(dependent)
@@ -742,7 +742,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
 
         if ! scheduled.get(task_name, false) {
           let task = task_by_name.get(task_name)?
-          scheduled = scheduled.set(task.name, true)
+          scheduled[task.name] = true
 
           if should_run(task)? {
             running = running.push(spawn_task(task)?)
@@ -754,7 +754,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
               )
             }
           } else {
-            done = done.set(task.name, true)
+            done[task.name] = true
             done_count += 1
             skip_count += 1
 
@@ -766,7 +766,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
 
             for dependent in dependents.get(task.name, empty_strings()) {
               let remaining = remaining_deps.get(dependent, 0) - 1
-              remaining_deps = remaining_deps.set(dependent, remaining)
+              remaining_deps[dependent] = remaining
 
               if remaining == 0 {
                 ready = ready.push(dependent)
