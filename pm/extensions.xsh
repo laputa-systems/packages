@@ -19,8 +19,7 @@ export proc read_extension_summary(candidate: Path) [fs] -> Result[Str] {
   ""
 }
 
-export proc discover_extensions() [fs, env, error] -> Result[List[Extension]] {
-  var extensions: List[Extension] = []
+export stream extension_candidates() [fs, env, error] -> Stream[Extension] {
   var seen: Map[Bool] = map.empty()
   let path_entries = env.path_entries("PATH")?
 
@@ -41,22 +40,21 @@ export proc discover_extensions() [fs, env, error] -> Result[List[Extension]] {
 
           if ! set.has(seen, action) {
             let summary = read_extension_summary(entry.path)?
-            extensions = extensions.push({name: action, path: entry.path, summary})
+            yield {name: action, path: entry.path, summary}
             seen = set.add(seen, action)
           }
         }
       }
     }
   }
+}
 
-  let sorted = extensions |> sort-by .name
-  sorted
+export proc discover_extensions() [fs, env, error] -> Result[List[Extension]] {
+  extension_candidates() |> sort-by .name
 }
 
 export proc find_extension(action: Str) [fs, env, error] -> Result[Extension] {
-  let extensions = discover_extensions()?
-
-  for extension in extensions {
+  for extension in extension_candidates() {
     if extension.name == action {
       return extension
     }
@@ -123,8 +121,7 @@ export proc invoke_extension(action: Str, ctx: PmContext, raw: List[Str]) [fs, p
   )?
 }
 
-export proc load_hook_paths() [env, error] -> Result[List[Path]] {
-  var hook_paths: List[Path] = []
+export stream hook_paths() [env, error] -> Stream[Path] {
   var hook_var = ""
 
   if (env.get("XSH_PM_HOOKS") ?? "").trim() != "" {
@@ -134,24 +131,24 @@ export proc load_hook_paths() [env, error] -> Result[List[Path]] {
   }
 
   if hook_var == "" {
-    return hook_paths
+    return
   }
 
   for entry in env.path_entries(hook_var)? {
     let trimmed = entry.raw.trim()
 
     if trimmed != "" {
-      hook_paths = hook_paths.push(Path.parse(trimmed)?)
+      yield Path.parse(trimmed)?
     }
   }
+}
 
-  hook_paths
+export proc load_hook_paths() [env, error] -> Result[List[Path]] {
+  hook_paths().collect()
 }
 
 export proc run_lifecycle_hooks(hook_name: Str, pkg_name: Str, ctx: PmContext, extra: Str) [fs, process, env, error] {
-  let hook_paths = load_hook_paths()?
-
-  for hook in hook_paths {
+  for hook in hook_paths() {
     if ! fs.exists(hook)? {
       return Err(PmError.LifecycleHook(f"${hook_name} hook not found: ${hook.display()}"))
     }

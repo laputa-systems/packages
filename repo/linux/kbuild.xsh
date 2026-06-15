@@ -911,7 +911,7 @@ proc composite_members(dir: Path, item: Str, vars: Map[Str]) [] -> List[Path] {
   return unique_paths(members)
 }
 
-proc active_objects_for_dir(dir: Path, vars: Map[Str]) [] -> List[Path] {
+stream active_objects_for_dir(dir: Path, vars: Map[Str]) [] -> Stream[Path] {
   var objects: List[Path] = []
   var words = vars.get("obj-y", "").fields()
   words = words.extend(vars.get("lib-y", "").fields())
@@ -924,11 +924,13 @@ proc active_objects_for_dir(dir: Path, vars: Map[Str]) [] -> List[Path] {
 
       if ! has_plan_path(objects, obj) {
         objects = objects.push(obj)
+        yield obj
       }
 
       for member in composite_members(dir, active_item, vars) {
         if ! has_plan_path(objects, member) {
           objects = objects.push(member)
+          yield member
         }
       }
     }
@@ -937,10 +939,9 @@ proc active_objects_for_dir(dir: Path, vars: Map[Str]) [] -> List[Path] {
   for obj in extra_objects_for_dir(dir) {
     if ! has_plan_path(objects, obj) {
       objects = objects.push(obj)
+      yield obj
     }
   }
-
-  return objects
 }
 
 pure extra_objects_for_dir(dir: Path) -> List[Path] {
@@ -1401,7 +1402,7 @@ export proc prune_inactive_objects(
   let dir_objects: List[ActiveDirObjects] = plan.dirs
     |> par-map --jobs=planner_jobs() { |dir|
       let vars = vars_for_dir(root, dir, config, srcarch)?
-      {dir: dir, objects: active_objects_for_dir(dir, vars)}
+      {dir: dir, objects: active_objects_for_dir(dir, vars).collect()}
     }
 
   for row in dir_objects {
