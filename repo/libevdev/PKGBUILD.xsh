@@ -133,8 +133,7 @@ proc c_lookup_lines(
     lookups = lookups.push({name: max_name, value: max_name})
   }
 
-  var lines = [f"    { .name = \"${item.name}\", .value = ${item.value} }," for item in lookups |> sort-by .name]
-  return lines
+  [f"    { .name = \"${item.name}\", .value = ${item.value} }," for item in lookups |> sort-by .name]
 }
 
 proc collect_event_defs(path_value: Path) [fs, error] -> Result[Record] {

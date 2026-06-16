@@ -57,8 +57,7 @@ proc compiler_rt_builtins(cc: Path, arch: Str) [fs, error] -> Result[List[Path]]
     }
   }
 
-  let empty: List[Path] = []
-  return empty
+  []
 }
 
 proc compile_asm_lo_task(cc: Path, triple: Str, includes: List[Str], src: Path, out: Path) [] -> make.MakeTask {

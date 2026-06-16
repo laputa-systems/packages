@@ -17,13 +17,11 @@ pure empty_path() -> Path {
 }
 
 pure empty_strings() -> List[Str] {
-  let empty: List[Str] = []
-  return empty
+  []
 }
 
 pure empty_records() -> List[Record] {
-  let empty: List[Record] = []
-  return empty
+  []
 }
 
 pure has_path(path_value: Path) -> Bool {
@@ -39,8 +37,7 @@ pure depfile_path(out: Path) -> Path {
 }
 
 pure path_args(paths: List[Path]) -> List[Str] {
-  var path_args_out = [path_value.display() for path_value in paths]
-  return path_args_out
+  [path_value.display() for path_value in paths]
 }
 
 pure all_deps_done(deps: List[Str], done: Map[Bool]) -> Bool {
@@ -413,8 +410,7 @@ proc depfile_inputs(depfile: Path, cwd: Path) [fs, error] -> Result[List[Path]] 
 
   let parts = first.split(":")
   let deps_text = parts[1]
-  var deps = [dep_path(cwd, dep) for dep in deps_text.words() if dep != "\\"]
-  return deps
+  [dep_path(cwd, dep) for dep in deps_text.words() if dep != "\\"]
 }
 
 proc all_inputs(task: Record) [fs, error] -> Result[List[Path]] {
