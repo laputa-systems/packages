@@ -2323,7 +2323,7 @@ proc main(margs: List[Str] = []) [fs, process, env, error, io] {
     i = i + 1
   }
 
-  var st: Map[Str] = map.empty()
+  var st: Map[Str] = {}
   st["open_q"] = "`"
   st["close_q"] = "'"
   st["com_start"] = "#"

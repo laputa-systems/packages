@@ -560,7 +560,7 @@ export proc collect_remote_packages(
   names: List[Str],
 ) [fs, env, error] -> Result[List[RemotePackage]] {
   var packages: List[RemotePackage] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
   var pending = names
   var pending_index = 0
 
@@ -589,7 +589,7 @@ export proc order_remote_packages(
   packages: List[RemotePackage],
 ) [fs, error] -> Result[List[RemotePackage]] {
   var ordered: List[RemotePackage] = []
-  var by_name: Map[Int] = map.empty()
+  var by_name: Map[Int] = {}
   var pkg_index = 0
 
   for pkg in packages {
@@ -597,7 +597,7 @@ export proc order_remote_packages(
     pkg_index += 1
   }
 
-  var added: Map[Bool] = map.empty()
+  var added: Map[Bool] = {}
 
   while ordered.len() < packages.len() {
     var progressed = false

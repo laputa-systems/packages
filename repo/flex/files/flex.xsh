@@ -120,7 +120,7 @@ proc expand_definitions(pattern: Str, defs: Map[Str]) [error] -> Result[Str] {
 }
 
 proc parse_definitions(text: Str) [error] -> Result[Map[Str]] {
-  var defs: Map[Str] = map.empty()
+  var defs: Map[Str] = {}
 
   for raw in text.lines() {
     let line = raw.trim()

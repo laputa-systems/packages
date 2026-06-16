@@ -139,7 +139,7 @@ proc c_lookup_lines(
 
 proc collect_event_defs(path_value: Path) [fs, error] -> Result[Record] {
   var defs: List[EventDef] = []
-  var max_codes: Map[Int] = map.empty()
+  var max_codes: Map[Int] = {}
 
   for line in path_value.read_text()?.split("""
 """) {

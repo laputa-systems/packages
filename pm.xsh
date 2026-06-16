@@ -49,7 +49,7 @@ proc order_repo_build_packages(
   index: List[RemotePackage],
 ) [fs, env, error] -> Result[List[Package]] {
   var ordered: List[Package] = []
-  var by_name: Map[Int] = map.empty()
+  var by_name: Map[Int] = {}
   var pkg_index = 0
 
   for pkg in packages {
@@ -57,7 +57,7 @@ proc order_repo_build_packages(
     pkg_index += 1
   }
 
-  var repo_names: Map[Bool] = map.empty()
+  var repo_names: Map[Bool] = {}
   let arch = machine_arch()?
 
   for item in index {
@@ -66,7 +66,7 @@ proc order_repo_build_packages(
     }
   }
 
-  var added: Map[Bool] = map.empty()
+  var added: Map[Bool] = {}
 
   while ordered.len() < packages.len() {
     var progressed = false
@@ -113,8 +113,8 @@ proc order_world_build_packages(
   include_mkdeps: Bool,
 ) [fs, env, error] -> Result[List[Package]] {
   var ordered: List[Package] = []
-  var local_names: Map[Bool] = map.empty()
-  var repo_names: Map[Bool] = map.empty()
+  var local_names: Map[Bool] = {}
+  var repo_names: Map[Bool] = {}
 
   for pkg in packages {
     local_names[pkg.name] = true
@@ -126,7 +126,7 @@ proc order_world_build_packages(
     }
   }
 
-  var added: Map[Bool] = map.empty()
+  var added: Map[Bool] = {}
 
   while ordered.len() < packages.len() {
     var progressed = false
@@ -170,7 +170,7 @@ proc missing_world_dependencies(
   built_names: Map[Bool],
 ) [fs, error] -> Result[List[Str]] {
   var missing: List[Str] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for dep in deps {
     if local_names.get(dep, false) and ! built_names.get(dep, false) {
@@ -195,7 +195,7 @@ proc missing_world_build_dependencies(
   cross_build: Bool,
 ) [fs, error] -> Result[List[Str]] {
   var missing: List[Str] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for dep in deps {
     if local_names.get(dep, false) and ! built_names.get(dep, false) and ! world_dependency_is_seeded(
@@ -223,7 +223,7 @@ proc missing_fresh_world_dependencies(
   remote_latest: Map[RemotePackage],
 ) [fs, error] -> Result[List[Str]] {
   var missing: List[Str] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for dep in deps {
     if local_names.get(dep, false) and ! built_names.get(dep, false) {
@@ -340,7 +340,7 @@ proc seed_world_package_dependency_set(staged_root: Path, package_root: Path, ow
     required = required.push(true)
   }
 
-  var copied: Map[Bool] = map.empty()
+  var copied: Map[Bool] = {}
   var index = 0
 
   while index < names.len() {
@@ -530,7 +530,7 @@ proc world_cache_repo_dir(cache_key: Str) [env, error] -> Result[Path] {
 
 proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]] {
   var dirs: List[Path] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for item in raw {
     let input = path.absolute(Path.parse(item)?)?
@@ -570,7 +570,7 @@ proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]]
 
 proc world_local_dependency_names(pkg: Package, local_names: Map[Bool]) [] -> List[Str] {
   var names: List[Str] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for dep in effective_world_dependencies(pkg, true) {
     if local_names.get(dep, false) and ! seen.get(dep, false) and ! world_dependency_is_seeded(pkg, dep, false) {
@@ -583,7 +583,7 @@ proc world_local_dependency_names(pkg: Package, local_names: Map[Bool]) [] -> Li
 }
 
 proc world_plan_levels(ordered: List[Package], local_names: Map[Bool]) [] -> Map[Int] {
-  var levels: Map[Int] = map.empty()
+  var levels: Map[Int] = {}
 
   for pkg in ordered {
     var level = 0
@@ -682,7 +682,7 @@ proc planned_world_packages(
   state_planned_rels: Map[Str],
 ) [error] -> Result[List[Package]] {
   var planned: List[Package] = []
-  var changed: Map[Bool] = map.empty()
+  var changed: Map[Bool] = {}
 
   for pkg in ordered {
     var planned_pkg = pkg
@@ -741,12 +741,7 @@ proc planned_world_packages(
 }
 
 proc planned_world_package_map(planned: List[Package]) [] -> Map[Package] {
-  var packages: Map[Package] = map.empty()
-
-  for pkg in planned {
-    packages[pkg.name] = pkg
-  }
-
+  var packages = {pkg.name: pkg for pkg in planned}
   packages
 }
 
@@ -1069,7 +1064,7 @@ proc world_remote_has(index: List[RemotePackage], arch: Str, name: Str) [] -> Bo
 }
 
 proc world_latest_remote_map(index: List[RemotePackage], arch: Str) [error] -> Result[Map[RemotePackage]] {
-  var latest: Map[RemotePackage] = map.empty()
+  var latest: Map[RemotePackage] = {}
 
   for entry in index {
     if entry.arch == arch {
@@ -1164,7 +1159,7 @@ proc world_remote_metadata_hashes(
   var candidates: List[RemotePackage] = []
 
   if repo == "" {
-    let empty: Map[Str] = map.empty()
+    let empty: Map[Str] = {}
     return empty
   }
 
@@ -1179,7 +1174,7 @@ proc world_remote_metadata_hashes(
   }
 
   if candidates.len() == 0 {
-    let empty: Map[Str] = map.empty()
+    let empty: Map[Str] = {}
     return empty
   }
 
@@ -1192,12 +1187,7 @@ proc world_remote_metadata_hashes(
       {name: entry.name, sha256: remote_metadata_sha256(repo, out, entry)?}
     }
 
-  var hashes: Map[Str] = map.empty()
-
-  for row in rows {
-    hashes[row.name] = row.sha256
-  }
-
+  var hashes = {row.name: row.sha256 for row in rows}
   hashes
 }
 
@@ -1458,8 +1448,8 @@ proc ensure_world_state_compatible(
   let state_path = world_state_path(repo_dir)
 
   if ! fs.exists(state_path)? {
-    let built_names: Map[Bool] = map.empty()
-    let unchanged_names: Map[Bool] = map.empty()
+    let built_names: Map[Bool] = {}
+    let unchanged_names: Map[Bool] = {}
     write_world_state(repo_dir, fingerprint, packages, built_names, unchanged_names, false)?
   }
 
@@ -1470,8 +1460,8 @@ proc ensure_world_state_compatible(
     let old_built: List[Str] = state.get("built")?
     let old_proofed: List[Str] = state.get("proofed")?
     let old_unchanged: List[Str] = if state.has("unchanged") { state.get("unchanged")? } else { [] }
-    var built_names: Map[Bool] = map.empty()
-    var unchanged_names: Map[Bool] = map.empty()
+    var built_names: Map[Bool] = {}
+    var unchanged_names: Map[Bool] = {}
 
     for pkg in packages {
       let id = world_package_id(pkg)
@@ -1492,7 +1482,7 @@ proc ensure_world_state_compatible(
 }
 
 proc world_state_planned_rels(repo_dir: Path, packages: List[Package]) [fs, error] -> Result[Map[Str]] {
-  var rels: Map[Str] = map.empty()
+  var rels: Map[Str] = {}
   let state_path = world_state_path(repo_dir)
 
   if ! fs.exists(state_path)? {
@@ -1500,12 +1490,7 @@ proc world_state_planned_rels(repo_dir: Path, packages: List[Package]) [fs, erro
   }
 
   let state = read_world_state(repo_dir)?
-  var versions: Map[Str] = map.empty()
-
-  for pkg in packages {
-    versions[pkg.name] = pkg.ver
-  }
-
+  var versions = {pkg.name: pkg.ver for pkg in packages}
   let rows: List[Record] = state.get("packages")?
 
   for row in rows {
@@ -1728,12 +1713,7 @@ proc command_upgrade(ctx: PmContext, raw: List[Str]) [fs, net, process, env, tim
 }
 
 proc local_package_names(packages: List[Package]) [] -> Map[Bool] {
-  var names: Map[Bool] = map.empty()
-
-  for pkg in packages {
-    names[pkg.name] = true
-  }
-
+  var names = {pkg.name: true for pkg in packages}
   names
 }
 
@@ -1744,7 +1724,7 @@ proc missing_dependency_names(
   local_names: Map[Bool],
 ) [fs, error] -> Result[List[Str]] {
   var names: List[Str] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for pkg in packages {
     var deps = pkg.deps
@@ -1958,8 +1938,8 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
 
   let repo_urls = load_repo_urls()?
   var remote_index: List[RemotePackage] = []
-  var remote_latest: Map[RemotePackage] = map.empty()
-  var build_remote_latest: Map[RemotePackage] = map.empty()
+  var remote_latest: Map[RemotePackage] = {}
+  var build_remote_latest: Map[RemotePackage] = {}
 
   if repo_urls.repo != "" {
     remote_index = load_remote_index_from_repo(repo_urls.repo, out)?
@@ -1993,8 +1973,8 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
       fs.mkdir(build_root)?
     }
 
-    var built_names: Map[Bool] = map.empty()
-    var unchanged_names: Map[Bool] = map.empty()
+    var built_names: Map[Bool] = {}
+    var unchanged_names: Map[Bool] = {}
     let levels = world_plan_levels(ordered, local_names)
     let max_level = world_plan_max_level(ordered, levels)
     let build_max_level = if to_tranche >= 0 and to_tranche < max_level { to_tranche } else { max_level }
@@ -2218,7 +2198,7 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let packages = load_local_packages(raw_args)?
   let local_names = local_package_names(packages)
   let ordered = packages
-  let built_names: Map[Bool] = map.empty()
+  let built_names: Map[Bool] = {}
 
   for pkg in ordered {
     fs.remove(root, missing_ok: true)?

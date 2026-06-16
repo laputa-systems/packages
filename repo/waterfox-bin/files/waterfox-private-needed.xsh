@@ -37,7 +37,7 @@ pure sorted_keys(values: Map[Path]) -> List[Str] {
 }
 
 proc private_sonames(root: Path) [fs, error] -> Result[Map[Path]] {
-  var sonames: Map[Path] = map.empty()
+  var sonames: Map[Path] = {}
 
   for entry in fs.walk(root, gitignore: false)? |> where .kind == "file" {
     if is_elf_candidate(entry.name, entry.executable) {

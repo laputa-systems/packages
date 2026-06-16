@@ -20,7 +20,7 @@ export proc read_extension_summary(candidate: Path) [fs] -> Result[Str] {
 }
 
 export stream extension_candidates() [fs, env, error] -> Stream[Extension] {
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
   let path_entries = env.path_entries("PATH")?
 
   for entry in path_entries {

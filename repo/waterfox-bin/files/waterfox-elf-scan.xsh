@@ -44,7 +44,7 @@ pure sorted_keys(values: Map[Bool]) -> List[Str] {
 }
 
 proc private_sonames(root: Path) [fs, error] -> Result[Map[Bool]] {
-  var sonames: Map[Bool] = map.empty()
+  var sonames: Map[Bool] = {}
 
   for entry in fs.walk(root, gitignore: false)? |> where .kind == "file" {
     if is_elf_candidate(entry.name, entry.executable) {
@@ -73,8 +73,8 @@ export proc scan_waterfox_elf(
   let private = private_sonames(private_library_root)?
   let reject = regex.compile(reject_pattern)?
   var files: List[ElfFileReport] = []
-  var all_sonames: Map[Bool] = map.empty()
-  var external: Map[Bool] = map.empty()
+  var all_sonames: Map[Bool] = {}
+  var external: Map[Bool] = {}
 
   for entry in fs.walk(root, gitignore: false)? |> where .kind == "file" {
     if is_elf_candidate(entry.name, entry.executable) {

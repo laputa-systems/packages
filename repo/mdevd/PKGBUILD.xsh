@@ -57,7 +57,7 @@ pure gen_bits_template(text: Str, bits: Int, dfmt: Str, ofmt: Str, xfmt: Str, bf
 }
 
 proc read_sysdeps(path_value: Path) [fs, error] -> Result[Map[Str]] {
-  var sysdeps: Map[Str] = map.empty()
+  var sysdeps: Map[Str] = {}
 
   for line in path_value.read_text()?.split("""
 """) {
@@ -481,7 +481,7 @@ struct sockaddr_nl {
     "src/mdevd/mdevd-coldplug.c",
   ]
 
-  var objs: Map[Path] = map.empty()
+  var objs: Map[Path] = {}
   var tasks: List[make.MakeTask] = []
   var task_deps: List[Str] = []
   write_mdevd_config()?

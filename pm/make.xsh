@@ -341,8 +341,8 @@ proc check_tasks(tasks: List[Record], jobs_count: Int) [error] {
     return Err(MakeError.InvalidJobs(message: "job count must be positive"))
   }
 
-  var names: Map[Bool] = map.empty()
-  var outputs: Map[Bool] = map.empty()
+  var names: Map[Bool] = {}
+  var outputs: Map[Bool] = {}
 
   for task in tasks {
     if task.name == "" {
@@ -615,13 +615,13 @@ pure should_log_dynamic_progress(tasks_count: Int, event_count: Int, running_cou
 
 export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, error] -> Result[Unit] {
   check_tasks(tasks, jobs_count)?
-  var task_by_name: Map[Record] = map.empty()
-  var dependents: Map[List[Str]] = map.empty()
-  var remaining_deps: Map[Int] = map.empty()
+  var task_by_name: Map[Record] = {}
+  var dependents: Map[List[Str]] = {}
+  var remaining_deps: Map[Int] = {}
   var ready: List[Str] = []
   var ready_index = 0
-  var done: Map[Bool] = map.empty()
-  var scheduled: Map[Bool] = map.empty()
+  var done: Map[Bool] = {}
+  var scheduled: Map[Bool] = {}
   var running: List[Record] = []
   var pending_stamps: List[Record] = []
   var done_count = 0
@@ -695,7 +695,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
     )
 
     let completed_rows = process.wait_ready([row.handle for row in running])?
-    var completed_indices: Map[Bool] = map.empty()
+    var completed_indices: Map[Bool] = {}
     var completed_tasks: List[Record] = []
 
     for completed in completed_rows {

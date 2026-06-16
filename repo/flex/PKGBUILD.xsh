@@ -31,7 +31,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # Values captured from: CC="cc" ./configure --prefix=/usr --disable-nls
   # on x86_64 and aarch64 with Clang targeting musl.  flex has no
   # arch-specific configure probes so one set of values covers both.
-  var defines: Map[Str] = map.empty()
+  var defines: Map[Str] = {}
   defines["HAVE_ALLOCA"] = "1"
   defines["HAVE_ALLOCA_H"] = "1"
   defines["HAVE_DLFCN_H"] = "1"

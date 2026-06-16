@@ -384,7 +384,7 @@ export proc try_fetch_source_mirror_from_repo(out: Path, pkg: Package) [fs, net,
     (env.get("XSH_PM_REPO") ?? env.get("LAPUTA_REPO") ?? "").trim(),
   ]
 
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for repo in urls {
     if repo != "" and ! seen.get(repo, false) {

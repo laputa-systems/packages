@@ -24,7 +24,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # Step 1: generate libpkgconf/config.h.
   # All HAVE_* values are precomputed for Clang + musl on aarch64 and x86_64.
   # Captured from: configure CC="cc" --prefix=/usr --sysconfdir=/etc --disable-dependency-tracking
-  var defines: Map[Str] = map.empty()
+  var defines: Map[Str] = {}
   defines["HAVE_DECL_PLEDGE"] = "0"
   defines["HAVE_DECL_REALLOCARRAY"] = "1"
   defines["HAVE_DECL_STRLCAT"] = "1"

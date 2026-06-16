@@ -41,7 +41,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # entries, zero @VAR@ substitutions — all values are set explicitly here).
   # Values are for musl + Clang on x86_64 and aarch64; both
   # architectures exercise the same configure probes.
-  var defines: Map[Str] = map.empty()
+  var defines: Map[Str] = {}
 
   # Package metadata
   defines["PACKAGE"] = "\"bison\""

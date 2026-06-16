@@ -81,7 +81,7 @@ proc extract_function_names(path_value: Path) [fs, error] -> Result[List[Str]] {
 }
 
 proc source_definitions() [fs, error] -> Result[Map[Str]] {
-  var definitions: Map[Str] = map.empty()
+  var definitions: Map[Str] = {}
 
   for entry in fs.ls(p"src")? |> where .kind == "file" and .ext == "c" {
     let define_name = f"__${entry.name.replace(".c", "")}__"
@@ -97,7 +97,7 @@ proc source_definitions() [fs, error] -> Result[Map[Str]] {
 proc alias_declarations(headers: List[Path]) [fs, error] -> Result[List[Declaration]] {
   let definitions = source_definitions()?
   var declarations: List[Declaration] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for header in headers {
     for name_value in extract_function_names(header)? {

@@ -55,7 +55,7 @@ export proc install_remote_packages(ctx: PmContext, names: List[Str]) [fs, net, 
   let selected = collect_remote_packages(ctx.root, index, names)?
   let ordered = order_remote_packages(ctx.root, selected)?
   let tarball_packages = ordered |> where ! .metapackage
-  var tarballs: Map[Path] = map.empty()
+  var tarballs: Map[Path] = {}
 
   if tarball_packages.len() > 0 {
     let downloaded = tarball_packages
@@ -165,17 +165,12 @@ export proc load_manifest(db: Path) [fs, error] -> Result[List[Path]] {
 }
 
 export proc map_etcsums(etcsums: List[EtcSum]) [error] -> Result[Map[Str]] {
-  var mapped: Map[Str] = map.empty()
-
-  for entry in etcsums {
-    mapped[entry.path] = entry.sha256
-  }
-
+  var mapped = {entry.path: entry.sha256 for entry in etcsums}
   mapped
 }
 
 export proc load_etcsums(db: Path) [fs, error] -> Result[Map[Str]] {
-  var mapped: Map[Str] = map.empty()
+  var mapped: Map[Str] = {}
 
   if fs.exists(fp"${db}/etcsums.json")? {
     let rows: List[EtcSum] = json.read(fp"${db}/etcsums.json")?
@@ -328,7 +323,7 @@ export proc write_package_metadata(path_value: Path, arch: Str, item: BuiltPacka
 }
 
 export proc load_installed_owners(root: Path) [fs, error] -> Result[Map[Str]] {
-  var owners: Map[Str] = map.empty()
+  var owners: Map[Str] = {}
   let packages_db = packages_db_path(root)
 
   if ! fs.exists(packages_db)? {
@@ -563,7 +558,7 @@ export proc call_installed_hook(metadata: Record, hook_name: Str, root: Path) [f
 
 export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[Package]] {
   var packages: List[Package] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for dir in dirs {
     let pkgbuild = fp"${dir}/PKGBUILD.xsh"
@@ -639,7 +634,7 @@ export proc order_packages(
   allow_installed_deps: Bool,
 ) [fs, error] -> Result[List[Package]] {
   var ordered: List[Package] = []
-  var by_name: Map[Int] = map.empty()
+  var by_name: Map[Int] = {}
   var pkg_index = 0
 
   for pkg in packages {
@@ -647,7 +642,7 @@ export proc order_packages(
     pkg_index += 1
   }
 
-  var added: Map[Bool] = map.empty()
+  var added: Map[Bool] = {}
 
   while ordered.len() < packages.len() {
     var progressed = false
@@ -995,7 +990,7 @@ proc build_packages_in_chroot(
   packages: List[Package],
 ) [fs, net, process, env, time, error] -> Result[List[BuiltPackage]] {
   var built: List[BuiltPackage] = []
-  var owners: Map[Str] = map.empty()
+  var owners: Map[Str] = {}
 
   for pkg in packages {
     prepare_build_package_source(ctx, pkg)?
@@ -1112,7 +1107,7 @@ export proc build_packages(
   }
 
   var built: List[BuiltPackage] = []
-  var owners: Map[Str] = map.empty()
+  var owners: Map[Str] = {}
 
   if packages.len() > 0 {
     let _ = packages
@@ -1750,7 +1745,7 @@ proc print_dependency_tree_node(
 
 export proc collect_installed_tree_roots(root: Path) [fs, error] -> Result[List[Str]] {
   let installed_names = collect_installed_names(root)?
-  var depended: Map[Bool] = map.empty()
+  var depended: Map[Bool] = {}
 
   for name in installed_names {
     let deps = installed_package_deps(root, name)?
@@ -1775,7 +1770,7 @@ export proc print_dependency_tree(root: Path, names: List[Str]) [fs, error] {
     roots = collect_installed_tree_roots(root)?
   }
 
-  var expanded: Map[Bool] = map.empty()
+  var expanded: Map[Bool] = {}
 
   for name in roots {
     expanded = print_dependency_tree_node(root, name, "", true, true, expanded)?
