@@ -229,14 +229,7 @@ export proc collect_old_manifest_extra(
   old_manifest: List[Path],
   new_manifest: List[Path],
 ) [error] -> Result[List[Path]] {
-  var extra: List[Path] = []
-
-  for rel_path in old_manifest {
-    if ! new_manifest.contains(rel_path) {
-      extra = extra.push(rel_path)
-    }
-  }
-
+  var extra = [rel_path for rel_path in old_manifest if ! new_manifest.contains(rel_path)]
   extra
 }
 
@@ -690,14 +683,7 @@ export proc order_packages(
 }
 
 export proc filter_packages_by_names(packages: List[Package], names: List[Str]) [error] -> Result[List[Package]] {
-  var selected: List[Package] = []
-
-  for pkg in packages {
-    if names.contains(pkg.name) {
-      selected = selected.push(pkg)
-    }
-  }
-
+  var selected = [pkg for pkg in packages if names.contains(pkg.name)]
   selected
 }
 
@@ -1778,14 +1764,7 @@ export proc collect_installed_tree_roots(root: Path) [fs, error] -> Result[List[
     }
   }
 
-  var roots: List[Str] = []
-
-  for name in installed_names {
-    if ! depended.get(name, false) {
-      roots = roots.push(name)
-    }
-  }
-
+  var roots = [name for name in installed_names if ! depended.get(name, false)]
   roots
 }
 

@@ -62,14 +62,7 @@ proc fixture_arch() [env, error] -> Result[Str] {
 
 proc single_world_cache(home: Path) [fs, error] -> Result[Path] {
   let root = fp"${home}/.cache/laputa"
-  var found: List[Path] = []
-
-  for entry in fs.children(root)? {
-    if entry.kind == "dir" and entry.name.starts_with("world-") {
-      found = found.push(entry.path)
-    }
-  }
-
+  var found = [entry.path for entry in fs.children(root)? if entry.kind == "dir" and entry.name.starts_with("world-")]
   test.eq(found.len(), 1)?
   found[0]
 }

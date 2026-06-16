@@ -413,14 +413,7 @@ proc depfile_inputs(depfile: Path, cwd: Path) [fs, error] -> Result[List[Path]] 
 
   let parts = first.split(":")
   let deps_text = parts[1]
-  var deps: List[Path] = []
-
-  for dep in deps_text.words() {
-    if dep != "\\" {
-      deps = deps.push(dep_path(cwd, dep))
-    }
-  }
-
+  var deps = [dep_path(cwd, dep) for dep in deps_text.words() if dep != "\\"]
   return deps
 }
 

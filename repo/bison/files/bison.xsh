@@ -249,14 +249,7 @@ proc parse_rules(text: Str) [error] -> Result[List[GrammarRule]] {
 }
 
 proc nonterminals(rules: List[GrammarRule]) [error] -> Result[List[Str]] {
-  var names: List[Str] = []
-
-  for rule in rules {
-    if ! names.contains(rule.lhs) {
-      names = names.push(rule.lhs)
-    }
-  }
-
+  var names = [rule.lhs for rule in rules if ! names.contains(rule.lhs)]
   return names
 }
 
@@ -275,13 +268,7 @@ pure token_code_expr(symbol: Str, tokens: Map[Int]) -> Str {
 }
 
 proc generate_token_defines(tokens: Map[Int]) [error] -> Result[Str] {
-  var lines: List[Str] = []
-
-  for name in tokens.keys() {
-    if ! name.starts_with("'") {
-      lines = lines.push(f"#define ${name} ${tokens.get(name, 0)}")
-    }
-  }
+  var lines = [f"#define ${name} ${tokens.get(name, 0)}" for name in tokens.keys() if ! name.starts_with("'")]
 
   return lines.join("""
 """)

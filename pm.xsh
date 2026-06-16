@@ -544,13 +544,9 @@ proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]]
         seen[key] = true
       }
     } else {
-      var children: List[Path] = []
-
-      for child in fs.children(input)? {
-        if child.kind == "dir" and fs.exists(fp"${child.path}/PKGBUILD.xsh")? {
-          children = children.push(child.path)
-        }
-      }
+      var children = [child.path for child in fs.children(input)? if child.kind == "dir" and fs.exists(
+        fp"${child.path}/PKGBUILD.xsh",
+      )?]
 
       children = children |> sort-by .display()
 
@@ -641,14 +637,7 @@ proc world_plan_max_level(ordered: List[Package], levels: Map[Int]) [] -> Int {
 }
 
 proc world_packages_at_level(ordered: List[Package], levels: Map[Int], level: Int) [] -> List[Package] {
-  var tranche: List[Package] = []
-
-  for pkg in ordered {
-    if levels.get(pkg.name, 0) == level {
-      tranche = tranche.push(pkg)
-    }
-  }
-
+  var tranche = [pkg for pkg in ordered if levels.get(pkg.name, 0) == level]
   tranche
 }
 
