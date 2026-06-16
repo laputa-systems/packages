@@ -111,7 +111,13 @@ export proc build(dest: Path) [fs, process, env, error] {
   let jobs_flag = f"-j${cpu.count()}"
   let pc = pm_meson.pkg_config_env()?
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
-  let native_scanner = if pm_util.build_arch()? != pm_util.target_arch()? and build_root != "" { f"${build_root}/usr/bin/wayland-scanner" } else { "" }
+
+  let native_scanner = if pm_util.build_arch()? != pm_util.target_arch()? and build_root != "" {
+    f"${build_root}/usr/bin/wayland-scanner"
+  } else {
+    ""
+  }
+
   patch_python_generator(native_scanner)?
 
   env {
@@ -122,28 +128,42 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
     run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Ddefault_library=shared" "-Ddocumentation=false" "-Ddtd_validation=false" "-Dtests=false" "build" ?
+
     if native_scanner != "" {
       let native_scanner_path = fp"${fs.cwd()?}/build/wayland-scanner-native"
-      let clang = Path.parse(f"${build_root}/usr/lib/llvm22/bin/clang-22")?
+      let clang = fp"${build_root}/usr/lib/llvm22/bin/clang-22"
+
       env {
         PATH = f"${build_root}/usr/lib/llvm-toolchain/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}"
         LD_LIBRARY_PATH = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
       } {
         run $clang "-o" $native_scanner_path "src/scanner.c" "src/wayland-util.c" "-Ibuild" "-Ibuild/src" "-Isrc" f"-I${build_root}/usr/include" f"-L${build_root}/usr/lib" f"-Wl,-rpath,${build_root}/usr/lib" "-lexpat" ?
       } ?
+
       let native_scanner_wrapper = fp"${fs.cwd()?}/build/wayland-scanner-native-wrapper"
-      fs.write(native_scanner_wrapper, f"""#!/bin/sh
+
+      fs.write(
+        native_scanner_wrapper,
+        f"""#!/bin/sh
 LD_LIBRARY_PATH="${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
 export LD_LIBRARY_PATH
 exec "${native_scanner_path.display()}" "$@"
-""")?
+""",
+      )?
+
       fs.chmod(native_scanner_wrapper, 0o755)?
       let ninja = p"build/build.ninja"
       let scanner_text = native_scanner_wrapper.display()
       let ninja_text = ninja.read_text()?
-      let ninja_text_build_root = ninja_text.replace(f" -- ${build_root}/usr/bin/wayland-scanner ", f" -- ${scanner_text} ")
+
+      let ninja_text_build_root = ninja_text.replace(
+        f" -- ${build_root}/usr/bin/wayland-scanner ",
+        f" -- ${scanner_text} ",
+      )
+
       ninja.write_atomic(ninja_text_build_root.replace(" -- src/wayland-scanner ", f" -- ${scanner_text} "))?
     }
+
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {

@@ -9,15 +9,9 @@ export let deps: List[Str] = ["xsh"]
 
 export let mkdeps: List[Str] = []
 
-export let sources: List[Path] = [
-  p"service.xsh",
-  p"interfaces",
-]
+export let sources: List[Path] = [p"service.xsh", p"interfaces"]
 
-export let checksums: List[Str] = [
-  "SKIP",
-  "SKIP",
-]
+export let checksums: List[Str] = ["SKIP", "SKIP"]
 
 export proc build(dest: Path) [fs, error] {
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/net.xsh", 0o644, parents: true, overwrite: true)?
@@ -27,5 +21,5 @@ export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/etc/network/if-down.d")?
 
   # Expose the ifup core applet as a command for the net service and operators.
-  fs.symlink(p"../lib/xsh/core/ifup.xsh", fp"${dest}/usr/bin/ifup")?
+  fs.symlink(../lib/xsh/core/ifup.xsh, fp"${dest}/usr/bin/ifup")?
 }

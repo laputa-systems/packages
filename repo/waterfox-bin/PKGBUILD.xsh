@@ -29,20 +29,11 @@ error WaterfoxPackageError = Package(message: Str)
 let reject_sonames = "libX11|libX11-xcb|libxcb|libxcb-shm|libxcb-composite|libxcb-dri3|libxcb-ewmh|libxcb-icccm|libxcb-present|libxcb-randr|libxcb-render|libxcb-shape|libxcb-sync|libxcb-xfixes|libXcomposite|libXdamage|libXext|libXfixes|libXi|libXinerama|libXrandr|libXrender|libXcursor|libxkbfile|libXt|libSM|libICE|libGLX|libgtk|libgdk|libglib|libgio|libgobject|libpango|libatk|libatspi|libpipewire|libpulse|libdbus|libnotify|libsecret|libspeechd|libcups|libva|libvulkan|libmimalloc\\.so"
 
 type ElfScanModule = module {
-  export proc scan_waterfox_elf(
-    root: Path,
-    allowed_external_sonames: Path,
-    private_library_root: Path,
-    reject_pattern: Str,
-  ) [fs, error] -> Result[Record]
+  export proc scan_waterfox_elf(root: Path, allowed_external_sonames: Path, private_library_root: Path, reject_pattern: Str) [fs, error] -> Result[Record]
 }
 
 type PrivateNeededModule = module {
-  export proc verify_private_needed(
-    root: Path,
-    allowed_external_sonames: Path,
-    private_library_root: Path,
-  ) [fs, error] -> Result[Record]
+  export proc verify_private_needed(root: Path, allowed_external_sonames: Path, private_library_root: Path) [fs, error] -> Result[Record]
 }
 
 proc install_policy_prefs(dest: Path) [fs, error] {
@@ -97,7 +88,14 @@ export proc build(dest: Path) [fs, error] {
   }
 
   let scanner = module.load(p"waterfox-elf-scan.xsh")?.require(ElfScanModule)?
-  let scan_report = scanner.scan_waterfox_elf(dest, p"waterfox-allowed-external.sonames", fp"${dest}/opt/waterfox", reject_sonames)?
+
+  let scan_report = scanner.scan_waterfox_elf(
+    dest,
+    p"waterfox-allowed-external.sonames",
+    fp"${dest}/opt/waterfox",
+    reject_sonames,
+  )?
+
   let private_needed = module.load(p"waterfox-private-needed.xsh")?.require(PrivateNeededModule)?
 
   let private_needed_report = private_needed.verify_private_needed(
@@ -105,5 +103,6 @@ export proc build(dest: Path) [fs, error] {
     p"waterfox-allowed-external.sonames",
     fp"${dest}/opt/waterfox",
   )?
+
   let _ = {copied, scan_report, private_needed_report}
 }

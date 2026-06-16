@@ -59,7 +59,6 @@ proc ensure_x86_bzimage(image_path: Path) [fs, error] {
   }
 }
 
-
 proc main(rootfs: Path = /rootfs) [fs, env, error] {
   ensure_file(fp"${rootfs}/boot/vmlinuz", "kernel image")?
   ensure_file(fp"${rootfs}/usr/share/linux/config-7.0.5", "kernel config")?

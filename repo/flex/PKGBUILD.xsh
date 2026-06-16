@@ -12,7 +12,10 @@ export let deps: List[Str] = ["musl", "m4"]
 
 export let mkdeps: List[Str] = ["llvm-toolchain"]
 
-export let sources: List[Path] = [p"https://github.com/westes/flex/releases/download/vVERSION/flex-VERSION.tar.gz", p"files/flex.xsh"]
+export let sources: List[Path] = [
+  p"https://github.com/westes/flex/releases/download/vVERSION/flex-VERSION.tar.gz",
+  p"files/flex.xsh",
+]
 
 export let checksums: List[Str] = [
   "e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995",

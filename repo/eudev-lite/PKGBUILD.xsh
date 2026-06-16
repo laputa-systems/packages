@@ -62,10 +62,8 @@ export proc build(dest: Path) [fs, process, env, error] {
   let bin = p"obj/udev"
   let compile = make.compile_c_task(cc, triple, ["-std=c99", "-Wall", "-Wextra"], [], [], src, obj)
   let link = make.link_executable_task(cc, triple, [obj], [], [], bin, [compile.name])
-
   write_udev_stub()?
   make.run_tasks([compile, link], make.jobs()?)?
-
   fs.install(bin, fp"${dest}/usr/bin/udevadm", 0o755, parents: true, overwrite: true)?
   fs.install(bin, fp"${dest}/usr/bin/udevd", 0o755, parents: true, overwrite: true)?
   fs.install(bin, fp"${dest}/usr/lib/udev/systemd-udevd", 0o755, parents: true, overwrite: true)?

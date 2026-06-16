@@ -26,8 +26,8 @@ export pure elf_machine_name(arch: Str) -> Str {
 }
 
 export proc readelf_tool() [fs, process, env, error] -> Result[Path] {
-  let host_readelf = p"/usr/bin/readelf"
-  let host_llvm_readelf = p"/usr/bin/llvm-readelf"
+  let host_readelf = /usr/bin/readelf
+  let host_llvm_readelf = /usr/bin/llvm-readelf
 
   if fs.exists(host_readelf)? {
     return host_readelf

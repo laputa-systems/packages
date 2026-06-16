@@ -72,7 +72,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   let bin = p"obj/alsa-tool"
   let compile = make.compile_c_task(cc, triple, ["-std=c99", "-Wall", "-Wextra"], [], [], src, obj)
   let link = make.link_executable_task(cc, triple, [obj], [], [], bin, [compile.name])
-
   write_tool_source()?
   make.run_tasks([compile, link], make.jobs()?)?
 

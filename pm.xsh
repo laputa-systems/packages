@@ -2467,13 +2467,13 @@ proc current_pm_repo_root() [fs, error] -> Result[Path] {
     let parent = dir.parent
 
     if parent.display() == dir.display() {
-      return Path("")
+      return p""
     }
 
     dir = parent
   }
 
-  Path("")
+  p""
 }
 
 proc default_root_command_argv(argv: List[Str]) [fs, error] -> Result[List[Str]] {
@@ -2497,7 +2497,13 @@ proc default_root_command_argv(argv: List[Str]) [fs, error] -> Result[List[Str]]
     return argv
   }
 
-  var expanded: List[Str] = [argv[0], fp"${repo_root}/.root".display(), fp"${repo_root}/.work".display(), fp"${repo_root}/.out".display()]
+  var expanded: List[Str] = [
+    argv[0],
+    fp"${repo_root}/.root".display(),
+    fp"${repo_root}/.work".display(),
+    fp"${repo_root}/.out".display(),
+  ]
+
   var i = 1
 
   while i < argv.len() {

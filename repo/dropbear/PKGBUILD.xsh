@@ -16,10 +16,7 @@ export let sources: List[Path] = [
   p"service.xsh",
 ]
 
-export let checksums: List[Str] = [
-  "ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c",
-  "SKIP",
-]
+export let checksums: List[Str] = ["ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c", "SKIP"]
 
 pure task_names(paths: List[Path]) -> List[Str] {
   return [path_value.display() for path_value in paths]
@@ -169,7 +166,6 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   # sub-makes (libtomcrypt) don't get -I flags, so copy to src/ too
   fs.write(p"src/localoptions.h", local_opts)?
-
   let ldflags = f"-L${kr}/usr/lib"
   write_config_h()?
   let default_options_guard = ifndef_wrapped_defines(p"src/default_options.h")?

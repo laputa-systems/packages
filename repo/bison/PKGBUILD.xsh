@@ -62,7 +62,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   # m4 runtime path and GNU option flag
   defines["M4"] = "\"/usr/bin/m4\""
   defines["M4_GNU_OPTION"] = "\"--gnu\""
-
   defines["BITSIZEOF_PTRDIFF_T"] = abi.ptrdiff_bits
   defines["BITSIZEOF_SIG_ATOMIC_T"] = abi.sig_atomic_bits
   defines["BITSIZEOF_SIZE_T"] = abi.size_t_bits

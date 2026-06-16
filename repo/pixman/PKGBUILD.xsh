@@ -45,6 +45,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     } else {
       run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Ddefault_library=shared" "-Dlibpng=disabled" "-Dgtk=disabled" "-Dtests=disabled" "-Ddemos=disabled" "-Dmmx=disabled" "-Dsse2=disabled" "-Dssse3=disabled" "build" ?
     }
+
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {

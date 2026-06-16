@@ -17,7 +17,6 @@ proc main(rootfs: Path = /rootfs) [fs, env, error] {
   ensure(fs.exists(fp"${rootfs}/etc/pam.d/sudo")?, "proof-linux-pam", "missing sudo PAM service")
   ensure(fs.exists(fp"${rootfs}/etc/pam.d/su")?, "proof-linux-pam", "missing su PAM service")
   ensure(fs.exists(fp"${rootfs}/etc/pam.d/su-l")?, "proof-linux-pam", "missing su-l PAM service")
-
   print f"linux-pam ok: ${arch}"
 }
 

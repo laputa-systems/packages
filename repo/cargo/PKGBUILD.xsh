@@ -45,7 +45,7 @@ pure rust_dist_arch(arch: Str) -> Str {
 }
 
 export proc build(dest: Path) [fs, env, error] {
-  let arch = rust_dist_arch(pm_util.target_arch()?) 
+  let arch = rust_dist_arch(pm_util.target_arch()?)
   var cargo_src = p"cargo/cargo"
   var rustc_src = p"rustc/rustc"
   var rust_std_src = fp"rust-std/rust-std-${arch}-unknown-linux-musl"
@@ -64,8 +64,6 @@ export proc build(dest: Path) [fs, env, error] {
 
   var copied = fs.copy_tree(cargo_src, fp"${dest}/usr", parents: true, overwrite: true)?
   copied = fs.copy_tree(rustc_src, fp"${dest}/usr", parents: true, overwrite: true)?
-
   copied = fs.copy_tree(rust_std_src, fp"${dest}/usr", parents: true, overwrite: true)?
-
   let _ = copied
 }

@@ -135,8 +135,8 @@ proc build_x86_vdso(cc: Path) [fs, process, env, error] {
   fs.mkdir(vdso_dir)?
   fs.mkdir(p".xsh-kbuild/host/arch/x86/tools")?
   let vdso2c = p".xsh-kbuild/host/arch/x86/tools/vdso2c"
-
   PKGBUILD_shared.emit_kbuild_progress("xsh-kbuild-x86-vdso build-host-vdso2c")?
+
   PKGBUILD_shared.run_native_command(
     [
       cc.display(),
@@ -157,8 +157,8 @@ proc build_x86_vdso(cc: Path) [fs, process, env, error] {
 
   let base = x86_vdso_base(cc)
   let lds = p"arch/x86/entry/vdso/vdso64/vdso64.lds"
-
   PKGBUILD_shared.emit_kbuild_progress("xsh-kbuild-x86-vdso preprocess-lds")?
+
   PKGBUILD_shared.run_native_command(
     base.extend(["-D__ASSEMBLY__", "-E", "-P", "-C", "arch/x86/entry/vdso/vdso64/vdso64.lds.S", "-o", lds.display()]),
   )?
@@ -181,8 +181,8 @@ proc build_x86_vdso(cc: Path) [fs, process, env, error] {
 
   for item in objects {
     let asm_args = if item.asm { ["-D__ASSEMBLY__"] } else { [] }
-
     PKGBUILD_shared.emit_kbuild_progress(f"xsh-kbuild-x86-vdso compile ${item.object.display()}")?
+
     PKGBUILD_shared.run_native_command(
       base.extend(asm_args).extend(["-c", item.source.display(), "-o", item.object.display()]),
     )?
@@ -200,6 +200,7 @@ proc build_x86_vdso(cc: Path) [fs, process, env, error] {
 
   if config.values.get("X86_SGX", "") == "y" {
     PKGBUILD_shared.emit_kbuild_progress("xsh-kbuild-x86-vdso compile arch/x86/entry/vdso/vdso64/vsgx.o")?
+
     PKGBUILD_shared.run_native_command(
       base.extend(
         ["-D__ASSEMBLY__", "-c", "arch/x86/entry/vdso/vdso64/vsgx.S", "-o", "arch/x86/entry/vdso/vdso64/vsgx.o"],
@@ -210,6 +211,7 @@ proc build_x86_vdso(cc: Path) [fs, process, env, error] {
   }
 
   PKGBUILD_shared.emit_kbuild_progress("xsh-kbuild-x86-vdso link vdso64.so.dbg")?
+
   PKGBUILD_shared.run_native_command(
     [
       "ld.lld",
@@ -233,6 +235,7 @@ proc build_x86_vdso(cc: Path) [fs, process, env, error] {
   )?
 
   PKGBUILD_shared.emit_kbuild_progress("xsh-kbuild-x86-vdso strip vdso64.so")?
+
   PKGBUILD_shared.run_native_command(
     [
       "llvm-objcopy",
@@ -245,6 +248,7 @@ proc build_x86_vdso(cc: Path) [fs, process, env, error] {
   )?
 
   PKGBUILD_shared.emit_kbuild_progress("xsh-kbuild-x86-vdso convert vdso64-image.c")?
+
   PKGBUILD_shared.run_native_command(
     [
       vdso2c.display(),
@@ -391,12 +395,7 @@ proc generate_x86_inat_tables() [fs, error] {
 }
 
 pure realmode_object_paths(objects: List[Str]) -> List[Str] {
-  var paths: List[Str] = []
-
-  for obj in objects {
-    paths = paths.push(fp"arch/x86/realmode/rm/${obj}".display())
-  }
-
+  var paths = [fp"arch/x86/realmode/rm/${obj}".display() for obj in objects]
   return paths
 }
 
@@ -462,13 +461,7 @@ proc build_x86_realmode_payload(cc: Path) [fs, process, env, error] {
     ],
   )?
 
-  var realmode_objects: List[Str] = [
-    "header.o",
-    "trampoline_64.o",
-    "stack.o",
-    "reboot.o",
-  ]
-
+  var realmode_objects: List[Str] = ["header.o", "trampoline_64.o", "stack.o", "reboot.o"]
   let acpi_sleep = p".config".read_text()?.contains("CONFIG_ACPI_SLEEP=y")
 
   if acpi_sleep {
@@ -526,11 +519,7 @@ proc build_x86_realmode_payload(cc: Path) [fs, process, env, error] {
     "-fno-asynchronous-unwind-tables",
   ]
 
-  let realmode_asm_cflags = realmode_cflags.extend(
-    [
-    "-D__ASSEMBLY__",
-    ],
-  )
+  let realmode_asm_cflags = realmode_cflags.extend(["-D__ASSEMBLY__"])
 
   for asm in [
     {source: "header.S", object: "header.o"},
@@ -558,17 +547,15 @@ proc build_x86_realmode_payload(cc: Path) [fs, process, env, error] {
       )?
     }
 
-    for source in [
-      "wakemain.c",
-      "video-mode.c",
-      "regs.c",
-      "video-vga.c",
-      "video-vesa.c",
-      "video-bios.c",
-    ] {
+    for source in ["wakemain.c", "video-mode.c", "regs.c", "video-vga.c", "video-vesa.c", "video-bios.c"] {
       PKGBUILD_shared.run_native_command(
         realmode_cflags.extend(
-          ["-c", fp"${realmode_dir}/${source}".display(), "-o", fp"${realmode_dir}/${source.replace(".c", ".o")}".display()],
+          [
+            "-c",
+            fp"${realmode_dir}/${source}".display(),
+            "-o",
+            fp"${realmode_dir}/${source.replace(".c", ".o")}".display(),
+          ],
         ),
       )?
     }
@@ -651,18 +638,16 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
   PKGBUILD_shared.timing_done("prepare", prepare_start)
   PKGBUILD_shared.stop_after("prepare")?
   let config = kbuild.load_config(p".config")?
-
   let discover_start = PKGBUILD_shared.timing_start("discover")
-  let cached_plan = PKGBUILD_shared.add_extra_objects_from_env(
-    PKGBUILD_shared.cached_package_plan(srcarch)?,
-  )?
-
+  let cached_plan = PKGBUILD_shared.add_extra_objects_from_env(PKGBUILD_shared.cached_package_plan(srcarch)?)?
   let trust_plan_cache = (env.get("XSH_LINUX_KBUILD_TRUST_PLAN_CACHE") ?? "") == "1"
+
   let refreshed_plan = if trust_plan_cache {
     cached_plan
   } else {
     kbuild.refresh_x86_kernel_config_objects(config, cached_plan)?
   }
+
   let plan = if trust_plan_cache {
     refreshed_plan
   } else {
@@ -671,8 +656,8 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
 
   PKGBUILD_shared.timing_done("discover", discover_start)
   PKGBUILD_shared.stop_after("discover")?
-
   let plan_start = PKGBUILD_shared.timing_start("plan")
+
   let archive_plan = PKGBUILD_shared.cached_archive_plan(
     plan,
     cc,
@@ -696,7 +681,6 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
   let archive_report = p".xsh-kbuild-archive-plan.json"
   let root_archive = p".xsh-kbuild/built-in.a"
   let reuse_archives = (env.get("XSH_LINUX_KBUILD_REUSE_ARCHIVES") ?? "") == "1"
-
   let compile_start = PKGBUILD_shared.timing_start("compile")
 
   if reuse_archives and root_archive.exists()? and archive_report.exists()? and (env.get(
@@ -711,8 +695,8 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
 
   PKGBUILD_shared.timing_done("compile", compile_start)
   PKGBUILD_shared.stop_after("compile")?
-
   let link_start = PKGBUILD_shared.timing_start("link")
+
   kbuild.build_scratch_x86_final(
     cc,
     x86_kbuild_cflags(),

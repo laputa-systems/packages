@@ -26,8 +26,11 @@ export let checksums: List[Str] = [
 ]
 
 proc write_version_header() [fs, error] {
-  fs.write(p"version.h", f"""#define FCFT_VERSION "${ver}"
-""")?
+  fs.write(
+    p"version.h",
+    f"""#define FCFT_VERSION "${ver}"
+""",
+  )?
 }
 
 proc patch_generated_inputs() [fs, error] {

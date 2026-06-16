@@ -20,11 +20,15 @@ export let checksums: List[Str] = ["507a40b8a74568ed7c2bd05acf2e15ee3d9f4703102d
 proc patch_python_tools() [fs, env, error] {
   let meson = p"meson.build"
   var text = meson.read_text()?
-
   let target_root = env.get("LAPUTA_ROOT") ?? "/"
   let target_arch = pm_util.target_arch()?
   let builtins = f"${target_root}/usr/lib/libclang_rt.builtins-${target_arch}.a"
-  let compiler_rt_dep = if target_root != "" and target_root != "/" { f"declare_dependency(link_args: ['${builtins}'])" } else { "declare_dependency()" }
+
+  let compiler_rt_dep = if target_root != "" and target_root != "/" {
+    f"declare_dependency(link_args: ['${builtins}'])"
+  } else {
+    "declare_dependency()"
+  }
 
   text = text.replace(
     """src_python_tools = files(
@@ -98,10 +102,12 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
     run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Dlibexecdir=libexec" "-Ddefault_library=shared" "-Ddocumentation=false" "-Dlibwacom=false" "-Ddebug-gui=false" "-Dtests=false" "-Dinstall-tests=false" "-Dmtdev=true" "-Dzshcompletiondir=no" "-Dlua-plugins=disabled" "-Dautoload-plugins=false" "build" ?
+
     if target_root != "" and target_root != "/" {
       let ninja = p"build/build.ninja"
       ninja.write_atomic(ninja.read_text()?.replace(" -Wl,--end-group", f" -Wl,--end-group ${builtins}"))?
     }
+
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {

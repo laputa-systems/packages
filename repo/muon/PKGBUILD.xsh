@@ -60,8 +60,21 @@ export proc build(dest: Path) [fs, process, env, error] {
       run "build/muon-bootstrap" ${setup_args} ?
       let build_ninja = p"build/build.ninja"
       var patched_ninja = build_ninja.read_text()?
-      patched_ninja = patched_ninja.replace("rule muon_build_c_linker\n command = cc", f"rule muon_build_c_linker\n command = ${bootstrap_cc}")
-      patched_ninja = patched_ninja.replace("rule muon_build_c_compiler\n command = cc", f"rule muon_build_c_compiler\n command = ${bootstrap_cc}")
+
+      patched_ninja = patched_ninja.replace(
+        """rule muon_build_c_linker
+ command = cc""",
+        f"""rule muon_build_c_linker
+ command = ${bootstrap_cc}""",
+      )
+
+      patched_ninja = patched_ninja.replace(
+        """rule muon_build_c_compiler
+ command = cc""",
+        f"""rule muon_build_c_compiler
+ command = ${bootstrap_cc}""",
+      )
+
       fs.write(build_ninja, patched_ninja)?
       run "build/muon-bootstrap" "-C" "build" samu ?
     } ?

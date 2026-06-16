@@ -14,7 +14,9 @@ export let mkdeps: List[Str] = []
 
 export let nostrip: Bool = true
 
-export let sources: List[Path] = [p"https://github.com/laputa-systems/artifacts/releases/download/llvm-toolchain-VERSION/llvm-toolchain-VERSION-ARCH.tar.gz"]
+export let sources: List[Path] = [
+  p"https://github.com/laputa-systems/artifacts/releases/download/llvm-toolchain-VERSION/llvm-toolchain-VERSION-ARCH.tar.gz",
+]
 
 export let checksums: List[Str] = ["SKIP"]
 

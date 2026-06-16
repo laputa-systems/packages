@@ -1602,7 +1602,7 @@ proc main(argv: List[Str] = []) [fs, process, env, error, io] {
   }
 
   if opt.verbose {
-    fs.write(Path.parse(f"${opt.prefix}.output")?, generate_verbose_report(rules, start)?)?
+    fs.write(fp"${opt.prefix}.output", generate_verbose_report(rules, start)?)?
   }
 }
 

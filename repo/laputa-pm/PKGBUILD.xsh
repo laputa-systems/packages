@@ -8,10 +8,7 @@ export let deps: List[Str] = ["xsh"]
 
 export let mkdeps: List[Str] = []
 
-export let sources: List[Path] = [
-  p"../../pm.xsh",
-  p"../../pm => pm",
-]
+export let sources: List[Path] = [../../pm.xsh, p"../../pm => pm"]
 
 export let checksums: List[Str] = ["SKIP", "SKIP"]
 
@@ -72,5 +69,6 @@ proc main(...argv: List[Str]) [fs, process, env, error] {
 main(@args)?
 """,
   )?
+
   fs.chmod(fp"${dest}/usr/bin/pm", 0o755)?
 }

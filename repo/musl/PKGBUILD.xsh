@@ -40,6 +40,7 @@ pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {
 proc compiler_rt_builtins(cc: Path, arch: Str) [fs, error] -> Result[List[Path]] {
   let root = fp"${cc.parent().parent().display()}/lib/llvm22/lib/clang/22/lib"
   let target_root = p"llvm-toolchain-target"
+
   let candidates = [
     fp"${target_root}/usr/lib/llvm22/lib/clang/22/lib/${arch}-alpine-linux-musl/libclang_rt.builtins-${arch}.a",
     fp"${target_root}/usr/lib/llvm22/lib/clang/22/lib/${arch}-linux-musl/libclang_rt.builtins-${arch}.a",
@@ -60,13 +61,7 @@ proc compiler_rt_builtins(cc: Path, arch: Str) [fs, error] -> Result[List[Path]]
   return empty
 }
 
-proc compile_asm_lo_task(
-  cc: Path,
-  triple: Str,
-  includes: List[Str],
-  src: Path,
-  out: Path,
-) [] -> make.MakeTask {
+proc compile_asm_lo_task(cc: Path, triple: Str, includes: List[Str], src: Path, out: Path) [] -> make.MakeTask {
   let prefix = cc.parent().parent()
   let clang = fp"${prefix.display()}/lib/llvm22/bin/clang-22"
   let depfile = p""
@@ -305,7 +300,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   all_so_deps = all_so_deps.extend(ldso_deps)
-
   let builtins = compiler_rt_builtins(cc, arch)?
   all_so_objs = all_so_objs.extend(builtins)
 
@@ -380,6 +374,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   let packaged_builtin = fp"llvm-toolchain-target/usr/lib/llvm22/lib/clang/22/lib/${arch}-alpine-linux-musl/libclang_rt.builtins-${arch}.a"
+
   if fs.exists(packaged_builtin)? {
     fs.install(packaged_builtin, fp"${dest}/usr/lib/${packaged_builtin.name()}", 0o644, parents: true, overwrite: true)?
   }
@@ -436,12 +431,14 @@ export proc build(dest: Path) [fs, process, env, error] {
     fs.install(libc_so, fp"${dest}/usr/lib/${ldso}", 0o755, parents: true, overwrite: true)?
     fs.mkdir(fp"${dest}/usr/bin")?
     fs.remove(fp"${dest}/usr/bin/ldd", missing_ok: true)?
+
     fs.write(
       fp"${dest}/usr/bin/ldd",
       f"""#!/usr/bin/sh
 exec /usr/lib/${ldso} --list "$@"
 """,
     )?
+
     fs.chmod(fp"${dest}/usr/bin/ldd", 0o755)?
   }
 }

@@ -73,7 +73,7 @@ proc compile_named_objects(
 
   for name in names {
     let out = fp"${tmp}/${name}.o"
-    compile_one(Path.parse(f"${dir}/${name}.c")?, out, includes, defs)?
+    compile_one(fp"${dir}/${name}.c", out, includes, defs)?
     objs = objs.push(out.display())
   }
 

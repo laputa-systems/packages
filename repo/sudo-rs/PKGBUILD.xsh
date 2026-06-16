@@ -43,21 +43,20 @@ pure rust_triple(arch: Str) -> Str {
 
 proc stage_rustlib(source: Path, dest: Path) [fs, error] {
   fs.remove(dest, missing_ok: true)?
-  fs.mkdir(dest, parents: true)?
+  fs.mkdir(dest)?
 
   for entry in fs.walk(source, gitignore: false)? |> sort-by .path {
     continue when entry.path == source
-
     let rel = entry.path.relative_to(source)
     let out = fp"${dest}/${rel}"
 
     if entry.kind == "dir" {
-      fs.mkdir(out, parents: true)?
+      fs.mkdir(out)?
     } else if entry.kind == "file" {
       let mode = if entry.path.executable()? { 0o755 } else { 0o644 }
       fs.install(entry.path, out, mode, parents: true, overwrite: true)?
     } else if entry.kind == "symlink" {
-      fs.mkdir(out.parent, parents: true)?
+      fs.mkdir(out.parent)?
       fs.remove(out, missing_ok: true)?
       fs.symlink(entry.path.readlink()?, out)?
     }
@@ -80,11 +79,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let build_arch = pm_util.build_arch()?
   let triple = rust_triple(target_arch)
   let host_triple = rust_triple(build_arch)
-  let host_cc = if fs.exists(fp"${build_root}/usr/bin/cc")? {
-    fp"${build_root}/usr/bin/cc"
-  } else {
-    cc
-  }
+  let host_cc = if fs.exists(fp"${build_root}/usr/bin/cc")? { fp"${build_root}/usr/bin/cc" } else { cc }
   let host_libdir = fp"${build_root}/usr/lib"
   let target_rustlib = fp"rust-std/rust-std-${triple}/lib/rustlib/${triple}"
   let staged_rustlib = fp"${target_root}/usr/lib/rustlib/${triple}"
@@ -100,13 +95,18 @@ export proc build(dest: Path) [fs, process, env, error] {
   let target_rustflags = f"-C panic=abort -C target-feature=-crt-static -C linker=${cc.display()} -L native=${libdir.display()} -C link-arg=-Wl,--as-needed -C link-arg=-Wl,-rpath,/usr/lib"
   let host_rustflags = f"-C panic=abort -C target-feature=-crt-static -C linker=${host_cc.display()} -L native=${host_libdir.display()} -C link-arg=-Wl,--as-needed"
   let aarch64_rustflags = if triple == "aarch64-unknown-linux-musl" { target_rustflags } else { host_rustflags }
-  let x86_64_rustflags = if host_triple == "x86_64-unknown-linux-musl" and triple != host_triple { host_rustflags } else { target_rustflags }
+
+  let x86_64_rustflags = if host_triple == "x86_64-unknown-linux-musl" and triple != host_triple {
+    host_rustflags
+  } else {
+    target_rustflags
+  }
+
   let aarch64_linker = if triple == "aarch64-unknown-linux-musl" { cc.display() } else { host_cc.display() }
   let x86_64_linker = if triple == "x86_64-unknown-linux-musl" { cc.display() } else { host_cc.display() }
   let current_path = env.get("PATH") ?? ""
   let cargo_path = f"${host_cc.parent.display()}:${current_path}"
   let gcc_s = fp"${libdir}/libgcc_s.so"
-
   fs.remove(gcc_s, missing_ok: true)?
   fs.symlink(p"libunwind.so", gcc_s)?
 

@@ -183,7 +183,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   let srcarch = linux_srcarch(arch)?
   linux_config.write_resolved_config(p".", srcarch, build_kernel_config_fragments_for(arch)?, p".config")?
   parser_gen.generate_linux_parsers()?
-
   build_native_scratch(cc, srcarch)?
   let image = kernel_image_for(arch)?
   fs.install(image, fp"${dest}/boot/vmlinuz-${ver}", 0o644, parents: true, overwrite: true)?

@@ -115,9 +115,11 @@ triple ${triple}
 plan
 ${kbuild.plan_fingerprint(p".", p".config", plan)?}
 cflags
-${cflags.join("\n")}
+${cflags.join("""
+""")}
 includes
-${includes.join("\n")}
+${includes.join("""
+""")}
 """
 }
 
@@ -130,8 +132,11 @@ proc archive_plan_fingerprint_matches(path_value: Path, fingerprint: Str) [fs, e
 }
 
 proc write_archive_plan_fingerprint(path_value: Path, fingerprint: Str) [fs, error] {
-  kbuild.write_text_if_changed(path_value, f"""${fingerprint}
-""")?
+  kbuild.write_text_if_changed(
+    path_value,
+    f"""${fingerprint}
+""",
+  )?
 }
 
 proc copy_archive_plan_cache(source: Path, dest: Path) [fs, error] {
@@ -178,16 +183,23 @@ export proc cached_archive_plan(
       if plan_only {
         match kbuild.read_archive_plan_summary(kbuild.archive_plan_summary_path(archive_report)) {
           Ok(archive_plan) => {
-            emit_kbuild_progress(f"xsh-kbuild-archive-plan-summary-cache ${archive_plan.task_count} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs")?
+            emit_kbuild_progress(
+              f"xsh-kbuild-archive-plan-summary-cache ${archive_plan.task_count} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs",
+            )?
+
             return archive_plan
           }
-          Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(f"xsh-kbuild-archive-plan-summary-cache miss ${kind}")?
+          Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
+            f"xsh-kbuild-archive-plan-summary-cache miss ${kind}",
+          )?
         }
       }
 
       match kbuild.read_archive_plan_report(archive_report) {
         Ok(archive_plan) => {
-          emit_kbuild_progress(f"xsh-kbuild-archive-plan-cache ${archive_plan.tasks.len()} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs")?
+          emit_kbuild_progress(
+            f"xsh-kbuild-archive-plan-cache ${archive_plan.tasks.len()} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs",
+          )?
 
           if plan_only {
             kbuild.write_archive_plan_summary(archive_plan, kbuild.archive_plan_summary_path(archive_report))?
@@ -195,7 +207,9 @@ export proc cached_archive_plan(
 
           return archive_plan
         }
-        Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(f"xsh-kbuild-archive-plan-cache miss ${kind}")?
+        Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
+          f"xsh-kbuild-archive-plan-cache miss ${kind}",
+        )?
       }
     }
 
@@ -203,28 +217,40 @@ export proc cached_archive_plan(
       if plan_only {
         match kbuild.read_archive_plan_summary(kbuild.archive_plan_summary_path(stable_archive_report)) {
           Ok(archive_plan) => {
-            emit_kbuild_progress(f"xsh-kbuild-archive-plan-stable-summary-cache ${archive_plan.task_count} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs")?
+            emit_kbuild_progress(
+              f"xsh-kbuild-archive-plan-stable-summary-cache ${archive_plan.task_count} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs",
+            )?
+
             copy_archive_plan_cache(stable_archive_report, archive_report)?
             write_archive_plan_fingerprint(archive_fingerprint, fingerprint)?
             return archive_plan
           }
-          Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(f"xsh-kbuild-archive-plan-stable-summary-cache miss ${kind}")?
+          Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
+            f"xsh-kbuild-archive-plan-stable-summary-cache miss ${kind}",
+          )?
         }
       }
 
       match kbuild.read_archive_plan_report(stable_archive_report) {
         Ok(archive_plan) => {
-          emit_kbuild_progress(f"xsh-kbuild-archive-plan-stable-cache ${archive_plan.tasks.len()} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs")?
+          emit_kbuild_progress(
+            f"xsh-kbuild-archive-plan-stable-cache ${archive_plan.tasks.len()} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs",
+          )?
+
           copy_archive_plan_cache(stable_archive_report, archive_report)?
           write_archive_plan_fingerprint(archive_fingerprint, fingerprint)?
           return archive_plan
         }
-        Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(f"xsh-kbuild-archive-plan-stable-cache miss ${kind}")?
+        Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
+          f"xsh-kbuild-archive-plan-stable-cache miss ${kind}",
+        )?
       }
     }
   }
 
-  emit_kbuild_progress(f"xsh-kbuild-archive-plan-start ${plan.dirs.len()} dirs ${plan.objects.len()} objects ${plan.composites.len()} composites")?
+  emit_kbuild_progress(
+    f"xsh-kbuild-archive-plan-start ${plan.dirs.len()} dirs ${plan.objects.len()} objects ${plan.composites.len()} composites",
+  )?
 
   let archive_plan = kbuild.plan_builtin_archives(plan, cc, triple, cflags, [], includes)?
   kbuild.write_archive_plan_report(archive_plan, archive_report)?
@@ -233,11 +259,12 @@ export proc cached_archive_plan(
   copy_archive_plan_cache(archive_report, stable_archive_report)?
   write_archive_plan_fingerprint(stable_archive_fingerprint, fingerprint)?
 
-  emit_kbuild_progress(f"xsh-kbuild-archive-plan ${archive_plan.tasks.len()} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs ${archive_plan.generated_objects.len()} generated ${archive_plan.missing_sources.len()} missing")?
+  emit_kbuild_progress(
+    f"xsh-kbuild-archive-plan ${archive_plan.tasks.len()} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs ${archive_plan.generated_objects.len()} generated ${archive_plan.missing_sources.len()} missing",
+  )?
 
   return archive_plan
 }
-
 
 export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.KbuildPlan] {
   let config = kbuild.load_config(p".config")?
@@ -524,12 +551,7 @@ export proc require_valid_archive_plan(archive_plan: Record) [error] {
     let duplicates: List[Path] = archive_plan.duplicate_outputs
 
     if duplicates.len() > 0 {
-      return Err(
-        ScriptError.Failed(
-          "linux-native-kbuild-duplicate-output",
-          "archive plan has duplicate output",
-        ),
-      )
+      return Err(ScriptError.Failed("linux-native-kbuild-duplicate-output", "archive plan has duplicate output"))
     }
   }
 
@@ -541,12 +563,7 @@ export proc require_valid_archive_plan(archive_plan: Record) [error] {
       continue when key == ""
 
       if outputs.get(key, false) {
-        return Err(
-          ScriptError.Failed(
-            "linux-native-kbuild-duplicate-output",
-            "archive plan has duplicate output",
-          ),
-        )
+        return Err(ScriptError.Failed("linux-native-kbuild-duplicate-output", "archive plan has duplicate output"))
       }
 
       outputs[key] = true
@@ -556,6 +573,7 @@ export proc require_valid_archive_plan(archive_plan: Record) [error] {
 
 export proc require_complete_x86_archive_plan(archive_plan: Record) [error] {
   require_valid_archive_plan(archive_plan)?
+
   if archive_plan.generated_objects.len() > 0 {
     return Err(
       ScriptError.Failed(
@@ -589,15 +607,11 @@ export proc native_tool(name: Str) [fs, process, env, error] -> Result[Path] {
   return process.which(name)?
 }
 
-
 export proc run_native_command(argv: List[Str]) [process, env, error] {
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
+
   let command = if build_root != "" {
-    process.command_argv(
-      argv[0],
-      argv,
-      env: {PATH: f"${build_root}/usr/bin:${env.get("PATH") ?? ""}"},
-    )
+    process.command_argv(argv[0], argv, env: {PATH: f"${build_root}/usr/bin:${env.get("PATH") ?? ""}"})
   } else {
     process.command_argv(argv[0], argv)
   }

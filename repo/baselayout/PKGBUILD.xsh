@@ -8,13 +8,9 @@ export let deps: List[Str] = []
 
 export let mkdeps: List[Str] = []
 
-export let sources: List[Path] = [
-  p"files/rootfs",
-]
+export let sources: List[Path] = [p"files/rootfs"]
 
-export let checksums: List[Str] = [
-  "SKIP",
-]
+export let checksums: List[Str] = ["SKIP"]
 
 export let extract_install: Bool = true
 

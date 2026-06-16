@@ -26,6 +26,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
 
     let line = out.trim().split("""
 """)[0]
+
     print "flex ok: "${line}
   } else {
     print "flex ok: cross-built "${pm_util.target_arch()?}

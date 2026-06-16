@@ -203,6 +203,7 @@ proc write_skalibs_config() [fs, error] {
 
 proc write_sysdeps_h(target: Str, sysdeps: Map[Str]) [fs, error] {
   let _ = sysdeps
+
   var lines = [
     "/* ISC license. */",
     "",

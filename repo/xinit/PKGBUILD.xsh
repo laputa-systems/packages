@@ -14,13 +14,9 @@ export let sources: List[Path] = [
 
 export let checksums: List[Str] = [""]
 
-export let checksums_aarch64 = [
-  "2e4437d4746860393a16b967632ae1802e1ca73dcb0cf61e40e4278e9af93766",
-]
+export let checksums_aarch64 = ["2e4437d4746860393a16b967632ae1802e1ca73dcb0cf61e40e4278e9af93766"]
 
-export let checksums_x86_64 = [
-  "2e4437d4746860393a16b967632ae1802e1ca73dcb0cf61e40e4278e9af93766",
-]
+export let checksums_x86_64 = ["2e4437d4746860393a16b967632ae1802e1ca73dcb0cf61e40e4278e9af93766"]
 
 export let nostrip: Bool = true
 

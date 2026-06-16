@@ -39,12 +39,14 @@ export proc build(dest: Path) [fs, process, env, error] {
   ]
 
   if target_root != "" and target_root != "/" {
-    cmake_args = cmake_args.extend([
-      f"-DZLIB_LIBRARY=${target_root}/usr/lib/libz.so",
-      f"-DZLIB_INCLUDE_DIR=${target_root}/usr/include",
-      f"-DPNG_LIBRARY=${target_root}/usr/lib/libpng.so",
-      f"-DPNG_PNG_INCLUDE_DIR=${target_root}/usr/include",
-    ])
+    cmake_args = cmake_args.extend(
+      [
+        f"-DZLIB_LIBRARY=${target_root}/usr/lib/libz.so",
+        f"-DZLIB_INCLUDE_DIR=${target_root}/usr/include",
+        f"-DPNG_LIBRARY=${target_root}/usr/lib/libpng.so",
+        f"-DPNG_PNG_INCLUDE_DIR=${target_root}/usr/include",
+      ],
+    )
   }
 
   run $cmake @cmake_args ?

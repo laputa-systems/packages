@@ -124,6 +124,7 @@ compat/utf8proc.c
 """.words()
 
   let generated_sources = ["cmd-parse.c", "osdep-linux.c"]
+
   let cflags = [
     "-std=gnu99",
     "-include",
@@ -175,6 +176,7 @@ compat/utf8proc.c
   lines = lines.push("")
   lines = lines.push(f"build tmux: link ${objs.join(" ")}")
   lines = lines.push("default tmux")
+
   fs.write(
     p"build.ninja",
     f"""${lines.join("""

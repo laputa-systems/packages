@@ -658,9 +658,22 @@ EGLBoolean eglReleaseThread(void);
 
   fs.write(
     fp"${dest}/usr/include/EGL/eglext.h",
-    "#ifndef __eglext_h_\n#define __eglext_h_\n#define EGL_EGLEXT_VERSION 20210604\n#include <EGL/egl.h>\n#endif\n",
+    """#ifndef __eglext_h_
+#define __eglext_h_
+#define EGL_EGLEXT_VERSION 20210604
+#include <EGL/egl.h>
+#endif
+""",
   )?
-  fs.write(fp"${dest}/usr/include/EGL/eglplatform.h", "#ifndef __eglplatform_h_\n#define __eglplatform_h_\n#include <KHR/khrplatform.h>\n#endif\n")?
+
+  fs.write(
+    fp"${dest}/usr/include/EGL/eglplatform.h",
+    """#ifndef __eglplatform_h_
+#define __eglplatform_h_
+#include <KHR/khrplatform.h>
+#endif
+""",
+  )?
 
   fs.write(
     fp"${dest}/usr/include/GLES2/gl2.h",
@@ -864,8 +877,23 @@ void glFinish(void);
 """,
   )?
 
-  fs.write(fp"${dest}/usr/include/GLES2/gl2ext.h", "#ifndef __gl2ext_h_\n#define __gl2ext_h_\n#include <GLES2/gl2.h>\n#endif\n")?
-  fs.write(fp"${dest}/usr/include/GLES2/gl2platform.h", "#ifndef __gl2platform_h_\n#define __gl2platform_h_\n#include <KHR/khrplatform.h>\n#endif\n")?
+  fs.write(
+    fp"${dest}/usr/include/GLES2/gl2ext.h",
+    """#ifndef __gl2ext_h_
+#define __gl2ext_h_
+#include <GLES2/gl2.h>
+#endif
+""",
+  )?
+
+  fs.write(
+    fp"${dest}/usr/include/GLES2/gl2platform.h",
+    """#ifndef __gl2platform_h_
+#define __gl2platform_h_
+#include <KHR/khrplatform.h>
+#endif
+""",
+  )?
 
   fs.write(
     fp"${dest}/usr/include/gbm.h",
@@ -949,16 +977,13 @@ export proc build(dest: Path) [fs, process, env, error] {
   let os = system.uname()?
   let triple = f"${os.machine}-linux-musl"
   let cflags = ["-std=c99", "-Wall", "-Wextra"]
-
   write_sources()?
-
   let egl_obj = p"obj/egl.lo"
   let gles_obj = p"obj/gles2.lo"
   let gbm_obj = p"obj/gbm.lo"
   let egl = p"obj/libEGL.so.1.0.0"
   let gles = p"obj/libGLESv2.so.2.0.0"
   let gbm = p"obj/libgbm.so.1.0.0"
-
   let egl_compile = make.compile_lo_task(cc, triple, cflags, [], [], p"laputa-egl.c", egl_obj)
   let gles_compile = make.compile_lo_task(cc, triple, cflags, [], [], p"laputa-gles2.c", gles_obj)
   let gbm_compile = make.compile_lo_task(cc, triple, cflags, [], [], p"laputa-gbm.c", gbm_obj)
@@ -984,7 +1009,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.symlink(p"libGLESv2.so.2.0.0", fp"${dest}/usr/lib/libGLESv2.so")?
   fs.symlink(p"libgbm.so.1.0.0", fp"${dest}/usr/lib/libgbm.so.1")?
   fs.symlink(p"libgbm.so.1.0.0", fp"${dest}/usr/lib/libgbm.so")?
-
   install_headers(dest)?
   install_pkg_config(dest)?
 }

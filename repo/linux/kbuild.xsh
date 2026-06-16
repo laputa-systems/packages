@@ -673,7 +673,7 @@ pure expand_make_vars(raw: Str, vars: Map[Str]) -> Str {
 }
 
 pure expand_braced_config_refs(raw: Str, config: Kconfig) -> Str {
-  let marker = r"""${CONFIG_"""
+  let marker = "\${CONFIG_"
 
   if ! raw.contains(marker) {
     return raw
@@ -683,12 +683,12 @@ pure expand_braced_config_refs(raw: Str, config: Kconfig) -> Str {
   var out = chunks[0]
 
   for chunk in chunks |> drop(1) {
-    let parts = chunk.split(r"""}""")
+    let parts = chunk.split("}")
 
     if parts.len() == 1 {
       out = f"${out}${marker}${chunk}"
     } else {
-      out = f"${out}${config_value(config, parts[0])}${(parts |> drop(1)).join(r"""}""")}"
+      out = f"${out}${config_value(config, parts[0])}${(parts |> drop(1)).join("}")}"
     }
   }
 
@@ -1145,16 +1145,17 @@ proc kbuild_compile_flags_for_dirs(
   srcarch: Str,
 ) [fs, error] -> Result[Map[Map[List[Str]]]] {
   var by_dir: Map[Map[List[Str]]] = map.empty()
-
   var dir_index = 0
 
   for dir in dirs {
     dir_index += 1
+
     write_text_if_changed(
       fp"${root}/.xsh-kbuild-progress",
       f"""xsh-kbuild-compile-flags-dir ${dir_index}/${dirs.len()} ${dir.display()}
 """,
     )?
+
     by_dir[path_key(dir)] = kbuild_compile_flags_for_dir(root, dir, config, srcarch)?
   }
 
@@ -1193,20 +1194,23 @@ pure compile_flags_from_cache_entries(entries: List[Record]) -> Result[Map[Map[L
   return flags
 }
 
-proc compile_flags_fingerprint(root: Path, dirs: List[Path], config_path: Path, srcarch: Str) [fs, error] -> Result[Str] {
-  var dir_fingerprints: List[Str] = []
-
-  for dir in dirs {
-    dir_fingerprints = dir_fingerprints.push(fingerprint_dir_line(root, dir)?)
-  }
+proc compile_flags_fingerprint(
+  root: Path,
+  dirs: List[Path],
+  config_path: Path,
+  srcarch: Str,
+) [fs, error] -> Result[Str] {
+  var dir_fingerprints = [fingerprint_dir_line(root, dir)? for dir in dirs]
 
   return f"""format ${compile_flags_cache_format()}
 srcarch ${srcarch}
 config ${hash.sha256(config_path)?.hex()}
 dirs ${dirs.len()}
-${path_strings(dirs).join("\n")}
+${path_strings(dirs).join("""
+""")}
 kbuild-files
-${dir_fingerprints.join("\n")}
+${dir_fingerprints.join("""
+""")}
 """
 }
 
@@ -1232,11 +1236,7 @@ proc write_compile_flags_cache(path_value: Path, fingerprint: Str, flags: Map[Ma
   write_text_if_changed(
     path_value,
     json.encode(
-      {
-        format: compile_flags_cache_format(),
-        fingerprint: fingerprint,
-        flags: compile_flags_cache_entries(flags),
-      },
+      {format: compile_flags_cache_format(), fingerprint: fingerprint, flags: compile_flags_cache_entries(flags)},
     )?,
   )?
 }
@@ -1248,8 +1248,9 @@ proc cached_kbuild_compile_flags_for_dirs(
   srcarch: Str,
 ) [fs, env, error] -> Result[Map[Map[List[Str]]]] {
   let cache_dir = Path.parse(
-    env.get("XSH_LINUX_KBUILD_COMPILE_FLAGS_CACHE_DIR") ?? (env.get("XSH_LINUX_KBUILD_PLAN_CACHE_DIR") ?? "/var/cache/laputa/linux-kbuild"),
+    env.get("XSH_LINUX_KBUILD_COMPILE_FLAGS_CACHE_DIR") ?? env.get("XSH_LINUX_KBUILD_PLAN_CACHE_DIR") ?? "/var/cache/laputa/linux-kbuild",
   )?
+
   let stable_cache_path = fp"${cache_dir.display()}/linux-${srcarch}.compile-flags.json"
   let local_cache_path = fp"${root}/.xsh-kbuild-compile-flags.json"
   let fingerprint = compile_flags_fingerprint(root, dirs, fp"${root}/.config", srcarch)?
@@ -1262,19 +1263,17 @@ proc cached_kbuild_compile_flags_for_dirs(
           f"""xsh-kbuild-compile-flags-cache stable-hit ${dirs.len()} dirs
 """,
         )?
+
         write_compile_flags_cache(local_cache_path, fingerprint, flags)?
         return flags
       }
       Err(err) => {
         match err {
-          ScriptError.Failed {kind: kind, message: _} => {
-            write_text_if_changed(
-              fp"${root}/.xsh-kbuild-progress",
-              f"""xsh-kbuild-compile-flags-cache stable-miss ${kind}
+          ScriptError.Failed {kind: kind, message: _} => write_text_if_changed(
+            fp"${root}/.xsh-kbuild-progress",
+            f"""xsh-kbuild-compile-flags-cache stable-miss ${kind}
 """,
-            )?
-
-          }
+          )?
         }
       }
     }
@@ -1288,20 +1287,18 @@ proc cached_kbuild_compile_flags_for_dirs(
           f"""xsh-kbuild-compile-flags-cache local-hit ${dirs.len()} dirs
 """,
         )?
+
         cache_dir.mkdir()?
         write_compile_flags_cache(stable_cache_path, fingerprint, flags)?
         return flags
       }
       Err(err) => {
         match err {
-          ScriptError.Failed {kind: kind, message: _} => {
-            write_text_if_changed(
-              fp"${root}/.xsh-kbuild-progress",
-              f"""xsh-kbuild-compile-flags-cache local-miss ${kind}
+          ScriptError.Failed {kind: kind, message: _} => write_text_if_changed(
+            fp"${root}/.xsh-kbuild-progress",
+            f"""xsh-kbuild-compile-flags-cache local-miss ${kind}
 """,
-            )?
-
-          }
+          )?
         }
       }
     }
@@ -1460,6 +1457,7 @@ export proc refresh_plan_dirs(
 
   for dir in dirs {
     scan_index += 1
+
     write_text_if_changed(
       fp"${root}/.xsh-kbuild-progress",
       f"""xsh-kbuild-refresh-plan-dir-scan ${scan_index}/${dirs.len()} ${dir.display()}
@@ -1490,11 +1488,13 @@ export proc refresh_plan_dirs(
 
   for dir in dirs {
     dir_index += 1
+
     write_text_if_changed(
       fp"${root}/.xsh-kbuild-progress",
       f"""xsh-kbuild-refresh-plan-dir-merge ${dir_index}/${dirs.len()} ${dir.display()}
 """,
     )?
+
     dirs_all = dirs_all.push(dir)
     objects_all = objects_all.extend(objects_by_dir.get(path_key(dir), empty_paths()))
     composites_all = composites_all.extend(composites_by_dir.get(path_key(dir), empty_composites()))
@@ -1507,7 +1507,10 @@ export proc refresh_x86_kernel_config_objects(config: Kconfig, plan: KbuildPlan)
   var objects: List[Path] = []
   var dirs: List[Path] = []
 
-  if config_value(config, "UTS_NS") == "y" or config_value(config, "USER_NS") == "y" or config_value(config, "PID_NS") == "y" or config_value(config, "FREEZER") == "y" {
+  if config_value(config, "UTS_NS") == "y" or config_value(config, "USER_NS") == "y" or config_value(config, "PID_NS") == "y" or config_value(
+    config,
+    "FREEZER",
+  ) == "y" {
     dirs = dirs.push(p"kernel")
   }
 
@@ -1655,11 +1658,17 @@ export proc refresh_x86_kernel_config_objects(config: Kconfig, plan: KbuildPlan)
     dirs = dirs.push(p"drivers/iommu")
   }
 
-  if config_value(config, "GENERIC_PT") == "y" or config_value(config, "AMD_IOMMU") == "y" or config_value(config, "INTEL_IOMMU") == "y" {
+  if config_value(config, "GENERIC_PT") == "y" or config_value(config, "AMD_IOMMU") == "y" or config_value(
+    config,
+    "INTEL_IOMMU",
+  ) == "y" {
     dirs = dirs.push(p"drivers/iommu/generic_pt/fmt")
   }
 
-  if config_value(config, "INTEL_IOMMU") == "y" or config_value(config, "DMAR_TABLE") == "y" or config_value(config, "IRQ_REMAP") == "y" {
+  if config_value(config, "INTEL_IOMMU") == "y" or config_value(config, "DMAR_TABLE") == "y" or config_value(
+    config,
+    "IRQ_REMAP",
+  ) == "y" {
     dirs = dirs.push(p"drivers/iommu/intel")
   }
 
@@ -1728,6 +1737,7 @@ export proc refresh_x86_kernel_config_objects(config: Kconfig, plan: KbuildPlan)
 
   if config_value(config, "ZSTD_DECOMPRESS") == "y" {
     let obj = p"lib/zstd/zstd_decompress.o"
+
     next = add_composite(
       add_object(next, obj),
       {
@@ -1745,6 +1755,7 @@ export proc refresh_x86_kernel_config_objects(config: Kconfig, plan: KbuildPlan)
 
   if config_value(config, "ZSTD_COMMON") == "y" {
     let obj = p"lib/zstd/zstd_common.o"
+
     next = add_composite(
       add_object(next, obj),
       {
@@ -2586,6 +2597,7 @@ export proc write_archive_plan_report(archive_plan: Record, out: Path) [fs, erro
       },
     )?,
   )?
+
   write_archive_plan_summary(archive_plan, archive_plan_summary_path(out))?
 }
 
@@ -2679,7 +2691,6 @@ export proc read_archive_plan_summary(path_value: Path) [fs, error] -> Result[Re
     task_count: task_count,
   }
 }
-
 
 export proc read_archive_plan_object_outputs(path_value: Path) [fs, error] -> Result[List[Path]] {
   let stored: Record = json.read(path_value)?
@@ -3303,7 +3314,12 @@ proc pi_relacheck_build_task(cc: Path) [env] -> make.MakeTask {
       src.display(),
     ],
     cwd: p".",
-    env: {TMPDIR: out.parent.display(), PATH: host_path, LD_LIBRARY_PATH: host_ld_library_path, XSH_MAKE_NATIVE_CROSS: "0"},
+    env: {
+      TMPDIR: out.parent.display(),
+      PATH: host_path,
+      LD_LIBRARY_PATH: host_ld_library_path,
+      XSH_MAKE_NATIVE_CROSS: "0",
+    },
     depfile: p"",
     stamp: fp"${out}.cmd",
   }
@@ -3357,11 +3373,13 @@ export proc generate_crc32table_header(root: Path, cc: Path) [fs, process, env, 
   let argv = [cc.display(), "-Iinclude", "-Iinclude/generated", "-o", gen.display(), source.display()]
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
   let build_env = {PATH: f"${build_root}/usr/bin:${env.get("PATH") ?? ""}"}
+
   let compile_command = if build_root != "" {
     process.command_argv(argv[0], argv, env: build_env)
   } else {
     process.command_argv(argv[0], argv)
   }
+
   let compile_status = process.run(compile_command)?
 
   if ! compile_status.ok {
@@ -3399,14 +3417,27 @@ export proc generate_raid6_sources(root: Path, cc: Path) [fs, process, env, erro
 
   let gen = fp"${root}/lib/raid6/mktables"
   let source = fp"${root}/lib/raid6/mktables.c"
-  let argv = [cc.display(), "-O2", "-std=gnu11", "-Wall", "-I./tools/include", "-o", gen.display(), source.display()]
+
+  let argv = [
+    cc.display(),
+    "-O2",
+    "-std=gnu11",
+    "-Wall",
+    "-I./tools/include",
+    "-o",
+    gen.display(),
+    source.display(),
+  ]
+
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
   let build_env = {PATH: f"${build_root}/usr/bin:${env.get("PATH") ?? ""}"}
+
   let compile_command = if build_root != "" {
     process.command_argv(argv[0], argv, env: build_env)
   } else {
     process.command_argv(argv[0], argv)
   }
+
   let compile_status = process.run(compile_command)?
 
   if ! compile_status.ok {
@@ -4022,7 +4053,12 @@ export proc vmlinux_strip_argv_task(
   }
 }
 
-export proc vmlinux_strip_task(objcopy: Path, unstripped: Path, out: Path, deps: List[Str] = []) [env] -> make.MakeTask {
+export proc vmlinux_strip_task(
+  objcopy: Path,
+  unstripped: Path,
+  out: Path,
+  deps: List[Str] = [],
+) [env] -> make.MakeTask {
   return vmlinux_strip_argv_task([objcopy.display()], unstripped, out, deps)
 }
 
@@ -5062,7 +5098,12 @@ proc efi_stubcopy_task_x86(input: Path, out: Path, deps: List[Str]) [env] -> mak
   }
 }
 
-proc efi_libstub_archive_task(ar_argv: List[Str], inputs: List[Path], out: Path, deps: List[Str]) [env] -> make.MakeTask {
+proc efi_libstub_archive_task(
+  ar_argv: List[Str],
+  inputs: List[Path],
+  out: Path,
+  deps: List[Str],
+) [env] -> make.MakeTask {
   let tool_path = host_build_path()
   var argv = ar_argv.extend(["cDPrsT", out.display()])
 
@@ -5303,7 +5344,10 @@ export proc build_builtin_archives(
   return run_builtin_archive_plan(archive_plan, jobs_count)
 }
 
-export proc run_builtin_archive_plan(archive_plan: Record, jobs_count: Int) [fs, process, env, error] -> Result[List[Path]] {
+export proc run_builtin_archive_plan(
+  archive_plan: Record,
+  jobs_count: Int,
+) [fs, process, env, error] -> Result[List[Path]] {
   if archive_plan.missing_sources.len() > 0 {
     print xsh-kbuild-missing-objects ${archive_plan.missing_sources.len()} tolerated
   }
@@ -5629,8 +5673,8 @@ proc x86_jump_label_helper_source() [fs, error] -> Result[Path] {
     return p"x86-jump-label-patch.c"
   }
 
-  if p"../pkg/files/x86-jump-label-patch.c".exists()? {
-    return p"../pkg/files/x86-jump-label-patch.c"
+  if ../pkg/files/x86-jump-label-patch.c.exists()? {
+    return ../pkg/files/x86-jump-label-patch.c
   }
 
   return Err(ScriptError.Failed("kbuild-x86-jump-label-helper", "missing x86-jump-label-patch.c"))
@@ -5808,7 +5852,18 @@ export proc plan_builtin_archives(
   var pi_relacheck_added = false
   let composites_by_object = composite_map(plan.composites)
   let config = load_config(p".config")?
-  let compile_flags_by_dir = cached_kbuild_compile_flags_for_dirs(p".", plan.dirs, config, if triple == "x86_64-linux-gnu" { "x86" } else { "arm64" })?
+
+  let compile_flags_by_dir = cached_kbuild_compile_flags_for_dirs(
+    p".",
+    plan.dirs,
+    config,
+    if triple == "x86_64-linux-gnu" {
+      "x86"
+    } else {
+      "arm64"
+    },
+  )?
+
   let composite_members_by_object = composite_member_map(plan.composites)
   var object_count = 0
 
@@ -5833,7 +5888,17 @@ export proc plan_builtin_archives(
         }
 
         let base_out = obj_out_path(pi_base_object(obj))
-        let base_task = compile_kbuild_task(cc, triple, object_cflags(cflags, compile_flags_by_dir, pi_base_object(obj)), defs, includes, source, base_out)
+
+        let base_task = compile_kbuild_task(
+          cc,
+          triple,
+          object_cflags(cflags, compile_flags_by_dir, pi_base_object(obj)),
+          defs,
+          includes,
+          source,
+          base_out,
+        )
+
         let out = obj_out_path(obj)
         let task = pi_objcopy_task(cc, base_out, out, [base_task.name])
 
@@ -5865,7 +5930,18 @@ export proc plan_builtin_archives(
           match source_for_object(member) {
             Ok(src) => {
               let member_out = obj_out_path(member)
-              let member_task = compile_kbuild_task_for_module(cc, triple, object_cflags(cflags, compile_flags_by_dir, member), defs, includes, src, member_out, obj_out_path(composite.object))
+
+              let member_task = compile_kbuild_task_for_module(
+                cc,
+                triple,
+                object_cflags(cflags, compile_flags_by_dir, member),
+                defs,
+                includes,
+                src,
+                member_out,
+                obj_out_path(composite.object),
+              )
+
               tasks = tasks.push(member_task)
               member_outs = member_outs.push(member_out)
               member_deps = member_deps.push(member_task.name)
@@ -5899,7 +5975,17 @@ export proc plan_builtin_archives(
         match source_for_object(obj) {
           Ok(src) => {
             let out = obj_out_path(obj)
-            let task = compile_kbuild_task(cc, triple, object_cflags(cflags, compile_flags_by_dir, obj), defs, includes, src, out)
+
+            let task = compile_kbuild_task(
+              cc,
+              triple,
+              object_cflags(cflags, compile_flags_by_dir, obj),
+              defs,
+              includes,
+              src,
+              out,
+            )
+
             let dir_key = path_key(object_dir(obj))
             tasks = tasks.push(task)
             link_inputs = link_inputs.push(out)
@@ -5911,6 +5997,7 @@ export proc plan_builtin_archives(
               ScriptError.Failed {kind: kind, message: _} => {
                 if kind == "kbuild-missing-source" {
                   let out = obj_out_path(obj)
+
                   if out.exists()? {
                     let dir_key = path_key(object_dir(obj))
                     link_inputs = link_inputs.push(out)
@@ -5953,7 +6040,18 @@ export proc plan_builtin_archives(
           match source_for_object(member) {
             Ok(src) => {
               let member_out = obj_out_path(member)
-              let member_task = compile_kbuild_task_for_module(cc, triple, object_cflags(cflags, compile_flags_by_dir, member), defs, includes, src, member_out, obj_out_path(composite.object))
+
+              let member_task = compile_kbuild_task_for_module(
+                cc,
+                triple,
+                object_cflags(cflags, compile_flags_by_dir, member),
+                defs,
+                includes,
+                src,
+                member_out,
+                obj_out_path(composite.object),
+              )
+
               tasks = tasks.push(member_task)
               member_outs = member_outs.push(member_out)
               member_deps = member_deps.push(member_task.name)
@@ -5979,9 +6077,7 @@ export proc plan_builtin_archives(
         if member_outs.len() > 0 {
           let dir_key = path_key(object_dir(obj))
           lib_link_inputs = lib_link_inputs.extend(member_outs)
-
           lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, empty_paths()).extend(member_outs)
-
           lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, empty_strings()).extend(member_deps)
         }
       }
@@ -5989,13 +6085,21 @@ export proc plan_builtin_archives(
         match source_for_object(obj) {
           Ok(src) => {
             let out = obj_out_path(obj)
-            let task = compile_kbuild_task(cc, triple, object_cflags(cflags, compile_flags_by_dir, obj), defs, includes, src, out)
+
+            let task = compile_kbuild_task(
+              cc,
+              triple,
+              object_cflags(cflags, compile_flags_by_dir, obj),
+              defs,
+              includes,
+              src,
+              out,
+            )
+
             let dir_key = path_key(object_dir(obj))
             tasks = tasks.push(task)
             lib_link_inputs = lib_link_inputs.push(out)
-
             lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, empty_paths()).push(out)
-
             lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, empty_strings()).push(task.name)
           }
           Err(err) => {
@@ -6003,6 +6107,7 @@ export proc plan_builtin_archives(
               ScriptError.Failed {kind: kind, message: _} => {
                 if kind == "kbuild-missing-source" {
                   let out = obj_out_path(obj)
+
                   if out.exists()? {
                     let dir_key = path_key(object_dir(obj))
                     lib_link_inputs = lib_link_inputs.push(out)
@@ -6079,11 +6184,7 @@ export proc plan_builtin_archives(
       let sorted_lib_objs = sorted_paths(lib_objs)
       let lib_archive = dir_lib_archive(dir)
       let lib_deps = lib_deps_by_dir.get(dir_key, empty_strings())
-
-      tasks = tasks.push(
-        vmlinux_archive_argv_task(["llvm-ar"], sorted_lib_objs, lib_archive, lib_deps),
-      )
-
+      tasks = tasks.push(vmlinux_archive_argv_task(["llvm-ar"], sorted_lib_objs, lib_archive, lib_deps))
       archives = archives.push(lib_archive)
     }
 

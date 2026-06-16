@@ -8,18 +8,22 @@ pure ceil_div(value: Int, divisor: Int) -> Int {
 proc repeated_byte(value: Int, count: Int) [error] -> Result[Bytes] {
   var items: List[Int] = []
   var index = 0
+
   while index < count {
     items = items.push(value)
     index += 1
   }
+
   return bytes.from_ints(items)?
 }
 
 proc fixed_text(text: Str, width: Int) [error] -> Result[Bytes] {
   let raw = bytes.from_text(text)
+
   if raw.len() >= width {
     return raw.slice(offset: 0, length: width)
   }
+
   return bytes.concat([raw, repeated_byte(32, width - raw.len())?])
 }
 
@@ -31,18 +35,22 @@ pure sectors_per_cluster(sectors: Int) -> Int {
   if sectors < 65536 {
     return 1
   }
+
   if sectors < 262144 {
     return 4
   }
+
   if sectors < 524288 {
     return 8
   }
+
   return 16
 }
 
 proc fat16_sectors(sectors: Int, spc: Int, reserved: Int, fats: Int, root_dir_sectors: Int) [error] -> Int {
   var fat_sectors = 1
   var changed = true
+
   while changed {
     let data_sectors = sectors - reserved - root_dir_sectors - fats * fat_sectors
     let clusters = data_sectors / spc
@@ -50,32 +58,37 @@ proc fat16_sectors(sectors: Int, spc: Int, reserved: Int, fats: Int, root_dir_se
     changed = needed != fat_sectors
     fat_sectors = needed
   }
+
   return fat_sectors
 }
 
 proc boot_sector(label: Str, sectors: Int, spc: Int, fat_sectors: Int, serial: Int) [error] -> Result[Bytes] {
   let total16 = if sectors <= 65535 { sectors } else { 0 }
   let total32 = if sectors > 65535 { sectors } else { 0 }
-  var boot = bytes.concat([
-    bytes.from_ints([235, 60, 144])?,
-    fixed_text("mkfs.xsh", 8)?,
-    bytes.pack_le(512, 2)?,
-    bytes.from_ints([spc])?,
-    bytes.pack_le(1, 2)?,
-    bytes.from_ints([2])?,
-    bytes.pack_le(512, 2)?,
-    bytes.pack_le(total16, 2)?,
-    bytes.from_ints([248])?,
-    bytes.pack_le(fat_sectors, 2)?,
-    bytes.pack_le(32, 2)?,
-    bytes.pack_le(64, 2)?,
-    bytes.pack_le(0, 4)?,
-    bytes.pack_le(total32, 4)?,
-    bytes.from_ints([128, 0, 41])?,
-    bytes.pack_le(serial, 4)?,
-    fixed_text(label, 11)?,
-    fixed_text("FAT16", 8)?,
-  ])
+
+  var boot = bytes.concat(
+    [
+      bytes.from_ints([235, 60, 144])?,
+      fixed_text("mkfs.xsh", 8)?,
+      bytes.pack_le(512, 2)?,
+      bytes.from_ints([spc])?,
+      bytes.pack_le(1, 2)?,
+      bytes.from_ints([2])?,
+      bytes.pack_le(512, 2)?,
+      bytes.pack_le(total16, 2)?,
+      bytes.from_ints([248])?,
+      bytes.pack_le(fat_sectors, 2)?,
+      bytes.pack_le(32, 2)?,
+      bytes.pack_le(64, 2)?,
+      bytes.pack_le(0, 4)?,
+      bytes.pack_le(total32, 4)?,
+      bytes.from_ints([128, 0, 41])?,
+      bytes.pack_le(serial, 4)?,
+      fixed_text(label, 11)?,
+      fixed_text("FAT16", 8)?,
+    ],
+  )
+
   boot = bytes.concat([boot, bytes.zero(510 - boot.len())?, bytes.from_ints([85, 170])?])
   return boot
 }
@@ -98,9 +111,11 @@ proc image_size(image: Path) [fs, error] -> Result[Int] {
 
 proc format_fat16(image: Path, label: Str) [fs, error] {
   let size = image_size(image)?
+
   if size < 2 * 1024 * 1024 {
     return Err(FatToolError.Failed("too-small", "FAT16 image must be at least 2MiB"))
   }
+
   if size % 512 != 0 {
     return Err(FatToolError.Failed("bad-size", "FAT image size must be a multiple of 512 bytes"))
   }
@@ -111,13 +126,13 @@ proc format_fat16(image: Path, label: Str) [fs, error] {
   let fat_sectors = fat16_sectors(sectors, spc, 1, 2, root_dir_sectors)
   let data_sectors = sectors - 1 - root_dir_sectors - 2 * fat_sectors
   let clusters = data_sectors / spc
+
   if clusters < 4085 or clusters >= 65525 {
     return Err(FatToolError.Failed("unsupported-size", "native mkfs.vfat currently supports FAT16-sized images"))
   }
 
   let cleared = bytes.zero_at(image, 0, size)?
   let boot_written = bytes.write_at(image, 0, boot_sector(label, sectors, spc, fat_sectors, 387344745)?)?
-
   let fat_offset = 512
   let fat_len = fat_sectors * 512
   let fat = bytes.concat([bytes.from_ints([248, 255, 255, 255])?, bytes.zero(fat_len - 4)?])
@@ -130,15 +145,19 @@ proc main(...argv: List[Str]) [fs, error] {
   var label = "NO NAME"
   var image = ""
   var index = 0
+
   while index < argv.len() {
     let arg = argv[index]
+
     if arg == "-n" or arg == "-F" {
       if index + 1 >= argv.len() {
         return Err(FatToolError.Failed("usage", "option requires an argument"))
       }
+
       if arg == "-n" {
         label = argv[index + 1]
       }
+
       index += 2
     } else if arg.starts_with("-") {
       return Err(FatToolError.Failed("unsupported-option", arg))

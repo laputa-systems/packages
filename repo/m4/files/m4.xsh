@@ -2284,10 +2284,14 @@ proc main(margs: List[Str] = []) [fs, process, env, error, io] {
     let a = margs[i]
 
     if a == "--version" {
-      io.write_stdout("m4.xsh 1.0\n")?
+      io.write_stdout("""m4.xsh 1.0
+""")?
+
       return
     } else if a == "--help" or a == "-h" {
-      io.write_stdout("usage: m4 [OPTION]... [FILE]...\n")?
+      io.write_stdout("""usage: m4 [OPTION]... [FILE]...
+""")?
+
       return
     } else if a == "-P" or a == "--prefix-builtins" {
       prefix = true

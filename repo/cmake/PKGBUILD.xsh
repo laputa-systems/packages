@@ -48,6 +48,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     bootstrap_cc = fp"${build_root}/usr/bin/cc"
     bootstrap_triple = build_triple
     bootstrap_ld_library_path = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
+
     bootstrap_task_env = {
       XSH_MAKE_NATIVE_CROSS: "0",
       PATH: f"${build_root}/usr/bin:${build_root}/usr/lib/llvm-toolchain/bin:${env.get("PATH") ?? ""}",
@@ -589,7 +590,17 @@ export proc build(dest: Path) [fs, process, env, error] {
   # Fortran LexerParser sources needed by the Ninja generator.
   for s in ["cmFortranLexer", "cmFortranParser"] {
     let out = fp"${bsdir}/obj/${s}.o"
-    let task = make.compile_cxx_task(bootstrap_cc, bootstrap_triple, cxx_all, [], [], fp"Source/LexerParser/${s}.cxx", out)
+
+    let task = make.compile_cxx_task(
+      bootstrap_cc,
+      bootstrap_triple,
+      cxx_all,
+      [],
+      [],
+      fp"Source/LexerParser/${s}.cxx",
+      out,
+    )
+
     tasks = tasks.push(task)
     obj_deps = obj_deps.push(task.name)
     objs = objs.push(out)
@@ -605,7 +616,17 @@ export proc build(dest: Path) [fs, process, env, error] {
   # Utilities/std: fs_path.cxx, string_view.cxx
   for s in ["fs_path", "string_view"] {
     let out = fp"${bsdir}/obj/${s}.o"
-    let task = make.compile_cxx_task(bootstrap_cc, bootstrap_triple, cxx_all, [], [], fp"Utilities/std/cm/bits/${s}.cxx", out)
+
+    let task = make.compile_cxx_task(
+      bootstrap_cc,
+      bootstrap_triple,
+      cxx_all,
+      [],
+      [],
+      fp"Utilities/std/cm/bits/${s}.cxx",
+      out,
+    )
+
     tasks = tasks.push(task)
     obj_deps = obj_deps.push(task.name)
     objs = objs.push(out)
@@ -614,7 +635,17 @@ export proc build(dest: Path) [fs, process, env, error] {
   # LexerParser CXX
   for s in ["cmExprLexer", "cmExprParser", "cmGccDepfileLexer"] {
     let out = fp"${bsdir}/obj/${s}.o"
-    let task = make.compile_cxx_task(bootstrap_cc, bootstrap_triple, cxx_all, [], [], fp"Source/LexerParser/${s}.cxx", out)
+
+    let task = make.compile_cxx_task(
+      bootstrap_cc,
+      bootstrap_triple,
+      cxx_all,
+      [],
+      [],
+      fp"Source/LexerParser/${s}.cxx",
+      out,
+    )
+
     tasks = tasks.push(task)
     obj_deps = obj_deps.push(task.name)
     objs = objs.push(out)
@@ -622,7 +653,17 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   # LexerParser C
   let lfl_out = fp"${bsdir}/obj/cmListFileLexer.o"
-  let lfl_task = make.compile_c_task(bootstrap_cc, bootstrap_triple, c_all, [], [], p"Source/LexerParser/cmListFileLexer.c", lfl_out)
+
+  let lfl_task = make.compile_c_task(
+    bootstrap_cc,
+    bootstrap_triple,
+    c_all,
+    [],
+    [],
+    p"Source/LexerParser/cmListFileLexer.c",
+    lfl_out,
+  )
+
   tasks = tasks.push(lfl_task)
   obj_deps = obj_deps.push(lfl_task.name)
   objs = objs.push(lfl_out)
@@ -659,7 +700,17 @@ export proc build(dest: Path) [fs, process, env, error] {
   ]
 
   let string_out = fp"${bsdir}/obj/kwsys-c-String.o"
-  let string_task = make.compile_c_task(bootstrap_cc, bootstrap_triple, string_flags, [], [], p"Source/kwsys/String.c", string_out)
+
+  let string_task = make.compile_c_task(
+    bootstrap_cc,
+    bootstrap_triple,
+    string_flags,
+    [],
+    [],
+    p"Source/kwsys/String.c",
+    string_out,
+  )
+
   tasks = tasks.push(string_task)
   obj_deps = obj_deps.push(string_task.name)
   objs = objs.push(string_out)
@@ -674,7 +725,17 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   let st_out = fp"${bsdir}/obj/kwsys-SystemTools.o"
-  let st_task = make.compile_cxx_task(bootstrap_cc, bootstrap_triple, kwsys_st, [], [], p"Source/kwsys/SystemTools.cxx", st_out)
+
+  let st_task = make.compile_cxx_task(
+    bootstrap_cc,
+    bootstrap_triple,
+    kwsys_st,
+    [],
+    [],
+    p"Source/kwsys/SystemTools.cxx",
+    st_out,
+  )
+
   tasks = tasks.push(st_task)
   obj_deps = obj_deps.push(st_task.name)
   objs = objs.push(st_out)
@@ -724,7 +785,17 @@ export proc build(dest: Path) [fs, process, env, error] {
   ] {
     let out_name = s.replace("/", "-").replace(".c", ".o")
     let out = fp"${bsdir}/obj/rhash-${out_name}"
-    let task = make.compile_c_task(bootstrap_cc, bootstrap_triple, rhash_all, [], [], fp"Utilities/cmlibrhash/${s}", out)
+
+    let task = make.compile_c_task(
+      bootstrap_cc,
+      bootstrap_triple,
+      rhash_all,
+      [],
+      [],
+      fp"Utilities/cmlibrhash/${s}",
+      out,
+    )
+
     tasks = tasks.push(task)
     obj_deps = obj_deps.push(task.name)
     objs = objs.push(out)
@@ -734,7 +805,17 @@ export proc build(dest: Path) [fs, process, env, error] {
   for s in ["src/lib_json/json_reader.cpp", "src/lib_json/json_value.cpp", "src/lib_json/json_writer.cpp"] {
     let out_name = s.replace("/", "-").replace(".cpp", ".o")
     let out = fp"${bsdir}/obj/jsoncpp-${out_name}"
-    let task = make.compile_cxx_task(bootstrap_cc, bootstrap_triple, jsoncpp_all, [], [], fp"Utilities/cmjsoncpp/${s}", out)
+
+    let task = make.compile_cxx_task(
+      bootstrap_cc,
+      bootstrap_triple,
+      jsoncpp_all,
+      [],
+      [],
+      fp"Utilities/cmjsoncpp/${s}",
+      out,
+    )
+
     tasks = tasks.push(task)
     obj_deps = obj_deps.push(task.name)
     objs = objs.push(out)
@@ -742,13 +823,16 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   # Step 4: link the bootstrap cmake binary (C++ program needs C++ compiler driver).
   let bootstrap_cmake = fp"${bsdir}/cmake"
-  tasks = tasks.push(make.link_executable_cxx_task(bootstrap_cc, bootstrap_triple, objs, [], ["-ldl", "-lrt"], bootstrap_cmake, obj_deps))
+
+  tasks = tasks.push(
+    make.link_executable_cxx_task(bootstrap_cc, bootstrap_triple, objs, [], ["-ldl", "-lrt"], bootstrap_cmake, obj_deps),
+  )
+
   if cross_build {
     tasks = [{...task, env: bootstrap_task_env} for task in tasks]
   }
 
   make.run_tasks(tasks, make.jobs()?)?
-
 
   # Step 5: generate InitialCacheFlags.cmake — passed as -C to bootstrap cmake.
   # The bootstrap script generates this to configure install paths and features.

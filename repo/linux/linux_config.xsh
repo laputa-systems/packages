@@ -9,7 +9,9 @@ proc render_fragments(fragments: List[Path]) [fs, error] -> Result[Str] {
 
   for fragment in fragments {
     if ! fragment.exists()? {
-      return Err(ScriptError.Failed("linux-config-fragment-missing", f"missing kernel config fragment ${fragment.display()}"))
+      return Err(
+        ScriptError.Failed("linux-config-fragment-missing", f"missing kernel config fragment ${fragment.display()}"),
+      )
     }
 
     out = f"""${out}${fragment.read_text()?.trim()}

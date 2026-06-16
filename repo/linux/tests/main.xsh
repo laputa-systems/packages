@@ -435,7 +435,6 @@ proc test_kbuild_applies_object_and_subdir_cflags(ctx: TestContext) [fs, error] 
   let root = test.temp_dir(ctx, name: "linux-cflags")?
   fs.mkdir(fp"${root}/sound/hda/common")?
   fs.mkdir(fp"${root}/sound/hda/controllers")?
-
   fs.write(fp"${root}/.config", "")?
 
   fs.write(

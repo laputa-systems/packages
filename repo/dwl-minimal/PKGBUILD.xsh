@@ -37,7 +37,7 @@ proc sysroot_path(root: Str, raw: Str) [fs, error] -> Result[Path] {
   }
 
   if root != "" and root != "/" and raw.starts_with("/") {
-    return Path.parse(f"${root}${raw.trim()}")?
+    return fp"${root}${raw.trim()}"
   }
 
   path_value
@@ -198,7 +198,13 @@ export proc build(dest: Path) [fs, process, env, error] {
   let root = env.get("LAPUTA_ROOT") ?? "/"
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
   let cross_build = pm_util.build_arch()? != pm_util.target_arch()? and build_root != ""
-  let native_tools_ld = if cross_build { f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib" } else { pc.ld_library_path }
+
+  let native_tools_ld = if cross_build {
+    f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
+  } else {
+    pc.ld_library_path
+  }
+
   let scanner = if cross_build { fp"${build_root}/usr/bin/wayland-scanner" } else { process.which("wayland-scanner")? }
   let packages = ["wayland-server", "xkbcommon", "libinput", "wlroots-0.19"]
   patch_startup()?

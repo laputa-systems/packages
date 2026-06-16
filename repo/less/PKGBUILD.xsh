@@ -39,12 +39,14 @@ export proc build(dest: Path) [fs, process, env, error] {
   if cross_build {
     let build_root = Path.parse((env.get("XSH_PM_BUILD_ROOT") ?? "").trim())?
     build_cc = fp"${build_root}/usr/bin/cc"
+
     build_task_env = {
       XSH_MAKE_NATIVE_CROSS: "0",
       PATH: f"${build_root}/usr/bin:${build_root}/usr/lib/llvm-toolchain/bin:${env.get("PATH") ?? ""}",
       LD_LIBRARY_PATH: f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib",
     }
   }
+
   let cflags = ["-O2"]
   let defs = ["-DBINDIR=\"/usr/bin\"", "-DLIBEXECDIR=\"/usr/libexec\"", "-DSYSDIR=\"/etc\"", "-DSECURE_COMPILE=0"]
   let includes = ["-I."]
@@ -62,7 +64,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   make.run_tasks(buildgen_tasks, make.jobs()?)?
-
   let less_hlp = p"less.hlp"
   fs.write(p"help.c", run.text (buildgen.display()) "help" < ${less_hlp}?)?
 

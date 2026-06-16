@@ -65,7 +65,6 @@ export proc build(dest: Path) [fs, error] {
   for entry in fs.walk(fp"${dest}/usr/lib/xsh/core", gitignore: false)? |> where .kind == "file" and .ext == "xsh" {
     fs.chmod(entry.path, 0o755)?
   }
-
 }
 
 export proc pre_install(root: Path) [fs, error] {

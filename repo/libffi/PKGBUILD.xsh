@@ -190,14 +190,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   let defs = ["-DHAVE_CONFIG_H"]
   let includes = ["-I.", "-Iinclude", "-Isrc"]
 
-  let srcs = [
-    "src/prep_cif.c",
-    "src/types.c",
-    "src/raw_api.c",
-    "src/java_raw_api.c",
-    "src/closures.c",
-    "src/tramp.c",
-  ].extend(target.sources)
+  let srcs = ["src/prep_cif.c", "src/types.c", "src/raw_api.c", "src/java_raw_api.c", "src/closures.c", "src/tramp.c"].extend(
+    target.sources,
+  )
 
   var objs: List[Path] = []
   var tasks: List[make.MakeTask] = []
@@ -214,7 +209,11 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   let so = p"obj/libffi.so.8.2.0"
-  tasks = tasks.push(make.link_shared_task(cc, triple, objs, "libffi.so.8", ["-Wl,--version-script,libffi.map"], so, task_deps))
+
+  tasks = tasks.push(
+    make.link_shared_task(cc, triple, objs, "libffi.so.8", ["-Wl,--version-script,libffi.map"], so, task_deps),
+  )
+
   make.run_tasks(tasks, make.jobs()?)?
   fs.install(so, fp"${dest}/usr/lib/libffi.so.8.2.0", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"libffi.so.8.2.0", fp"${dest}/usr/lib/libffi.so.8")?

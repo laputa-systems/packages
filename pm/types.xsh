@@ -49,7 +49,14 @@ export type BuiltPackage = {
   metadata_files: List[Record],
 }
 
-export type PackageIndex = {name: Str, ver: Str, rel: Str, deps: List[Str], mkdeps: List[Str], target_build_deps: List[Str]}
+export type PackageIndex = {
+  name: Str,
+  ver: Str,
+  rel: Str,
+  deps: List[Str],
+  mkdeps: List[Str],
+  target_build_deps: List[Str],
+}
 
 export type RemotePackage = {
   arch: Str,

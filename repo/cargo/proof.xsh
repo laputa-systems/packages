@@ -6,13 +6,8 @@ error ProofError = Failed(kind: Str, message: Str)
 proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   proof.target_elf(rootfs, p"usr/bin/cargo", "cargo")?
   proof.target_elf(rootfs, p"usr/bin/rustc", "rustc")?
-
   let target_arch = pm_util.target_arch()?
-  let rust_triple = if target_arch == "aarch64" {
-    "aarch64-unknown-linux-musl"
-  } else {
-    "x86_64-unknown-linux-musl"
-  }
+  let rust_triple = if target_arch == "aarch64" { "aarch64-unknown-linux-musl" } else { "x86_64-unknown-linux-musl" }
 
   if ! fs.exists(fp"${rootfs}/usr/lib64/rustlib/${rust_triple}/lib")? {
     return Err(ProofError.Failed("proof-cargo", f"missing rust std for ${rust_triple}"))

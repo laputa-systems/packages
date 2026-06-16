@@ -62,7 +62,7 @@ proc sysroot_path(root: Str, raw: Str) [fs, error] -> Result[Path] {
   }
 
   if root != "" and root != "/" and raw.starts_with("/") {
-    return Path.parse(f"${root}${raw.trim()}")?
+    return fp"${root}${raw.trim()}"
   }
 
   path_value
@@ -194,7 +194,13 @@ export proc build(dest: Path) [fs, process, env, error] {
   let pc = pm_meson.pkg_config_env()?
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
   let cross_build = pm_util.build_arch()? != pm_util.target_arch()? and build_root != ""
-  let native_tools_ld = if cross_build { f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib" } else { pc.ld_library_path }
+
+  let native_tools_ld = if cross_build {
+    f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
+  } else {
+    pc.ld_library_path
+  }
+
   patch_generated_inputs()?
 
   env {
@@ -205,13 +211,19 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
     run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Dsysconfdir=/etc" "-Ddefault_library=shared" "-Dwerror=false" "-Ddocs=disabled" "-Dthemes=false" "-Dtests=false" "-Dime=false" "-Dgrapheme-clustering=disabled" "-Dterminfo=disabled" "-Dutmp-backend=none" "build" ?
+
     if cross_build {
       let native_scanner_wrapper = fp"${fs.cwd()?}/build/wayland-scanner-native-wrapper"
-      fs.write(native_scanner_wrapper, f"""#!/bin/sh
+
+      fs.write(
+        native_scanner_wrapper,
+        f"""#!/bin/sh
 LD_LIBRARY_PATH="${native_tools_ld}"
 export LD_LIBRARY_PATH
 exec "${build_root}/usr/bin/wayland-scanner" "$@"
-""")?
+""",
+      )?
+
       fs.chmod(native_scanner_wrapper, 0o755)?
       let ninja = p"build/build.ninja"
       let scanner_text = native_scanner_wrapper.display()
@@ -221,6 +233,7 @@ exec "${build_root}/usr/bin/wayland-scanner" "$@"
       ninja_text = ninja_text.replace(f"${build_root}/usr/bin/wayland-scanner", scanner_text)
       ninja.write_atomic(ninja_text)?
     }
+
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {

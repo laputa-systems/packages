@@ -691,9 +691,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
       }
     }
 
-    if done_count >= tasks.len() {
-      break
-    }
+    break when done_count >= tasks.len()
 
     if running.len() == 0 {
       return Err(MakeError.DependencyCycle(message: "cycle in make task graph"))

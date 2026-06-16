@@ -160,13 +160,19 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
     run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Ddefault_library=shared" "-Dauto_features=disabled" "-Dwerror=false" "-Dbackends=drm,libinput" "-Dallocators=" "-Dsession=enabled" "-Dxwayland=disabled" "-Dcolor-management=disabled" "-Dlibliftoff=disabled" "-Dxcb-errors=disabled" "-Dexamples=false" "build" ?
+
     if native_scanner {
       let native_scanner_wrapper = fp"${fs.cwd()?}/build/wayland-scanner-native-wrapper"
-      fs.write(native_scanner_wrapper, f"""#!/bin/sh
+
+      fs.write(
+        native_scanner_wrapper,
+        f"""#!/bin/sh
 LD_LIBRARY_PATH="${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
 export LD_LIBRARY_PATH
 exec "${build_root}/usr/bin/wayland-scanner" "$@"
-""")?
+""",
+      )?
+
       fs.chmod(native_scanner_wrapper, 0o755)?
       let ninja = p"build/build.ninja"
       let scanner_text = native_scanner_wrapper.display()
@@ -176,6 +182,7 @@ exec "${build_root}/usr/bin/wayland-scanner" "$@"
       ninja_text = ninja_text.replace(f"${build_root}/usr/bin/wayland-scanner", scanner_text)
       ninja.write_atomic(ninja_text)?
     }
+
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {

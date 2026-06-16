@@ -33,9 +33,9 @@ proc write_format_modifier_table() [fs, error] {
         intel = intel.push(modifier_name.replace("I915_FORMAT_MOD_", ""))
       } else if modifier_name.starts_with("DRM_FORMAT_MOD_VENDOR_") {
         vendors = vendors.push(modifier_name.replace("DRM_FORMAT_MOD_VENDOR_", ""))
-      } else if modifier_name.starts_with("DRM_FORMAT_MOD_") and ! modifier_name.contains("(") and ! modifier_name.contains("*") and ! modifier_name.contains(
-        "-",
-      ) {
+      } else if modifier_name.starts_with("DRM_FORMAT_MOD_") and ! modifier_name.contains("(") and ! modifier_name.contains(
+        "*",
+      ) and ! modifier_name.contains("-") {
         let entry = modifier_name.replace("DRM_FORMAT_MOD_", "")
         let parts = entry.split("_")
 

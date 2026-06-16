@@ -33,6 +33,7 @@ prog_scanner = find_program(dep_scanner.get_variable(pkgconfig: 'wayland_scanner
   }
 
   text = fs.read_text(build_file)?
+
   let old = """include_dirs = []
 if dep_scanner.version().version_compare('>=1.22.90')
 	subdir('include/wayland-protocols')

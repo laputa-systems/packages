@@ -6,7 +6,7 @@ export proc bison_tool() [env, error] -> Result[Path] {
   let root = env.get("XSH_PM_BUILD_ROOT") ?? env.get("LAPUTA_ROOT") ?? ""
 
   if root != "" {
-    return Path.parse(f"${root}/usr/lib/pm/repo/bison/files/bison.xsh")?
+    return fp"${root}/usr/lib/pm/repo/bison/files/bison.xsh"
   }
 
   return /usr/lib/pm/repo/bison/files/bison.xsh
@@ -16,7 +16,7 @@ export proc flex_tool() [env, error] -> Result[Path] {
   let root = env.get("XSH_PM_BUILD_ROOT") ?? env.get("LAPUTA_ROOT") ?? ""
 
   if root != "" {
-    return Path.parse(f"${root}/usr/lib/pm/repo/flex/files/flex.xsh")?
+    return fp"${root}/usr/lib/pm/repo/flex/files/flex.xsh"
   }
 
   return /usr/lib/pm/repo/flex/files/flex.xsh

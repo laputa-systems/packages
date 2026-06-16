@@ -5,7 +5,11 @@ pure restart_policy() -> Record {
 export let service = {
   name: "seatd",
   kind: "longrun",
-  command: process.command_argv(/usr/bin/seatd, ["seatd", "-g", "seat", "-l", "info"], env: {PATH: "/usr/local/bin:/usr/bin:/bin"}),
+  command: process.command_argv(
+    /usr/bin/seatd,
+    ["seatd", "-g", "seat", "-l", "info"],
+    env: {PATH: "/usr/local/bin:/usr/bin:/bin"},
+  ),
   targets: ["boot"],
   restart: restart_policy(),
   logging: "append",

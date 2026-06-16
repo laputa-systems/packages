@@ -228,12 +228,7 @@ pure native_nvhe_cflags() -> List[Str] {
 
 pure native_nvhe_includes() -> List[Str] {
   return native_kbuild_includes().extend(
-    [
-      "-I./arch/arm64/kvm",
-      "-I./arch/arm64/kvm/hyp",
-      "-I./arch/arm64/kvm/hyp/include",
-      "-I./arch/arm64/kvm/hyp/nvhe",
-    ],
+    ["-I./arch/arm64/kvm", "-I./arch/arm64/kvm/hyp", "-I./arch/arm64/kvm/hyp/include", "-I./arch/arm64/kvm/hyp/nvhe"],
   )
 }
 
@@ -249,12 +244,18 @@ pure native_nvhe_objects() -> List[Record] {
     {source: p"arch/arm64/kvm/hyp/nvhe/hyp-main.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/hyp-main.nvhe.o"},
     {source: p"arch/arm64/kvm/hyp/nvhe/hyp-smp.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/hyp-smp.nvhe.o"},
     {source: p"arch/arm64/kvm/hyp/nvhe/psci-relay.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/psci-relay.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/early_alloc.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/early_alloc.nvhe.o"},
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/early_alloc.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/early_alloc.nvhe.o",
+    },
     {source: p"arch/arm64/kvm/hyp/nvhe/page_alloc.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/page_alloc.nvhe.o"},
     {source: p"arch/arm64/kvm/hyp/nvhe/cache.S", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/cache.nvhe.o"},
     {source: p"arch/arm64/kvm/hyp/nvhe/setup.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/setup.nvhe.o"},
     {source: p"arch/arm64/kvm/hyp/nvhe/mm.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/mm.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/mem_protect.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/mem_protect.nvhe.o"},
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/mem_protect.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/mem_protect.nvhe.o",
+    },
     {source: p"arch/arm64/kvm/hyp/nvhe/sys_regs.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/sys_regs.nvhe.o"},
     {source: p"arch/arm64/kvm/hyp/nvhe/pkvm.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/pkvm.nvhe.o"},
     {source: p"arch/arm64/kvm/hyp/nvhe/stacktrace.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/stacktrace.nvhe.o"},
@@ -262,7 +263,10 @@ pure native_nvhe_objects() -> List[Record] {
     {source: p"arch/arm64/kvm/hyp/nvhe/list_debug.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/list_debug.nvhe.o"},
     {source: p"arch/arm64/kvm/hyp/vgic-v3-sr.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/vgic-v3-sr.nvhe.o"},
     {source: p"arch/arm64/kvm/hyp/aarch32.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/aarch32.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/vgic-v2-cpuif-proxy.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/vgic-v2-cpuif-proxy.nvhe.o"},
+    {
+      source: p"arch/arm64/kvm/hyp/vgic-v2-cpuif-proxy.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/vgic-v2-cpuif-proxy.nvhe.o",
+    },
     {source: p"arch/arm64/kvm/hyp/entry.S", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/entry.nvhe.o"},
     {source: p"arch/arm64/kvm/hyp/fpsimd.S", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/fpsimd.nvhe.o"},
     {source: p"arch/arm64/kvm/hyp/hyp-entry.S", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/hyp-entry.nvhe.o"},
@@ -283,7 +287,11 @@ pure path_strings(paths: List[Path]) -> List[Str] {
 proc build_native_nvhe_helper(cc: Path) [fs, process, env, error] -> Result[Path] {
   let out = p".xsh-kbuild/host/arch/arm64/kvm/hyp/nvhe/gen-hyprel"
   fs.mkdir(out.parent)?
-  PKGBUILD_shared.run_native_command([cc.display(), "-O2", "-I./include", "-o", out.display(), "arch/arm64/kvm/hyp/nvhe/gen-hyprel.c"])?
+
+  PKGBUILD_shared.run_native_command(
+    [cc.display(), "-O2", "-I./include", "-o", out.display(), "arch/arm64/kvm/hyp/nvhe/gen-hyprel.c"],
+  )?
+
   return out
 }
 
@@ -291,7 +299,21 @@ proc preprocess_native_nvhe_linker_script(cc: Path, out: Path) [fs, process, env
   fs.mkdir(out.parent)?
   var argv = [cc.display(), "-target", "aarch64-linux-gnu", "-Wno-unused-command-line-argument"]
   argv = argv.extend(native_nvhe_cflags()).extend(native_nvhe_includes())
-  argv = argv.extend(["-D__ASSEMBLY__", "-DLINKER_SCRIPT", "-E", "-P", "-C", "-Uarm64", "arch/arm64/kvm/hyp/nvhe/hyp.lds.S", "-o", out.display()])
+
+  argv = argv.extend(
+    [
+      "-D__ASSEMBLY__",
+      "-DLINKER_SCRIPT",
+      "-E",
+      "-P",
+      "-C",
+      "-Uarm64",
+      "arch/arm64/kvm/hyp/nvhe/hyp.lds.S",
+      "-o",
+      out.display(),
+    ],
+  )
+
   PKGBUILD_shared.run_native_command(argv)?
 }
 
@@ -300,7 +322,13 @@ proc write_native_nvhe_hyprel(gen: Path, input: Path, out: Path) [fs, process, e
   kbuild.write_text_if_changed(out, reloc)?
 }
 
-proc nvhe_ld_task(ld: Path, out: Path, inputs: List[Path], deps: List[Str], linker_script: Path = p"") [] -> make.MakeTask {
+proc nvhe_ld_task(
+  ld: Path,
+  out: Path,
+  inputs: List[Path],
+  deps: List[Str],
+  linker_script: Path = p"",
+) [] -> make.MakeTask {
   var argv = [ld.display(), "-r"]
 
   if linker_script.display() != "" {
@@ -341,7 +369,6 @@ proc build_native_nvhe(cc: Path, jobs_count: Int) [fs, process, env, error] {
   let nvhe_dir = p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe"
   let linker_script = fp"${nvhe_dir}/hyp.lds"
   preprocess_native_nvhe_linker_script(cc, linker_script)?
-
   let ld = PKGBUILD_shared.native_tool("ld.lld")?
   let objcopy = PKGBUILD_shared.native_tool("llvm-objcopy")?
   var object_tasks: List[make.MakeTask] = []
@@ -349,8 +376,17 @@ proc build_native_nvhe(cc: Path, jobs_count: Int) [fs, process, env, error] {
 
   for item in native_nvhe_objects() {
     object_tasks = object_tasks.push(
-      kbuild.compile_kbuild_task(cc, "aarch64-linux-gnu", native_nvhe_cflags(), [], native_nvhe_includes(), item.source, item.out),
+      kbuild.compile_kbuild_task(
+        cc,
+        "aarch64-linux-gnu",
+        native_nvhe_cflags(),
+        [],
+        native_nvhe_includes(),
+        item.source,
+        item.out,
+      ),
     )
+
     object_outputs = object_outputs.push(item.out)
   }
 
@@ -359,18 +395,27 @@ proc build_native_nvhe(cc: Path, jobs_count: Int) [fs, process, env, error] {
   let reloc_o = fp"${nvhe_dir}/hyp-reloc.o"
   let rel = fp"${nvhe_dir}/kvm_nvhe.rel.o"
   let out = fp"${nvhe_dir}/kvm_nvhe.o"
-
   object_tasks = object_tasks.push(nvhe_ld_task(ld, tmp, object_outputs, path_strings(object_outputs), linker_script))
   make.run_tasks(object_tasks, jobs_count)?
   write_native_nvhe_hyprel(gen, tmp, reloc_asm)?
-
   var final_tasks: List[make.MakeTask] = []
-  final_tasks = final_tasks.push(kbuild.compile_kbuild_task(cc, "aarch64-linux-gnu", native_nvhe_cflags(), [], native_nvhe_includes(), reloc_asm, reloc_o))
+
+  final_tasks = final_tasks.push(
+    kbuild.compile_kbuild_task(
+      cc,
+      "aarch64-linux-gnu",
+      native_nvhe_cflags(),
+      [],
+      native_nvhe_includes(),
+      reloc_asm,
+      reloc_o,
+    ),
+  )
+
   final_tasks = final_tasks.push(nvhe_ld_task(ld, rel, [tmp, reloc_o], [reloc_o.display()]))
   final_tasks = final_tasks.push(nvhe_objcopy_task(objcopy, rel, out, [rel.display()]))
   make.run_tasks(final_tasks, jobs_count)?
 }
-
 
 export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, error] {
   if srcarch != "arm64" {
@@ -434,7 +479,6 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
     let archive_report = p".xsh-kbuild-archive-plan.json"
     let root_archive = p".xsh-kbuild/built-in.a"
     let reuse_archives = (env.get("XSH_LINUX_KBUILD_REUSE_ARCHIVES") ?? "") == "1"
-
     let compile_start = PKGBUILD_shared.timing_start("compile")
 
     if reuse_archives and root_archive.exists()? and archive_report.exists()? and (env.get(

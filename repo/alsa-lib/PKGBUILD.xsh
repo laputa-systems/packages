@@ -68,6 +68,7 @@ int snd_pcm_close(void *pcm)
 
 proc install_headers(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/include/alsa")?
+
   fs.write(
     fp"${dest}/usr/include/alsa/asoundlib.h",
     """#ifndef LAPUTA_ALSA_ASOUNDLIB_H
@@ -103,6 +104,7 @@ int snd_pcm_close(snd_pcm_t *pcm);
 
 proc install_pkg_config(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/lib/pkgconfig")?
+
   fs.write(
     fp"${dest}/usr/lib/pkgconfig/alsa.pc",
     f"""prefix=/usr
@@ -121,6 +123,7 @@ Cflags: -I\${{includedir}}
 
 proc install_config(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/share/alsa")?
+
   fs.write(
     fp"${dest}/usr/share/alsa/alsa.conf",
     """defaults.ctl.card 0
@@ -139,7 +142,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   let so = p"obj/libasound.so.2"
   let compile = make.compile_lo_task(cc, triple, ["-std=c99", "-Wall", "-Wextra"], [], [], src, obj)
   let link = make.link_shared_task(cc, triple, [obj], "libasound.so.2", [], so, [compile.name])
-
   write_asound_stub()?
   make.run_tasks([compile, link], make.jobs()?)?
   fs.install(so, fp"${dest}/usr/lib/libasound.so.2", 0o755, parents: true, overwrite: true)?
