@@ -1,8 +1,8 @@
 export let name: Str = "xinit"
 
-export let ver: Str = "local-service-graph"
+export let ver: Str = "release-f9034b48f96f49f42914498cd7bbe8a080b945b3"
 
-export let rel: Str = "1"
+export let rel: Str = "4"
 
 export let deps: List[Str] = ["xsh"]
 

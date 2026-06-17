@@ -363,14 +363,14 @@ export proc ensure_installable(root: Path, pkg: Package, manifest: List[Path], i
 
 pure can_replace_installed_owner(pkg: Package, owner: Str) -> Bool {
   if pkg.name == "llvm-toolchain" {
-    return owner == "ca-certificates" or owner == "libffi" or owner == "libunwind"
+    return owner == "ca-certificates" or owner == "libffi"
   }
 
   if owner != "llvm-toolchain" {
     return pkg.name == "wlroots0.19-mesa" and owner == "wlroots0.19-minimal"
   }
 
-  return pkg.name == "ca-certificates" or pkg.name == "libffi" or pkg.name == "libunwind"
+  return pkg.name == "ca-certificates" or pkg.name == "libffi"
 }
 
 export proc install_etc_file(

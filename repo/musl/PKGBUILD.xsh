@@ -17,19 +17,16 @@ export let nostrip: Bool = true
 
 export let sources: List[Path] = [
   p"https://musl.libc.org/releases/musl-VERSION.tar.gz",
-  p"https://github.com/laputa-systems/artifacts/releases/download/llvm-toolchain-22.1.3/llvm-toolchain-22.1.3-ARCH.tar.gz => llvm-toolchain-target",
 ]
 
-export let checksums: List[Str] = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a", "SKIP"]
+export let checksums: List[Str] = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
 export let checksums_aarch64: List[Str] = [
   "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
-  "3b9d9015a9b3ad74e111e7128c820d009cf35c7e2711ee1aa2b93b0a4bc1b0d4",
 ]
 
 export let checksums_x86_64: List[Str] = [
   "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
-  "79b31c8ac33e791420d8282466eab85e8384d678728051748fc087bc0d049f8f",
 ]
 
 pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {

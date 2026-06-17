@@ -6,7 +6,7 @@ export let name: Str = "llvm-toolchain"
 
 export let ver: Str = "22.1.3"
 
-export let rel: Str = "7"
+export let rel: Str = "8"
 
 export let deps: List[Str] = ["musl"]
 
@@ -15,14 +15,18 @@ export let mkdeps: List[Str] = []
 export let nostrip: Bool = true
 
 export let sources: List[Path] = [
-  p"https://github.com/laputa-systems/artifacts/releases/download/llvm-toolchain-VERSION/llvm-toolchain-VERSION-ARCH.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/clang22-22.1.3-r2.apk => clang22.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/lld22-22.1.3-r0.apk => lld22.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/llvm22-22.1.3-r0.apk => llvm22.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/llvm22-libs-22.1.3-r0.apk => llvm22-libs.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/clang22-libs-22.1.3-r2.apk => clang22-libs.tar.gz",
 ]
 
-export let checksums: List[Str] = ["SKIP"]
+export let checksums: List[Str] = ["SKIP", "SKIP", "SKIP", "SKIP", "SKIP"]
 
-export let checksums_aarch64: List[Str] = ["3b9d9015a9b3ad74e111e7128c820d009cf35c7e2711ee1aa2b93b0a4bc1b0d4"]
+export let checksums_aarch64: List[Str] = ["SKIP", "SKIP", "SKIP", "SKIP", "SKIP"]
 
-export let checksums_x86_64: List[Str] = ["79b31c8ac33e791420d8282466eab85e8384d678728051748fc087bc0d049f8f"]
+export let checksums_x86_64: List[Str] = ["SKIP", "SKIP", "SKIP", "SKIP", "SKIP"]
 
 pure wrapper_source() -> Str {
   return """#include <errno.h>
@@ -304,7 +308,7 @@ int main(int argc, char **argv) {
   const char *tool_name = base_name(argv[0]);
   int compile_only = has_compile_only_arg(argc, argv);
   int frontend_flags = needs_frontend_flags(argc, argv);
-  int extra_count = tool->clang ? 32 : 0;
+  int extra_count = tool->clang ? 30 : 0;
   char **exec_argv = calloc((size_t)argc + (size_t)extra_count + 1, sizeof(char *));
   if (!exec_argv) {
     perror("calloc");
@@ -369,9 +373,6 @@ int main(int argc, char **argv) {
     if (!compile_only) {
       if (!has_option_prefix(argc, argv, "--rtlib=")) {
         exec_argv[out++] = "--rtlib=compiler-rt";
-      }
-      if (!has_option_prefix(argc, argv, "--unwindlib=")) {
-        exec_argv[out++] = "--unwindlib=libunwind";
       }
       exec_argv[out++] = "-fuse-ld=lld";
       exec_argv[out++] = "-L";

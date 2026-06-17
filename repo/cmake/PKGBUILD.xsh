@@ -10,7 +10,7 @@ export let ver: Str = "4.3.1"
 
 export let rel: Str = "10"
 
-export let deps: List[Str] = ["musl", "llvm-toolchain", "libunwind"]
+export let deps: List[Str] = ["musl", "llvm-toolchain"]
 
 export let mkdeps: List[Str] = ["llvm-toolchain", "samurai"]
 

@@ -8,7 +8,7 @@ export let ver: Str = "0.2.13"
 
 export let rel: Str = "10"
 
-export let deps: List[Str] = ["linux-pam", "libunwind"]
+export let deps: List[Str] = ["linux-pam"]
 
 export let mkdeps: List[Str] = ["cargo", "llvm-toolchain", "linux-pam"]
 
@@ -108,7 +108,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   let cargo_path = f"${host_cc.parent.display()}:${current_path}"
   let gcc_s = fp"${libdir}/libgcc_s.so"
   fs.remove(gcc_s, missing_ok: true)?
-  fs.symlink(p"libunwind.so", gcc_s)?
+
+  # TODO: libunwind is not allowed, figure out how to build without it
+  # fs.symlink(p"libunwind.so", gcc_s)?
 
   env {
     PATH = cargo_path

@@ -13,14 +13,13 @@ let llvm_packages = [
   "compiler-rt",
   "lld22",
   "lld22-libs",
-  "llvm-libunwind",
-  "llvm-libunwind-dev",
   "llvm22",
   "llvm22-dev",
   "llvm22-libs",
   "llvm22-linker-tools",
 ]
 
+# TODO: slim this down
 let runtime_packages = [
   "brotli-libs",
   "c-ares",

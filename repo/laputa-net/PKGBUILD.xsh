@@ -2,7 +2,7 @@ export let name: Str = "laputa-net"
 
 export let ver: Str = "1"
 
-export let rel: Str = "1"
+export let rel: Str = "2"
 
 # ifup (the DHCP/static client) is an xsh core applet; the net service drives it.
 export let deps: List[Str] = ["xsh"]
@@ -21,5 +21,6 @@ export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/etc/network/if-down.d")?
 
   # Expose the ifup core applet as a command for the net service and operators.
+  fs.mkdir(fp"${dest}/usr/bin")?
   fs.symlink(../lib/xsh/core/ifup.xsh, fp"${dest}/usr/bin/ifup")?
 }
