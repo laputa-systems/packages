@@ -17,7 +17,7 @@ export let sources: List[Path] = [p"https://mirrors.kernel.org/gnu/bison/bison-V
 
 export let checksums: List[Str] = [
   "9bba0214ccf7f1079c5d59210045227bcf619519840ebfa80cd3849cff5a5bf2",
-  "f98b902823cb2f997e7c868320b9c74afc3b48d420e1d91b2136198d38265689",
+  "0dea4f2a002f805b0e79be937e6c77a2a67ddb14c54fed28a7e6050010de530a",
 ]
 
 proc install_data_tree(src: Path, dest: Path) [fs, error] {

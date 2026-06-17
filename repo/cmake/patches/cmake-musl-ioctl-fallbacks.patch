@@ -1,0 +1,32 @@
+diff --git a/Source/cmSystemTools.cxx b/Source/cmSystemTools.cxx
+--- a/Source/cmSystemTools.cxx
++++ b/Source/cmSystemTools.cxx
+@@ -132,10 +132,11 @@
+ #  include <malloc.h> /* for malloc/free on QNX */
+ #endif
+ 
+ #ifdef __linux__
+-#  include <linux/fs.h>
+-
+ #  include <sys/ioctl.h>
++#  ifndef FS_IOC_GETFLAGS
++#    define FS_IOC_GETFLAGS _IOR('f', 1, long)
++#  endif
+ #endif
+ 
+ #if !defined(_WIN32) && !defined(__ANDROID__)
+diff --git a/Source/kwsys/SystemTools.cxx b/Source/kwsys/SystemTools.cxx
+--- a/Source/kwsys/SystemTools.cxx
++++ b/Source/kwsys/SystemTools.cxx
+@@ -91,7 +91,9 @@
+ #  include <csignal> /* sigprocmask */
+ #endif
+ 
+ #ifdef __linux
+-#  include <linux/fs.h>
++#  ifndef FICLONE
++#    define FICLONE _IOW(0x94, 9, int)
++#  endif
+ #endif
+ 
+ #if defined(__APPLE__) &&                                                     \

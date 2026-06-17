@@ -1,0 +1,30 @@
+diff --git a/Utilities/cmlibarchive/CMakeLists.txt b/Utilities/cmlibarchive/CMakeLists.txt
+--- a/Utilities/cmlibarchive/CMakeLists.txt
++++ b/Utilities/cmlibarchive/CMakeLists.txt
+@@ -1513,7 +1513,9 @@ CHECK_FUNCTION_EXISTS_GLIBC(arc4random_buf HAVE_ARC4RANDOM_BUF)
+ CHECK_FUNCTION_EXISTS_GLIBC(chflags HAVE_CHFLAGS)
+ CHECK_FUNCTION_EXISTS_GLIBC(chown HAVE_CHOWN)
+ CHECK_FUNCTION_EXISTS_GLIBC(chroot HAVE_CHROOT)
+-CHECK_FUNCTION_EXISTS_GLIBC(closefrom HAVE_CLOSEFROM)
+-CHECK_FUNCTION_EXISTS_GLIBC(close_range HAVE_CLOSE_RANGE)
++# musl links closefrom/close_range through these checks but does not declare
++# them under CMake's bundled libarchive feature macros; use the sysconf fallback.
++set(HAVE_CLOSEFROM 0)
++set(HAVE_CLOSE_RANGE 0)
+ CHECK_FUNCTION_EXISTS_GLIBC(ctime_r HAVE_CTIME_R)
+ CHECK_FUNCTION_EXISTS_GLIBC(fchdir HAVE_FCHDIR)
+@@ -1596,10 +1598,12 @@ CHECK_FUNCTION_EXISTS_GLIBC(wctomb HAVE_WCTOMB)
+ CHECK_FUNCTION_EXISTS_GLIBC(wcrtomb HAVE_WCRTOMB)
+ check_symbol_exists(wcscmp wchar.h HAVE_WCSCMP)
+ check_symbol_exists(wcscpy wchar.h HAVE_WCSCPY)
+ check_symbol_exists(wcslen wchar.h HAVE_WCSLEN)
+ CHECK_FUNCTION_EXISTS_GLIBC(wctomb HAVE_WCTOMB)
+-CHECK_FUNCTION_EXISTS_GLIBC(_fseeki64 HAVE__FSEEKI64)
+-CHECK_FUNCTION_EXISTS_GLIBC(_get_timezone HAVE__GET_TIMEZONE)
++# musl can link these Windows/CRT compatibility names through compiler
++# builtins, but the bundled libarchive C sources need declared functions.
++set(HAVE__FSEEKI64 0)
++set(HAVE__GET_TIMEZONE 0)
+ CHECK_SYMBOL_EXISTS(ctime_s "time.h" HAVE_CTIME_S)
+ CHECK_SYMBOL_EXISTS(gmtime_s "time.h" HAVE_GMTIME_S)
+ CHECK_SYMBOL_EXISTS(localtime_s "time.h" HAVE_LOCALTIME_S)

@@ -19,8 +19,8 @@ export let sources: List[Path] = [
 
 export let checksums: List[Str] = [
   "f22e9a92b15f26a1b805d85a7a1418ede89d8c6116b65b5af1d5600771ae89f2",
-  "f9d5e2f2f04edae4763df666b86b2b46135a4dac1995880c34304d4e14383f1f",
-  "2299e33aa0b04dc20750e3b915922318ebc8f9fd569f0b3cea021114ab948324",
+  "cdea9932b95e2ce360fa3dc86c0b15db9fe08bd03842830ace0843318ebcc16a",
+  "d92e13cca637ddc6bc7a2fdae1714dd87195836552da432f2e6eb8c6f6cbbfdd",
   "2190dcebd0a465fb2ed33caec377f8f9e3a0e6ab60b715e7cfa0e5bf179ef6ea",
 ]
 

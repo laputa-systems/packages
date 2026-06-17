@@ -2,9 +2,9 @@ export let name: Str = "tailscale"
 
 export let ver: Str = "1.96.4"
 
-export let rel: Str = "7"
+export let rel: Str = "8"
 
-export let deps: List[Str] = ["iptables"]
+export let deps: List[Str] = ["iptables", "xinit"]
 
 export let mkdeps: List[Str] = []
 

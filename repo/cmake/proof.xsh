@@ -23,9 +23,10 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   let arch = os.machine
   let ldso = fp"/usr/lib/ld-musl-${arch}.so.1"
   let dynlinker = fp"${rootfs}${ldso.display()}"
-  let tmp_root = fs.tempdir()?
-  defer fs.close_root(tmp_root)?
-  let tmp = fs.root_path(tmp_root)?
+  let tmp = fp"${rootfs}/var/tmp/proof-cmake"
+  fs.remove(tmp, missing_ok: true)?
+  fs.mkdir(tmp)?
+  defer fs.remove(tmp, missing_ok: true)?
 
   fs.write(
     fp"${tmp}/CMakeLists.txt",

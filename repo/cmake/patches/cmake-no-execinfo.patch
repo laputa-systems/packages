@@ -1,8 +1,7 @@
 diff --git a/Source/kwsys/SystemInformation.cxx b/Source/kwsys/SystemInformation.cxx
-index ed1cdc0..d3afe21 100644
 --- a/Source/kwsys/SystemInformation.cxx
 +++ b/Source/kwsys/SystemInformation.cxx
-@@ -150,18 +150,8 @@ typedef struct rlimit ResourceLimitType;
+@@ -154,18 +154,8 @@ using ResourceLimitType = struct rlimit;
  #  include <OS.h>
  #endif
  
@@ -19,10 +18,9 @@ index ed1cdc0..d3afe21 100644
  #  undef KWSYS_SYSTEMINFORMATION_HAS_SYMBOL_LOOKUP
 -#endif
  
- #include <cctype> // int isdigit(int c);
  #include <cstdio>
+ #include <cstdlib>
 diff --git a/Source/kwsys/kwsysPlatformTestsCXX.cxx b/Source/kwsys/kwsysPlatformTestsCXX.cxx
-index 0bfa20e..0208417 100644
 --- a/Source/kwsys/kwsysPlatformTestsCXX.cxx
 +++ b/Source/kwsys/kwsysPlatformTestsCXX.cxx
 @@ -102,24 +102,6 @@ int main()
