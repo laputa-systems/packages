@@ -46,7 +46,7 @@ endif
   modules_build.write_atomic(modules_text)?
 }
 
-export proc build(dest: Path) [fs, process, error] {
+export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"
   patch_modules()?

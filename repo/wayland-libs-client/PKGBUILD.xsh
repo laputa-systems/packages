@@ -21,8 +21,7 @@ proc write_embedded_dtd() [fs, error] {
   let dump = p"protocol/wayland.dtd".read_bytes()?.dump("hex-u8")
   var values: List[Str] = []
 
-  for line in dump.split("""
-""") {
+  for line in dump.split("\n") {
     let words = line.words()
     var index = 1
 

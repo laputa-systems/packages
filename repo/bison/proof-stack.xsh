@@ -32,8 +32,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
     return Err(ScriptError.Failed("proof-flex", f"flex --version: ${flex_out.trim()}"))?
   }
 
-  let flex_line = flex_out.trim().split("""
-""")[0]
+  let flex_line = flex_out.trim().split("\n")[0]
 
   print f"flex ok: ${flex_line}"
 
@@ -46,8 +45,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
     return Err(ScriptError.Failed("proof-bison", f"bison --version: ${bison_out.trim()}"))?
   }
 
-  let bison_line = bison_out.trim().split("""
-""")[0]
+  let bison_line = bison_out.trim().split("\n")[0]
 
   print f"bison ok: ${bison_line}"
 }

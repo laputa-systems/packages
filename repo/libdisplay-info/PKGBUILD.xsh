@@ -26,8 +26,7 @@ proc write_pnp_table(root: Str) [fs, error] {
   let pnp = fp"${root}/usr/share/hwdata/pnp.ids"
   var records: List[PnpRecord] = []
 
-  for line in pnp.read_text()?.split("""
-""") {
+  for line in pnp.read_text()?.split("\n") {
     let trimmed = line.trim()
 
     if trimmed != "" {
@@ -44,8 +43,7 @@ proc write_pnp_table(root: Str) [fs, error] {
   records = records |> sort-by .id
   var cases = [f"    if (strcmp(key, \"${c_string(entry.id)}\") == 0) return \"${c_string(entry.name)}\";" for entry in records]
 
-  let case_text = cases.join("""
-""")
+  let case_text = cases.join("\n")
 
   fs.write(
     p"pnp-id-table.c",
@@ -86,8 +84,7 @@ pnp_id_table = custom_target(
 subdir('di-edid-decode')
 subdir('test')
 """,
-    """
-""",
+    "\n",
   )
 
   text = text.replace("math = cc.find_library('m', required: false)", "math = declare_dependency(link_args: ['-lm'])")

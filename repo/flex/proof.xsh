@@ -24,8 +24,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
       return Err(ScriptError.Failed("proof-flex", f"flex --version: ${out.trim()}"))?
     }
 
-    let line = out.trim().split("""
-""")[0]
+    let line = out.trim().split("\n")[0]
 
     print "flex ok: "${line}
   } else {

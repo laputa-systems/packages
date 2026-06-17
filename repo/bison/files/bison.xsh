@@ -41,8 +41,7 @@ proc drop_prefix(text: Str, prefix: Str) [error] -> Result[Str] {
 
 pure c_quote(text: Str) -> Str {
   return text.replace("\\", "\\\\").replace("\"", "\\\"").replace(
-    """
-""",
+    "\n",
     "\\n",
   )
 }
@@ -99,7 +98,7 @@ proc extract_prologue(text: Str) [error] -> Result[Str] {
 }
 
 proc parse_tokens(decls: Str) [error] -> Result[Map[Int]] {
-  var tokens: Map[Int] = map.empty()
+  var tokens: Map[Int] = {}
   var code = 258
 
   for raw in decls.lines() {
@@ -249,7 +248,14 @@ proc parse_rules(text: Str) [error] -> Result[List[GrammarRule]] {
 }
 
 proc nonterminals(rules: List[GrammarRule]) [error] -> Result[List[Str]] {
-  var names = [rule.lhs for rule in rules if ! names.contains(rule.lhs)]
+  var names: List[Str] = []
+
+  for rule in rules {
+    if ! names.contains(rule.lhs) {
+      names = names.push(rule.lhs)
+    }
+  }
+
   return names
 }
 
@@ -270,8 +276,7 @@ pure token_code_expr(symbol: Str, tokens: Map[Int]) -> Str {
 proc generate_token_defines(tokens: Map[Int]) [error] -> Result[Str] {
   var lines = [f"#define ${name} ${tokens.get(name, 0)}" for name in tokens.keys() if ! name.starts_with("'")]
 
-  return lines.join("""
-""")
+  return lines.join("\n")
 }
 
 proc generate_header(tokens: Map[Int]) [error] -> Result[Str] {
@@ -350,8 +355,7 @@ proc generate_linux_header(decls: Str, tokens: Map[Int]) [error] -> Result[Str] 
   let _ = tokens
   let names = parse_token_names(decls)?
 
-  let enum_body = token_enum_lines(names)?.join("""
-""")
+  let enum_body = token_enum_lines(names)?.join("\n")
 
   let union_body = extract_union_body(decls)?
 
@@ -1169,8 +1173,7 @@ proc generate_int_array(name: Str, values: List[Str]) [error] -> Result[Str] {
 }
 
 proc rule_lhs_values(rules: List[GrammarRule], names: List[Str]) [error] -> Result[List[Str]] {
-  var values = [f"${index_of(names, rule.lhs)}" for rule in rules]
-  return values
+  [f"${index_of(names, rule.lhs)}" for rule in rules]
 }
 
 proc rule_rhs_start_values(rules: List[GrammarRule]) [error] -> Result[List[Str]] {
@@ -1186,8 +1189,7 @@ proc rule_rhs_start_values(rules: List[GrammarRule]) [error] -> Result[List[Str]
 }
 
 proc rule_rhs_len_values(rules: List[GrammarRule]) [error] -> Result[List[Str]] {
-  var values = [f"${rule.rhs.len()}" for rule in rules]
-  return values
+  [f"${rule.rhs.len()}" for rule in rules]
 }
 
 proc rule_rhs_symbol_values(rules: List[GrammarRule], names: List[Str], tokens: Map[Int]) [error] -> Result[List[Str]] {
@@ -1230,8 +1232,7 @@ proc generate_verbose_report(rules: List[GrammarRule], start: Str) [error] -> Re
     i = i + 1
   }
 
-  return lines.join("""
-""")
+  return lines.join("\n")
 }
 
 proc generate_c(

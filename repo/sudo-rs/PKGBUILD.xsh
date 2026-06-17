@@ -47,8 +47,8 @@ proc stage_rustlib(source: Path, dest: Path) [fs, error] {
 
   for entry in fs.walk(source, gitignore: false)? |> sort-by .path {
     continue when entry.path == source
-    let rel = entry.path.relative_to(source)
-    let out = fp"${dest}/${rel}"
+    let relative = entry.path.relative_to(source)
+    let out = fp"${dest}/${relative}"
 
     if entry.kind == "dir" {
       fs.mkdir(out)?

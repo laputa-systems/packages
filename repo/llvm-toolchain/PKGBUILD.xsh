@@ -395,11 +395,11 @@ int main(int argc, char **argv) {
 """
 }
 
-proc require_env_path(name: Str) [env, error] -> Result[Path] {
-  let value = (env.get(name) ?? "").trim()
+proc require_env_path(env_name: Str) [env, error] -> Result[Path] {
+  let value = (env.get(env_name) ?? "").trim()
 
   if value == "" {
-    return Err(LlvmToolchainError.Failed(f"${name} is required"))
+    return Err(LlvmToolchainError.Failed(f"${env_name} is required"))
   }
 
   Path.parse(value)?

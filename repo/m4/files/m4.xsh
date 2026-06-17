@@ -82,8 +82,7 @@ proc preview_text(text: Str, limit: Int) [error] -> Result[Str] {
   }
 
   return out.replace(
-    """
-""",
+    "\n",
     "\\n",
   )
 }
@@ -690,8 +689,7 @@ pure b4_symbol_id_name(st: Map[Str], num: Str) -> Str {
     " ",
     "_",
   ).replace(
-    """
-""",
+    "\n",
     "_",
   ).replace("-", "_").replace("{", "_").replace("}", "_").replace(";", "_")
 
@@ -1861,8 +1859,7 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
     var found_path: Path = Path.parse(filepath)?
     var found = false
 
-    for p in paths_str.split("""
-""") {
+    for p in paths_str.split("\n") {
       if p != "" {
         let cand = fp"${p}/${filepath}"
 
@@ -2334,8 +2331,7 @@ proc main(margs: List[Str] = []) [fs, process, env, error, io] {
   st["file"] = ""
   st["line"] = "1"
 
-  st["include_paths"] = include_paths.join("""
-""")
+  st["include_paths"] = include_paths.join("\n")
 
   st = register_builtins(st, prefix)?
   st = mac_set(st, "__gnu__", "")

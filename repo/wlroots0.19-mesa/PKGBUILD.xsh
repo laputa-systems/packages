@@ -54,8 +54,7 @@ pure c_string(text: Str) -> Str {
 
 pure c_multiline_string(text: Str) -> Str {
   c_string(text).replace(
-    """
-""",
+    "\n",
     """\\n"
 \"""",
   )
@@ -97,8 +96,7 @@ proc write_pnpids(root: Str) [fs, error] {
   let pnp = fp"${root}/usr/share/hwdata/pnp.ids"
   var records: List[PnpRecord] = []
 
-  for line in pnp.read_text()?.split("""
-""") {
+  for line in pnp.read_text()?.split("\n") {
     let trimmed = line.trim()
 
     if trimmed != "" {
@@ -132,8 +130,7 @@ proc write_pnpids(root: Str) [fs, error] {
 #define PNP_ID(a, b, c) ((a & 0x1f) << 10) | ((b & 0x1f) << 5) | (c & 0x1f)
 const char *get_pnp_manufacturer(const char code[static 3]) {{
 	switch (PNP_ID(code[0], code[1], code[2])) {{
-${cases.join("""
-""")}
+${cases.join("\n")}
 	}}
 	return NULL;
 }}

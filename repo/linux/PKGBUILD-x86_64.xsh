@@ -343,8 +343,7 @@ proc write_x86_orc_hash_header() [fs, error] {
 proc x86_capflag_array(array: Str, size: Str, prefix: Str, postfix: Str, input: Path) [fs, error] -> Result[List[Str]] {
   var lines: List[Str] = [f"const char * const ${array}[${size}] = {"]
 
-  for raw in input.read_text()?.split("""
-""") {
+  for raw in input.read_text()?.split("\n") {
     let line = raw.replace("\t", " ").trim()
     continue unless line.starts_with(f"#define ${prefix}")
     let rest = line.split(f"#define ${prefix}").get(1, "").trim()
@@ -378,8 +377,7 @@ proc generate_x86_capflags_source() [fs, error] {
 
   kbuild.write_text_if_changed(
     p"arch/x86/kernel/cpu/capflags.c",
-    f"""${lines.join("""
-""")}
+    f"""${lines.join("\n")}
 """,
   )?
 }
@@ -395,8 +393,7 @@ proc generate_x86_inat_tables() [fs, error] {
 }
 
 pure realmode_object_paths(objects: List[Str]) -> List[Str] {
-  var paths = [fp"arch/x86/realmode/rm/${obj}".display() for obj in objects]
-  return paths
+  [fp"arch/x86/realmode/rm/${obj}".display() for obj in objects]
 }
 
 proc write_x86_realmode_pasyms(nm: Path, objects: List[Str]) [fs, process, env, error] {
@@ -431,8 +428,7 @@ proc write_x86_realmode_pasyms(nm: Path, objects: List[Str]) [fs, process, env, 
 
   kbuild.write_text_if_changed(
     p"arch/x86/realmode/rm/pasyms.h",
-    f"""${unique.join("""
-""")}
+    f"""${unique.join("\n")}
 """,
   )?
 }

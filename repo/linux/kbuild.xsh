@@ -34,8 +34,6 @@ type ArchiveInputs = {objs: List[Path], deps: List[Str]}
 
 type CompositeScan = {dir: Path, composites: List[CompositeObject]}
 
-type RefreshDirScan = {dir: Path, objects: List[Path], composites: List[CompositeObject]}
-
 type ElfSection = {name: Str, offset: Int, size: Int}
 
 type ElfReloc = {section: Str, index: Int, offset: Int, info: Int, typ: Str, symbol: Str, addend: Int}
@@ -61,18 +59,15 @@ pure regex_matches(text: Str, pattern: Str) -> Result[Bool] {
 }
 
 pure empty_paths() -> List[Path] {
-  let paths: List[Path] = []
-  return paths
+  []
 }
 
 pure empty_strings() -> List[Str] {
-  let items: List[Str] = []
-  return items
+  []
 }
 
 pure empty_composites() -> List[CompositeObject] {
-  let items: List[CompositeObject] = []
-  return items
+  []
 }
 
 pure empty_plan() -> KbuildPlan {
@@ -100,7 +95,7 @@ export pure planner_jobs() -> Int {
 }
 
 proc root_vars(srcarch: Str) [] -> Map[Str] {
-  var vars: Map[Str] = map.empty()
+  var vars: Map[Str] = {}
   vars["ARCH_CORE"] = ""
   vars["ARCH_DRIVERS"] = ""
   vars["srctree"] = "."
@@ -117,7 +112,7 @@ proc root_vars(srcarch: Str) [] -> Map[Str] {
 }
 
 proc global_vars(srcarch: Str) [] -> Map[Str] {
-  var vars: Map[Str] = map.empty()
+  var vars: Map[Str] = {}
   vars["srctree"] = "."
 
   if srcarch == "x86" {
@@ -301,11 +296,10 @@ pure config_auto_line(name: Str, value: Str) -> Str {
 }
 
 export proc load_config(path_value: Path) [fs, error] -> Result[Kconfig] {
-  var enabled: Map[Bool] = map.empty()
-  var values: Map[Str] = map.empty()
+  var enabled: Map[Bool] = {}
+  var values: Map[Str] = {}
 
-  for raw in path_value.read_text()?.split("""
-""") {
+  for raw in path_value.read_text()?.split("\n") {
     let line = raw.trim()
 
     if line.starts_with("CONFIG_") and line.contains("=") {
@@ -351,15 +345,13 @@ export proc write_config_headers(config_path: Path, root: Path, release: Str, ar
 
   write_text_if_changed(
     fp"${root}/include/generated/autoconf.h",
-    f"""${autoconf.join("""
-""")}
+    f"""${autoconf.join("\n")}
 """,
   )?
 
   write_text_if_changed(
     fp"${root}/include/config/auto.conf",
-    f"""${auto_conf.join("""
-""")}
+    f"""${auto_conf.join("\n")}
 """,
   )?
 }
@@ -569,8 +561,7 @@ export proc generate_arm64_cpucap_defs(root: Path) [fs, error] {
 
   var cap = 0
 
-  for raw in fp"${root}/arch/arm64/tools/cpucaps".read_text()?.split("""
-""") {
+  for raw in fp"${root}/arch/arm64/tools/cpucaps".read_text()?.split("\n") {
     let line = raw.trim()
 
     if line != "" and ! line.starts_with("#") {
@@ -586,8 +577,7 @@ export proc generate_arm64_cpucap_defs(root: Path) [fs, error] {
 
   write_text_if_changed(
     fp"${root}/arch/arm64/include/generated/asm/cpucap-defs.h",
-    f"""${lines.join("""
-""")}
+    f"""${lines.join("\n")}
 """,
   )?
 }
@@ -710,8 +700,7 @@ proc logical_lines(body: Str) [] -> List[Str] {
   var lines: List[Str] = []
   var current = ""
 
-  for raw in body.split("""
-""") {
+  for raw in body.split("\n") {
     let without_comment = raw.split("#")[0]
     let trimmed = without_comment.trim()
 
@@ -1044,7 +1033,7 @@ proc kbuild_compile_flags_for_dir(
 ) [fs, error] -> Result[Map[List[Str]]] {
   let file = kbuild_file(join_root(root, dir))?
   var vars: Map[Str] = kbuild_vars_for_dir(dir, srcarch)
-  var flags: Map[List[Str]] = map.empty()
+  var flags: Map[List[Str]] = {}
   var subdir_flags: List[Str] = []
   var active_stack: List[Bool] = [true]
   var lines = logical_lines(file.read_text()?)
@@ -1144,7 +1133,7 @@ proc kbuild_compile_flags_for_dirs(
   config: Kconfig,
   srcarch: Str,
 ) [fs, error] -> Result[Map[Map[List[Str]]]] {
-  var by_dir: Map[Map[List[Str]]] = map.empty()
+  var by_dir: Map[Map[List[Str]]] = {}
   var dir_index = 0
 
   for dir in dirs {
@@ -1181,7 +1170,7 @@ pure compile_flags_cache_entries(flags: Map[Map[List[Str]]]) -> List[Record] {
 }
 
 pure compile_flags_from_cache_entries(entries: List[Record]) -> Result[Map[Map[List[Str]]]] {
-  var flags: Map[Map[List[Str]]] = map.empty()
+  var flags: Map[Map[List[Str]]] = {}
 
   for entry in entries {
     let dir_key: Str = entry.get("dir")?
@@ -1206,11 +1195,9 @@ proc compile_flags_fingerprint(
 srcarch ${srcarch}
 config ${hash.sha256(config_path)?.hex()}
 dirs ${dirs.len()}
-${path_strings(dirs).join("""
-""")}
+${path_strings(dirs).join("\n")}
 kbuild-files
-${dir_fingerprints.join("""
-""")}
+${dir_fingerprints.join("\n")}
 """
 }
 
@@ -1329,7 +1316,7 @@ export proc augment_missing_composites(
 ) [fs, error] -> Result[KbuildPlan] {
   var composites = plan.composites
   var dirs: List[Path] = []
-  var missing_by_dir: Map[List[Path]] = map.empty()
+  var missing_by_dir: Map[List[Path]] = {}
 
   for obj in plan_objects(plan) {
     match source_for_object(obj) {
@@ -1375,7 +1362,7 @@ export proc augment_missing_composites(
       {dir: dir, composites: found}
     }
 
-  var composites_by_dir: Map[List[CompositeObject]] = map.empty()
+  var composites_by_dir: Map[List[CompositeObject]] = {}
 
   for scan in scans {
     composites_by_dir[path_key(scan.dir)] = scan.composites
@@ -1394,7 +1381,7 @@ export proc prune_inactive_objects(
   plan: KbuildPlan,
   srcarch: Str = "arm64",
 ) [fs, error] -> Result[KbuildPlan] {
-  var active: Map[Bool] = map.empty()
+  var active: Map[Bool] = {}
 
   let dir_objects: List[ActiveDirObjects] = plan.dirs
     |> par-map --jobs=planner_jobs() { |dir|
@@ -1408,29 +1395,9 @@ export proc prune_inactive_objects(
     }
   }
 
-  var objects: List[Path] = []
-
-  for obj in plan.objects {
-    if active.get(path_key(obj), false) {
-      objects = objects.push(obj)
-    }
-  }
-
-  var composites: List[CompositeObject] = []
-
-  for composite in plan.composites {
-    if active.get(path_key(composite.object), false) {
-      composites = composites.push(composite)
-    }
-  }
-
-  var lib_objects: List[Path] = []
-
-  for obj in plan.lib_objects {
-    if active.get(path_key(obj), false) {
-      lib_objects = lib_objects.push(obj)
-    }
-  }
+  var objects = [obj for obj in plan.objects if active.get(path_key(obj), false)]
+  var composites = [composite for composite in plan.composites if active.get(path_key(composite.object), false)]
+  var lib_objects = [obj for obj in plan.lib_objects if active.get(path_key(obj), false)]
 
   return {...plan, objects: objects, lib_objects: lib_objects, composites: composites}
 }
@@ -1451,8 +1418,8 @@ export proc refresh_plan_dirs(
 """,
   )?
 
-  var objects_by_dir: Map[List[Path]] = map.empty()
-  var composites_by_dir: Map[List[CompositeObject]] = map.empty()
+  var objects_by_dir: Map[List[Path]] = {}
+  var composites_by_dir: Map[List[CompositeObject]] = {}
   var scan_index = 0
 
   for dir in dirs {
@@ -1782,8 +1749,8 @@ export proc refresh_plan_composite_members(
   srcarch: Str,
   objects: List[Path],
 ) [fs, error] -> Result[KbuildPlan] {
-  var refreshed: Map[CompositeObject] = map.empty()
-  var member_paths: Map[Bool] = map.empty()
+  var refreshed: Map[CompositeObject] = {}
+  var member_paths: Map[Bool] = {}
 
   for obj in objects {
     let dir = object_dir(obj)
@@ -1800,7 +1767,7 @@ export proc refresh_plan_composite_members(
   }
 
   var composites: List[CompositeObject] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for composite in plan.composites {
     let key = path_key(composite.object)
@@ -1821,13 +1788,7 @@ export proc refresh_plan_composite_members(
     }
   }
 
-  var top_objects: List[Path] = []
-
-  for obj in plan.objects {
-    if ! member_paths.get(path_key(obj), false) {
-      top_objects = top_objects.push(obj)
-    }
-  }
+  var top_objects = [obj for obj in plan.objects if ! member_paths.get(path_key(obj), false)]
 
   return normalize_plan({...plan, objects: top_objects, composites: composites})
 }
@@ -2146,8 +2107,8 @@ proc discover_scans(
   srcarch: Str,
   options: DiscoverOptions,
 ) [fs, error] -> Result[Map[DirScan]] {
-  var scans: Map[DirScan] = map.empty()
-  var seen: Map[Bool] = map.empty()
+  var scans: Map[DirScan] = {}
+  var seen: Map[Bool] = {}
   var frontier: List[Path] = [p"."]
   var aggregate = empty_plan()
   var visited = 0
@@ -2173,7 +2134,7 @@ proc discover_scans(
       batch = batch.push(scan_discover_dir(root, dir, config, srcarch, options)?)
     }
 
-    var batch_by_dir: Map[DirScan] = map.empty()
+    var batch_by_dir: Map[DirScan] = {}
 
     for scan in batch {
       batch_by_dir[path_key(scan.dir)] = scan
@@ -2289,13 +2250,12 @@ pure path_strings(paths: List[Path]) -> List[Str] {
 }
 
 proc paths_from_strings(items: List[Str]) [error] -> Result[List[Path]] {
-  var paths = [path_from_string(item)? for item in items]
-  return paths
+  [path_from_string(item)? for item in items]
 }
 
 proc unique_paths(paths: List[Path]) [] -> List[Path] {
   var unique: List[Path] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for path_value in paths {
     let key = path_key(path_value)
@@ -2311,7 +2271,7 @@ proc unique_paths(paths: List[Path]) [] -> List[Path] {
 
 proc unique_composites(composites: List[CompositeObject]) [] -> List[CompositeObject] {
   var unique: List[CompositeObject] = []
-  var seen: Map[Bool] = map.empty()
+  var seen: Map[Bool] = {}
 
   for composite in composites {
     let key = path_key(composite.object)
@@ -2455,8 +2415,7 @@ export proc parse_discovered_plan_text(text: Str) [error] -> Result[KbuildPlan] 
   var composites: List[CompositeObject] = []
   var unsupported: List[Str] = []
 
-  for raw in text.split("""
-""") {
+  for raw in text.split("\n") {
     let line = raw.trim()
     continue when line == ""
     let parts = line.split("\t")
@@ -2539,11 +2498,11 @@ pure archive_plan_report_format() -> Str {
 }
 
 export pure archive_plan_summary_path(report_path: Path) -> Path {
-  return Path.parse(f"${report_path.display()}.summary") ?? p""
+  return fp"${report_path.display()}.summary"
 }
 
 pure duplicate_task_outputs(tasks: List[make.MakeTask]) -> List[Path] {
-  var outputs: Map[Bool] = map.empty()
+  var outputs: Map[Bool] = {}
   var duplicates: List[Path] = []
 
   for task in tasks {
@@ -2635,8 +2594,7 @@ proc task_from_record(item: Record) [error] -> Result[make.MakeTask] {
 proc read_archive_plan_tasks(path_value: Path) [fs, error] -> Result[List[make.MakeTask]] {
   let stored: Record = json.read(path_value)?
   let rows: List[Record] = stored.get("tasks")?
-  var tasks = [task_from_record(row)? for row in rows]
-  return tasks
+  [task_from_record(row)? for row in rows]
 }
 
 export proc read_archive_plan_report(path_value: Path) [fs, error] -> Result[Record] {
@@ -2753,7 +2711,7 @@ proc collect_task_closure(task_deps: Map[List[Str]], target: Str, selected: Map[
 }
 
 proc archive_task_deps_by_name(tasks: List[Record]) [] -> Map[List[Str]] {
-  var by_name: Map[List[Str]] = map.empty()
+  var by_name: Map[List[Str]] = {}
 
   for task in tasks {
     by_name[task.name] = task.deps
@@ -2764,22 +2722,14 @@ proc archive_task_deps_by_name(tasks: List[Record]) [] -> Map[List[Str]] {
 
 export proc select_archive_tasks_outputs(tasks: List[Record], outputs: List[Path]) [error] -> Result[List[Record]] {
   let task_deps = archive_task_deps_by_name(tasks)
-  var selected: Map[Bool] = map.empty()
+  var selected: Map[Bool] = {}
 
   for output in outputs {
     let target = find_task_name_by_output(tasks, output)?
     selected = collect_task_closure(task_deps, target, selected)
   }
 
-  var runnable: List[Record] = []
-
-  for task in tasks {
-    if selected.get(task.name, false) {
-      runnable = runnable.push(task)
-    }
-  }
-
-  return runnable
+  [task for task in tasks if selected.get(task.name, false)]
 }
 
 export proc run_archive_tasks_output(tasks: List[Record], output: Path, jobs_count: Int = 1) [fs, process, env, error] {
@@ -2828,7 +2778,7 @@ pure composite_for(composites: List[CompositeObject], obj: Path) -> Result[Compo
 }
 
 proc composite_map(composites: List[CompositeObject]) [] -> Map[CompositeObject] {
-  var mapped: Map[CompositeObject] = map.empty()
+  var mapped: Map[CompositeObject] = {}
 
   for composite in composites {
     mapped[path_key(composite.object)] = composite
@@ -2838,7 +2788,7 @@ proc composite_map(composites: List[CompositeObject]) [] -> Map[CompositeObject]
 }
 
 proc composite_member_map(composites: List[CompositeObject]) [] -> Map[CompositeObject] {
-  var mapped: Map[CompositeObject] = map.empty()
+  var mapped: Map[CompositeObject] = {}
 
   for composite in composites {
     for member in composite.members {
@@ -3004,13 +2954,7 @@ pure is_x86_startup_pi_base_output(out: Path) -> Bool {
 
 proc pi_compile_cflags(args: List[Str], out: Path) [] -> List[Str] {
   if is_x86_startup_pi_base_output(out) {
-    var out_args: List[Str] = []
-
-    for arg in args {
-      if arg != "-O2" and arg != "-fno-PIE" and arg != "-mcmodel=kernel" {
-        out_args = out_args.push(arg)
-      }
-    }
+    var out_args = [arg for arg in args if arg != "-O2" and arg != "-fno-PIE" and arg != "-mcmodel=kernel"]
 
     return out_args.extend(
       [
@@ -3030,13 +2974,7 @@ proc pi_compile_cflags(args: List[Str], out: Path) [] -> List[Str] {
     return args
   }
 
-  var out_args: List[Str] = []
-
-  for arg in args {
-    if arg != "-fno-function-sections" and arg != "-fno-data-sections" {
-      out_args = out_args.push(arg)
-    }
-  }
+  var out_args = [arg for arg in args if arg != "-fno-function-sections" and arg != "-fno-data-sections"]
 
   out_args = out_args.extend(
     [
@@ -3186,7 +3124,7 @@ proc compile_kbuild_task_for_module(
   mod_out: Path,
   deps: List[Str] = [],
 ) [] -> make.MakeTask {
-  let object_cflags = object_compile_cflags(pi_compile_cflags(cflags, out), out)
+  let compile_cflags = object_compile_cflags(pi_compile_cflags(cflags, out), out)
 
   let object_includes = arch_local_compile_includes(
     trace_compile_includes(
@@ -3197,7 +3135,7 @@ proc compile_kbuild_task_for_module(
     triple,
   )
 
-  let task_cflags = if is_asm_source(src) { asm_cflags(object_cflags) } else { object_cflags }
+  let task_cflags = if is_asm_source(src) { asm_cflags(compile_cflags) } else { compile_cflags }
   let task_defs = defs.extend(kbuild_object_defs_for_module(out, mod_out))
   let task_includes = if is_asm_source(src) { asm_includes(object_includes) } else { object_includes }
   return make.compile_c_task(cc, triple, task_cflags, task_defs, task_includes, src, out, deps)
@@ -3396,8 +3334,7 @@ export proc generate_raid6_sources(root: Path, cc: Path) [fs, process, env, erro
   for n in [1, 2, 4, 8] {
     var lines: List[Str] = []
 
-    for line in int_uc.split("""
-""") {
+    for line in int_uc.split("\n") {
       let reps = if line.contains("$$") { n } else { 1 }
       var i = 0
 
@@ -3409,8 +3346,7 @@ export proc generate_raid6_sources(root: Path, cc: Path) [fs, process, env, erro
 
     write_text_if_changed(
       fp"${root}/lib/raid6/int${n}.c",
-      f"""${lines.join("""
-""")}
+      f"""${lines.join("\n")}
 """,
     )?
   }
@@ -3581,8 +3517,7 @@ export proc generate_syscall_table(table: Path, out: Path, abis: List[Str] = [])
   var lines: List[Str] = []
   var next_nr = 0
 
-  for raw in table.read_text()?.split("""
-""") {
+  for raw in table.read_text()?.split("\n") {
     let line = raw.split("#")[0].trim()
 
     if line != "" {
@@ -3616,8 +3551,7 @@ export proc generate_syscall_table(table: Path, out: Path, abis: List[Str] = [])
 
   write_text_if_changed(
     out,
-    f"""${lines.join("""
-""")}
+    f"""${lines.join("\n")}
 """,
   )?
 }
@@ -3633,8 +3567,7 @@ export proc generate_syscall_numbers(
   var lines: List[Str] = [f"#ifndef ${header_guard}", f"#define ${header_guard}", ""]
   var max_nr = -1
 
-  for raw in table.read_text()?.split("""
-""") {
+  for raw in table.read_text()?.split("\n") {
     let line = raw.split("#")[0].trim()
 
     if line != "" {
@@ -3665,8 +3598,7 @@ export proc generate_syscall_numbers(
 
   write_text_if_changed(
     out,
-    f"""${lines.join("""
-""")}
+    f"""${lines.join("\n")}
 """,
   )?
 }
@@ -3759,8 +3691,7 @@ export proc generate_offsets_header(asm_path: Path, out: Path, header_guard: Str
     "",
   ]
 
-  for raw in asm_path.read_text()?.split("""
-""") {
+  for raw in asm_path.read_text()?.split("\n") {
     let line = raw.trim()
 
     match regex_captures(line, "\\.ascii\\s+\"->([^\"]*)\"") {
@@ -3791,8 +3722,7 @@ export proc generate_offsets_header(asm_path: Path, out: Path, header_guard: Str
 
   write_text_if_changed(
     out,
-    f"""${lines.join("""
-""")}
+    f"""${lines.join("\n")}
 """,
   )?
 }
@@ -4415,8 +4345,7 @@ proc write_x86_voffset_header(nm: Path, input: Path) [fs, process, error] {
 
   write_text_if_changed(
     p"arch/x86/boot/voffset.h",
-    f"""${lines.join("""
-""")}
+    f"""${lines.join("\n")}
 """,
   )?
 }
@@ -4443,8 +4372,7 @@ proc write_x86_zoffset_header(nm: Path, input: Path) [fs, process, error] {
 
   write_text_if_changed(
     p"arch/x86/boot/zoffset.h",
-    f"""${lines.join("""
-""")}
+    f"""${lines.join("\n")}
 """,
   )?
 }
@@ -5513,7 +5441,7 @@ pure elf_reloc_key(section: Str, offset: Int) -> Str {
 
 proc parse_elf_relocations(text: Str) [error] -> Result[ElfRelocTable] {
   var keys: List[ElfReloc] = []
-  var by_offset: Map[ElfReloc] = map.empty()
+  var by_offset: Map[ElfReloc] = {}
   var current = ""
   var index = 0
 
@@ -5673,8 +5601,8 @@ proc x86_jump_label_helper_source() [fs, error] -> Result[Path] {
     return p"x86-jump-label-patch.c"
   }
 
-  if ../pkg/files/x86-jump-label-patch.c.exists()? {
-    return ../pkg/files/x86-jump-label-patch.c
+  if p"../pkg/files/x86-jump-label-patch.c".exists()? {
+    return p"../pkg/files/x86-jump-label-patch.c"
   }
 
   return Err(ScriptError.Failed("kbuild-x86-jump-label-helper", "missing x86-jump-label-patch.c"))
@@ -5717,13 +5645,7 @@ pure parse_jump_label_helper_summary(line: Str) -> JumpLabelPatchResult {
 
 export proc patch_x86_jump_label_outputs(outputs: List[Path]) [fs, process, error] -> Result[Record] {
   let helper = x86_jump_label_helper()?
-  var argv: List[Str] = []
-
-  for output in outputs {
-    if output.exists()? {
-      argv = argv.push(output.display())
-    }
-  }
+  var argv = [output.display() for output in outputs if output.exists()?]
 
   archive_plan_progress(f"xsh-kbuild-x86-jump-label-scan start ${argv.len()} objects")?
   let output = run.text $helper @argv ?
@@ -5747,7 +5669,7 @@ pure has_archive_output(task: Record) -> Bool {
 }
 
 pure archive_rerun_tasks(tasks: List[Record]) -> List[Record] {
-  var archive_names: Map[Bool] = map.empty()
+  var archive_names: Map[Bool] = {}
 
   for task in tasks {
     if has_archive_output(task) {
@@ -5759,13 +5681,7 @@ pure archive_rerun_tasks(tasks: List[Record]) -> List[Record] {
 
   for task in tasks {
     continue unless has_archive_output(task)
-    var deps: List[Str] = []
-
-    for dep in task.deps {
-      if archive_names.get(dep, false) {
-        deps = deps.push(dep)
-      }
-    }
+    var deps = [dep for dep in task.deps if archive_names.get(dep, false)]
 
     rerun = rerun.push({...task, deps})
   }
@@ -5841,10 +5757,10 @@ export proc plan_builtin_archives(
   includes: List[Str],
 ) [fs, env, error] -> Result[BuiltinArchivePlan] {
   var tasks: List[make.MakeTask] = []
-  var objects_by_dir: Map[List[Path]] = map.empty()
-  var deps_by_dir: Map[List[Str]] = map.empty()
-  var lib_objects_by_dir: Map[List[Path]] = map.empty()
-  var lib_deps_by_dir: Map[List[Str]] = map.empty()
+  var objects_by_dir: Map[List[Path]] = {}
+  var deps_by_dir: Map[List[Str]] = {}
+  var lib_objects_by_dir: Map[List[Path]] = {}
+  var lib_deps_by_dir: Map[List[Str]] = {}
   var missing_sources: List[Path] = []
   var generated_objects: List[Path] = []
   var link_inputs: List[Path] = []
@@ -6130,7 +6046,7 @@ export proc plan_builtin_archives(
 
   archive_plan_progress(f"xsh-kbuild-archive-plan lib-objects-complete ${tasks.len()} tasks")?
   var archives: List[Path] = []
-  var children_by_dir: Map[List[Path]] = map.empty()
+  var children_by_dir: Map[List[Path]] = {}
   var dir_count = 0
 
   for dir in plan.dirs {
@@ -6147,7 +6063,7 @@ export proc plan_builtin_archives(
     }
   }
 
-  var archive_needed: Map[Bool] = map.empty()
+  var archive_needed: Map[Bool] = {}
   var dir_index = plan.dirs.len()
 
   while dir_index > 0 {
@@ -6215,7 +6131,7 @@ export proc plan_builtin_archives(
   }
 
   var unique_tasks: List[make.MakeTask] = []
-  var task_names: Map[Bool] = map.empty()
+  var task_names: Map[Bool] = {}
 
   for task in tasks {
     if ! task_names.get(task.name, false) {

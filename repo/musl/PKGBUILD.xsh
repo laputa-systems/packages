@@ -102,9 +102,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let generic_at = fs.read_text(p"include/alltypes.h.in")?
   var at_lines: List[Str] = []
 
-  for line in [arch_at, generic_at].join("""
-""").split("""
-""") {
+  for line in [arch_at, generic_at].join("\n").split("\n") {
     if line.starts_with("TYPEDEF ") {
       let caps = regex_captures(line, "^TYPEDEF (.+) ([^ ]+);$")?
       let type_expr = caps[1]
@@ -136,8 +134,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.write(
     p"include/bits/alltypes.h",
-    at_lines.join("""
-"""),
+    at_lines.join("\n"),
   )?
 
   # Generate include/bits/syscall.h: rename __NR_* → SYS_*.

@@ -64,8 +64,7 @@ proc extract_function_names(path_value: Path) [fs, error] -> Result[List[Str]] {
   let re = regex.compile("^(Fc[^ ]*)[ A-Za-z0-9_]*\\(.*")?
   var names: List[Str] = []
 
-  for line in path_value.read_text()?.split("""
-""") {
+  for line in path_value.read_text()?.split("\n") {
     let captures = re.captures(line.trim())
 
     if captures.len() > 1 {

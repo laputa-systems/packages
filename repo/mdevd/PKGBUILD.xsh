@@ -59,8 +59,7 @@ pure gen_bits_template(text: Str, bits: Int, dfmt: Str, ofmt: Str, xfmt: Str, bf
 proc read_sysdeps(path_value: Path) [fs, error] -> Result[Map[Str]] {
   var sysdeps: Map[Str] = {}
 
-  for line in path_value.read_text()?.split("""
-""") {
+  for line in path_value.read_text()?.split("\n") {
     let words = line.words()
 
     if words.len() >= 2 {
@@ -215,8 +214,7 @@ proc write_sysdeps_h(target: Str, sysdeps: Map[Str]) [fs, error] {
     "",
   ]
 
-  for line in p"skalibs/sysdeps.cfg/sysdeps".read_text()?.split("""
-""") {
+  for line in p"skalibs/sysdeps.cfg/sysdeps".read_text()?.split("\n") {
     let words = line.words()
     continue when words.len() < 2
     let key = upper_ascii(words[0].replace(":", ""))
@@ -256,8 +254,7 @@ proc write_sysdeps_h(target: Str, sysdeps: Map[Str]) [fs, error] {
 
   fs.write(
     p"skalibs/src/include/skalibs/sysdeps.h",
-    lines.join("""
-"""),
+    lines.join("\n"),
   )?
 }
 

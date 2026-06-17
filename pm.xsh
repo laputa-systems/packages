@@ -354,9 +354,9 @@ proc seed_world_package_dependency_set(staged_root: Path, package_root: Path, ow
         copy_world_seed_package(staged_root, package_root, name)?
         copied[name] = true
         let metadata = load_metadata(db)?
-        let deps: List[Str] = metadata.get("deps")?
+        let package_deps: List[Str] = metadata.get("deps")?
 
-        for dep in deps {
+        for dep in package_deps {
           if ! copied.get(dep, false) {
             names = names.push(dep)
             required = required.push(is_required)
@@ -784,8 +784,7 @@ proc sync_package_rel(pkg: Package, planned: Package) [fs, error] -> Result[Bool
 
   let pkgbuild = fp"${pkg.dir}/PKGBUILD.xsh"
 
-  let lines = fs.read_text(pkgbuild)?.split("""
-""")
+  let lines = fs.read_text(pkgbuild)?.split("\n")
 
   var output: List[Str] = []
   var found = false
@@ -811,8 +810,7 @@ proc sync_package_rel(pkg: Package, planned: Package) [fs, error] -> Result[Bool
 
   fs.write(
     pkgbuild,
-    output.join("""
-"""),
+    output.join("\n"),
   )?
 
   true

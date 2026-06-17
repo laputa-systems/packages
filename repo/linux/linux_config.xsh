@@ -22,5 +22,6 @@ proc render_fragments(fragments: List[Path]) [fs, error] -> Result[Str] {
 }
 
 export proc write_resolved_config(root: Path, srcarch: Str, fragments: List[Path], out: Path) [fs, error] {
+  let _ = {root: root.display(), srcarch}
   kbuild.write_text_if_changed(out, render_fragments(fragments)?)?
 }

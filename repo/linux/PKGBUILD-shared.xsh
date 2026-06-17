@@ -115,11 +115,9 @@ triple ${triple}
 plan
 ${kbuild.plan_fingerprint(p".", p".config", plan)?}
 cflags
-${cflags.join("""
-""")}
+${cflags.join("\n")}
 includes
-${includes.join("""
-""")}
+${includes.join("\n")}
 """
 }
 
@@ -555,7 +553,7 @@ export proc require_valid_archive_plan(archive_plan: Record) [error] {
     }
   }
 
-  var outputs: Map[Bool] = map.empty()
+  var outputs: Map[Bool] = {}
 
   for task in archive_plan.tasks {
     for output in task.outputs {
@@ -597,7 +595,7 @@ export proc native_tool(name: Str) [fs, process, env, error] -> Result[Path] {
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
 
   if build_root != "" {
-    let tool = Path.parse(f"${build_root}/usr/bin/${name}")?
+    let tool = fp"${build_root}/usr/bin/${name}"
 
     if fs.exists(tool)? {
       return tool

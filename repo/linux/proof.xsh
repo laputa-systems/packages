@@ -17,8 +17,7 @@ proc ensure_config(config_path: Path, key: Str, label: Str) [fs, error] {
     return Err(ScriptError.Failed("proof-linux", f"missing config for ${label} check: ${config_path.display()}"))?
   }
 
-  for raw in config_path.read_text()?.split("""
-""") {
+  for raw in config_path.read_text()?.split("\n") {
     let line = raw.trim()
 
     if line == f"${key}=y" {

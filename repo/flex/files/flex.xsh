@@ -47,8 +47,7 @@ proc drop_prefix(text: Str, prefix: Str) [error] -> Result[Str] {
 
 pure c_quote(text: Str) -> Str {
   return text.replace("\\", "\\\\").replace("\"", "\\\"").replace(
-    """
-""",
+    "\n",
     "\\n",
   )
 }
@@ -508,8 +507,7 @@ proc generate_state_defines(states: List[Str]) [error] -> Result[Str] {
     i = i + 1
   }
 
-  return lines.join("""
-""")
+  return lines.join("\n")
 }
 
 proc generate_exclusive_table(states: List[Str], exclusive: List[Str]) [error] -> Result[Str] {
@@ -543,8 +541,7 @@ proc generate_rule_table(rules: List[LexRule], states: List[Str]) [error] -> Res
     lines = lines.push(f"  {\"^(${c_quote(rule.pattern)})\", ${bol}, ${state}},")
   }
 
-  return lines.join("""
-""")
+  return lines.join("\n")
 }
 
 proc generate_actions(rules: List[LexRule]) [error] -> Result[Str] {
@@ -556,8 +553,7 @@ proc generate_actions(rules: List[LexRule]) [error] -> Result[Str] {
     i = i + 1
   }
 
-  return lines.join("""
-""")
+  return lines.join("\n")
 }
 
 pure generated_main(user_code: Str) -> Str {

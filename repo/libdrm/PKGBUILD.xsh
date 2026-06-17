@@ -22,8 +22,7 @@ proc write_format_modifier_table() [fs, error] {
   var modifiers: List[Modifier] = []
   var vendors: List[Str] = []
 
-  for line in header.read_text()?.split("""
-""") {
+  for line in header.read_text()?.split("\n") {
     let words = line.words()
 
     if words.len() >= 2 {
@@ -77,8 +76,7 @@ proc write_format_modifier_table() [fs, error] {
 
   fs.write(
     p"generated_static_table_fourcc.h",
-    body.join("""
-"""),
+    body.join("\n"),
   )?
 }
 

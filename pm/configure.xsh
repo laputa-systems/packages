@@ -8,8 +8,7 @@
 export proc config_h(in_path: Path, out_path: Path, defines: Map[Str]) [fs, error] -> Result[Unit] {
   let content = fs.read_text(in_path)?
 
-  let lines = content.split("""
-""")
+  let lines = content.split("\n")
 
   var out_lines: List[Str] = []
 
@@ -32,8 +31,7 @@ export proc config_h(in_path: Path, out_path: Path, defines: Map[Str]) [fs, erro
 
   fs.write(
     out_path,
-    out_lines.join("""
-"""),
+    out_lines.join("\n"),
   )?
 }
 

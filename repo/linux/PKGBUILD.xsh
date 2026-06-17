@@ -165,7 +165,7 @@ proc build_cc() [fs, process, env, error] -> Result[Path] {
   let root = env.get("XSH_PM_BUILD_ROOT") ?? ""
 
   if root != "" {
-    let cc = Path.parse(f"${root}/usr/bin/cc")?
+    let cc = fp"${root}/usr/bin/cc"
 
     if ! fs.exists(cc)? {
       return Err(ScriptError.Failed("linux-build-cc", f"missing build-root compiler: ${cc.display()}"))?

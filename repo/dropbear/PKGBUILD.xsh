@@ -117,8 +117,7 @@ proc write_config_h() [fs, error] {
 proc ifndef_wrapped_defines(source: Path) [fs, error] -> Result[Str] {
   var lines: List[Str] = []
 
-  for line in source.read_text()?.split("""
-""") {
+  for line in source.read_text()?.split("\n") {
     let words = line.words()
 
     if words.len() >= 3 and words[0] == "#define" {
@@ -130,8 +129,7 @@ proc ifndef_wrapped_defines(source: Path) [fs, error] -> Result[Str] {
     }
   }
 
-  return lines.join("""
-""")
+  return lines.join("\n")
 }
 
 export proc build(dest: Path) [fs, process, env, error] {

@@ -41,8 +41,7 @@ proc merged_rules(ruleset: Str) [fs, error] -> Result[Str] {
   var seen_headers: Map[Bool] = {}
 
   for part in rule_parts(ruleset)? {
-    let lines = part.read_text()?.split("""
-""")
+    let lines = part.read_text()?.split("\n")
 
     var start = 0
 

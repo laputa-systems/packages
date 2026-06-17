@@ -122,7 +122,7 @@ proc test_kbuild_writes_text_plan(ctx: TestContext) [fs, error] {
   test.ok(has_path(loaded.objects, "init/main.o"))?
 }
 
-proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, error] {
+proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, error] {
   let root = test.temp_dir(ctx, name: "linux-archive-tasks")?
   write_fixture(root)?
 
@@ -251,7 +251,7 @@ proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, error] 
   } ?
 }
 
-proc test_kbuild_plans_pi_relacheck_after_objcopy(ctx: TestContext) [fs, error] {
+proc test_kbuild_plans_pi_relacheck_after_objcopy(ctx: TestContext) [fs, env, error] {
   let root = test.temp_dir(ctx, name: "linux-pi-relacheck")?
   fs.mkdir(fp"${root}/arch/arm64/kernel/pi")?
   fs.write(fp"${root}/.config", "")?
@@ -325,7 +325,7 @@ proc test_kbuild_plans_pi_relacheck_after_objcopy(ctx: TestContext) [fs, error] 
   } ?
 }
 
-proc test_kbuild_runs_archive_plan_output_from_json(ctx: TestContext) [fs, process, error] {
+proc test_kbuild_runs_archive_plan_output_from_json(ctx: TestContext) [fs, process, env, error] {
   let root = test.temp_dir(ctx, name: "linux-archive-runner")?
   let first = fp"${root}/first.txt"
   let second = fp"${root}/second.txt"
@@ -371,7 +371,7 @@ proc test_kbuild_runs_archive_plan_output_from_json(ctx: TestContext) [fs, proce
   test.eq(second.read_text()?, "firstsecond")?
 }
 
-proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, error] {
+proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, env, error] {
   let root = test.temp_dir(ctx, name: "linux-archive-missing")?
 
   fs.write(
@@ -397,7 +397,7 @@ proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, 
   } ?
 }
 
-proc test_kbuild_adds_x86_kvm_local_include(ctx: TestContext) [fs, error] {
+proc test_kbuild_adds_x86_kvm_local_include(ctx: TestContext) [fs, env, error] {
   let root = test.temp_dir(ctx, name: "linux-x86-kvm-include")?
   fs.mkdir(fp"${root}/arch/x86/kvm/mmu")?
 
@@ -431,7 +431,7 @@ int mmu(void) { return 0; }
   } ?
 }
 
-proc test_kbuild_applies_object_and_subdir_cflags(ctx: TestContext) [fs, error] {
+proc test_kbuild_applies_object_and_subdir_cflags(ctx: TestContext) [fs, env, error] {
   let root = test.temp_dir(ctx, name: "linux-cflags")?
   fs.mkdir(fp"${root}/sound/hda/common")?
   fs.mkdir(fp"${root}/sound/hda/controllers")?
@@ -581,7 +581,7 @@ proc test_kbuild_generates_offsets_header(ctx: TestContext) [fs, error] {
   )?
 }
 
-proc test_kbuild_models_final_link_tasks(ctx: TestContext) [fs, error] {
+proc test_kbuild_models_final_link_tasks(ctx: TestContext) [fs, env, error] {
   let root = test.temp_dir(ctx, name: "linux-link-tasks")?
   let ar = /usr/bin/ar
   let ld = /usr/bin/ld

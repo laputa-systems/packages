@@ -35,12 +35,12 @@ export stream extension_candidates() [fs, env, error] -> Stream[Extension] {
           |> where .name.starts_with("pm-") and .executable
           |> sort-by .name
 
-        for entry in entries {
-          let action = entry.name.replace("pm-", "")
+        for child_entry in entries {
+          let action = child_entry.name.replace("pm-", "")
 
           if ! set.has(seen, action) {
-            let summary = read_extension_summary(entry.path)?
-            yield {name: action, path: entry.path, summary}
+            let summary = read_extension_summary(child_entry.path)?
+            yield {name: action, path: child_entry.path, summary}
             seen = set.add(seen, action)
           }
         }
@@ -115,8 +115,7 @@ export proc invoke_extension(action: Str, ctx: PmContext, raw: List[Str]) [fs, p
     action,
     extension.path,
     argv,
-    raw.join("""
-"""),
+    raw.join("\n"),
     ctx,
   )?
 }
@@ -172,8 +171,7 @@ export proc run_lifecycle_hooks(hook_name: Str, pkg_name: Str, ctx: PmContext, e
           XSH_PM_HOOK: hook_name,
           XSH_PM_PACKAGE: pkg_name,
           XSH_PM_EXTRA: extra,
-          XSH_PM_ARGS: argv.join("""
-"""),
+          XSH_PM_ARGS: argv.join("\n"),
         },
       ),
     )?

@@ -179,8 +179,7 @@ compat/utf8proc.c
 
   fs.write(
     p"build.ninja",
-    f"""${lines.join("""
-""")}
+    f"""${lines.join("\n")}
 """,
   )?
 }

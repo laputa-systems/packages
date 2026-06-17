@@ -140,8 +140,7 @@ proc collect_event_defs(path_value: Path) [fs, error] -> Result[Record] {
   var defs: List[EventDef] = []
   var max_codes: Map[Int] = {}
 
-  for line in path_value.read_text()?.split("""
-""") {
+  for line in path_value.read_text()?.split("\n") {
     let words = line.words()
 
     if words.len() >= 3 and words[0] == "#define" {
@@ -302,8 +301,7 @@ proc write_event_names() [fs, error] {
 
   fs.write(
     p"event-names.h",
-    lines.join("""
-"""),
+    lines.join("\n"),
   )?
 }
 

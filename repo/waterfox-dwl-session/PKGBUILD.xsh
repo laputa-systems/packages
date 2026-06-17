@@ -380,8 +380,7 @@ proc add_group_member(group_file: Path, group_name: Str, user_name: Str) [fs, er
 
   fs.write(
     group_file,
-    f"""${output.join("""
-""")}
+    f"""${output.join("\n")}
 """,
   )?
 }

@@ -400,8 +400,7 @@ proc depfile_inputs(depfile: Path, cwd: Path) [fs, error] -> Result[List[Path]] 
     " ",
   )
 
-  let first = normalized.split("""
-""")[0]
+  let first = normalized.split("\n")[0]
 
   if ! first.contains(":") {
     let deps: List[Path] = []

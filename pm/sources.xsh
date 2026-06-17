@@ -526,8 +526,7 @@ export proc collect_checksum_updates(
 export proc write_checksum_field(pkg: Package, field: Str, values: List[Str]) [fs, error] {
   let pkgbuild = fp"${pkg.dir}/PKGBUILD.xsh"
 
-  let lines = fs.read_text(pkgbuild)?.split("""
-""")
+  let lines = fs.read_text(pkgbuild)?.split("\n")
 
   var output: List[Str] = []
   var in_block = false
@@ -564,7 +563,6 @@ export proc write_checksum_field(pkg: Package, field: Str, values: List[Str]) [f
 
   fs.write_atomic(
     pkgbuild,
-    output.join("""
-"""),
+    output.join("\n"),
   )?
 }

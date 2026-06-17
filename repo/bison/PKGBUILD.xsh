@@ -554,8 +554,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.write(
     p"lib/malloc/scratch_buffer.gl.h",
     f"""/* DO NOT EDIT! GENERATED AUTOMATICALLY! */
-${scratch_lines.join("""
-""")}
+${scratch_lines.join("\n")}
 """,
   )?
 
