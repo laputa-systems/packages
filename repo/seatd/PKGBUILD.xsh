@@ -8,7 +8,7 @@ export let rel: Str = "3"
 
 export let deps: List[Str] = ["musl", "libseat"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "pkgconf"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "pkgconf", "xinit"]
 
 export let sources: List[Path] = [p"https://git.sr.ht/~kennylevinsen/seatd/archive/VERSION.tar.gz", p"service.xsh"]
 

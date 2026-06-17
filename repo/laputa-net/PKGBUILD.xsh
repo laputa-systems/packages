@@ -7,7 +7,7 @@ export let rel: Str = "2"
 # ifup (the DHCP/static client) is an xsh core applet; the net service drives it.
 export let deps: List[Str] = ["xsh"]
 
-export let mkdeps: List[Str] = []
+export let mkdeps: List[Str] = ["xinit"]
 
 export let sources: List[Path] = [p"service.xsh", p"interfaces"]
 

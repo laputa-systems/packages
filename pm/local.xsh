@@ -1483,8 +1483,10 @@ proc run_package_proof(
   let native_proof = build_arch == target_arch
 
   if native_proof {
-    let proof_devpts = mount_package_proof_devpts(proof_root)?
-    defer unmount_package_proof_devpts(proof_devpts)
+    # note: not working on macos
+    # let proof_devpts = mount_package_proof_devpts(proof_root)?
+    # defer unmount_package_proof_devpts(proof_devpts)
+
     let proof_stage = fp"${proof_root}/var/tmp/pm-proof/${pkg.name}"
     fs.mkdir(proof_stage)?
     fs.install(proof, fp"${proof_stage}/proof.xsh", 0o644, parents: true, overwrite: true)?

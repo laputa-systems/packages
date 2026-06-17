@@ -11,7 +11,7 @@ export let rel: Str = "4"
 
 export let deps: List[Str] = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "xinit"]
 
 export let sources: List[Path] = [
   p"https://skarnet.org/software/mdevd/mdevd-VERSION.tar.gz",

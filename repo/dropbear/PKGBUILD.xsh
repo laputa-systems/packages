@@ -8,7 +8,7 @@ export let rel: Str = "12"
 
 export let deps: List[Str] = ["musl", "zlib"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "xinit"]
 
 # Source is a git commit (no VERSION substitution needed).
 export let sources: List[Path] = [
