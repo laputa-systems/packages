@@ -1,8 +1,8 @@
 export let name: Str = "xsh"
 
-export let ver: Str = "release-5d22e5c1fc5d2e86307ffccbeaa5b5b1be73c90b"
+export let ver: Str = "0.0.0"
 
-export let rel: Str = "1"
+export let rel: Str = "0"
 
 export let deps: List[Str] = []
 

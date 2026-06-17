@@ -257,6 +257,12 @@ pure package_exempt_from_implicit_pm(name: Str) -> Bool {
   name == "baselayout" or name == "xsh" or name == "laputa-pm"
 }
 
+# Temporary: xsh 0.0.0 is a development marker that should be considered
+# newer than any release-* version in the remote index.
+pure world_package_always_newer_than_remote(name: Str, ver: Str) -> Bool {
+  name == "xsh" and ver == "0.0.0"
+}
+
 proc add_implicit_pm_dependency(pkg: Package, deps: List[Str]) [] -> List[Str] {
   if ! package_exempt_from_implicit_pm(pkg.name) and ! deps.contains("laputa-pm") {
     return deps.push("laputa-pm")
@@ -665,6 +671,10 @@ proc world_plan_remote_annotation(
     return ""
   }
 
+  if world_package_always_newer_than_remote(pkg.name, pkg.ver) {
+    return ""
+  }
+
   let remote: RemotePackage = remote_latest.get(pkg.name)?
   let cmp = compare_version_release(planned.ver, planned.rel, remote.ver, remote.rel)
 
@@ -758,7 +768,10 @@ proc world_plan_version_text(
     if remote_latest.has(pkg.name) {
       let remote: RemotePackage = remote_latest.get(pkg.name)?
 
-      if compare_version_release(remote.ver, remote.rel, planned.ver, planned.rel) < 0 {
+      if compare_version_release(remote.ver, remote.rel, planned.ver, planned.rel) < 0 or world_package_always_newer_than_remote(
+        pkg.name,
+        planned.ver,
+      ) {
         return f"${ansi(colors, "2", version_id(remote.ver, remote.rel))} ${ansi(colors, "1;33", "->")} ${ansi(
           colors,
           "1;33",
@@ -783,9 +796,7 @@ proc sync_package_rel(pkg: Package, planned: Package) [fs, error] -> Result[Bool
   }
 
   let pkgbuild = fp"${pkg.dir}/PKGBUILD.xsh"
-
   let lines = fs.read_text(pkgbuild)?.split("\n")
-
   var output: List[Str] = []
   var found = false
 
@@ -808,11 +819,7 @@ proc sync_package_rel(pkg: Package, planned: Package) [fs, error] -> Result[Bool
     return Err(PmError.PackageContract(f"${pkg.name} has no rel declaration"))
   }
 
-  fs.write(
-    pkgbuild,
-    output.join("\n"),
-  )?
-
+  fs.write(pkgbuild, output.join("\n"))?
   true
 }
 
@@ -1035,7 +1042,7 @@ proc validate_world_remote_versions_for_plan(
   allow_equal: Bool,
 ) [env, error] {
   for pkg in packages {
-    if remote_latest.has(pkg.name) {
+    if remote_latest.has(pkg.name) and ! world_package_always_newer_than_remote(pkg.name, pkg.ver) {
       let remote: RemotePackage = remote_latest.get(pkg.name)?
       let cmp = compare_version_release(pkg.ver, pkg.rel, remote.ver, remote.rel)
       let ver_cmp = compare_version_text(pkg.ver, remote.ver)
@@ -2561,50 +2568,62 @@ proc build_repo(argv: List[Str]) [fs, net, process, env, time, error] {
 }
 
 proc main(...argv: List[Str]) [fs, net, process, env, time, error] {
-  if argv.len() == 0 or argv[0] == "-h" or argv[0] == "--help" or argv[0] == "help" {
+  var a = argv
+
+  if a.len() >= 1 and a[0] == "--" {
+    var shifted: List[Str] = []
+    var i = 1
+    while i < a.len() {
+      shifted = shifted.push(a[i])
+      i += 1
+    }
+    a = shifted
+  }
+
+  if a.len() == 0 or a[0] == "-h" or a[0] == "--help" or a[0] == "help" {
     print_help()
     return
   }
 
-  if argv.len() >= 1 and argv[0] == "build" {
-    build_repo(argv)?
+  if a.len() >= 1 and a[0] == "build" {
+    build_repo(a)?
     return
   }
 
-  if argv.len() >= 1 and argv[0] == "build-install" {
-    build_install_packages(argv)?
+  if a.len() >= 1 and a[0] == "build-install" {
+    build_install_packages(a)?
     return
   }
 
-  if argv.len() >= 1 and argv[0] == "world-plan" {
-    world_plan_repo(argv)?
+  if a.len() >= 1 and a[0] == "world-plan" {
+    world_plan_repo(a)?
     return
   }
 
-  if argv.len() >= 1 and argv[0] == "build-set" {
-    build_set_repo(argv)?
+  if a.len() >= 1 and a[0] == "build-set" {
+    build_set_repo(a)?
     return
   }
 
-  if argv.len() >= 1 and argv[0] == "build-prepared-package" {
-    build_prepared_package_command(argv)?
+  if a.len() >= 1 and a[0] == "build-prepared-package" {
+    build_prepared_package_command(a)?
     return
   }
 
-  if argv.len() >= 1 and argv[0] == "upload-set" {
-    upload_set_repo(argv)?
+  if a.len() >= 1 and a[0] == "upload-set" {
+    upload_set_repo(a)?
     return
   }
 
-  if argv.len() >= 1 and argv[0] == "build-upload-set" {
-    build_upload_set_repo(argv)?
+  if a.len() >= 1 and a[0] == "build-upload-set" {
+    build_upload_set_repo(a)?
     return
   }
 
-  if argv.len() >= 1 and argv[0] == "upload-repo-export" {
-    upload_repo_export(argv)?
+  if a.len() >= 1 and a[0] == "upload-repo-export" {
+    upload_repo_export(a)?
     return
   }
 
-  handle_cli_command(parse_pm_cli(default_root_command_argv(argv)?)?)?
+  handle_cli_command(parse_pm_cli(default_root_command_argv(a)?)?)?
 }
