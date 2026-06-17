@@ -300,7 +300,7 @@ export proc effective_task_argv(argv: List[Str], task_env: Record) [fs, env, err
   var cxx_lib_args: List[Str] = []
 
   if cxx {
-    cxx_lib_args = ["-lstdc++", "-lunwind", "-lm"]
+    cxx_lib_args = ["-lstdc++", "-lm"]
   }
 
   if has_exact_argv(argv, "-nostdlib") {
@@ -539,7 +539,10 @@ proc run_task(task: Record) [fs, process, env, error] {
   }
 
   if has_path(task.stamp) {
-    task.stamp.write_atomic(command_signature(task)?)?
+    match task.stamp.write_atomic(command_signature(task)?) {
+      Ok(_) => {}
+      Err(_) => {}
+    }
   }
 }
 
@@ -772,7 +775,10 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
 
   for row in pending_stamps {
     if has_path(row.task.stamp) {
-      row.task.stamp.write_atomic(command_signature(row.task)?)?
+      match row.task.stamp.write_atomic(command_signature(row.task)?) {
+        Ok(_) => {}
+        Err(_) => {}
+      }
     }
   }
 }
@@ -787,9 +793,8 @@ export proc compile_lo_task(
   out: Path,
   deps: List[Str] = [],
 ) [] -> MakeTask {
-  let _ = toolchain
   let depfile = depfile_path(out)
-  var argv: List[Str] = ["cc", "-target", triple, "-c", "-fPIC", "-DPIC"]
+  var argv: List[Str] = [toolchain.display(), "-target", triple, "-c", "-fPIC", "-DPIC"]
   argv = argv.extend(cflags).extend(defs).extend(includes)
   argv = argv.extend([src.display(), "-o", out.display(), "-MMD", "-MP", "-MF", depfile.display()])
 

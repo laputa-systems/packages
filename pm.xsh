@@ -1230,7 +1230,7 @@ case "$real" in
         cxx_args="$cxx_args -isystem $target_root/usr/include/c++/15.2.0/${target_arch}-alpine-linux-musl"
       fi
     fi
-    cxx_libs="-lstdc++ -lunwind -lm"
+    cxx_libs="-lstdc++ -lm"
     ;;
 esac
 compile_only=0

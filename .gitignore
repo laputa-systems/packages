@@ -1,6 +1,7 @@
 target
 .env
 .out
+.work
 /repo/.work/
 /repo/.set-root/
 /repo/.set-build-root/

@@ -37,12 +37,13 @@ proc proof_readelf_path(root: Path) [fs, env, error] -> Result[Path] {
   return fp"${build_root}/usr/bin/readelf"
 }
 
-proc prove_x86_64_v3() [fs, process, error] {
+proc prove_x86_64_v3(root: Path) [fs, process, error] {
   let cc = process.which("cc")?
   let objdump = process.which("llvm-objdump")?
-  let tmp_root = fs.tempdir()?
-  defer fs.close_root(tmp_root)?
-  let tmp = fs.root_path(tmp_root)?
+  let tmp = fp"${root}/var/tmp/proof-llvm-toolchain-v3"
+  fs.remove(tmp, missing_ok: true)?
+  fs.mkdir(tmp)?
+  defer fs.remove(tmp, missing_ok: true)?
 
   fs.write(
     fp"${tmp}/v3-toy.c",
@@ -66,12 +67,13 @@ void laputa_v3_toy(const unsigned long long *a, const unsigned long long *b, uns
   ensure(asm.contains("pdep"), "proof-llvm-toolchain", "x86-64-v3 proof did not emit BMI2 pdep")?
 }
 
-proc prove_explicit_aarch64_target() [fs, process, error] {
+proc prove_explicit_aarch64_target(root: Path) [fs, process, error] {
   let cc = process.which("cc")?
   let readelf = process.which("llvm-readelf")?
-  let tmp_root = fs.tempdir()?
-  defer fs.close_root(tmp_root)?
-  let tmp = fs.root_path(tmp_root)?
+  let tmp = fp"${root}/var/tmp/proof-llvm-toolchain-aarch64"
+  fs.remove(tmp, missing_ok: true)?
+  fs.mkdir(tmp)?
+  defer fs.remove(tmp, missing_ok: true)?
 
   fs.write(
     fp"${tmp}/aarch64-target-toy.c",
@@ -97,10 +99,29 @@ proc prove_target_tools(root: Path, arch: Str) [fs, process, env, error] {
   let machine = elf_machine_name(arch)
   let cc = fp"${root}/usr/bin/cc"
   let clang = fp"${root}/usr/lib/llvm22/bin/clang-22"
-  let cc_header = run.text $readelf "-h" $cc ?
   let clang_header = run.text $readelf "-h" $clang ?
-  ensure(cc_header.contains(machine), "proof-llvm-toolchain", f"cc wrapper is not ${arch}")?
   ensure(clang_header.contains(machine), "proof-llvm-toolchain", f"clang-22 is not ${arch}")?
+
+  let cc_text = fs.read_text(cc)?
+  ensure(cc_text.starts_with("#!/usr/local/bin/xsh"), "proof-llvm-toolchain", "cc wrapper is not an XSH script")?
+
+  let tmp = fp"${root}/var/tmp/proof-llvm-toolchain-wrapper"
+  fs.remove(tmp, missing_ok: true)?
+  fs.mkdir(tmp)?
+  defer fs.remove(tmp, missing_ok: true)?
+
+  fs.write(
+    fp"${tmp}/wrapper-target.c",
+    """int laputa_wrapper_target(void) {
+  return 7;
+}
+""",
+  )?
+
+  let object = fp"${tmp}/wrapper-target.o"
+  run $cc "-O2" "-c" fp"${tmp}/wrapper-target.c" "-o" $object ?
+  let object_header = run.text $readelf "-h" $object ?
+  ensure(object_header.contains(machine), "proof-llvm-toolchain", f"cc wrapper did not produce a ${arch} object")?
 }
 
 proc main(root: Path = /rootfs) [fs, process, env, error] {
@@ -114,8 +135,8 @@ proc main(root: Path = /rootfs) [fs, process, env, error] {
   let build_arch = pm_util.build_arch()?
 
   if build_arch == target_arch and target_arch == "x86_64" {
-    prove_x86_64_v3()?
-    prove_explicit_aarch64_target()?
+    prove_x86_64_v3(root)?
+    prove_explicit_aarch64_target(root)?
   } else {
     prove_target_tools(root, target_arch)?
   }

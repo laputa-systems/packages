@@ -4,9 +4,9 @@ error LlvmToolchainError = Failed(message: Str)
 
 export let name: Str = "llvm-toolchain"
 
-export let ver: Str = "22.1.3"
+export let ver: Str = "22.1.8"
 
-export let rel: Str = "8"
+export let rel: Str = "3"
 
 export let deps: List[Str] = ["musl"]
 
@@ -15,385 +15,385 @@ export let mkdeps: List[Str] = []
 export let nostrip: Bool = true
 
 export let sources: List[Path] = [
-  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/clang22-22.1.3-r2.apk => clang22.tar.gz",
-  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/lld22-22.1.3-r0.apk => lld22.tar.gz",
-  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/llvm22-22.1.3-r0.apk => llvm22.tar.gz",
-  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/llvm22-libs-22.1.3-r0.apk => llvm22-libs.tar.gz",
-  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/clang22-libs-22.1.3-r2.apk => clang22-libs.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/clang22-22.1.8-r0.apk => clang22.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/clang22-headers-22.1.8-r0.apk => clang22-headers.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/clang22-libs-22.1.8-r0.apk => clang22-libs.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/compiler-rt-22.1.8-r0.apk => compiler-rt.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/lld22-22.1.8-r0.apk => lld22.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/lld22-libs-22.1.8-r0.apk => lld22-libs.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/llvm22-22.1.8-r0.apk => llvm22.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/llvm22-libs-22.1.8-r0.apk => llvm22-libs.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/llvm22-dev-22.1.8-r0.apk => llvm22-dev.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/llvm22-linker-tools-22.1.8-r0.apk => llvm22-linker-tools.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/libstdc++-15.2.0-r6.apk => libstdcxx.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/libstdc++-dev-15.2.0-r6.apk => libstdcxx-dev.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/libgcc-15.2.0-r6.apk => libgcc.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/libffi-3.5.2-r1.apk => libffi.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/zstd-libs-1.5.7-r2.apk => zstd-libs.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/libxml2-2.13.9-r2.apk => libxml2.tar.gz",
+  p"https://dl-cdn.alpinelinux.org/alpine/edge/main/ARCH/xz-libs-5.8.3-r0.apk => xz-libs.tar.gz",
+  p"files/generated/libgcc_s-aarch64.so.1 => generated-libgcc-aarch64",
+  p"files/generated/libgcc_s-x86_64.so.1 => generated-libgcc-x86_64",
 ]
 
-export let checksums: List[Str] = ["SKIP", "SKIP", "SKIP", "SKIP", "SKIP"]
+export let checksums: List[Str] = [
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+]
 
-export let checksums_aarch64: List[Str] = ["SKIP", "SKIP", "SKIP", "SKIP", "SKIP"]
+export let checksums_aarch64: List[Str] = [
+  "248c3fb7827fe591a5bf28ba0d567cce235c1395e49d35108eed7892c6c51f53",
+  "9b646282d9c66266a45bd53ac97d79a5d5aaccfe08454ea11800fed2f01114cf",
+  "27f54a9838e012523b0b42a6b398c5af55fde571d4f4e06c8e1e4ec29fb67747",
+  "e34e80b588ed96d5552fdd58b6adeb112e1c2f1f5dffb9ea1f84fbf8043f85a2",
+  "06b36012563bb8e8f2a13bc80be9ac87dac96b14bd330b7084bb8896e8458f08",
+  "44031121030d1b32fa878f2c80b5cdb3f067d1ab771df388830150837506b6c6",
+  "30f52ee878bfc1e21bcbc901393f915bcccac04f4e606406b892ad460309e0de",
+  "ccf81493d2468b95df937248f3b2bf0c86eed57ab2573e2caa97381cf1b0c0b6",
+  "ff1b65e02b46749d50069a4f8724a2920f7bf2cf79827f480923bf26af483f0f",
+  "db4fe23832595402a3ea407e6ea5b08817414c16231b7cada0592bfb1524b675",
+  "afa90864c427373ccb216644c6dd0c56e318269ddda62cb756e5350e426b5a5f",
+  "17114209cea6ec992c6b332e0c4c9fcaaa2df721d2918e4905bf37a5f35e9471",
+  "e62f234bf2405dd2f968165e19e4a56a03430a0634bbd26848ae4d150505ee80",
+  "bff86f6c3fc29e87fb8741b6a05602e6268a7f8cbefa48ec53d6f7fcfd00ff02",
+  "67f0803cc07bad0dd866d21fdaca1fa742b541a4e5e96e0159bd8b0054d348ac",
+  "27c1a195517714c358c9f8c8dd33ec5d0fcc2b47f44c638a487c2a185e0b00af",
+  "b139f4c3747b46dd1461592cfe4a0d3e6daf010d7376691092968d6f69cb1612",
+  "SKIP",
+  "SKIP",
+]
 
-export let checksums_x86_64: List[Str] = ["SKIP", "SKIP", "SKIP", "SKIP", "SKIP"]
+export let checksums_x86_64: List[Str] = [
+  "567059b3da3fcac554012143a67268cc14ed0122f15c76b5439dd655f074cc62",
+  "5fe1814ec6548850f0e3bbcfa49e2e579b1e0181dd435a2ee437f71977a39400",
+  "f54f9d903e8bbd2ae496b15e74cb671a4c9ac4242c253d25696359f619309ede",
+  "54aef124308d63bf26463293e25045be5449252c0e031ae340966d597fb61d0f",
+  "01194a5d4ef62d152c8737329f8553846f4566b81406031049f5b7e9ee14b5cf",
+  "0dc5d7e41edefcd672e1d3fff3a074db790efd04f24cf7c138e1b711dd5da479",
+  "f6f550ecc0def8014575899e2a82b1b9f41cddbebbea658cc3674ddc6e453118",
+  "67e5198d42f07838a3be6c5fd91c043040116b5ed381ebc0f09b2c18a2e4d7e2",
+  "3c4d63c1a199a674cacfc05e549d4d95855cb222f41eac558b907efbfe968c39",
+  "f0fb2810d8c7a14371e423d551ba593053a6566420796fedd63579b6d65fcc8b",
+  "30395074c46375d870b8ff5ff333d3fcce1855a9981324d43dbf69da6c06ad2a",
+  "1d89eba28210e543b87253071f257dc4070a33e279875950889cbcadfbb12bef",
+  "d285c3e251486004567c47353be986145a58c1f6761c6fae829c1a7e0a6b068f",
+  "0ab19290ba2a4aea64613c16b9744853363cbd7a61159860eaf4bd255d470f56",
+  "5025e2207b44a131f1b2262761187d88500829c2171d566d37a1225246fe542e",
+  "4b2f986159c659f014b942fe8a5d70c67af475153ca826c3dd53389eea46a300",
+  "95162110d7b67e3e2fd243fa4a43f75170a9c4839c47f86bb5e34340a6dfe930",
+  "SKIP",
+  "SKIP",
+]
 
-pure wrapper_source() -> Str {
-  return """#include <errno.h>
-#include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/utsname.h>
-#include <unistd.h>
+pure bool_literal(value: Bool) -> Str {
+  if value {
+    return "true"
+  }
 
-struct tool {
-  const char *name;
-  const char *real;
-  int clang;
-};
-
-static const struct tool tools[] = {
-  {"cc", "usr/lib/llvm22/bin/clang-22", 1},
-  {"clang", "usr/lib/llvm22/bin/clang-22", 1},
-  {"c++", "usr/lib/llvm22/bin/clang++", 1},
-  {"clang++", "usr/lib/llvm22/bin/clang++", 1},
-  {"ld", "usr/lib/llvm-toolchain/bin/ld.lld", 0},
-  {"ld.lld", "usr/lib/llvm-toolchain/bin/ld.lld", 0},
-  {"ar", "usr/bin/llvm22-ar", 0},
-  {"ranlib", "usr/bin/llvm22-ranlib", 0},
-  {"nm", "usr/bin/llvm22-nm", 0},
-  {"objcopy", "usr/bin/llvm22-objcopy", 0},
-  {"objdump", "usr/bin/llvm22-objdump", 0},
-  {"readelf", "usr/bin/llvm22-readelf", 0},
-  {"strip", "usr/bin/llvm22-strip", 0},
-  {"llvm-ar", "usr/bin/llvm22-ar", 0},
-  {"llvm-ranlib", "usr/bin/llvm22-ranlib", 0},
-  {"llvm-nm", "usr/bin/llvm22-nm", 0},
-  {"llvm-objcopy", "usr/bin/llvm22-objcopy", 0},
-  {"llvm-objdump", "usr/bin/llvm22-objdump", 0},
-  {"llvm-readelf", "usr/bin/llvm22-readelf", 0},
-  {"llvm-strip", "usr/bin/llvm22-strip", 0},
-};
-
-static const char *base_name(const char *path) {
-  const char *slash = strrchr(path, '/');
-  return slash ? slash + 1 : path;
+  return "false"
 }
 
-static const struct tool *find_tool(const char *name) {
-  size_t count = sizeof(tools) / sizeof(tools[0]);
-  for (size_t i = 0; i < count; i++) {
-    if (strcmp(tools[i].name, name) == 0) {
-      return &tools[i];
+pure xsh_wrapper_source(real: Path, clang: Bool, cxx: Bool) -> Str {
+  let template = r"""#!/usr/local/bin/xsh
+proc has_arg(argv: List[Str], needle: Str) [] -> Bool {
+  for arg in argv {
+    if arg == needle {
+      return true
     }
   }
-  return NULL;
+
+  return false
 }
 
-static int executable(const char *path) {
-  struct stat st;
-  return stat(path, &st) == 0 && (st.st_mode & S_IXUSR);
-}
-
-static int find_self(const char *argv0, char *out, size_t out_len) {
-  if (strchr(argv0, '/')) {
-    if (snprintf(out, out_len, "%s", argv0) >= (int)out_len) {
-      return -1;
-    }
-    return 0;
-  }
-
-  const char *path = getenv("PATH");
-  if (!path) {
-    return -1;
-  }
-
-  const char *start = path;
-  while (*start) {
-    const char *end = strchr(start, ':');
-    size_t len = end ? (size_t)(end - start) : strlen(start);
-    const char *dir = len == 0 ? "." : start;
-    int n = len == 0 ? snprintf(out, out_len, "./%s", argv0) : snprintf(out, out_len, "%.*s/%s", (int)len, dir, argv0);
-    if (n > 0 && n < (int)out_len && executable(out)) {
-      return 0;
-    }
-    if (!end) {
-      break;
-    }
-    start = end + 1;
-  }
-
-  return -1;
-}
-
-static void dirname_in_place(char *path) {
-  char *slash = strrchr(path, '/');
-  if (!slash) {
-    strcpy(path, ".");
-  } else if (slash == path) {
-    path[1] = 0;
-  } else {
-    *slash = 0;
-  }
-}
-
-static int prefix_from_self(const char *self, char *out, size_t out_len) {
-  if (snprintf(out, out_len, "%s", self) >= (int)out_len) {
-    return -1;
-  }
-  dirname_in_place(out);
-  dirname_in_place(out);
-  dirname_in_place(out);
-  return 0;
-}
-
-static int join_path(char *out, size_t out_len, const char *prefix, const char *rel) {
-  if (strcmp(prefix, "/") == 0) {
-    return snprintf(out, out_len, "/%s", rel) < (int)out_len ? 0 : -1;
-  }
-  return snprintf(out, out_len, "%s/%s", prefix, rel) < (int)out_len ? 0 : -1;
-}
-
-static int has_compile_only_arg(int argc, char **argv) {
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "-S") == 0 || strcmp(argv[i], "-E") == 0) {
-      return 1;
+proc has_option_prefix(argv: List[Str], prefix: Str) [] -> Bool {
+  for arg in argv {
+    if arg.starts_with(prefix) {
+      return true
     }
   }
-  return 0;
+
+  return false
 }
 
-static int has_option_prefix(int argc, char **argv, const char *prefix) {
-  size_t len = strlen(prefix);
-  for (int i = 1; i < argc; i++) {
-    if (strncmp(argv[i], prefix, len) == 0) {
-      return 1;
+proc compile_only(argv: List[Str]) [] -> Bool {
+  return has_arg(argv, "-c") or has_arg(argv, "-S") or has_arg(argv, "-E")
+}
+
+proc shared_link(argv: List[Str]) [] -> Bool {
+  return has_arg(argv, "-shared")
+}
+
+proc static_link(argv: List[Str]) [] -> Bool {
+  return has_arg(argv, "-static")
+}
+
+proc default_runtime(argv: List[Str]) [] -> Bool {
+  return ! has_arg(argv, "-nostdlib") and ! has_arg(argv, "-nodefaultlibs")
+}
+
+proc default_startfiles(argv: List[Str]) [] -> Bool {
+  return default_runtime(argv) and ! has_arg(argv, "-nostartfiles")
+}
+
+proc include_controlled(argv: List[Str]) [] -> Bool {
+  return has_arg(argv, "-nostdinc") or has_arg(argv, "-nostdlibinc") or has_arg(argv, "-nostdsysteminc")
+}
+
+proc sysroot_arg(argv: List[Str]) [error] -> Result[Path] {
+  var index = 0
+
+  while index < argv.len() {
+    let arg = argv[index]
+
+    if arg == "--sysroot" and index + 1 < argv.len() {
+      return Path.parse(argv[index + 1])?
     }
-  }
-  return 0;
-}
 
-static int has_arg(int argc, char **argv, const char *arg) {
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], arg) == 0) {
-      return 1;
+    if arg.starts_with("--sysroot=") {
+      return Path.parse(arg.replace("--sysroot=", ""))?
     }
+
+    index += 1
   }
-  return 0;
+
+  return p"/"
 }
 
-static int has_suffix(const char *value, const char *suffix) {
-  size_t value_len = strlen(value);
-  size_t suffix_len = strlen(suffix);
-  return value_len >= suffix_len && strcmp(value + value_len - suffix_len, suffix) == 0;
+proc rooted(root: Path, rel: Str) [error] -> Result[Path] {
+  if root.display() == "/" {
+    return Path.parse(f"/${rel}")?
+  }
+
+  fp"${root}/${rel}"
 }
 
-static int needs_frontend_flags(int argc, char **argv) {
-  int saw_frontend_input = 0;
-  int explicit_assembler = 0;
+proc source_like(arg: Str) [] -> Bool {
+  return arg.ends_with(".c") or arg.ends_with(".cc") or arg.ends_with(".cpp") or arg.ends_with(".cxx") or arg.ends_with(".C") or arg.ends_with(".S")
+}
 
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "-x") == 0 && i + 1 < argc) {
-      i++;
-      explicit_assembler = strcmp(argv[i], "assembler") == 0;
-      if (!explicit_assembler) {
-        saw_frontend_input = 1;
+proc needs_frontend_flags(argv: List[Str]) [] -> Bool {
+  if has_arg(argv, "-E") {
+    return true
+  }
+
+  var index = 0
+  var explicit_assembler = false
+
+  while index < argv.len() {
+    let arg = argv[index]
+
+    if arg == "-x" and index + 1 < argv.len() {
+      explicit_assembler = argv[index + 1] == "assembler"
+      index += 2
+      continue
+    }
+
+    if arg.starts_with("-") {
+      if ["-o", "-MF", "-MT", "-MQ", "-include", "-isystem"].contains(arg) and index + 1 < argv.len() {
+        index += 2
+      } else {
+        index += 1
       }
-      continue;
+      continue
     }
 
-    if (argv[i][0] == '-') {
-      if ((strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "-MF") == 0 || strcmp(argv[i], "-MT") == 0 || strcmp(argv[i], "-MQ") == 0 || strcmp(argv[i], "-include") == 0 || strcmp(argv[i], "-isystem") == 0) && i + 1 < argc) {
-        i++;
+    if ! explicit_assembler and source_like(arg) {
+      return true
+    }
+
+    index += 1
+  }
+
+  return false
+}
+
+proc arch_from_triple(triple: Str) [] -> Str {
+  if triple.starts_with("aarch64") or triple.starts_with("arm64") {
+    return "aarch64"
+  }
+
+  if triple.starts_with("x86_64") or triple.starts_with("amd64") {
+    return "x86_64"
+  }
+
+  return ""
+}
+
+proc host_arch() [env, error] -> Result[Str] {
+  let os = system.uname()?
+
+  if os.machine == "arm64" {
+    return "aarch64"
+  }
+
+  if os.machine == "amd64" {
+    return "x86_64"
+  }
+
+  return os.machine
+}
+
+proc target_arch(argv: List[Str]) [env, error] -> Result[Str] {
+  var index = 0
+
+  while index < argv.len() {
+    let arg = argv[index]
+
+    if (arg == "-target" or arg == "--target") and index + 1 < argv.len() {
+      let arch = arch_from_triple(argv[index + 1])
+
+      if arch != "" {
+        return arch
       }
-      continue;
+
+      index += 2
+      continue
     }
 
-    if (explicit_assembler) {
-      continue;
-    }
-    if (has_suffix(argv[i], ".s")) {
-      continue;
-    }
-    if (has_suffix(argv[i], ".c") || has_suffix(argv[i], ".cc") || has_suffix(argv[i], ".cpp") || has_suffix(argv[i], ".cxx") || has_suffix(argv[i], ".C") || has_suffix(argv[i], ".S")) {
-      saw_frontend_input = 1;
-    }
-  }
+    if arg.starts_with("--target=") {
+      let arch = arch_from_triple(arg.replace("--target=", ""))
 
-  return saw_frontend_input || has_arg(argc, argv, "-E");
-}
-
-static int has_include_control_arg(int argc, char **argv) {
-  return has_arg(argc, argv, "-nostdinc") || has_arg(argc, argv, "-nostdlibinc") || has_arg(argc, argv, "-nostdsysteminc");
-}
-
-static int is_cxx_tool(const char *name) {
-  return strcmp(name, "c++") == 0 || strcmp(name, "clang++") == 0;
-}
-
-static void normalize_arch(char *arch, size_t len) {
-  struct utsname uts;
-  if (uname(&uts) == 0) {
-    snprintf(arch, len, "%s", strcmp(uts.machine, "arm64") == 0 ? "aarch64" : uts.machine);
-  } else {
-    snprintf(arch, len, "x86_64");
-  }
-}
-
-static int arch_from_triple(const char *triple, char *arch, size_t len) {
-  if (strncmp(triple, "x86_64", 6) == 0 || strncmp(triple, "amd64", 5) == 0) {
-    snprintf(arch, len, "x86_64");
-    return 0;
-  }
-  if (strncmp(triple, "aarch64", 7) == 0 || strncmp(triple, "arm64", 5) == 0) {
-    snprintf(arch, len, "aarch64");
-    return 0;
-  }
-  return -1;
-}
-
-static void target_arch(char *arch, size_t len, int argc, char **argv) {
-  normalize_arch(arch, len);
-
-  for (int i = 1; i < argc; i++) {
-    if ((strcmp(argv[i], "-target") == 0 || strcmp(argv[i], "--target") == 0) && i + 1 < argc) {
-      if (arch_from_triple(argv[i + 1], arch, len) == 0) {
-        return;
-      }
-      i++;
-      continue;
-    }
-    if (strncmp(argv[i], "--target=", 9) == 0) {
-      if (arch_from_triple(argv[i] + 9, arch, len) == 0) {
-        return;
-      }
-      continue;
-    }
-  }
-}
-
-static const char *default_march_flag(const char *arch) {
-  if (strcmp(arch, "x86_64") == 0) {
-    return "-march=x86-64-v3";
-  }
-  if (strcmp(arch, "aarch64") == 0) {
-    return "-march=armv8-a";
-  }
-  return NULL;
-}
-
-int main(int argc, char **argv) {
-  const struct tool *tool = find_tool(base_name(argv[0]));
-  if (!tool) {
-    fprintf(stderr, "llvm-toolchain wrapper: unknown tool name: %s\\n", base_name(argv[0]));
-    return 127;
-  }
-
-  char self[PATH_MAX];
-  char prefix[PATH_MAX];
-  char real[PATH_MAX];
-  if (find_self(argv[0], self, sizeof(self)) != 0 || prefix_from_self(self, prefix, sizeof(prefix)) != 0 || join_path(real, sizeof(real), prefix, tool->real) != 0) {
-    fprintf(stderr, "llvm-toolchain wrapper: failed to resolve tool path\\n");
-    return 127;
-  }
-
-  char libs[PATH_MAX * 2];
-  if (strcmp(prefix, "/") == 0) {
-    snprintf(libs, sizeof(libs), "/usr/lib:/lib");
-  } else {
-    snprintf(libs, sizeof(libs), "%s/usr/lib:%s/lib", prefix, prefix);
-  }
-
-  const char *old_ld = getenv("LD_LIBRARY_PATH");
-  char ld[PATH_MAX * 3];
-  if (old_ld && old_ld[0]) {
-    snprintf(ld, sizeof(ld), "%s:%s", libs, old_ld);
-  } else {
-    snprintf(ld, sizeof(ld), "%s", libs);
-  }
-  setenv("LD_LIBRARY_PATH", ld, 1);
-
-  const char *tool_name = base_name(argv[0]);
-  int compile_only = has_compile_only_arg(argc, argv);
-  int frontend_flags = needs_frontend_flags(argc, argv);
-  int extra_count = tool->clang ? 30 : 0;
-  char **exec_argv = calloc((size_t)argc + (size_t)extra_count + 1, sizeof(char *));
-  if (!exec_argv) {
-    perror("calloc");
-    return 127;
-  }
-
-  int out = 0;
-  exec_argv[out++] = tool->clang ? real : (char *)base_name(argv[0]);
-
-  char arch[128];
-  char triple[160];
-  char sysroot[PATH_MAX + 16];
-  char resource_dir[PATH_MAX + 32];
-  char resource_include[PATH_MAX + 40];
-  char sys_include[PATH_MAX + 16];
-  char cxx_include[PATH_MAX + 32];
-  char cxx_target_include[PATH_MAX + 64];
-  char lib_dir[PATH_MAX + 8];
-  char compiler_rt[PATH_MAX + 64] = {0};
-  if (tool->clang) {
-    normalize_arch(arch, sizeof(arch));
-    char march_arch[128];
-    target_arch(march_arch, sizeof(march_arch), argc, argv);
-    snprintf(triple, sizeof(triple), "--target=%s-linux-musl", march_arch);
-    snprintf(sysroot, sizeof(sysroot), "--sysroot=%s", prefix);
-    join_path(resource_dir, sizeof(resource_dir), prefix, "usr/lib/llvm22/lib/clang/22");
-    join_path(resource_include, sizeof(resource_include), prefix, "usr/lib/llvm22/lib/clang/22/include");
-    join_path(sys_include, sizeof(sys_include), prefix, "usr/include");
-    join_path(cxx_include, sizeof(cxx_include), prefix, "usr/include/c++/15.2.0");
-    snprintf(cxx_target_include, sizeof(cxx_target_include), "%s/usr/include/c++/15.2.0/%s-alpine-linux-musl", strcmp(prefix, "/") == 0 ? "" : prefix, march_arch);
-    join_path(lib_dir, sizeof(lib_dir), prefix, "usr/lib");
-    snprintf(compiler_rt, sizeof(compiler_rt), "%s/usr/lib/libclang_rt.builtins-%s.a", strcmp(prefix, "/") == 0 ? "" : prefix, march_arch);
-
-    exec_argv[out++] = "--no-default-config";
-    exec_argv[out++] = triple;
-    exec_argv[out++] = sysroot;
-    exec_argv[out++] = "-resource-dir";
-    exec_argv[out++] = resource_dir;
-
-    if (frontend_flags && !has_include_control_arg(argc, argv)) {
-      exec_argv[out++] = "-nostdinc";
-      if (is_cxx_tool(tool_name)) {
-        exec_argv[out++] = "-isystem";
-        exec_argv[out++] = cxx_include;
-        exec_argv[out++] = "-isystem";
-        exec_argv[out++] = cxx_target_include;
-      }
-      exec_argv[out++] = "-isystem";
-      exec_argv[out++] = resource_include;
-      exec_argv[out++] = "-isystem";
-      exec_argv[out++] = sys_include;
-    }
-
-    if (frontend_flags) {
-      exec_argv[out++] = "-fno-stack-protector";
-      const char *march = default_march_flag(march_arch);
-      if (march && !has_option_prefix(argc, argv, "-march=") && !has_option_prefix(argc, argv, "-mcpu=")) {
-        exec_argv[out++] = (char *)march;
+      if arch != "" {
+        return arch
       }
     }
 
-    if (!compile_only) {
-      if (!has_option_prefix(argc, argv, "--rtlib=")) {
-        exec_argv[out++] = "--rtlib=compiler-rt";
+    index += 1
+  }
+
+  return host_arch()?
+}
+
+proc default_march(arch: Str) [] -> Str {
+  if arch == "x86_64" {
+    return "-march=x86-64-v3"
+  }
+
+  if arch == "aarch64" {
+    return "-march=armv8-a"
+  }
+
+  return ""
+}
+
+proc main(...argv: List[Str]) [fs, process, env, error] {
+  let real = p"__REAL__"
+  let is_clang = __CLANG__
+  let is_cxx = __CXX__
+
+  if ! is_clang {
+    env {
+      LD_LIBRARY_PATH = f"/usr/lib:/lib:${env.get("LD_LIBRARY_PATH") ?? ""}"
+    } {
+      run $real @argv ?
+    } ?
+    return
+  }
+
+  let arch = target_arch(argv)?
+  let sysroot = sysroot_arg(argv)?
+  let frontend = needs_frontend_flags(argv)
+  let linking = ! compile_only(argv)
+  let runtime = default_runtime(argv)
+  let startfiles = default_startfiles(argv)
+  var exec_args: List[Str] = [
+    "--no-default-config",
+    f"--target=${arch}-linux-musl",
+    "--sysroot=/",
+    "-resource-dir",
+    "/usr/lib/llvm22/lib/clang/22",
+  ]
+
+  if frontend and ! include_controlled(argv) {
+    exec_args = exec_args.push("-nostdinc")
+
+    if is_cxx {
+      exec_args = exec_args.extend(["-isystem", "/usr/include/c++/15.2.0"])
+      let cxx_target = fp"/usr/include/c++/15.2.0/${arch}-alpine-linux-musl"
+
+      if fs.exists(cxx_target)? {
+        exec_args = exec_args.extend(["-isystem", cxx_target.display()])
       }
-      exec_argv[out++] = "-fuse-ld=lld";
-      exec_argv[out++] = "-L";
-      exec_argv[out++] = lib_dir;
+    }
+
+    exec_args = exec_args.extend(["-isystem", "/usr/lib/llvm22/lib/clang/22/include", "-isystem", "/usr/include"])
+  }
+
+  if frontend {
+    exec_args = exec_args.push("-fno-stack-protector")
+    let march = default_march(arch)
+
+    if march != "" and ! has_option_prefix(argv, "-march=") and ! has_option_prefix(argv, "-mcpu=") {
+      exec_args = exec_args.push(march)
     }
   }
 
-  for (int i = 1; i < argc; i++) {
-    exec_argv[out++] = argv[i];
+  if linking {
+    exec_args = exec_args.extend(["-fuse-ld=lld", "-L", "/usr/lib"])
+
+    if runtime {
+      exec_args = exec_args.push("-nostdlib")
+    }
+
+    if startfiles and ! shared_link(argv) {
+      if static_link(argv) {
+        exec_args = exec_args.push(rooted(sysroot, "usr/lib/crt1.o")?.display())
+      } else {
+        exec_args = exec_args.push(rooted(sysroot, "usr/lib/Scrt1.o")?.display())
+      }
+
+      exec_args = exec_args.push(rooted(sysroot, "usr/lib/crti.o")?.display())
+    }
   }
 
-  if (tool->clang && !compile_only && !has_arg(argc, argv, "-nostdlib") && compiler_rt[0] && access(compiler_rt, R_OK) == 0) {
-    exec_argv[out++] = compiler_rt;
-  }
-  exec_argv[out] = NULL;
+  exec_args = exec_args.extend(argv)
 
-  execv(real, exec_argv);
-  fprintf(stderr, "llvm-toolchain wrapper: exec %s failed: %s\\n", real, strerror(errno));
-  return errno == ENOENT ? 127 : 126;
+  if linking and is_cxx and runtime {
+    exec_args = exec_args.extend(["-lstdc++", "-lm"])
+  }
+
+  if linking and runtime {
+    exec_args = exec_args.push("-lc")
+  }
+
+  let builtins = rooted(sysroot, f"usr/lib/libclang_rt.builtins-${arch}.a")?
+
+  if linking and runtime and fs.exists(builtins)? {
+    exec_args = exec_args.push(builtins.display())
+  }
+
+  if linking and startfiles and ! shared_link(argv) {
+    exec_args = exec_args.push(rooted(sysroot, "usr/lib/crtn.o")?.display())
+  }
+
+  env {
+    LD_LIBRARY_PATH = f"/usr/lib:/lib:${env.get("LD_LIBRARY_PATH") ?? ""}"
+  } {
+    run $real @exec_args ?
+  } ?
 }
+
+main(@args)?
 """
+
+  return template.replace("__REAL__", real.display()).replace("__CLANG__", bool_literal(clang)).replace("__CXX__", bool_literal(cxx))
 }
 
 proc require_env_path(env_name: Str) [env, error] -> Result[Path] {
@@ -406,62 +406,101 @@ proc require_env_path(env_name: Str) [env, error] -> Result[Path] {
   Path.parse(value)?
 }
 
-proc build_wrapper(dest: Path) [fs, process, env, error] -> Result[Path] {
-  let target_arch = pm_util.target_arch()?
-  let build_arch = pm_util.build_arch()?
-  let target_triple = f"${target_arch}-linux-musl"
-  let source = p"llvm-toolchain-wrapper.c"
-  let object = p"llvm-toolchain-wrapper.o"
-  let binary = p"llvm-toolchain-wrapper"
-  let compiler_rt = fp"${dest}/usr/lib/llvm22/lib/clang/22/lib/${target_arch}-alpine-linux-musl/libclang_rt.builtins-${target_arch}.a"
-  fs.write(source, wrapper_source())?
-
-  if build_arch == target_arch {
-    let cc = fp"${dest}/usr/lib/llvm22/bin/clang-22"
-    let ld = fp"${dest}/usr/lib/llvm-toolchain/bin/ld.lld"
-
-    env {
-      LD_LIBRARY_PATH = f"${dest}/usr/lib:${dest}/usr/lib/llvm22/lib"
-    } {
-      run $cc "-Os" "-fno-stack-protector" "-c" "-o" $object $source ?
-      run $ld "-static" "-o" $binary /usr/lib/crt1.o /usr/lib/crti.o $object "-L/usr/lib" "--start-group" "-lc" $compiler_rt "--end-group" /usr/lib/crtn.o ?
-    } ?
-  } else {
-    let build_root = require_env_path("XSH_PM_BUILD_ROOT")?
-    let target_root = require_env_path("LAPUTA_ROOT")?
-    let cc = fp"${build_root}/usr/lib/llvm22/bin/clang-22"
-    let ld = fp"${build_root}/usr/lib/llvm-toolchain/bin/ld.lld"
-    let target_crt1 = fp"${target_root}/usr/lib/crt1.o"
-    let target_crti = fp"${target_root}/usr/lib/crti.o"
-    let target_crtn = fp"${target_root}/usr/lib/crtn.o"
-
-    env {
-      LD_LIBRARY_PATH = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
-    } {
-      run $cc f"--target=${target_triple}" f"--sysroot=${target_root.display()}" "-Os" "-fno-stack-protector" "-c" "-o" $object $source ?
-      run $ld "-static" "-o" $binary $target_crt1 $target_crti $object f"-L${target_root}/usr/lib" "--start-group" "-lc" $compiler_rt "--end-group" $target_crtn ?
-    } ?
-  }
-
-  return binary
+proc write_wrapper(dest: Path, wrapper_name: Str, real: Path, clang: Bool = false, cxx: Bool = false) [fs, error] {
+  let path_value = fp"${dest}/usr/bin/${wrapper_name}"
+  fs.mkdir(path_value.parent())?
+  fs.remove(path_value, missing_ok: true)?
+  fs.write(path_value, xsh_wrapper_source(real, clang, cxx))?
+  fs.chmod(path_value, 0o755)?
 }
 
-proc write_wrapper(dest: Path, wrapper: Path, wrapper_name: Str) [fs, error] {
-  let path_value = fp"${dest}/usr/bin/${wrapper_name}"
-  fs.remove(path_value, missing_ok: true)?
-  fs.install(wrapper, path_value, 0o755, parents: true, overwrite: true)?
+proc install_lld_driver(dest: Path) [fs, error] {
+  fs.mkdir(fp"${dest}/usr/lib/llvm-toolchain/bin")?
+
+  for candidate in [fp"${dest}/usr/bin/ld.lld", fp"${dest}/bin/ld.lld", fp"${dest}/usr/lib/llvm22/bin/ld.lld"] {
+    if fs.exists(candidate)? {
+      fs.rename(candidate, fp"${dest}/usr/lib/llvm-toolchain/bin/ld.lld", overwrite: true)?
+      return
+    }
+  }
+
+  return Err(LlvmToolchainError.Failed("missing ld.lld in Alpine lld22 payload"))
+}
+
+proc extract_apk_sources(dest: Path) [fs, error] {
+  for source_name in [
+    "clang22.tar.gz",
+    "clang22-headers.tar.gz",
+    "clang22-libs.tar.gz",
+    "compiler-rt.tar.gz",
+    "lld22-libs.tar.gz",
+    "lld22.tar.gz",
+    "llvm22-libs.tar.gz",
+    "llvm22.tar.gz",
+    "llvm22-dev.tar.gz",
+    "llvm22-linker-tools.tar.gz",
+    "libstdcxx.tar.gz",
+    "libstdcxx-dev.tar.gz",
+    "libgcc.tar.gz",
+    "libffi.tar.gz",
+    "zstd-libs.tar.gz",
+    "libxml2.tar.gz",
+    "xz-libs.tar.gz",
+  ] {
+    let source = fp"${dest}/${source_name}"
+
+    if ! fs.exists(source)? {
+      continue
+    }
+
+    for entry in fs.ls(source)? {
+      if entry.name.ends_with(".apk") {
+        if source_name != "libgcc.tar.gz" {
+          for item in archive.tar_list(entry.path)? {
+            if item.kind == "symlink" {
+              fs.remove(fp"${dest}/${item.path.display()}", missing_ok: true)?
+            }
+          }
+
+          archive.tar_extract(entry.path, dest, 0, "auto", true)?
+        }
+      }
+    }
+
+    fs.remove(source, missing_ok: true)?
+  }
+}
+
+proc install_generated_libgcc(dest: Path) [fs, env, error] {
+  let arch = pm_util.target_arch()?
+  let source = fp"generated-libgcc-${arch}/libgcc_s-${arch}.so.1"
+  let target = fp"${dest}/usr/lib/libgcc_s.so.1"
+  fs.install(source, target, 0o644, parents: true, overwrite: true)?
+}
+
+proc clean_packaging_inputs(dest: Path) [fs, error] {
+  fs.remove(fp"${dest}/files", missing_ok: true)?
+  fs.remove(fp"${dest}/generated-libgcc-aarch64", missing_ok: true)?
+  fs.remove(fp"${dest}/generated-libgcc-x86_64", missing_ok: true)?
+
+  for entry in fs.ls(dest)? {
+    if entry.name.starts_with(".SIGN.") or [".PKGINFO", ".DESCRIPTION", ".INSTALL"].contains(entry.name) or entry.name.starts_with(".trigger") {
+      fs.remove(entry.path, missing_ok: true)?
+    }
+  }
 }
 
 export proc build(dest: Path) [fs, process, env, error] {
   let _ = fs.copy_tree(p".", dest, parents: true, overwrite: true)?
+  extract_apk_sources(dest)?
+  install_generated_libgcc(dest)?
+  clean_packaging_inputs(dest)?
 
   for path_value in [fp"${dest}/usr/lib/libz.so.1", fp"${dest}/usr/lib/libz.so.1.3.2"] {
     fs.remove(path_value, missing_ok: true)?
   }
 
-  fs.mkdir(fp"${dest}/usr/lib/llvm-toolchain/bin")?
-  fs.rename(fp"${dest}/usr/bin/ld.lld", fp"${dest}/usr/lib/llvm-toolchain/bin/ld.lld", overwrite: true)?
-  let wrapper = build_wrapper(dest)?
+  install_lld_driver(dest)?
   let compiler_rt_lib = fp"${dest}/usr/lib/llvm22/lib/clang/22/lib"
 
   for entry in fs.ls(compiler_rt_lib)? |> where .kind == "dir" {
@@ -473,21 +512,21 @@ export proc build(dest: Path) [fs, process, env, error] {
     }
   }
 
-  write_wrapper(dest, wrapper, "cc")?
-  write_wrapper(dest, wrapper, "clang")?
-  write_wrapper(dest, wrapper, "c++")?
-  write_wrapper(dest, wrapper, "clang++")?
-  write_wrapper(dest, wrapper, "ld")?
-  write_wrapper(dest, wrapper, "ld.lld")?
-  write_wrapper(dest, wrapper, "ar")?
-  write_wrapper(dest, wrapper, "ranlib")?
-  write_wrapper(dest, wrapper, "nm")?
-  write_wrapper(dest, wrapper, "objcopy")?
-  write_wrapper(dest, wrapper, "objdump")?
-  write_wrapper(dest, wrapper, "readelf")?
-  write_wrapper(dest, wrapper, "strip")?
+  write_wrapper(dest, "cc", p"/usr/lib/llvm22/bin/clang-22", clang: true)?
+  write_wrapper(dest, "clang", p"/usr/lib/llvm22/bin/clang-22", clang: true)?
+  write_wrapper(dest, "c++", p"/usr/lib/llvm22/bin/clang++", clang: true, cxx: true)?
+  write_wrapper(dest, "clang++", p"/usr/lib/llvm22/bin/clang++", clang: true, cxx: true)?
+  write_wrapper(dest, "ld", p"/usr/lib/llvm-toolchain/bin/ld.lld")?
+  write_wrapper(dest, "ld.lld", p"/usr/lib/llvm-toolchain/bin/ld.lld")?
+  write_wrapper(dest, "ar", p"/usr/bin/llvm22-ar")?
+  write_wrapper(dest, "ranlib", p"/usr/bin/llvm22-ranlib")?
+  write_wrapper(dest, "nm", p"/usr/bin/llvm22-nm")?
+  write_wrapper(dest, "objcopy", p"/usr/bin/llvm22-objcopy")?
+  write_wrapper(dest, "objdump", p"/usr/bin/llvm22-objdump")?
+  write_wrapper(dest, "readelf", p"/usr/bin/llvm22-readelf")?
+  write_wrapper(dest, "strip", p"/usr/bin/llvm22-strip")?
 
   for tool in ["ar", "ranlib", "nm", "objcopy", "objdump", "readelf", "strip"] {
-    write_wrapper(dest, wrapper, f"llvm-${tool}")?
+    write_wrapper(dest, f"llvm-${tool}", fp"/usr/bin/llvm22-${tool}")?
   }
 }

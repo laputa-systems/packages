@@ -830,13 +830,7 @@ run /usr/local/bin/xshi @args ?
     }
   }
 
-  fs.mkdir(fp"${root}/dev")?
-  let dev_null = fp"${root}/dev/null"
-
-  if ! fs.exists(dev_null)? {
-    fs.write(dev_null, "")?
-    fs.chmod(dev_null, 0o666)?
-  }
+  seed_chroot_device_paths(root)?
 
   fs.mkdir(fp"${root}/etc")?
 
@@ -1293,6 +1287,23 @@ run /usr/local/bin/xshi @args ?
   let _ = fs.copy_tree(fp"${pm_root}/pm", fp"${proof_root}/usr/lib/pm/pm", parents: true, overwrite: true)?
 }
 
+proc seed_chroot_device_paths(root: Path) [fs, error] {
+  fs.mkdir(fp"${root}/dev")?
+
+  let dev_null = fp"${root}/dev/null"
+
+  if ! fs.exists(dev_null)? {
+    fs.write(dev_null, "")?
+    fs.chmod(dev_null, 0o666)?
+  }
+
+  let dev_fd = fp"${root}/dev/fd"
+
+  if ! fs.exists(dev_fd)? {
+    fs.symlink(p"/proc/self/fd", dev_fd)?
+  }
+}
+
 proc mount_package_proof_devpts(proof_root: Path) [fs, process, error] -> Result[Path] {
   let dev = fp"${proof_root}/dev"
   let pts = fp"${dev}/pts"
@@ -1478,6 +1489,7 @@ proc run_package_proof(
   verify_package_proof_root(proof_root, pkg.name)?
   let xsh = xsh_runner()?
   seed_package_proof_shell(proof_root, xsh)?
+  seed_chroot_device_paths(proof_root)?
   let build_arch = util.build_arch()?
   let target_arch = util.target_arch()?
   let native_proof = build_arch == target_arch

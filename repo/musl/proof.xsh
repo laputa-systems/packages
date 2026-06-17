@@ -79,9 +79,10 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   let default_cc = process.which("cc")?
   let cc = cross_cc(default_cc, build_arch, arch)?
   let readelf = process.which("readelf")?
-  let tmp_root = fs.tempdir()?
-  defer fs.close_root(tmp_root)?
-  let tmp = fs.root_path(tmp_root)?
+  let tmp = fp"${rootfs}/var/tmp/proof-musl"
+  fs.remove(tmp, missing_ok: true)?
+  fs.mkdir(tmp)?
+  defer fs.remove(tmp, missing_ok: true)?
   let hello_src = fp"${tmp}/hello.c"
 
   fs.write(

@@ -35,7 +35,6 @@ pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {
 }
 
 proc compiler_rt_builtins(cc: Path, arch: Str) [fs, error] -> Result[List[Path]] {
-  let root = fp"${cc.parent().parent().display()}/lib/llvm22/lib/clang/22/lib"
   let target_root = p"llvm-toolchain-target"
 
   let candidates = [
@@ -43,9 +42,10 @@ proc compiler_rt_builtins(cc: Path, arch: Str) [fs, error] -> Result[List[Path]]
     fp"${target_root}/usr/lib/llvm22/lib/clang/22/lib/${arch}-linux-musl/libclang_rt.builtins-${arch}.a",
     fp"${target_root}/lib/llvm22/lib/clang/22/lib/${arch}-alpine-linux-musl/libclang_rt.builtins-${arch}.a",
     fp"${target_root}/lib/llvm22/lib/clang/22/lib/${arch}-linux-musl/libclang_rt.builtins-${arch}.a",
-    fp"${root}/${arch}-alpine-linux-musl/libclang_rt.builtins-${arch}.a",
-    fp"${root}/${arch}-linux-musl/libclang_rt.builtins-${arch}.a",
-    fp"${root}/linux/libclang_rt.builtins-${arch}.a",
+    fp"/usr/lib/llvm22/lib/clang/22/lib/${arch}-alpine-linux-musl/libclang_rt.builtins-${arch}.a",
+    fp"/usr/lib/llvm22/lib/clang/22/lib/${arch}-linux-musl/libclang_rt.builtins-${arch}.a",
+    fp"/usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-${arch}.a",
+    fp"/usr/lib/libclang_rt.builtins-${arch}.a",
   ]
 
   for candidate in candidates {
@@ -58,11 +58,9 @@ proc compiler_rt_builtins(cc: Path, arch: Str) [fs, error] -> Result[List[Path]]
 }
 
 proc compile_asm_lo_task(cc: Path, triple: Str, includes: List[Str], src: Path, out: Path) [] -> make.MakeTask {
-  let prefix = cc.parent().parent()
-  let clang = fp"${prefix.display()}/lib/llvm22/bin/clang-22"
   let depfile = p""
   let task_deps: List[Str] = []
-  var argv: List[Str] = [clang.display(), "-target", triple, "-c", "-fPIC", "-DPIC", "-Wa,--noexecstack"]
+  var argv: List[Str] = [cc.display(), "-target", triple, "-c", "-fPIC", "-DPIC", "-Wa,--noexecstack"]
   argv = argv.extend(includes).extend([src.display(), "-o", out.display()])
 
   return {
@@ -72,7 +70,7 @@ proc compile_asm_lo_task(cc: Path, triple: Str, includes: List[Str], src: Path, 
     deps: task_deps,
     argv: argv,
     cwd: p".",
-    env: {LD_LIBRARY_PATH: f"${prefix.display()}/lib:${prefix.display()}/lib/llvm22/lib"},
+    env: {},
     depfile: depfile,
     stamp: fp"${out}.cmd",
   }
@@ -341,14 +339,16 @@ export proc build(dest: Path) [fs, process, env, error] {
   for src_name in ["crt1", "crti", "crtn"] {
     let src = fp"crt/${src_name}.c"
     let out = fp"obj/${src_name}.o"
-    crt_tasks = crt_tasks.push(make.compile_c_task(cc, triple, crt_cflags, [], includes, src, out))
+    let task = make.compile_c_task(cc, triple, crt_cflags, [], includes, src, out)
+    crt_tasks = crt_tasks.push({...task, stamp: p""})
     crt_outs = crt_outs.push(out)
   }
 
   for src_name in ["Scrt1", "rcrt1"] {
     let src = fp"crt/${src_name}.c"
     let out = fp"obj/${src_name}.o"
-    crt_tasks = crt_tasks.push(make.compile_lo_task(cc, triple, crt_cflags, [], includes, src, out))
+    let task = make.compile_lo_task(cc, triple, crt_cflags, [], includes, src, out)
+    crt_tasks = crt_tasks.push({...task, stamp: p""})
     crt_outs = crt_outs.push(out)
   }
 
@@ -383,13 +383,11 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   # Clang's musl driver links libssp_nonshared by default. Keep the archive
   # empty: stack protector support is disabled in the toolchain wrapper.
-  fs.write(
-    p"obj/libssp_nonshared.a",
-    """!<arch>
-""",
-  )?
+  let ar = process.which("ar")?
+  let libssp = p"obj/libssp_nonshared.a"
+  run $ar "rcs" $libssp ?
 
-  fs.install(p"obj/libssp_nonshared.a", fp"${dest}/usr/lib/libssp_nonshared.a", 0o644, parents: true, overwrite: true)?
+  fs.install(libssp, fp"${dest}/usr/lib/libssp_nonshared.a", 0o644, parents: true, overwrite: true)?
 
   # Install public headers from include/ (.h.in templates are excluded by the
   # .ext filter; the generated bits/ headers are picked up by recursive walk).
