@@ -6,7 +6,7 @@ export let name: Str = "sudo-rs"
 
 export let ver: Str = "0.2.13"
 
-export let rel: Str = "10"
+export let rel: Str = "11"
 
 export let deps: List[Str] = ["linux-pam"]
 
@@ -106,11 +106,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   let x86_64_linker = if triple == "x86_64-unknown-linux-musl" { cc.display() } else { host_cc.display() }
   let current_path = env.get("PATH") ?? ""
   let cargo_path = f"${host_cc.parent.display()}:${current_path}"
-  let gcc_s = fp"${libdir}/libgcc_s.so"
-  fs.remove(gcc_s, missing_ok: true)?
-
-  # TODO: libunwind is not allowed, figure out how to build without it
-  # fs.symlink(p"libunwind.so", gcc_s)?
 
   env {
     PATH = cargo_path

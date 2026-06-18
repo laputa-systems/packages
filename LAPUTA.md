@@ -84,6 +84,13 @@ bootstrap without already having a large toolchain or browser stack. `cargo`,
 explicit bootstrap anchors, keep their source URLs and hashes pinned, and prefer
 source-built packages for ordinary libraries and tools.
 
+The durable C/C++ toolchain contract is LLVM plus musl, not GNU runtime
+compatibility. Packages must not depend on `libgcc`, `libgcc_s`, or
+`libstdc++`, and the package manager must not add those libraries as implicit
+compiler defaults. When an upstream build assumes GNU runtime pieces, patch the
+package or wrapper invocation to use the Laputa LLVM/musl surface instead of
+reintroducing GNU compatibility libraries.
+
 Runtime `deps` should mean installed files needed by installed files. `mkdeps`
 should mean executable build tools. `target_build_deps` should mean target-side
 headers, pkg-config files, protocol XML, or other target metadata needed to

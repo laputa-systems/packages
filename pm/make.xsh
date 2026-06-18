@@ -201,24 +201,24 @@ pure musl_ldso_name(arch: Str) -> Str {
   return f"ld-musl-${arch}.so.1"
 }
 
-proc native_cross_cxx_include_args(target_root: Path, target: Str) [fs, error] -> Result[List[Str]] {
-  let base = fp"${target_root}/usr/include/c++/15.2.0"
+proc native_cross_cxx_include_args(build_root: Path, target_root: Path, target: Str) [fs, error] -> Result[List[Str]] {
+  let base = fp"${target_root}/usr/lib/llvm22/include/c++/v1"
   var include_args: List[Str] = []
 
-  if ! fs.exists(base)? {
-    return include_args
+  if fs.exists(base)? {
+    include_args = ["-isystem", base.display()]
+  } else {
+    let build_base = fp"${build_root}/usr/lib/llvm22/include/c++/v1"
+
+    if fs.exists(build_base)? {
+      include_args = ["-isystem", build_base.display()]
+    }
   }
 
-  include_args = ["-isystem", base.display()]
-  let target_dir = fp"${base}/${target}-linux-musl"
-  let alpine_target_dir = fp"${base}/${target}-alpine-linux-musl"
+  let target_dir = fp"${target_root}/usr/lib/llvm22/include/${target}-linux-musl/c++/v1"
 
   if fs.exists(target_dir)? {
     include_args = include_args.extend(["-isystem", target_dir.display()])
-  }
-
-  if fs.exists(alpine_target_dir)? {
-    include_args = include_args.extend(["-isystem", alpine_target_dir.display()])
   }
 
   return include_args
@@ -274,7 +274,7 @@ export proc effective_task_argv(argv: List[Str], task_env: Record) [fs, env, err
   var out: List[Str] = [driver.display(), f"--target=${target}-linux-musl", f"--sysroot=${target_root.display()}"]
 
   if cxx {
-    out = out.extend(native_cross_cxx_include_args(target_root, target)?)
+    out = out.extend(native_cross_cxx_include_args(build_root, target_root, target)?)
   }
 
   if ! is_compile_only_argv(argv) and ! has_option_prefix_argv(argv, "-fuse-ld=") {
@@ -290,6 +290,7 @@ export proc effective_task_argv(argv: List[Str], task_env: Record) [fs, env, err
   }
 
   let lib_dir = fp"${target_root}/usr/lib"
+  let llvm_lib_dir = fp"${lib_dir}/llvm22/lib"
   let builtins = fp"${lib_dir}/libclang_rt.builtins-${target}.a"
   var link_args = stripped
 
@@ -300,7 +301,14 @@ export proc effective_task_argv(argv: List[Str], task_env: Record) [fs, env, err
   var cxx_lib_args: List[Str] = []
 
   if cxx {
-    cxx_lib_args = ["-lstdc++", "-lm"]
+    cxx_lib_args = ["-L", llvm_lib_dir.display(), "-lc++", "-lc++abi"]
+    let llvm_unwind = fp"${llvm_lib_dir}/libunwind.a"
+
+    if fs.exists(llvm_unwind)? {
+      cxx_lib_args = cxx_lib_args.push(llvm_unwind.display())
+    }
+
+    cxx_lib_args = cxx_lib_args.push("-lm")
   }
 
   if has_exact_argv(argv, "-nostdlib") {

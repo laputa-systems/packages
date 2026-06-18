@@ -376,20 +376,8 @@ proc seed_world_package_dependency_set(staged_root: Path, package_root: Path, ow
     index += 1
   }
 
-  # The packaged xsh binary is staged into every build root and currently needs
-  # libgcc_s at runtime, but xsh has no graph dependency on the toolchain.
   if ! fs.exists(fp"${package_root}/lib")? and fs.exists(fp"${package_root}/usr/lib")? {
     fs.symlink(p"usr/lib", fp"${package_root}/lib")?
-  }
-
-  let xsh_libgcc = p"usr/lib/libgcc_s.so.1"
-
-  if fs.exists(fp"${staged_root}/${xsh_libgcc}")? {
-    let source_handle = fs.open_root(staged_root)?
-    defer fs.close_root(source_handle)
-    let dest_handle = fs.open_root(package_root)?
-    defer fs.close_root(dest_handle)
-    copy_world_seed_path(source_handle, dest_handle, xsh_libgcc)?
   }
 }
 
@@ -1221,16 +1209,19 @@ cxx_args=""
 cxx_libs=""
 case "$real" in
   *clang++*)
-    if [ -d "$target_root/usr/include/c++/15.2.0" ]; then
-      cxx_args="-isystem $target_root/usr/include/c++/15.2.0"
-      if [ -d "$target_root/usr/include/c++/15.2.0/${target_arch}-linux-musl" ]; then
-        cxx_args="$cxx_args -isystem $target_root/usr/include/c++/15.2.0/${target_arch}-linux-musl"
-      fi
-      if [ -d "$target_root/usr/include/c++/15.2.0/${target_arch}-alpine-linux-musl" ]; then
-        cxx_args="$cxx_args -isystem $target_root/usr/include/c++/15.2.0/${target_arch}-alpine-linux-musl"
-      fi
+    if [ -d "$target_root/usr/lib/llvm22/include/c++/v1" ]; then
+      cxx_args="-isystem $target_root/usr/lib/llvm22/include/c++/v1"
+    elif [ -d "$build_root/usr/lib/llvm22/include/c++/v1" ]; then
+      cxx_args="-isystem $build_root/usr/lib/llvm22/include/c++/v1"
     fi
-    cxx_libs="-lstdc++ -lm"
+    if [ -d "$target_root/usr/lib/llvm22/include/${target_arch}-linux-musl/c++/v1" ]; then
+      cxx_args="$cxx_args -isystem $target_root/usr/lib/llvm22/include/${target_arch}-linux-musl/c++/v1"
+    fi
+    cxx_libs="-L$target_root/usr/lib/llvm22/lib -lc++ -lc++abi"
+    if [ -f "$target_root/usr/lib/llvm22/lib/libunwind.a" ]; then
+      cxx_libs="$cxx_libs $target_root/usr/lib/llvm22/lib/libunwind.a"
+    fi
+    cxx_libs="$cxx_libs -lm"
     ;;
 esac
 compile_only=0

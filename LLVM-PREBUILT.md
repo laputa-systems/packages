@@ -1,21 +1,65 @@
-# LLVM Prebuilt Consumption Plan
+# LLVM Prebuilt Consumption Status
 
-This document is a handoff plan for replacing `repo/llvm-toolchain`'s current
-Alpine APK-sourced package with a purpose-built musl LLVM prebuilt artifact.
-The producer-side plan lives in:
+This document tracks the replacement of `repo/llvm-toolchain`'s historical
+Alpine APK-sourced package with purpose-built musl LLVM prebuilt artifacts.
+The producer-side plan is expected to live in:
 
 ```text
 ~/d/laputa-systems/llvm-prebuilt/MUSL-PREBUILT.md
 ```
 
-Read that document first. It defines the artifact contract this package should
-consume. This file only covers the Laputa package-manager side of the switch.
+That path was not present during the local aarch64 validation pass. This file
+covers the Laputa package-manager side of the switch and records the remaining
+work needed before publishing it as the durable package source.
+
+## Current State
+
+`repo/llvm-toolchain` has been converted locally to consume a prebuilt LLVM
+tree instead of flattening Alpine APKs. The tested artifact came from:
+
+```text
+~/Downloads/clang+llvm-22.1.8-aarch64-linux-musl.zip
+```
+
+The zip contained:
+
+```text
+clang+llvm-22.1.8-aarch64-linux-musl.tar.xz
+```
+
+with SHA-256:
+
+```text
+7081172dfd956de163365e58cded731e4352d67d350c464527630c635a7d9607
+```
+
+The aarch64 package replacement has been proved through targeted local rebuilds
+against a file-backed package repo:
+
+- `llvm-toolchain-22.1.8-6`: built and `llvm-toolchain proof ok`.
+- `musl-1.2.6-10`: rebuilt against the replacement toolchain and passed.
+- `cmake-4.3.1-12`: rebuilt against the replacement toolchain and passed.
+- `zlib-1.3.2-6`: rebuilt using the rebuilt CMake and passed.
+
+The rebuilt `cmake`, `ctest`, and `cpack` binaries were checked with `readelf
+-d`; they had no dynamic `libgcc`, `libstdc++`, or `libunwind` dependency.
+
+What remains before treating this as publishable is an upstream/prebuilt release
+that provides both supported Laputa architectures:
+
+```text
+clang+llvm-22.1.8-aarch64-linux-musl.tar.xz
+clang+llvm-22.1.8-x86_64-linux-musl.tar.xz
+```
+
+Until the x86_64/amd64 artifact exists, the x86_64 package path must remain a
+placeholder and must not be published from the aarch64-only local artifact.
 
 ## Goal
 
-Once the musl prebuilt artifacts exist, `repo/llvm-toolchain/PKGBUILD.xsh`
-should stop flattening Alpine APK payloads and instead install a single
-Clang/LLVM distribution archive:
+Once the upstream musl prebuilt artifacts exist for both architectures,
+`repo/llvm-toolchain/PKGBUILD.xsh` should consume those release archives instead
+of local files:
 
 ```text
 clang+llvm-<version>-aarch64-linux-musl.tar.xz
@@ -86,24 +130,21 @@ paths:
 /usr/lib/llvm22/lib/clang/22
 ```
 
-If the producer publishes LLVM 22.1.4 first, it is acceptable for the package
-version to move from Alpine's `22.1.8` back to `22.1.4`, but make that choice
+The validated local artifact is LLVM 22.1.8. Keep the package version aligned
+with the producer release version, and make any downgrade or line change
 explicit in the package release and proof output.
 
 ## PKGBUILD Shape
 
-When the artifacts are ready, simplify `repo/llvm-toolchain/PKGBUILD.xsh`:
+Most of this shape has already landed locally. For the publishable upstream
+release, finish the source/checksum side:
 
-1. Replace the Alpine APK source list with the two musl archive URLs, one per
-   supported arch.
-2. Remove generated `libgcc_s` inputs and their documentation.
-3. Remove APK extraction helpers, Alpine metadata cleanup, and generated
-   `libgcc_s.so.1` installation.
-4. Extract the archive into `dest`.
-5. Move or copy the extracted tree to `dest/usr/lib/llvm22`.
-6. Normalize tool names if the archive only provides versioned or alternate
-   spellings.
-7. Keep the XSH wrapper generator and wrapper installation.
+1. Replace local artifact paths with upstream release URLs.
+2. Fill in real SHA-256 checksums for both aarch64 and x86_64.
+3. Remove any `SKIP` checksum placeholders.
+4. Keep archive installation to `dest/usr/lib/llvm22`.
+5. Keep tool alias normalization for versioned or alternate spellings.
+6. Keep the XSH wrapper generator and wrapper installation.
 
 The resulting build should be closer to:
 
@@ -134,6 +175,10 @@ Keep the current wrapper behavior unless a proof demonstrates it is wrong:
 - Own the musl default link line with `-nostdlib`, musl crt objects, `-lc`, and
   compiler-rt builtins so Clang cannot inject GCC runtime defaults.
 - Never add `--unwindlib=libunwind`, `-lunwind`, or `--rtlib=compiler-rt`.
+- C++ links may use the prebuilt tree's static
+  `/usr/lib/llvm22/lib/libunwind.a` by absolute path when libc++abi needs
+  unwind symbols. This must not become a dynamic `NEEDED libunwind.so`
+  dependency and must not add a separate `libunwind` package dependency.
 
 The wrapper should find compiler-rt builtins in the installed prebuilt tree. If
 the current wrapper expects `/usr/lib/libclang_rt.builtins-<arch>.a`, either:
@@ -164,8 +209,10 @@ Required checks:
 - Compiler-rt builtins exist for the target arch.
 - `cc -c` produces an object for the default target arch.
 - An explicit `-target aarch64-linux-musl` compile produces an AArch64 object.
-- A native proof links and runs a trivial `hello.c` without `libgcc`,
-  `libgcc_s`, or libunwind.
+- A native proof links and runs a trivial `hello.c` without dynamic `libgcc`,
+  `libgcc_s`, `libstdc++`, or `libunwind`.
+- A native proof links and runs a trivial C++ program through `c++` without
+  dynamic `libgcc`, `libgcc_s`, `libstdc++`, or `libunwind`.
 
 Keep the proof temp files under stable proof-root paths such as
 `/var/tmp/proof-llvm-toolchain-*`. Do not use `fs.tempdir()` in chroot package
@@ -192,29 +239,31 @@ Keep `deps = ["musl"]` unless the artifact is fully static and proofs show that
 no installed tool requires musl at runtime. Even for static tools, `musl` may
 remain useful as the target libc provider for package builds.
 
-Do not add a dependency on `libunwind`.
+Do not add a dependency on `libunwind`. Static use of the LLVM prebuilt tree's
+own `libunwind.a` is acceptable for C++ exception support when proofs show no
+dynamic `libunwind` dependency.
 
 ## Migration Steps
 
-1. Confirm the prebuilt release includes both `aarch64-linux-musl` and
-   `x86_64-linux-musl` archives.
+1. Wait for a proper upstream/prebuilt release that includes both
+   `aarch64-linux-musl` and `x86_64-linux-musl` archives.
 2. Download each archive and record SHA-256 checksums.
-3. Update `repo/llvm-toolchain/PKGBUILD.xsh` sources and checksums.
-4. Replace APK extraction with prebuilt archive installation.
-5. Normalize tool aliases in `/usr/lib/llvm22/bin`.
-6. Update wrappers only where the installed layout changed.
-7. Strengthen `repo/llvm-toolchain/proof.xsh` with the linkage checks above.
-8. Run `make package-test PKGNAME=llvm-toolchain` from the integration repo.
-9. Run `make package-test PKGNAME=musl`.
-10. Run `make package-test PKGNAME=zlib` or another small C/CMake package.
-11. Scan for stale unwind/runtime defaults:
+3. Update `repo/llvm-toolchain/PKGBUILD.xsh` sources to upstream URLs.
+4. Replace `checksums_x86_64 = ["SKIP"]` with the real x86_64 checksum.
+5. Keep the aarch64 checksum aligned with the published artifact.
+6. Rerun `make package-test PKGNAME=llvm-toolchain` from the integration repo.
+7. Rerun `make package-test PKGNAME=musl`.
+8. Rerun `make package-test PKGNAME=cmake`.
+9. Rerun `make package-test PKGNAME=zlib` or another small C/CMake package.
+10. Scan for stale GNU/unwind runtime defaults:
 
 ```sh
-rg -n -- '--unwindlib|unwindlib|-lunwind|--rtlib=compiler-rt|rtlib=compiler-rt|crtbeginS|crtendS' pm.xsh pm repo
+rg -n -- 'libgcc|libstdc\+\+|--unwindlib|unwindlib|-lunwind|--rtlib=compiler-rt|rtlib=compiler-rt|crtbeginS|crtendS' pm.xsh pm repo
 ```
 
-12. Publish `llvm-toolchain` only after the consumer checks pass.
-13. Rebuild and publish any package whose release was bumped only to adapt to
+11. Publish `llvm-toolchain` only after both architecture artifacts and the
+    consumer checks pass.
+12. Rebuild and publish any package whose release was bumped only to adapt to
     the old Alpine-sourced wrapper behavior.
 
 ## Rejection Criteria
@@ -231,5 +280,6 @@ true:
 - A normal C package such as `zlib` can compile but fails at shared-library
   link time because the wrapper or artifact still assumes GCC runtime defaults.
 
-Do not paper over a bad artifact by adding glibc compatibility, libunwind, or
-Alpine APK flattening back into `repo/llvm-toolchain`.
+Do not paper over a bad artifact by adding glibc compatibility, GNU runtime
+compatibility, a dynamic/external libunwind dependency, or Alpine APK
+flattening back into `repo/llvm-toolchain`.
