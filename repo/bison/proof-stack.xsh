@@ -15,7 +15,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
 """,
   )?
 
-  let m4_out = run.text m4_bin.display() fp"${tmp}/test.m4".display() ?
+  let m4_out = run.text $m4_bin fp"${tmp}/test.m4" ?
   let m4_result = m4_out.trim()
 
   if m4_result != "hello from m4" {
@@ -26,7 +26,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
 
   # flex: verify the installed binary is executable and reports a recognisable
   # version. Scanner generation also depends on a fuller GNU m4 surface.
-  let flex_out = run.text flex_bin.display() "--version" ?
+  let flex_out = run.text $flex_bin "--version" ?
 
   if ! ("flex " in flex_out) {
     return Err(ScriptError.Failed("proof-flex", f"flex --version: ${flex_out.trim()}"))?
@@ -38,7 +38,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   # bison: verify the binary is executable and reports a recognisable version.
   # A full grammar-generation test requires m4 at /usr/bin/m4, which is the
   # rootfs path; that integration is verified when bison is used in practice.
-  let bison_out = run.text bison_bin.display() "--version" ?
+  let bison_out = run.text $bison_bin "--version" ?
 
   if ! ("GNU Bison" in bison_out) {
     return Err(ScriptError.Failed("proof-bison", f"bison --version: ${bison_out.trim()}"))?

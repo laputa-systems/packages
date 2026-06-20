@@ -28,7 +28,7 @@ pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {
   return re.captures(text)
 }
 
-proc compiler_rt_builtins(cc: Path, arch: Str) [fs, error] -> Result[List[Path]] {
+proc compiler_rt_builtins(arch: Str) [fs, error] -> Result[List[Path]] {
   let target_root = p"llvm-toolchain-target"
 
   let candidates = [
@@ -279,7 +279,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   all_so_deps = all_so_deps.extend(ldso_deps)
-  let builtins = compiler_rt_builtins(cc, arch)?
+  let builtins = compiler_rt_builtins(arch)?
   all_so_objs = all_so_objs.extend(builtins)
 
   let so_ldflags = [

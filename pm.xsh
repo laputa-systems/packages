@@ -851,7 +851,7 @@ proc sync_world_rels(
 
     if sync_package_rel(pkg, planned)? {
       changed += 1
-      print ${pkg.name} version_id(pkg.ver, pkg.rel) "->" version_id(planned.ver, planned.rel) rel-synced
+      print ${pkg.name} version_id(pkg.ver, pkg.rel) "->" version_id(planned.ver, planned.rel) "rel-synced"
     }
   }
 
@@ -1375,7 +1375,7 @@ proc install_world_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs
     if world_should_install_built_package(ctx.root, item)? {
       installable = installable.push(item)
     } else {
-      print ${item.pkg.name} world_package_id(item.pkg) staged-by "wlroots0.19-mesa"
+      print ${item.pkg.name} world_package_id(item.pkg) "staged-by" "wlroots0.19-mesa"
     }
   }
 
@@ -1692,7 +1692,7 @@ proc publish_built_package(
 
   let updated = upsert_remote_package(index, entry)?
   run_lifecycle_hooks("post-upload", item.pkg.name, upload_ctx, "")?
-  print ${item.pkg.name} version_id(item.pkg.ver, item.pkg.rel) published
+  print ${item.pkg.name} version_id(item.pkg.ver, item.pkg.rel) "published"
   updated
 }
 
@@ -2099,7 +2099,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
                 built_names[original_pkg.name] = true
                 unchanged_names[original_pkg.name] = true
                 unchanged = true
-                print ${original_pkg.name} world_package_id(original_pkg) metadata "unchanged"
+                print ${original_pkg.name} world_package_id(original_pkg) "metadata" "unchanged"
               }
             }
           }
@@ -2131,7 +2131,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
 
     if build_max_level >= max_level {
       write_world_state(repo_dir, fingerprint, planned, built_names, unchanged_names, true)?
-      print world-plan build complete
+      print "world-plan" build complete
     } else {
       write_world_state(repo_dir, fingerprint, planned, built_names, unchanged_names, false)?
       print f"world-plan build paused at tranche ${build_max_level}"
@@ -2318,7 +2318,7 @@ proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, error] {
 
   for entry in export_index {
     if remote_export_entry_same(remote_index, entry) {
-      print ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) already-exported
+      print ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) "already-exported"
       continue
     }
 
@@ -2361,7 +2361,7 @@ proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, error] {
     }
 
     remote_index = upsert_remote_package(remote_index, uploaded)?
-    print ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) exported
+    print ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) "exported"
   }
 
   write_remote_index_to_repo(repo, work, out, remote_index, token)?

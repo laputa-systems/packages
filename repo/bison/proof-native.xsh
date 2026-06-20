@@ -41,7 +41,7 @@ proc run_m4sugar_case(
   let out = fp"${artifacts}/${label}.out"
   let err = fp"${artifacts}/${label}.err"
   fs.write(input, input_text)?
-  let status = run.status m4_bin.display() "--gnu" "-I" bison_data.display() fp"${bison_data}/m4sugar/m4sugar.m4".display() input.display() > $out 2> $err
+  let status = run.status $m4_bin "--gnu" "-I" $bison_data fp"${bison_data}/m4sugar/m4sugar.m4" $input > $out 2> $err
   ensure_status_ok(status, label, err, artifacts)?
   ensure_output_contains(out, expected, label, artifacts)?
 }
@@ -51,7 +51,7 @@ proc run_m4_case(label: Str, m4_bin: Path, artifacts: Path, input_text: Str, exp
   let out = fp"${artifacts}/${label}.out"
   let err = fp"${artifacts}/${label}.err"
   fs.write(input, input_text)?
-  let status = run.status m4_bin.display() "--gnu" input.display() > $out 2> $err
+  let status = run.status $m4_bin "--gnu" $input > $out 2> $err
   ensure_status_ok(status, label, err, artifacts)?
   ensure_output_contains(out, expected, label, artifacts)?
 }

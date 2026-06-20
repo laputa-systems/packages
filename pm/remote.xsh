@@ -153,7 +153,7 @@ export proc store_auth_token(root: Path, raw: List[Str]) [fs, process, env, erro
   fs.mkdir(token_file.parent)?
   fs.write_atomic(token_file, token)?
   fs.chmod(token_file, 0o600)?
-  print auth $token stored
+  print "auth" "token" "stored"
 }
 
 export proc response_header(headers: List[Record], name: Str) [] -> Str {
@@ -490,7 +490,7 @@ export proc refresh_remote_index(out: Path) [fs, net, env, time, error] -> Resul
   if repo == "" {
     if fs.exists(remote_index_cache_path(out))? {
       let index = load_cached_remote_index(out)?
-      print remote-index index.len() cached
+      print "remote-index" index.len() "cached"
       return index
     }
 
@@ -500,13 +500,13 @@ export proc refresh_remote_index(out: Path) [fs, net, env, time, error] -> Resul
   if is_file_url(repo) and ! fs.exists(repo_file_path(repo, p"index.json")?)? {
     let index: List[RemotePackage] = []
     write_remote_index_cache(out, index)?
-    print remote-index 0 refreshed
+    print "remote-index" 0 refreshed
     return index
   }
 
   fetch_repo_file(repo, p"index.json", remote_index_cache_path(out), true)?
   let index = load_cached_remote_index(out)?
-  print remote-index index.len() refreshed
+  print "remote-index" index.len() "refreshed"
   index
 }
 

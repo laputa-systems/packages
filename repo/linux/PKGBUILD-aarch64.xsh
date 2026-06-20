@@ -318,7 +318,7 @@ proc preprocess_native_nvhe_linker_script(cc: Path, out: Path) [fs, process, env
 }
 
 proc write_native_nvhe_hyprel(gen: Path, input: Path, out: Path) [fs, process, error] {
-  let reloc = run.text gen.display() input.display() ?
+  let reloc = run.text $gen $input ?
   kbuild.write_text_if_changed(out, reloc)?
 }
 
@@ -484,7 +484,7 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
     if reuse_archives and root_archive.exists()? and archive_report.exists()? and (env.get(
       "XSH_LINUX_KBUILD_FORCE_ARCHIVES",
     ) ?? "") != "1" {
-      print xsh-kbuild-archives reuse archive_plan.archives.len() $archives
+      print "xsh-kbuild-archives" "reuse" archive_plan.archives.len() "archives"
       archives = archive_plan.archives
     } else {
       archives = kbuild.run_builtin_archive_plan(archive_plan, jobs_count)?
@@ -496,14 +496,14 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
     kbuild.build_scratch_arm64_final(cc, native_kbuild_cflags(), [], native_kbuild_includes(), jobs_count)?
     PKGBUILD_shared.timing_done("link", link_start)
     PKGBUILD_shared.stop_after("link")?
-    print linux-native-kbuild-complete archives.len() $archives $archives linked arch/arm64/boot/Image
+    print "linux-native-kbuild-complete" archives.len() "archives" "linked" "arch/arm64/boot/Image"
     return
   }
 
   return Err(
     ScriptError.Failed(
       "linux-native-kbuild-compile-incomplete",
-      f"native scratch Kbuild generated config/syscall headers, discovered ${plan.dirs.len()} dirs and ${plan.objects.len()} objects, constructed ${archive_plan.tasks.len()} object/archive tasks for ${archive_plan.archives.len()} archives, found ${archive_plan.generated_objects.len()} generated objects and ${archive_plan.missing_sources.len()} objects without direct sources; next step is generated object handling and task execution",
+      f"native scratch Kbuild generated config/syscall headers, discovered ${plan.dirs.len()} dirs and ${plan.objects.len()} objects, constructed ${archive_plan.tasks.len()} object/archive tasks for archive_plan.archives.len() archives, found ${archive_plan.generated_objects.len()} generated objects and ${archive_plan.missing_sources.len()} objects without direct sources; next step is generated object handling and task execution",
     ),
   )
 }

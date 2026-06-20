@@ -63,7 +63,7 @@ export proc stop_after(stage: Str) [env, error] {
 
 export proc timing_start(stage: Str) [env] -> Int {
   if (env.get("XSH_LINUX_KBUILD_TIMING") ?? "") == "1" {
-    print linux-kbuild-timing-start $stage
+    print "linux-kbuild-timing-start" $stage
   }
 
   return 0
@@ -73,14 +73,14 @@ export proc timing_done(stage: Str, start: Int) [env] {
   let _ = start
 
   if (env.get("XSH_LINUX_KBUILD_TIMING") ?? "") == "1" {
-    print linux-kbuild-timing-done $stage
+    print "linux-kbuild-timing-done" $stage
   }
 }
 
 export proc emit_plan_if_enabled(plan: kbuild.KbuildPlan) [fs, env, error] {
   if (env.get("XSH_LINUX_KBUILD_PLAN") ?? "") == "1" {
     kbuild.write_discovered_plan(plan, p".xsh-kbuild-plan.json")?
-    print xsh-kbuild-plan plan.dirs.len() dirs plan.objects.len() $objects plan.unsupported.len() unsupported
+    print "xsh-kbuild-plan" plan.dirs.len() "dirs" plan.objects.len() "objects" plan.unsupported.len() "unsupported"
   }
 }
 
@@ -247,7 +247,7 @@ export proc cached_archive_plan(
   }
 
   emit_kbuild_progress(
-    f"xsh-kbuild-archive-plan-start ${plan.dirs.len()} dirs ${plan.objects.len()} $objects ${plan.composites.len()} $composites",
+    f"xsh-kbuild-archive-plan-start $plan.dirs.len() dirs $plan.objects.len() objects $plan.composites.len() composites",
   )?
 
   let archive_plan = kbuild.plan_builtin_archives(plan, cc, triple, cflags, [], includes)?
@@ -273,21 +273,21 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
   if explicit_inline != "" {
     emit_kbuild_progress("xsh-kbuild-plan-cache explicit-inline-read")?
     let plan = kbuild.parse_discovered_plan_text(explicit_inline)?
-    print xsh-kbuild-plan-cache explicit-inline plan.dirs.len() dirs plan.objects.len() $objects plan.composites.len() $composites
+    print "xsh-kbuild-plan-cache" "explicit-inline" plan.dirs.len() "dirs" plan.objects.len() "objects" plan.composites.len() "composites"
     return plan
   }
 
   if explicit_text != "" {
     emit_kbuild_progress(f"xsh-kbuild-plan-cache explicit-text-read ${explicit_text}")?
     let plan = kbuild.read_discovered_plan_text(Path.parse(explicit_text)?)?
-    print xsh-kbuild-plan-cache explicit-text $explicit_text plan.dirs.len() dirs plan.objects.len() $objects plan.composites.len() $composites
+    print "xsh-kbuild-plan-cache" "explicit-text" $explicit_text plan.dirs.len() "dirs" plan.objects.len() "objects" plan.composites.len() "composites"
     return plan
   }
 
   if explicit != "" {
     emit_kbuild_progress(f"xsh-kbuild-plan-cache explicit-read ${explicit}")?
     let plan = kbuild.read_discovered_plan(Path.parse(explicit)?)?
-    print xsh-kbuild-plan-cache $explicit $explicit plan.dirs.len() dirs plan.objects.len() $objects plan.composites.len() $composites
+    print "xsh-kbuild-plan-cache" "explicit" $explicit plan.dirs.len() "dirs" plan.objects.len() "objects" plan.composites.len() "composites"
     return plan
   }
 
@@ -305,17 +305,17 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
   if ! force_discover and plan_path.exists()? and fingerprint_path.exists()? {
     emit_kbuild_progress("xsh-kbuild-plan-cache read")?
     let plan = kbuild.read_discovered_plan(plan_path)?
-    emit_kbuild_progress(f"xsh-kbuild-plan-cache fingerprint ${plan.dirs.len()} dirs ${plan.objects.len()} $objects")?
+    emit_kbuild_progress(f"xsh-kbuild-plan-cache fingerprint $plan.dirs.len() dirs $plan.objects.len() objects")?
 
     if (env.get("XSH_LINUX_KBUILD_TRUST_PLAN_CACHE") ?? "") == "1" {
-      print xsh-kbuild-plan-cache trusted plan.dirs.len() dirs plan.objects.len() $objects plan.composites.len() $composites
+      print "xsh-kbuild-plan-cache" "trusted" plan.dirs.len() "dirs" plan.objects.len() "objects" plan.composites.len() "composites"
       return plan
     }
 
     let fingerprint = kbuild.plan_fingerprint(p".", p".config", plan)?
 
     if fingerprint_path.read_text()?.trim() == fingerprint.trim() {
-      print xsh-kbuild-plan-cache hit plan.dirs.len() dirs plan.objects.len() $objects plan.composites.len() $composites
+      print "xsh-kbuild-plan-cache" "hit" plan.dirs.len() "dirs" plan.objects.len() "objects" plan.composites.len() "composites"
       return plan
     }
 
@@ -333,7 +333,7 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
 """,
         )?
 
-        print xsh-kbuild-plan-cache stale-stable-hit stable_plan.dirs.len() dirs stable_plan.objects.len() $objects stable_plan.composites.len() $composites
+        print "xsh-kbuild-plan-cache" "stale-stable-hit" stable_plan.dirs.len() "dirs" stable_plan.objects.len() "objects" stable_plan.composites.len() "composites"
         return stable_plan
       }
     }
@@ -360,7 +360,7 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
 """,
       )?
 
-      print xsh-kbuild-plan-cache targeted-repaired repaired.dirs.len() dirs repaired.objects.len() $objects repaired.composites.len() $composites
+      print "xsh-kbuild-plan-cache" "targeted-repaired" repaired.dirs.len() "dirs" repaired.objects.len() "objects" repaired.composites.len() "composites"
       return repaired
     }
 
@@ -386,7 +386,7 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
 """,
       )?
 
-      print xsh-kbuild-plan-cache targeted-repaired repaired.dirs.len() dirs repaired.objects.len() $objects repaired.composites.len() $composites
+      print "xsh-kbuild-plan-cache" "targeted-repaired" repaired.dirs.len() "dirs" repaired.objects.len() "objects" repaired.composites.len() "composites"
       return repaired
     }
 
@@ -407,7 +407,7 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
 """,
       )?
 
-      print xsh-kbuild-plan-cache stable-hit stable_plan.dirs.len() dirs stable_plan.objects.len() $objects stable_plan.composites.len() $composites
+      print "xsh-kbuild-plan-cache" "stable-hit" stable_plan.dirs.len() "dirs" stable_plan.objects.len() "objects" stable_plan.composites.len() "composites"
       return stable_plan
     }
 
@@ -433,7 +433,7 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
 """,
       )?
 
-      print xsh-kbuild-plan-cache stable-targeted-repaired repaired.dirs.len() dirs repaired.objects.len() $objects repaired.composites.len() $composites
+      print "xsh-kbuild-plan-cache" "stable-targeted-repaired" repaired.dirs.len() "dirs" repaired.objects.len() "objects" repaired.composites.len() "composites"
       return repaired
     }
 
@@ -459,7 +459,7 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
 """,
       )?
 
-      print xsh-kbuild-plan-cache stable-targeted-repaired repaired.dirs.len() dirs repaired.objects.len() $objects repaired.composites.len() $composites
+      print "xsh-kbuild-plan-cache" "stable-targeted-repaired" repaired.dirs.len() "dirs" repaired.objects.len() "objects" repaired.composites.len() "composites"
       return repaired
     }
 
@@ -468,7 +468,7 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
 
   emit_kbuild_progress("xsh-kbuild-plan discover-start")?
   let plan = discover_package_plan(srcarch)?
-  emit_kbuild_progress(f"xsh-kbuild-plan write ${plan.dirs.len()} dirs ${plan.objects.len()} $objects")?
+  emit_kbuild_progress(f"xsh-kbuild-plan write $plan.dirs.len() dirs $plan.objects.len() objects")?
   kbuild.write_discovered_plan(plan, plan_path)?
   remove_archive_plan_cache()?
   emit_kbuild_progress("xsh-kbuild-plan fingerprint")?
@@ -526,7 +526,7 @@ export proc run_targeted_kbuild_outputs(archive_plan: Record, only: Str) [fs, pr
   let outputs = parse_kbuild_only_outputs(only)?
   let jobs_count = build_jobs()?
   let selected = kbuild.select_archive_tasks_outputs(archive_plan.tasks, outputs)?
-  print linux-native-kbuild-target-plan selected.len() tasks outputs.len() $outputs
+  print "linux-native-kbuild-target-plan" selected.len() "tasks" outputs.len() "outputs"
 
   if requested_stop_after()? == "plan" {
     kbuild.write_archive_plan_report(archive_plan, p".xsh-kbuild-archive-plan.json")?
@@ -539,7 +539,7 @@ export proc run_targeted_kbuild_outputs(archive_plan: Record, only: Str) [fs, pr
   return Err(
     ScriptError.Failed(
       "linux-native-kbuild-target-complete",
-      f"native scratch Kbuild ran ${outputs.len()} requested target(s); continue with the next targeted object batch or the full archive graph",
+      f"native scratch Kbuild ran outputs.len() requested target(s); continue with the next targeted object batch or the full archive graph",
     ),
   )
 }

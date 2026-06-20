@@ -9,7 +9,7 @@ export proc install_remote_metapackage(ctx: PmContext, pkg: RemotePackage) [fs, 
   run_lifecycle_hooks("pre-install", pkg.name, ctx, "remote-metapackage")?
   write_package_db(ctx.root, local_pkg, [], [])?
   run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-metapackage")?
-  print ${pkg.name} version_id(pkg.ver, pkg.rel) registered
+  print ${pkg.name} version_id(pkg.ver, pkg.rel) "registered"
 }
 
 export proc install_remote_tarball(ctx: PmContext, pkg: RemotePackage, tarball: Path) [fs, process, env, error] {
@@ -32,7 +32,7 @@ export proc install_remote_tarball(ctx: PmContext, pkg: RemotePackage, tarball: 
     run_lifecycle_hooks("pre-install", pkg.name, ctx, "remote-tarball")?
     direct_extract_package(ctx, local_pkg, tarball, manifest, etcsums, installed_owners)?
     run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-tarball")?
-    print ${pkg.name} manifest.len() remote-installed
+    print ${pkg.name} manifest.len() "remote-installed"
     return
   }
 
@@ -47,7 +47,7 @@ export proc install_remote_tarball(ctx: PmContext, pkg: RemotePackage, tarball: 
   install_manifest_entries(ctx.root, install_stage, local_pkg, manifest, old_sums, new_sums, installed_owners)?
   write_package_db(ctx.root, local_pkg, manifest, etcsums)?
   run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-tarball")?
-  print ${pkg.name} manifest.len() remote-installed
+  print ${pkg.name} manifest.len() "remote-installed"
 }
 
 export proc install_remote_packages(ctx: PmContext, names: List[Str]) [fs, net, process, env, time, error] {
@@ -92,7 +92,7 @@ export proc upload_package(ctx: PmContext, pkg: Package) [fs, net, process, env,
     index = upsert_remote_package(index, entry)?
     write_remote_index_to_repo(repo, ctx.work, ctx.out, index, token)?
     run_lifecycle_hooks("post-upload", pkg.name, ctx, "metapackage")?
-    print ${pkg.name} version_id(pkg.ver, pkg.rel) published
+    print ${pkg.name} version_id(pkg.ver, pkg.rel) "published"
     return
   }
 
@@ -138,7 +138,7 @@ export proc upload_package(ctx: PmContext, pkg: Package) [fs, net, process, env,
   index = upsert_remote_package(index, entry)?
   write_remote_index_to_repo(repo, ctx.work, ctx.out, index, token)?
   run_lifecycle_hooks("post-upload", pkg.name, ctx, "")?
-  print ${pkg.name} version_id(pkg.ver, pkg.rel) uploaded
+  print ${pkg.name} version_id(pkg.ver, pkg.rel) "uploaded"
 
   if uploaded_source.rel != "" {
     print ${pkg.name} source uploaded
@@ -1085,7 +1085,7 @@ proc build_packages_in_chroot(
     run_package_proof(ctx, pkg, id, tarball, item.manifest, built)?
     run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     built = built.push(item)
-    print ${pkg.name} $id item.manifest.len() "built"
+    print ${pkg.name} ${id} item.manifest.len() "built"
   }
 
   built
@@ -1200,7 +1200,7 @@ export proc build_packages(
       },
     )
 
-    print ${pkg.name} $id manifest.len() "built"
+    print ${pkg.name} ${id} manifest.len() "built"
   }
 
   built
@@ -1528,7 +1528,7 @@ proc run_package_proof(
     } ?
   }
 
-  print ${pkg.name} $proof ok
+  print ${pkg.name} "proof" "ok"
 }
 
 export proc install_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs, process, env, error] {
@@ -1619,7 +1619,7 @@ export proc remove_installed_package(ctx: PmContext, name: Str) [fs, process, en
   fs.remove(db, missing_ok: true)?
   call_installed_hook(metadata, "post_remove", ctx.root)?
   run_lifecycle_hooks("post-remove", name, ctx, "")?
-  print $name ${removed.removed} $removed
+  print ${name} ${removed.removed} "removed"
 }
 
 export proc remove_installed_packages(ctx: PmContext, names: List[Str]) [fs, process, env, error] {
@@ -1643,7 +1643,7 @@ export proc print_installed_list(root: Path) [fs, error] {
     let metadata = load_metadata(package_db_path(root, name))?
     let ver: Str = metadata.get("ver")?
     let rel: Str = metadata.get("rel")?
-    print $name version_id(ver, rel)
+    print ${name} version_id(ver, rel)
   }
 }
 
@@ -1668,11 +1668,11 @@ export proc print_package_info(root: Path, name: Str) [fs, error] {
   }
 
   let manifest = load_manifest(db)?
-  print $name version_id(ver, rel)
-  print $deps deps.join(" ")
-  print $mkdeps mkdeps.join(" ")
-  print $target_build_deps target_build_deps.join(" ")
-  print files manifest.len()
+  print ${name} version_id(ver, rel)
+  print "deps" deps.join(" ")
+  print "mkdeps" mkdeps.join(" ")
+  print "target_build_deps" target_build_deps.join(" ")
+  print "files" manifest.len()
 }
 
 proc installed_package_deps(root: Path, name: Str) [fs, error] -> Result[List[Str]] {
@@ -1807,7 +1807,7 @@ export proc print_outdated(root: Path, packages: List[Package]) [fs, error] {
 export proc print_search_matches(root: Path, query: Str, packages: List[Package]) [fs, error] {
   for pkg in packages {
     if query in pkg.name {
-      print ${pkg.name} version_id(pkg.ver, pkg.rel) local
+      print ${pkg.name} version_id(pkg.ver, pkg.rel) "local"
     }
   }
 
@@ -1818,7 +1818,7 @@ export proc print_search_matches(root: Path, query: Str, packages: List[Package]
       let metadata = load_metadata(package_db_path(root, name))?
       let ver: Str = metadata.get("ver")?
       let rel: Str = metadata.get("rel")?
-      print $name version_id(ver, rel) installed
+      print ${name} version_id(ver, rel) "installed"
     }
   }
 }
@@ -1829,7 +1829,7 @@ export proc write_local_index(out: Path, packages: List[Package]) [fs, error] {
   json.write(fp"${out}/index.json", index)?
 
   for pkg in packages {
-    print ${pkg.name} version_id(pkg.ver, pkg.rel) indexed
+    print ${pkg.name} version_id(pkg.ver, pkg.rel) "indexed"
   }
 }
 
@@ -1857,5 +1857,5 @@ export proc download_package_sources(work: Path, out: Path, pkg: Package) [fs, n
   fs.remove(src, missing_ok: true)?
   fs.mkdir(src)?
   prepare_package_source_tree(work, out, pkg, src, false, true, true)?
-  print ${pkg.name} $sources downloaded
+  print ${pkg.name} "sources" "downloaded"
 }

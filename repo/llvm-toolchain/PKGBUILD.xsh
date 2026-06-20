@@ -14,7 +14,9 @@ export let mkdeps: List[Str] = []
 
 export let nostrip: Bool = true
 
-export let sources: List[Path] = [p"https://github.com/laputa-systems/llvm-prebuilt-musl/releases/download/llvm-musl-VERSION/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt"]
+export let sources: List[Path] = [
+  p"https://github.com/laputa-systems/llvm-prebuilt-musl/releases/download/llvm-musl-VERSION/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt",
+]
 
 export let checksums: List[Str] = ["SKIP"]
 
@@ -436,8 +438,8 @@ export proc build(dest: Path) [fs, process, env, error] {
     let stub_src = fp"${dest}/.stub.c"
     fs.write(stub_src, "")?
     let clang = process.which("clang")?
-    run $clang "-target" f"${target_arch}-linux-musl" "-c" stub_src.display() "-o" fp"${dest}/usr/lib/crtbeginS.o" ?
-    run $clang "-target" f"${target_arch}-linux-musl" "-c" stub_src.display() "-o" fp"${dest}/usr/lib/crtendS.o" ?
+    run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${dest}/usr/lib/crtbeginS.o" ?
+    run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${dest}/usr/lib/crtendS.o" ?
     fs.remove(stub_src)?
     run $clang "-target" f"${target_arch}-linux-musl" "-shared" "-o" fp"${dest}/usr/lib/libgcc_s.so" "-Wl,--whole-archive" fp"${dest}/usr/lib/llvm22/lib/libunwind.a" "-Wl,--no-whole-archive" ?
     fs.symlink(p"libgcc_s.so", fp"${dest}/usr/lib/libgcc_s.so.1")?

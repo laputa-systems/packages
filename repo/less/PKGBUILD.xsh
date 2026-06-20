@@ -65,7 +65,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   make.run_tasks(buildgen_tasks, make.jobs()?)?
   let less_hlp = p"less.hlp"
-  fs.write(p"help.c", run.text buildgen.display() "help" < ${less_hlp}?)?
+  fs.write(p"help.c", run.text $buildgen "help" < ${less_hlp}?)?
 
   let less_srcs = [
     "main.c",
@@ -113,7 +113,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.write(p"obj/less-srcs.c", funcs_input)?
   let funcs_input_path = p"obj/less-srcs.c"
-  fs.write(p"funcs.h", run.text buildgen.display() "funcs" < ${funcs_input_path}?)?
+  fs.write(p"funcs.h", run.text $buildgen "funcs" < ${funcs_input_path}?)?
   var objs: List[Path] = []
   var tasks: List[make.MakeTask] = []
 

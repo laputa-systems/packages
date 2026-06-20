@@ -72,7 +72,7 @@ export proc print_extension_help() [fs, env, error] {
   }
 
   for extension in extensions {
-    print $extension ${extension.name} ${extension.summary}
+    print "extension" ${extension.name} ${extension.summary}
   }
 }
 

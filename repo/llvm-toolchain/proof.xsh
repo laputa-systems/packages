@@ -60,7 +60,7 @@ proc ensure_xsh_wrapper(path_value: Path, label: Str) [fs, error] {
   ensure(! text.contains("libstdc++"), "proof-llvm-toolchain", f"${label} mentions libstdc++")?
 }
 
-proc prove_tool_linkage(root: Path, readelf: Path, tool: Path) [fs, process, error] {
+proc prove_tool_linkage(readelf: Path, tool: Path) [fs, process, error] {
   ensure_executable(tool, tool.name)?
   let program_headers = run.text $readelf "-l" $tool ?
   ensure(! program_headers.contains("ld-linux"), "proof-llvm-toolchain", f"${tool.display()} uses a glibc interpreter")?
@@ -120,7 +120,7 @@ proc prove_public_surface(root: Path, arch: Str) [fs, process, env, error] {
     "llvm-readelf",
     "llvm-strip",
   ] {
-    prove_tool_linkage(root, readelf, fp"${bin}/${tool}")?
+    prove_tool_linkage(readelf, fp"${bin}/${tool}")?
   }
 
   ensure_file(fp"${root}/usr/lib/llvm22/lib/clang/22/include/stddef.h", "Clang resource headers")?
@@ -150,7 +150,7 @@ proc prove_default_compile(root: Path, arch: Str) [fs, process, env, error] {
   ensure(header.contains(machine), "proof-llvm-toolchain", f"cc wrapper did not produce a ${arch} object")?
 }
 
-proc prove_native_link(root: Path, arch: Str) [fs, process, env, error] {
+proc prove_native_link(root: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let readelf = process.which("llvm-readelf")?
   let tmp = fp"${root}/var/tmp/proof-llvm-toolchain-native"
@@ -175,7 +175,7 @@ proc prove_native_link(root: Path, arch: Str) [fs, process, env, error] {
   ensure(! dynamic.contains("libstdc++"), "proof-llvm-toolchain", "native hello links libstdc++")?
 }
 
-proc prove_native_cxx_link(root: Path, arch: Str) [fs, process, env, error] {
+proc prove_native_cxx_link(root: Path) [fs, process, env, error] {
   let cxx = process.which("c++")?
   let readelf = process.which("llvm-readelf")?
   let tmp = fp"${root}/var/tmp/proof-llvm-toolchain-native-cxx"
@@ -303,12 +303,12 @@ proc main(root: Path = /rootfs) [fs, process, env, error] {
   if build_arch == target_arch and target_arch == "x86_64" {
     prove_x86_64_v3(root)?
     prove_explicit_aarch64_target(root)?
-    prove_native_link(root, target_arch)?
-    prove_native_cxx_link(root, target_arch)?
+    prove_native_link(root)?
+    prove_native_cxx_link(root)?
   } else if build_arch == target_arch {
     prove_explicit_aarch64_target(root)?
-    prove_native_link(root, target_arch)?
-    prove_native_cxx_link(root, target_arch)?
+    prove_native_link(root)?
+    prove_native_cxx_link(root)?
   } else {
     prove_target_tools(root, target_arch)?
   }

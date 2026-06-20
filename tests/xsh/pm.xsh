@@ -93,7 +93,7 @@ proc test_pm_baseinit_smoke(ctx: TestContext) [fs, process, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
   let out = test.temp_dir(ctx, name: "out")?
-  let output = run.text xsh_bin() pm.xsh -- root.display() work.display() out.display() baseinit_dir().display() ?
+  let output = run.text xsh_bin() pm.xsh -- $root $work $out baseinit_dir() ?
   test.contains(output, "baseinit baseinit-2.0.0-1 5 built")?
   test.contains(output, "baseinit 5 8 installed")?
   test.contains(output, "baseinit 5 removed")?
@@ -113,7 +113,7 @@ proc test_pm_preserves_existing_etc_files(ctx: TestContext) [fs, process, error]
 """,
   )?
 
-  let output = run.text xsh_bin() pm.xsh -- root.display() work.display() out.display() baseinit_dir().display() ?
+  let output = run.text xsh_bin() pm.xsh -- $root $work $out baseinit_dir() ?
   test.contains(output, "baseinit 4 removed")?
 
   test.eq(
@@ -137,7 +137,7 @@ proc test_pm_rejects_file_conflicts(ctx: TestContext) [fs, process, error] {
 """,
   )?
 
-  let status = run.status xsh_bin() pm.xsh -- root.display() work.display() out.display() baseinit_dir().display() 2> /dev/null
+  let status = run.status xsh_bin() pm.xsh -- $root $work $out baseinit_dir() 2> /dev/null
   test.eq(status.ok, false)?
 
   test.eq(
@@ -171,7 +171,7 @@ proc test_pm_info_waterfox_bin_excludes_session_stack(ctx: TestContext) [fs, pro
 
   json.write(fp"${db}/manifest.json", ["opt/waterfox/waterfox-bin", "usr/bin/waterfox"])?
   json.write(fp"${db}/etcsums.json", no_etcsums)?
-  let info = run.text xsh_bin() pm.xsh -- info root.display() work.display() out.display() waterfox-bin ?
+  let info = run.text xsh_bin() pm.xsh -- info $root $work $out waterfox-bin ?
   test.contains(info, "waterfox-bin 140.11.0esr-1")?
   test.contains(info, "deps musl ca-certificates")?
   test.contains(info, "mkdeps")?
@@ -185,7 +185,7 @@ proc test_pm_install_remove_lifecycle(ctx: TestContext) [fs, process, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
   let out = test.temp_dir(ctx, name: "out")?
-  let install_out = run.text xsh_bin() pm.xsh -- install root.display() work.display() out.display() dep_dir().display() app_dir().display() ?
+  let install_out = run.text xsh_bin() pm.xsh -- install $root $work $out dep_dir() app_dir() ?
   test.contains(install_out, "dep dep-1.0.0-1 1 built")?
   test.contains(install_out, "app app-1.0.0-1 1 built")?
 
@@ -195,13 +195,13 @@ proc test_pm_install_remove_lifecycle(ctx: TestContext) [fs, process, error] {
 """,
   )?
 
-  let list_out = run.text xsh_bin() pm.xsh -- list root.display() work.display() out.display() ?
+  let list_out = run.text xsh_bin() pm.xsh -- list $root $work $out ?
   test.contains(list_out, "dep")?
   test.contains(list_out, "app")?
-  let info_out = run.text xsh_bin() pm.xsh -- info root.display() work.display() out.display() dep ?
+  let info_out = run.text xsh_bin() pm.xsh -- info $root $work $out dep ?
   test.contains(info_out, "dep")?
   test.contains(info_out, "1.0.0")?
-  let tree_out = run.text xsh_bin() pm.xsh -- tree root.display() work.display() out.display() app ?
+  let tree_out = run.text xsh_bin() pm.xsh -- tree $root $work $out app ?
 
   test.eq(
     tree_out,
@@ -210,10 +210,10 @@ proc test_pm_install_remove_lifecycle(ctx: TestContext) [fs, process, error] {
 """,
   )?
 
-  let full_tree_out = run.text xsh_bin() pm.xsh -- tree root.display() work.display() out.display() ?
+  let full_tree_out = run.text xsh_bin() pm.xsh -- tree $root $work $out ?
   test.eq(full_tree_out, tree_out)?
-  run.text xsh_bin() pm.xsh -- remove root.display() work.display() out.display() app ?
-  run.text xsh_bin() pm.xsh -- remove root.display() work.display() out.display() dep ?
+  run.text xsh_bin() pm.xsh -- remove $root $work $out app ?
+  run.text xsh_bin() pm.xsh -- remove $root $work $out dep ?
   test.eq(fp"${root}/usr/share/app.txt".exists()?, false)?
 }
 
@@ -221,7 +221,7 @@ proc test_pm_extract_install_preserves_tree_entries(ctx: TestContext) [fs, proce
   let root = test.temp_dir(ctx, name: "extract-root")?
   let work = test.temp_dir(ctx, name: "extract-work")?
   let out = test.temp_dir(ctx, name: "extract-out")?
-  let output = run.text xsh_bin() pm.xsh -- install root.display() work.display() out.display() extract_tree_dir().display() ?
+  let output = run.text xsh_bin() pm.xsh -- install $root $work $out extract_tree_dir() ?
   test.contains(output, "extract-tree extract-tree-1.0.0-1 3 built")?
   test.contains(output, "extract-tree 3 ")?
 
@@ -242,7 +242,7 @@ proc test_pm_missing_dependency(ctx: TestContext) [process, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
   let out = test.temp_dir(ctx, name: "out")?
-  let status = run.status xsh_bin() pm.xsh -- install root.display() work.display() out.display() app_dir().display() 2> /dev/null
+  let status = run.status xsh_bin() pm.xsh -- install $root $work $out app_dir() 2> /dev/null
   test.eq(status.ok, false)?
 }
 
@@ -250,8 +250,8 @@ proc test_pm_blocked_remove(ctx: TestContext) [process, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
   let out = test.temp_dir(ctx, name: "out")?
-  run.text xsh_bin() pm.xsh -- install root.display() work.display() out.display() dep_dir().display() app_dir().display() ?
-  let status = run.status xsh_bin() pm.xsh -- remove root.display() work.display() out.display() dep 2> /dev/null
+  run.text xsh_bin() pm.xsh -- install $root $work $out dep_dir() app_dir() ?
+  let status = run.status xsh_bin() pm.xsh -- remove $root $work $out dep 2> /dev/null
   test.eq(status.ok, false)?
 }
 
@@ -259,8 +259,8 @@ proc test_pm_search(ctx: TestContext) [process, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
   let out = test.temp_dir(ctx, name: "out")?
-  run.text xsh_bin() pm.xsh -- install root.display() work.display() out.display() dep_dir().display() app_dir().display() ?
-  let search_out = run.text xsh_bin() pm.xsh -- search root.display() work.display() out.display() app dep_dir().display() app_dir().display() ?
+  run.text xsh_bin() pm.xsh -- install $root $work $out dep_dir() app_dir() ?
+  let search_out = run.text xsh_bin() pm.xsh -- search $root $work $out app dep_dir() app_dir() ?
   test.contains(search_out, "app 1.0.0-1 local")?
   test.contains(search_out, "app 1.0.0-1 installed")?
 }
@@ -269,7 +269,7 @@ proc test_pm_outdated_and_upgrade(ctx: TestContext) [fs, process, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
   let out = test.temp_dir(ctx, name: "out")?
-  run.text xsh_bin() pm.xsh -- install root.display() work.display() out.display() tool_v1_dir().display() ?
+  run.text xsh_bin() pm.xsh -- install $root $work $out tool_v1_dir() ?
 
   test.eq(
     fp"${root}/usr/bin/tool".read_text()?,
@@ -277,10 +277,10 @@ proc test_pm_outdated_and_upgrade(ctx: TestContext) [fs, process, error] {
 """,
   )?
 
-  let outdated_out = run.text xsh_bin() pm.xsh -- outdated root.display() work.display() out.display() tool_v2_dir().display() ?
+  let outdated_out = run.text xsh_bin() pm.xsh -- outdated $root $work $out tool_v2_dir() ?
   test.contains(outdated_out, "tool 1.0.0-1 -> 1.1.0-1")?
-  run.text xsh_bin() pm.xsh -- update root.display() work.display() out.display() tool_v2_dir().display() ?
-  run.text xsh_bin() pm.xsh -- upgrade root.display() work.display() out.display() tool_v2_dir().display() ?
+  run.text xsh_bin() pm.xsh -- update $root $work $out tool_v2_dir() ?
+  run.text xsh_bin() pm.xsh -- upgrade $root $work $out tool_v2_dir() ?
 
   test.eq(
     fp"${root}/usr/bin/tool".read_text()?,
@@ -288,7 +288,7 @@ proc test_pm_outdated_and_upgrade(ctx: TestContext) [fs, process, error] {
 """,
   )?
 
-  let info_out = run.text xsh_bin() pm.xsh -- info root.display() work.display() out.display() tool ?
+  let info_out = run.text xsh_bin() pm.xsh -- info $root $work $out tool ?
   test.contains(info_out, "tool 1.1.0-1")?
 }
 
@@ -298,23 +298,23 @@ proc test_pm_source_checksum(ctx: TestContext) [fs, process, error] {
   let out = test.temp_dir(ctx, name: "out")?
   let pkg = test.temp_dir(ctx, name: "pkg")?
   let _ = fs.copy_tree(source_pkg_dir(), pkg, parents: true, overwrite: true)?
-  let checksum_out = run.text xsh_bin() pm.xsh -- checksum root.display() work.display() out.display() pkg.display() ?
+  let checksum_out = run.text xsh_bin() pm.xsh -- checksum $root $work $out $pkg ?
   test.contains(checksum_out, "source-pkg 6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
-  let update_out = run.text xsh_bin() pm.xsh -- update-checksums root.display() work.display() out.display() pkg.display() ?
+  let update_out = run.text xsh_bin() pm.xsh -- update-checksums $root $work $out $pkg ?
   test.contains(update_out, "source-pkg checksums updated")?
   let pkgbuild = fp"${pkg}/PKGBUILD.xsh".read_text()?
   test.contains(pkgbuild, "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
   let shorthand_pkg = test.temp_dir(ctx, name: "shorthand-pkg")?
   let shorthand_copy = fs.copy_tree(source_pkg_dir(), shorthand_pkg, parents: true, overwrite: true)?
   test.ok(shorthand_copy.files > 0)?
-  let shorthand_out = run.text xsh_bin() pm.xsh -- update-checksums shorthand_pkg.display() ?
+  let shorthand_out = run.text xsh_bin() pm.xsh -- update-checksums $shorthand_pkg ?
   fs.remove(p".root", missing_ok: true)?
   fs.remove(p".work", missing_ok: true)?
   fs.remove(p".out", missing_ok: true)?
   test.contains(shorthand_out, "source-pkg checksums updated")?
   let shorthand_pkgbuild = fp"${shorthand_pkg}/PKGBUILD.xsh".read_text()?
   test.contains(shorthand_pkgbuild, "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
-  run.text xsh_bin() pm.xsh -- install root.display() work.display() out.display() pkg.display() ?
+  run.text xsh_bin() pm.xsh -- install $root $work $out $pkg ?
 
   test.eq(
     fp"${root}/usr/share/source-pkg/data.txt".read_text()?,
@@ -331,20 +331,20 @@ proc test_pm_auth_and_file_repo(ctx: TestContext) [fs, process, env, error] {
   let install_root = test.temp_dir(ctx, name: "install-root")?
   let install_work = test.temp_dir(ctx, name: "install-work")?
   let install_out = test.temp_dir(ctx, name: "install-out")?
-  let auth_out = run.text xsh_bin() pm.xsh -- auth root.display() work.display() out.display() my-secret-token ?
+  let auth_out = run.text xsh_bin() pm.xsh -- auth $root $work $out my-secret-token ?
   test.contains(auth_out, "auth token stored")?
-  run.text xsh_bin() pm.xsh -- install root.display() work.display() out.display() remote_app_dir().display() ?
+  run.text xsh_bin() pm.xsh -- install $root $work $out remote_app_dir() ?
   test.ok(fp"${out}/remote-app-1.0.0-1.tar.gz".exists()?)?
   let repo_url = f"file://${repo.display()}"
-  let upload_out = run.text XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- upload root.display() work.display() out.display() remote_app_dir().display() ?
+  let upload_out = run.text XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- upload $root $work $out remote_app_dir() ?
   test.contains(upload_out, "remote-app 1.0.0-1 uploaded")?
   let arch = fixture_arch()?
   test.ok(fp"${repo}/packages/${arch}/remote-app/remote-app-1.0.0-1.tar.gz".exists()?)?
   let repo_index_text = fp"${repo}/index.json".read_text()?
   test.contains(repo_index_text, "\"name\":\"remote-app\"")?
-  let refresh_out = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- refresh-index install_root.display() install_work.display() install_out.display() ?
+  let refresh_out = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- refresh-index $install_root $install_work $install_out ?
   test.contains(refresh_out, "remote-index 1 refreshed")?
-  let remote_install_out = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- install install_root.display() install_work.display() install_out.display() remote-app ?
+  let remote_install_out = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- install $install_root $install_work $install_out remote-app ?
   test.contains(remote_install_out, "remote-app 1 remote-installed")?
 
   test.eq(
@@ -369,9 +369,9 @@ proc test_pm_remote_index_rejects_traversal_paths(ctx: TestContext) [fs, process
 """,
   )?
 
-  let refresh_out = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- refresh-index root.display() work.display() out.display() ?
+  let refresh_out = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- refresh-index $root $work $out ?
   test.contains(refresh_out, "remote-index 1 refreshed")?
-  let status = run.status XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- install root.display() work.display() out.display() evil 2> $err
+  let status = run.status XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- install $root $work $out evil 2> $err
   test.eq(status.ok, false)?
   test.contains(err.read_text()?, "remote tarball must stay relative")?
   test.eq(fp"${out}/escape.tar.gz".exists()?, false)?
@@ -392,8 +392,8 @@ printf '%s|%s|%s\\n' "$XSH_PM_HOOK" "$XSH_PM_PACKAGE" "$XSH_PM_ACTION" >> "$HOOK
   )?
 
   hook.chmod(0o755)?
-  run.text XSH_PM_HOOKS=hook.display() HOOK_LOG=hook_log.display() xsh_bin() pm.xsh -- install root.display() work.display() out.display() dep_dir().display() ?
-  run.text XSH_PM_HOOKS=hook.display() HOOK_LOG=hook_log.display() xsh_bin() pm.xsh -- remove root.display() work.display() out.display() dep ?
+  run.text XSH_PM_HOOKS=$hook HOOK_LOG=$hook_log xsh_bin() pm.xsh -- install $root $work $out dep_dir() ?
+  run.text XSH_PM_HOOKS=$hook HOOK_LOG=$hook_log xsh_bin() pm.xsh -- remove $root $work $out dep ?
   let log = hook_log.read_text()?
   test.contains(log, "pre-build|dep|install")?
   test.contains(log, "post-build|dep|install")?
@@ -405,7 +405,7 @@ printf '%s|%s|%s\\n' "$XSH_PM_HOOK" "$XSH_PM_PACKAGE" "$XSH_PM_ACTION" >> "$HOOK
 
 proc test_pm_build_repo(ctx: TestContext) [fs, process, env, error] {
   let repo = test.temp_dir(ctx, name: "repo")?
-  let output = run.text xsh_bin() pm.xsh -- build repo.display() baseinit_dir().display() ?
+  let output = run.text xsh_bin() pm.xsh -- build $repo baseinit_dir() ?
   test.contains(output, "baseinit")?
   test.contains(output, "published")?
   test.ok(fp"${repo}/index.json".exists()?)?
@@ -416,7 +416,7 @@ proc test_pm_build_repo(ctx: TestContext) [fs, process, env, error] {
 proc test_pm_build_repo_requires_package_dirs(ctx: TestContext) [fs, process, error] {
   let repo = test.temp_dir(ctx, name: "repo")?
   let err = test.temp_path(ctx, name: "pm.err")
-  let status = run.status xsh_bin() pm.xsh -- build repo.display() 2> $err
+  let status = run.status xsh_bin() pm.xsh -- build $repo 2> $err
   test.eq(status.ok, false)?
   test.contains(err.read_text()?, "usage: pm build REPO_DIR PKGDIR...")?
 }
@@ -461,7 +461,7 @@ export proc build(dest: Path) [fs, error] -> Result[Unit] {
 """,
   )?
 
-  let status = run.status xsh_bin() pm.xsh -- install root.display() work.display() out.display() pkg.display() 2> $err
+  let status = run.status xsh_bin() pm.xsh -- install $root $work $out $pkg 2> $err
   test.eq(status.ok, false)?
   test.contains(err.read_text()?, "proofless is missing proof.xsh")?
 }
@@ -501,7 +501,7 @@ main(@args)?
 """,
   )?
 
-  let status = run.status xsh_bin() pm.xsh -- install root.display() work.display() out.display() pkg.display() 2> $err
+  let status = run.status xsh_bin() pm.xsh -- install $root $work $out $pkg 2> $err
   test.eq(status.ok, false)?
 
   test.contains(
@@ -514,7 +514,7 @@ proc test_pm_world_plan_build_and_upload(ctx: TestContext) [fs, process, env, er
   let home = test.temp_dir(ctx, name: "home")?
   let remote = test.temp_dir(ctx, name: "world-remote")?
   let repo_url = f"file://${remote.display()}"
-  let output = run.text HOME=home.display() XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- world-plan world_pm_dir().display() world_lib_dir().display() world_app_dir().display() --build --upload --jobs 2 ?
+  let output = run.text HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- world-plan world_pm_dir() world_lib_dir() world_app_dir() --build --upload --jobs 2 ?
   test.contains(output, "world-plan")?
   test.contains(output, f"world-repo ${home.display()}/.cache/laputa/world-")?
   test.contains(output, "jobs 2")?
@@ -540,14 +540,14 @@ proc test_pm_world_plan_build_and_upload(ctx: TestContext) [fs, process, env, er
 
 proc test_pm_world_plan_build_to_tranche_and_resume(ctx: TestContext) [fs, process, env, error] {
   let home = test.temp_dir(ctx, name: "home")?
-  let first = run.text HOME=home.display() XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan world_pm_dir().display() world_lib_dir().display() world_app_dir().display() --build --to-tranche 1 --jobs 1 ?
+  let first = run.text HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan world_pm_dir() world_lib_dir() world_app_dir() --build --to-tranche 1 --jobs 1 ?
   test.contains(first, "world-plan build paused at tranche 1")?
   let stage = single_world_cache(home)?
   let arch = fixture_arch()?
   test.ok(fp"${stage}/packages/${arch}/world-lib/world-lib-1.0.0-1.tar.gz".exists()?)?
   test.ok(! fp"${stage}/packages/${arch}/world-app/world-app-1.0.0-1.tar.gz".exists()?)?
   test.contains(fp"${stage}/.world/state.json".read_text()?, "\"complete\":false")?
-  let second = run.text HOME=home.display() XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan world_pm_dir().display() world_lib_dir().display() world_app_dir().display() --build --jobs 1 ?
+  let second = run.text HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan world_pm_dir() world_lib_dir() world_app_dir() --build --jobs 1 ?
   test.contains(second, "world-lib world-lib-1.0.0-1 staged")?
   test.contains(second, "world-plan build complete")?
   test.ok(fp"${stage}/packages/${arch}/world-app/world-app-1.0.0-1.tar.gz".exists()?)?
@@ -558,7 +558,7 @@ proc test_pm_world_plan_stable_cache_invalidates_on_pkgbuild_edit(ctx: TestConte
   let home = test.temp_dir(ctx, name: "home")?
   let pkg = test.temp_dir(ctx, name: "world-pm-copy")?
   let _ = fs.copy_tree(world_pm_dir(), pkg, parents: true, overwrite: true)?
-  run.text HOME=home.display() XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan pkg.display() --build --to-tranche 0 --jobs 1 ?
+  run.text HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan $pkg --build --to-tranche 0 --jobs 1 ?
   let stage = single_world_cache(home)?
 
   fs.write(
@@ -568,7 +568,7 @@ proc test_pm_world_plan_stable_cache_invalidates_on_pkgbuild_edit(ctx: TestConte
 """,
   )?
 
-  let status = run.status HOME=home.display() XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan pkg.display() --build --jobs 1
+  let status = run.status HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan $pkg --build --jobs 1
   test.eq(status.ok, true)?
   test.eq(single_world_cache(home)?.display(), stage.display())?
   test.contains(fp"${stage}/.world/state.json".read_text()?, "\"complete\":true")?
@@ -579,7 +579,7 @@ proc test_pm_world_plan_upload_requires_complete_stage(ctx: TestContext) [fs, pr
   let remote = test.temp_dir(ctx, name: "world-remote")?
   let err = test.temp_path(ctx, name: "pm.err")
   let repo_url = f"file://${remote.display()}"
-  let status = run.status HOME=home.display() XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- world-plan world_pm_dir().display() world_lib_dir().display() world_app_dir().display() --upload 2> $err
+  let status = run.status HOME=$home XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- world-plan world_pm_dir() world_lib_dir() world_app_dir() --upload 2> $err
   test.eq(status.ok, false)?
   test.contains(err.read_text()?, "run world-plan --build first")?
 }
@@ -588,8 +588,8 @@ proc test_pm_world_plan_annotates_remote_not_newer(ctx: TestContext) [fs, proces
   let home = test.temp_dir(ctx, name: "home")?
   let repo = test.temp_dir(ctx, name: "repo")?
   let repo_url = f"file://${repo.display()}"
-  run.text xsh_bin() pm.xsh -- build repo.display() world_pm_dir().display() ?
-  let output = run.text HOME=home.display() NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir().display() ?
+  run.text xsh_bin() pm.xsh -- build $repo world_pm_dir() ?
+  let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() ?
   test.contains(output, "laputa-pm 1.0.0-1")?
   test.ok(! output.contains("remote same"))?
   test.ok(! output.contains("remote newer"))?
@@ -625,14 +625,14 @@ proc test_pm_world_plan_displays_remote_to_local_catchup(ctx: TestContext) [fs, 
     ],
   )?
 
-  let output = run.text HOME=home.display() NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir().display() ?
+  let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() ?
   test.contains(output, "laputa-pm 1.0.0-0 -> 1.0.0-1")?
   test.ok(! output.contains("remote newer"))?
 }
 
 proc test_pm_world_plan_arch_option(ctx: TestContext) [fs, process, env, error] {
   let home = test.temp_dir(ctx, name: "home")?
-  let output = run.text HOME=home.display() NO_COLOR=1 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan world_pm_dir().display() --arch amd64 ?
+  let output = run.text HOME=$home NO_COLOR=1 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan world_pm_dir() --arch amd64 ?
   test.contains(output, "world-plan x86_64 1 package")?
 }
 
@@ -641,7 +641,7 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
   let repo = test.temp_dir(ctx, name: "repo")?
   let repo_url = f"file://${repo.display()}"
   let arch = fixture_arch()?
-  run.text xsh_bin() pm.xsh -- build repo.display() world_pm_dir().display() world_lib_dir().display() world_app_dir().display() ?
+  run.text xsh_bin() pm.xsh -- build $repo world_pm_dir() world_lib_dir() world_app_dir() ?
   let no_deps: List[Str] = []
   let no_mkdeps: List[Str] = []
   let lib_deps: List[Str] = ["laputa-pm"]
@@ -698,7 +698,7 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
     ],
   )?
 
-  let output = run.text HOME=home.display() NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir().display() world_lib_dir().display() world_app_dir().display() ?
+  let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() world_lib_dir() world_app_dir() ?
   test.contains(output, "laputa-pm 1.0.0-0 -> 1.0.0-1")?
   test.contains(output, "world-lib 1.0.0-1 -> 1.0.0-2")?
   test.contains(output, "world-app 1.0.0-1 -> 1.0.0-2")?
@@ -738,7 +738,7 @@ proc test_pm_world_plan_autobumps_rel_for_changed_metadata(ctx: TestContext) [fs
     ],
   )?
 
-  let output = run.text HOME=home.display() XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir().display() --build --jobs 1 ?
+  let output = run.text HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() --build --jobs 1 ?
   test.contains(output, "laputa-pm 1.0.0-3")?
   let stage = single_world_cache(home)?
   test.ok(fp"${stage}/packages/${arch}/laputa-pm/laputa-pm-1.0.0-3.tar.gz".exists()?)?
@@ -780,10 +780,10 @@ proc test_pm_world_plan_sync_rels_updates_pkgbuilds_after_upload(ctx: TestContex
     ],
   )?
 
-  let synced = run.text HOME=home.display() XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- world-plan pkg.display() --build --upload --sync-rels --jobs 1 ?
+  let synced = run.text HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- world-plan $pkg --build --upload --sync-rels --jobs 1 ?
   test.contains(synced, "laputa-pm 1.0.0-1 -> 1.0.0-3 rel-synced")?
   test.contains(fp"${pkg}/PKGBUILD.xsh".read_text()?, "export let rel: Str = \"3\"")?
-  let output = run.text HOME=home.display() NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan pkg.display() ?
+  let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan $pkg ?
   test.contains(output, "laputa-pm 1.0.0-3")?
   test.ok(! output.contains("->"))?
 }
@@ -793,11 +793,11 @@ proc test_pm_world_plan_upload_verifies_staged_artifacts(ctx: TestContext) [fs, 
   let remote = test.temp_dir(ctx, name: "world-remote")?
   let err = test.temp_path(ctx, name: "pm.err")
   let repo_url = f"file://${remote.display()}"
-  run.text HOME=home.display() XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan world_pm_dir().display() world_lib_dir().display() world_app_dir().display() --build ?
+  run.text HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan world_pm_dir() world_lib_dir() world_app_dir() --build ?
   let stage = single_world_cache(home)?
   let arch = fixture_arch()?
   fs.write(fp"${stage}/packages/${arch}/world-app/world-app-1.0.0-1.tar.gz", "corrupt")?
-  let status = run.status HOME=home.display() XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- world-plan world_pm_dir().display() world_lib_dir().display() world_app_dir().display() --upload 2> $err
+  let status = run.status HOME=$home XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- world-plan world_pm_dir() world_lib_dir() world_app_dir() --upload 2> $err
   test.eq(status.ok, false)?
   test.contains(err.read_text()?, "size mismatch")?
 }
@@ -809,7 +809,7 @@ proc test_pm_unknown_command_without_extension_fails(ctx: TestContext) [fs, proc
   let path_dir = test.temp_dir(ctx, name: "path")?
   let err = test.temp_path(ctx, name: "pm.err")
   let path_text = f"${path_dir.display()}:${env.get("PATH")?}"
-  let status = run.status PATH=$path_text xsh_bin() pm.xsh -- missing-action root.display() work.display() out.display() 2> $err
+  let status = run.status PATH=$path_text xsh_bin() pm.xsh -- missing-action $root $work $out 2> $err
   let stderr = err.read_text()?
   test.eq(status.ok, false)?
   test.contains(stderr, "usage: pm ACTION ROOT WORK OUT [ARGS...]")?
@@ -821,7 +821,7 @@ proc test_pm_search_requires_query(ctx: TestContext) [fs, process, error] {
   let work = test.temp_dir(ctx, name: "work")?
   let out = test.temp_dir(ctx, name: "out")?
   let err = test.temp_path(ctx, name: "pm.err")
-  let status = run.status xsh_bin() pm.xsh -- search root.display() work.display() out.display() 2> $err
+  let status = run.status xsh_bin() pm.xsh -- search $root $work $out 2> $err
   test.eq(status.ok, false)?
   test.contains(err.read_text()?, "usage: pm search ROOT WORK OUT QUERY [PKGDIR...]")?
 }
@@ -869,7 +869,7 @@ not a comment summary
   shadow_second.chmod(0o755)?
   plain.chmod(0o755)?
   let path_text = f"${first.display()}:${second.display()}:${env.get("PATH")?}"
-  let help = run.text PATH=$path_text xsh_bin() pm.xsh -- help-ext root.display() work.display() out.display() ?
+  let help = run.text PATH=$path_text xsh_bin() pm.xsh -- help-ext $root $work $out ?
   test.contains(help, "extension shadow first summary")?
   test.eq(help.contains("ignored"), false)?
   test.eq(help.contains("second summary"), false)?
@@ -904,7 +904,7 @@ proc test_pm_extension_invocation_environment(ctx: TestContext) [fs, process, en
 
   extension.chmod(0o755)?
   let path_text = f"${path_dir.display()}:${env.get("PATH")?}"
-  run.text PATH=$path_text EXT_LOG=log.display() xsh_bin() pm.xsh -- inspect root.display() work.display() out.display() one two ?
+  run.text PATH=$path_text EXT_LOG=$log xsh_bin() pm.xsh -- inspect $root $work $out one two ?
   let env_log = log.read_text()?
   test.contains(env_log, f"root=${root.display()}")?
   test.contains(env_log, f"work=${work.display()}")?
@@ -927,17 +927,17 @@ proc test_pm_remote_metapackage_installs_dependencies(ctx: TestContext) [fs, pro
   let install_work = test.temp_dir(ctx, name: "install-work")?
   let install_out = test.temp_dir(ctx, name: "install-out")?
   let repo_url = f"file://${repo.display()}"
-  run.text xsh_bin() pm.xsh -- auth root.display() work.display() out.display() my-secret-token ?
-  run.text xsh_bin() pm.xsh -- install root.display() work.display() out.display() remote_app_dir().display() ?
-  run.text XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- upload root.display() work.display() out.display() remote_app_dir().display() ?
-  let upload_meta = run.text XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- upload root.display() work.display() out.display() remote_meta_dir().display() ?
+  run.text xsh_bin() pm.xsh -- auth $root $work $out my-secret-token ?
+  run.text xsh_bin() pm.xsh -- install $root $work $out remote_app_dir() ?
+  run.text XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- upload $root $work $out remote_app_dir() ?
+  let upload_meta = run.text XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- upload $root $work $out remote_meta_dir() ?
   test.contains(upload_meta, "remote-meta 1.0.0-1 published")?
   let repo_index_text = fp"${repo}/index.json".read_text()?
   test.contains(repo_index_text, "\"name\":\"remote-meta\"")?
   test.contains(repo_index_text, "\"metapackage\":true")?
-  let refresh_out = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- refresh-index install_root.display() install_work.display() install_out.display() ?
+  let refresh_out = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- refresh-index $install_root $install_work $install_out ?
   test.contains(refresh_out, "remote-index 2 refreshed")?
-  let install_out_text = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- install install_root.display() install_work.display() install_out.display() remote-meta ?
+  let install_out_text = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- install $install_root $install_work $install_out remote-meta ?
   test.contains(install_out_text, "remote-app 1 remote-installed")?
   test.contains(install_out_text, "remote-meta 1.0.0-1 registered")?
   test.ok(fp"${install_root}/var/lib/xsh-pm/packages/remote-meta/metadata.json".exists()?)?
@@ -955,7 +955,7 @@ proc test_pm_refresh_empty_file_repo_writes_empty_cache(ctx: TestContext) [fs, p
   let out = test.temp_dir(ctx, name: "out")?
   let repo = test.temp_dir(ctx, name: "repo")?
   let repo_url = f"file://${repo.display()}"
-  let refresh_out = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- refresh-index root.display() work.display() out.display() ?
+  let refresh_out = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- refresh-index $root $work $out ?
   test.contains(refresh_out, "remote-index 0 refreshed")?
   test.eq(fp"${out}/remote-index.json".read_text()?.trim(), "[]")?
 }
