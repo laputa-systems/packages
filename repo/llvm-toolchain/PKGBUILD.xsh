@@ -14,13 +14,13 @@ export let mkdeps: List[Str] = []
 
 export let nostrip: Bool = true
 
-export let sources: List[Path] = [p"files/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt"]
+export let sources: List[Path] = [p"https://github.com/laputa-systems/llvm-prebuilt-musl/releases/download/llvm-musl-VERSION/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt"]
 
 export let checksums: List[Str] = ["SKIP"]
 
-export let checksums_aarch64: List[Str] = ["7081172dfd956de163365e58cded731e4352d67d350c464527630c635a7d9607"]
+export let checksums_aarch64: List[Str] = ["675f9cf871313a5672a63882d4d30dd6dd55df0aa9caee70970542eb03a23da3"]
 
-export let checksums_x86_64: List[Str] = ["SKIP"]
+export let checksums_x86_64: List[Str] = ["ac0bd443a1933bbd2c0efbedf6ebc97ff8ca2469e5ba65eadb966fb75f65dd1c"]
 
 pure bool_literal(value: Bool) -> Str {
   if value {

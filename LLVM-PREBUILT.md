@@ -44,16 +44,25 @@ against a file-backed package repo:
 The rebuilt `cmake`, `ctest`, and `cpack` binaries were checked with `readelf
 -d`; they had no dynamic `libgcc`, `libstdc++`, or `libunwind` dependency.
 
-What remains before treating this as publishable is an upstream/prebuilt release
-that provides both supported Laputa architectures:
+The upstream release now provides both supported Laputa architectures:
+
+```text
+https://github.com/laputa-systems/llvm-prebuilt-musl/releases/tag/llvm-musl-22.1.8
+```
+
+Release artifacts:
 
 ```text
 clang+llvm-22.1.8-aarch64-linux-musl.tar.xz
+  SHA-256: 675f9cf871313a5672a63882d4d30dd6dd55df0aa9caee70970542eb03a23da3
 clang+llvm-22.1.8-x86_64-linux-musl.tar.xz
+  SHA-256: ac0bd443a1933bbd2c0efbedf6ebc97ff8ca2469e5ba65eadb966fb75f65dd1c
 ```
 
-Until the x86_64/amd64 artifact exists, the x86_64 package path must remain a
-placeholder and must not be published from the aarch64-only local artifact.
+Checksums also published at:
+`https://github.com/laputa-systems/llvm-prebuilt-musl/releases/download/llvm-musl-22.1.8/checksums`
+
+PKGBUILD.xsh now consumes the upstream release artifacts instead of local files.
 
 ## Goal
 
@@ -245,26 +254,47 @@ dynamic `libunwind` dependency.
 
 ## Migration Steps
 
-1. Wait for a proper upstream/prebuilt release that includes both
-   `aarch64-linux-musl` and `x86_64-linux-musl` archives.
-2. Download each archive and record SHA-256 checksums.
-3. Update `repo/llvm-toolchain/PKGBUILD.xsh` sources to upstream URLs.
-4. Replace `checksums_x86_64 = ["SKIP"]` with the real x86_64 checksum.
-5. Keep the aarch64 checksum aligned with the published artifact.
-6. Rerun `make package-test PKGNAME=llvm-toolchain` from the integration repo.
-7. Rerun `make package-test PKGNAME=musl`.
-8. Rerun `make package-test PKGNAME=cmake`.
-9. Rerun `make package-test PKGNAME=zlib` or another small C/CMake package.
-10. Scan for stale GNU/unwind runtime defaults:
+- [x] **1. Upstream release published.**
+      `https://github.com/laputa-systems/llvm-prebuilt-musl/releases/tag/llvm-musl-22.1.8`
+      provides both `aarch64-linux-musl` and `x86_64-linux-musl` archives.
 
-```sh
-rg -n -- 'libgcc|libstdc\+\+|--unwindlib|unwindlib|-lunwind|--rtlib=compiler-rt|rtlib=compiler-rt|crtbeginS|crtendS' pm.xsh pm repo
-```
+- [x] **2. Checksums recorded.**
 
-11. Publish `llvm-toolchain` only after both architecture artifacts and the
-    consumer checks pass.
-12. Rebuild and publish any package whose release was bumped only to adapt to
-    the old Alpine-sourced wrapper behavior.
+  ```text
+  clang+llvm-22.1.8-aarch64-linux-musl.tar.xz
+    675f9cf871313a5672a63882d4d30dd6dd55df0aa9caee70970542eb03a23da3
+  clang+llvm-22.1.8-x86_64-linux-musl.tar.xz
+    ac0bd443a1933bbd2c0efbedf6ebc97ff8ca2469e5ba65eadb966fb75f65dd1c
+  ```
+
+- [x] **3. PKGBUILD sources updated** to upstream release URLs.
+
+- [x] **4. x86_64 checksum filled in.** `checksums_x86_64` no longer `SKIP`.
+
+- [x] **5. aarch64 checksum aligned** with the published artifact (differs from
+      the local zip-sourced artifact used during initial validation).
+
+- [x] **6a. aarch64 `llvm-toolchain` rebuilt.** `make package-test
+      PKGNAME=llvm-toolchain` passed — proof ok, published.
+
+- [ ] **6b. x86_64 `llvm-toolchain` rebuilt.** Pending — Docker image needs
+      building first.
+
+- [ ] **7. Rebuild `musl`** against the new toolchain.
+
+- [ ] **8. Rebuild `cmake`** against the new toolchain.
+
+- [ ] **9. Rebuild `zlib`** (or another small C/CMake package) against the new
+      toolchain.
+
+- [x] **10. Scan for stale GNU/unwind runtime defaults.** Clean — only negative
+      assertions in `proof.xsh`, no stale positive references anywhere.
+
+- [ ] **11. Publish `llvm-toolchain`** after both architecture artifacts and the
+      consumer checks pass.
+
+- [ ] **12. Rebuild and publish** any package whose release was bumped only to
+      adapt to the old Alpine-sourced wrapper behavior.
 
 ## Rejection Criteria
 
