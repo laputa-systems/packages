@@ -3378,7 +3378,8 @@ export proc generate_raid6_sources(root: Path, cc: Path) [fs, process, env, erro
     return Err(ScriptError.Failed("linux-raid6-mktables-compile", f"command failed: ${argv.join(" ")}"))
   }
 
-  write_text_if_changed(fp"${root}/lib/raid6/tables.c", run.text gen.display()?)?
+  let tables = run.text gen.display() ?
+  write_text_if_changed(fp"${root}/lib/raid6/tables.c", tables)?
 }
 
 pure dir_archive(dir: Path) -> Path {
