@@ -356,7 +356,15 @@ export proc ensure_installable(root: Path, pkg: Package, manifest: List[Path], i
         return Err(PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
       }
     } else if fs.exists(fp"${root}/${rel_path}")? and ! is_etc_file(rel_path) {
-      return Err(PmError.DirtyFilesystem(f"${pkg.name} would overwrite unowned ${key}"))
+      let root_str = root.display()
+      var msg = f"${pkg.name} would overwrite unowned ${key} in root ${root_str}"
+
+      if root_str.ends_with("/.world/root") or root_str.ends_with("/.world/build-root") {
+        let cache_dir = root.parent.parent
+        msg = f"${msg}\nstale world-plan cache: delete ${cache_dir.display()} to reset"
+      }
+
+      return Err(PmError.DirtyFilesystem(msg))
     }
   }
 }
