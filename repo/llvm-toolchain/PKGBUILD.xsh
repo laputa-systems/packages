@@ -414,6 +414,35 @@ proc install_prebuilt_tree(dest: Path) [fs, env, error] {
 
 export proc build(dest: Path) [fs, process, env, error] {
   install_prebuilt_tree(dest)?
+
+  # Rust's musl target hardcodes -lgcc_s, and the prebuilt cargo binary
+  # dynamically links libgcc_s.so.1 for unwinding. The prebuilt LLVM tree
+  # does not ship crtbeginS.o, crtendS.o, or libgcc_s.so.
+  #
+  # crtbeginS.o / crtendS.o: empty object files. The linker accepts them
+  # without symbols; they exist only to satisfy Cargo's link line.
+  #
+  # libgcc_s.so / libgcc_s.so.1: built from the prebuilt tree's own
+  # libunwind.a (--whole-archive) so all _Unwind_* symbols are exported.
+  # This avoids adding a separate libunwind package dependency while
+  # providing the unwinding symbols cargo needs at runtime.
+  #
+  # Only created for native builds; cross-arch builds skip stub generation
+  # since the host compiler can't link target-arch object files.
+  let build_arch = pm_util.build_arch()?
+  let target_arch = pm_util.target_arch()?
+
+  if build_arch == target_arch {
+    let stub_src = fp"${dest}/.stub.c"
+    fs.write(stub_src, "")?
+    let clang = process.which("clang")?
+    run $clang "-target" f"${target_arch}-linux-musl" "-c" stub_src.display() "-o" fp"${dest}/usr/lib/crtbeginS.o" ?
+    run $clang "-target" f"${target_arch}-linux-musl" "-c" stub_src.display() "-o" fp"${dest}/usr/lib/crtendS.o" ?
+    fs.remove(stub_src)?
+    run $clang "-target" f"${target_arch}-linux-musl" "-shared" "-o" fp"${dest}/usr/lib/libgcc_s.so" "-Wl,--whole-archive" fp"${dest}/usr/lib/llvm22/lib/libunwind.a" "-Wl,--no-whole-archive" ?
+    fs.symlink(p"libgcc_s.so", fp"${dest}/usr/lib/libgcc_s.so.1")?
+  }
+
   write_wrapper(dest, "cc", /usr/lib/llvm22/bin/clang, clang: true)?
   write_wrapper(dest, "clang", /usr/lib/llvm22/bin/clang, clang: true)?
   write_wrapper(dest, "c++", /usr/lib/llvm22/bin/clang++, clang: true, cxx: true)?

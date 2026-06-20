@@ -1085,7 +1085,7 @@ proc build_packages_in_chroot(
     run_package_proof(ctx, pkg, id, tarball, item.manifest, built)?
     run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     built = built.push(item)
-    print ${pkg.name} $id item.manifest.len() $built
+    print ${pkg.name} $id item.manifest.len() "built"
   }
 
   built
@@ -1200,7 +1200,7 @@ export proc build_packages(
       },
     )
 
-    print ${pkg.name} $id manifest.len() $built
+    print ${pkg.name} $id manifest.len() "built"
   }
 
   built

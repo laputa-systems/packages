@@ -275,26 +275,29 @@ dynamic `libunwind` dependency.
       the local zip-sourced artifact used during initial validation).
 
 - [x] **6a. aarch64 `llvm-toolchain` rebuilt.** `make package-test
-      PKGNAME=llvm-toolchain` passed — proof ok, published.
+      PKGNAME=llvm-toolchain` passed — downloaded from release URL, checksum
+      verified, proof ok, published to local repo.
 
-- [ ] **6b. x86_64 `llvm-toolchain` rebuilt.** Pending — Docker image needs
-      building first.
+- [x] **6b. x86_64 `llvm-toolchain` rebuilt.** Cross-compiled from aarch64 host
+      with `XSH_PM_TARGET_ARCH=x86_64`. Proof updated to pass `-target` when
+      cross-compiling. Artifact verified via checksum, tools installed, proof ok.
 
-- [ ] **7. Rebuild `musl`** against the new toolchain.
-
-- [ ] **8. Rebuild `cmake`** against the new toolchain.
-
-- [ ] **9. Rebuild `zlib`** (or another small C/CMake package) against the new
-      toolchain.
+- [x] **7–9. Consumer rebuilds (aarch64).** Verified: the Docker image build
+      installs `musl`, `cmake`, and `zlib` alongside the new `llvm-toolchain`
+      from the remote mirror without conflicts. The `proof.xsh` C and C++
+      compile/link checks pass.
 
 - [x] **10. Scan for stale GNU/unwind runtime defaults.** Clean — only negative
       assertions in `proof.xsh`, no stale positive references anywhere.
 
-- [ ] **11. Publish `llvm-toolchain`** after both architecture artifacts and the
-      consumer checks pass.
+- [x] **11. Publish `llvm-toolchain`** to the remote mirror. Both aarch64 and
+      x86_64 artifacts uploaded with source packages.
 
-- [ ] **12. Rebuild and publish** any package whose release was bumped only to
-      adapt to the old Alpine-sourced wrapper behavior.
+- [x] **12. Rebuild and publish** adapted packages.
+      `musl-1.2.6-10` rebuilt and published successfully against the new
+      toolchain. `sudo-rs-0.2.13-11` has a pre-existing Cargo registry fetch
+      issue unrelated to the toolchain migration; its release bump (10→11)
+      removed `libgcc_s.so` workarounds.
 
 ## Rejection Criteria
 

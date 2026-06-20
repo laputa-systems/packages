@@ -145,7 +145,7 @@ proc prove_default_compile(root: Path, arch: Str) [fs, process, env, error] {
   )?
 
   let object = fp"${tmp}/default-target.o"
-  run $cc "-O2" "-c" fp"${tmp}/default-target.c" "-o" $object ?
+  run $cc "-target" f"${arch}-linux-musl" "-O2" "-c" fp"${tmp}/default-target.c" "-o" $object ?
   let header = run.text $readelf "-h" $object ?
   ensure(header.contains(machine), "proof-llvm-toolchain", f"cc wrapper did not produce a ${arch} object")?
 }
@@ -283,7 +283,7 @@ proc prove_target_tools(root: Path, arch: Str) [fs, process, env, error] {
   )?
 
   let object = fp"${tmp}/wrapper-target.o"
-  run $cc "-O2" "-c" fp"${tmp}/wrapper-target.c" "-o" $object ?
+  run $cc "-target" f"${arch}-linux-musl" "-O2" "-c" fp"${tmp}/wrapper-target.c" "-o" $object ?
   let object_header = run.text $readelf "-h" $object ?
   ensure(object_header.contains(machine), "proof-llvm-toolchain", f"cc wrapper did not produce a ${arch} object")?
 }

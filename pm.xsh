@@ -1375,7 +1375,7 @@ proc install_world_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs
     if world_should_install_built_package(ctx.root, item)? {
       installable = installable.push(item)
     } else {
-      print ${item.pkg.name} world_package_id(item.pkg) staged-by $wlroots0.19-mesa
+      print ${item.pkg.name} world_package_id(item.pkg) staged-by "wlroots0.19-mesa"
     }
   }
 
@@ -2099,7 +2099,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
                 built_names[original_pkg.name] = true
                 unchanged_names[original_pkg.name] = true
                 unchanged = true
-                print ${original_pkg.name} world_package_id(original_pkg) metadata $unchanged
+                print ${original_pkg.name} world_package_id(original_pkg) metadata "unchanged"
               }
             }
           }
@@ -2365,7 +2365,7 @@ proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, error] {
   }
 
   write_remote_index_to_repo(repo, work, out, remote_index, token)?
-  print $repo export uploaded
+  print "repo" export uploaded
 }
 
 pure supports_repo_default_context(command: Str) -> Bool {

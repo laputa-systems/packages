@@ -10,7 +10,7 @@ export let rel: Str = "11"
 
 export let deps: List[Str] = ["linux-pam"]
 
-export let mkdeps: List[Str] = ["cargo", "llvm-toolchain", "linux-pam"]
+export let mkdeps: List[Str] = ["cargo", "llvm-toolchain", "linux-pam", "ca-certificates"]
 
 export let sources: List[Path] = [
   p"https://static.crates.io/crates/sudo-rs/sudo-rs-VERSION.crate",
@@ -116,6 +116,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER = x86_64_linker
     CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS = aarch64_rustflags
     CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS = x86_64_rustflags
+    SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt"
   } {
     run $cargo build "--release" "--target" $triple "--bin" "sudo" "--bin" "su" ?
   } ?
