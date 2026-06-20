@@ -682,7 +682,7 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
   if reuse_archives and root_archive.exists()? and archive_report.exists()? and (env.get(
     "XSH_LINUX_KBUILD_FORCE_ARCHIVES",
   ) ?? "") != "1" {
-    print xsh-kbuild-archives reuse ${archive_plan.archives.len()} archives
+    print xsh-kbuild-archives reuse archive_plan.archives.len() $archives
     kbuild.patch_x86_jump_label_archive_plan(archive_plan, jobs_count)?
     archives = archive_plan.archives
   } else {
@@ -704,5 +704,5 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
 
   PKGBUILD_shared.timing_done("link", link_start)
   PKGBUILD_shared.stop_after("link")?
-  print linux-native-kbuild-complete ${archives.len()} archives linked arch/x86/boot/bzImage
+  print linux-native-kbuild-complete archives.len() $archives linked arch/x86/boot/bzImage
 }

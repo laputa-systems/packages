@@ -14,21 +14,13 @@ export let mkdeps: List[Str] = []
 
 export let nostrip: Bool = true
 
-export let sources: List[Path] = [
-  p"files/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt",
-]
+export let sources: List[Path] = [p"files/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt"]
 
-export let checksums: List[Str] = [
-  "SKIP",
-]
+export let checksums: List[Str] = ["SKIP"]
 
-export let checksums_aarch64: List[Str] = [
-  "7081172dfd956de163365e58cded731e4352d67d350c464527630c635a7d9607",
-]
+export let checksums_aarch64: List[Str] = ["7081172dfd956de163365e58cded731e4352d67d350c464527630c635a7d9607"]
 
-export let checksums_x86_64: List[Str] = [
-  "SKIP",
-]
+export let checksums_x86_64: List[Str] = ["SKIP"]
 
 pure bool_literal(value: Bool) -> Str {
   if value {
@@ -39,7 +31,7 @@ pure bool_literal(value: Bool) -> Str {
 }
 
 pure xsh_wrapper_source(real: Path, clang: Bool, cxx: Bool) -> Str {
-  let template = r"""#!/usr/local/bin/xsh
+  let template = """#!/usr/local/bin/xsh
 proc has_arg(argv: List[Str], needle: Str) [] -> Bool {
   for arg in argv {
     if arg == needle {
@@ -106,10 +98,10 @@ proc sysroot_arg(argv: List[Str]) [error] -> Result[Path] {
 
 proc rooted(root: Path, rel: Str) [error] -> Result[Path] {
   if root.display() == "/" {
-    return Path.parse(f"/${rel}")?
+    return Path.parse(f"/\${rel}")?
   }
 
-  fp"${root}/${rel}"
+  fp"\${root}/\${rel}"
 }
 
 proc source_like(arg: Str) [] -> Bool {
@@ -228,7 +220,7 @@ proc main(...argv: List[Str]) [fs, process, env, error] {
 
   if ! is_clang {
 env {
-      LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm22/lib:/lib:${env.get("LD_LIBRARY_PATH") ?? ""}"
+      LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm22/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}"
     } {
       run $real @argv ?
     } ?
@@ -243,7 +235,7 @@ env {
   let startfiles = default_startfiles(argv)
   var exec_args: List[Str] = [
     "--no-default-config",
-    f"--target=${arch}-linux-musl",
+    f"--target=\${arch}-linux-musl",
     "--sysroot=/",
     "-resource-dir",
     "/usr/lib/llvm22/lib/clang/22",
@@ -254,7 +246,7 @@ env {
 
     if is_cxx {
       exec_args = exec_args.extend(["-isystem", "/usr/lib/llvm22/include/c++/v1"])
-      let cxx_target = fp"/usr/lib/llvm22/include/${arch}-linux-musl/c++/v1"
+      let cxx_target = fp"/usr/lib/llvm22/include/\${arch}-linux-musl/c++/v1"
 
       if fs.exists(cxx_target)? {
         exec_args = exec_args.extend(["-isystem", cxx_target.display()])
@@ -314,7 +306,7 @@ env {
     exec_args = exec_args.push("-lc")
   }
 
-  let builtins = rooted(sysroot, f"usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-${arch}.a")?
+  let builtins = rooted(sysroot, f"usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-\${arch}.a")?
 
   if linking and runtime and fs.exists(builtins)? {
     exec_args = exec_args.push(builtins.display())
@@ -325,7 +317,7 @@ env {
   }
 
   env {
-    LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm22/lib:/lib:${env.get("LD_LIBRARY_PATH") ?? ""}"
+    LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm22/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}"
   } {
     run $real @exec_args ?
   } ?
@@ -334,7 +326,10 @@ env {
 main(@args)?
 """
 
-  return template.replace("__REAL__", real.display()).replace("__CLANG__", bool_literal(clang)).replace("__CXX__", bool_literal(cxx))
+  return template.replace("__REAL__", real.display()).replace("__CLANG__", bool_literal(clang)).replace(
+    "__CXX__",
+    bool_literal(cxx),
+  )
 }
 
 proc require_env_path(env_name: Str) [env, error] -> Result[Path] {
@@ -370,8 +365,8 @@ proc require_executable(path_value: Path, label: Str) [fs, error] {
   }
 }
 
-proc install_tool_alias(bin: Path, name: Str, target: Str) [fs, error] {
-  let link = fp"${bin}/${name}"
+proc install_tool_alias(bin: Path, tool_name: Str, target: Str) [fs, error] {
+  let link = fp"${bin}/${tool_name}"
 
   if fs.exists(link)? {
     return
@@ -393,7 +388,6 @@ proc install_prebuilt_tree(dest: Path) [fs, env, error] {
   fs.remove(target, missing_ok: true)?
   let _ = fs.copy_tree(source, target, parents: true, overwrite: true)?
   let bin = fp"${target}/bin"
-
   install_tool_alias(bin, "clang-22", "clang")?
   install_tool_alias(bin, "clang++", "clang")?
   install_tool_alias(bin, "ld.lld", "lld")?
@@ -420,20 +414,19 @@ proc install_prebuilt_tree(dest: Path) [fs, env, error] {
 
 export proc build(dest: Path) [fs, process, env, error] {
   install_prebuilt_tree(dest)?
-
-  write_wrapper(dest, "cc", p"/usr/lib/llvm22/bin/clang", clang: true)?
-  write_wrapper(dest, "clang", p"/usr/lib/llvm22/bin/clang", clang: true)?
-  write_wrapper(dest, "c++", p"/usr/lib/llvm22/bin/clang++", clang: true, cxx: true)?
-  write_wrapper(dest, "clang++", p"/usr/lib/llvm22/bin/clang++", clang: true, cxx: true)?
-  write_wrapper(dest, "ld", p"/usr/lib/llvm22/bin/ld.lld")?
-  write_wrapper(dest, "ld.lld", p"/usr/lib/llvm22/bin/ld.lld")?
-  write_wrapper(dest, "ar", p"/usr/lib/llvm22/bin/llvm-ar")?
-  write_wrapper(dest, "ranlib", p"/usr/lib/llvm22/bin/llvm-ranlib")?
-  write_wrapper(dest, "nm", p"/usr/lib/llvm22/bin/llvm-nm")?
-  write_wrapper(dest, "objcopy", p"/usr/lib/llvm22/bin/llvm-objcopy")?
-  write_wrapper(dest, "objdump", p"/usr/lib/llvm22/bin/llvm-objdump")?
-  write_wrapper(dest, "readelf", p"/usr/lib/llvm22/bin/llvm-readelf")?
-  write_wrapper(dest, "strip", p"/usr/lib/llvm22/bin/llvm-strip")?
+  write_wrapper(dest, "cc", /usr/lib/llvm22/bin/clang, clang: true)?
+  write_wrapper(dest, "clang", /usr/lib/llvm22/bin/clang, clang: true)?
+  write_wrapper(dest, "c++", /usr/lib/llvm22/bin/clang++, clang: true, cxx: true)?
+  write_wrapper(dest, "clang++", /usr/lib/llvm22/bin/clang++, clang: true, cxx: true)?
+  write_wrapper(dest, "ld", /usr/lib/llvm22/bin/ld.lld)?
+  write_wrapper(dest, "ld.lld", /usr/lib/llvm22/bin/ld.lld)?
+  write_wrapper(dest, "ar", /usr/lib/llvm22/bin/llvm-ar)?
+  write_wrapper(dest, "ranlib", /usr/lib/llvm22/bin/llvm-ranlib)?
+  write_wrapper(dest, "nm", /usr/lib/llvm22/bin/llvm-nm)?
+  write_wrapper(dest, "objcopy", /usr/lib/llvm22/bin/llvm-objcopy)?
+  write_wrapper(dest, "objdump", /usr/lib/llvm22/bin/llvm-objdump)?
+  write_wrapper(dest, "readelf", /usr/lib/llvm22/bin/llvm-readelf)?
+  write_wrapper(dest, "strip", /usr/lib/llvm22/bin/llvm-strip)?
 
   for tool in ["ar", "ranlib", "nm", "objcopy", "objdump", "readelf", "strip"] {
     write_wrapper(dest, f"llvm-${tool}", fp"/usr/lib/llvm22/bin/llvm-${tool}")?

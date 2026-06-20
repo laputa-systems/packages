@@ -42,7 +42,6 @@ proc write_pnp_table(root: Str) [fs, error] {
 
   records = records |> sort-by .id
   var cases = [f"    if (strcmp(key, \"${c_string(entry.id)}\") == 0) return \"${c_string(entry.name)}\";" for entry in records]
-
   let case_text = cases.join("\n")
 
   fs.write(

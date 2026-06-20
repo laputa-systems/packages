@@ -298,11 +298,7 @@ proc write_event_names() [fs, error] {
   lines = lines.extend(c_lookup_lines(defs, "input_prop", false, max_codes)?)
   lines = lines.push("};").push("")
   lines = lines.push("#endif /* EVENT_NAMES_H */")
-
-  fs.write(
-    p"event-names.h",
-    lines.join("\n"),
-  )?
+  fs.write(p"event-names.h", lines.join("\n"))?
 }
 
 proc patch_python_generator() [fs, error] {

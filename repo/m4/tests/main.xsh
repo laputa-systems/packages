@@ -7,7 +7,7 @@ pure m4_script() -> Path {
 }
 
 proc run_m4(argv: List[Str]) [process, error] -> Result[Str] {
-  return run.text (xsh_bin()) (m4_script()) -- @argv ?
+  return run.text xsh_bin() m4_script() -- @argv ?
 }
 
 proc test_prefixed_define_rescans_expansion(ctx: TestContext) [fs, process, error] {

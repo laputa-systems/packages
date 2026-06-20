@@ -73,11 +73,7 @@ proc write_format_modifier_table() [fs, error] {
   }
 
   body = body.push("};")
-
-  fs.write(
-    p"generated_static_table_fourcc.h",
-    body.join("\n"),
-  )?
+  fs.write(p"generated_static_table_fourcc.h", body.join("\n"))?
 }
 
 proc patch_python_generator() [fs, error] {

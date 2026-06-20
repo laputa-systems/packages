@@ -44,6 +44,7 @@ proc ensure_file(path_value: Path, label: Str) [fs, error] {
 proc ensure_executable(path_value: Path, label: Str) [fs, error] {
   ensure_file(path_value, label)?
   let mode = fs.metadata(path_value)?.mode % 4096
+
   ensure(
     [0o555, 0o755, 0o775, 0o777].contains(mode),
     "proof-llvm-toolchain",
@@ -65,7 +66,11 @@ proc prove_tool_linkage(root: Path, readelf: Path, tool: Path) [fs, process, err
   ensure(! program_headers.contains("ld-linux"), "proof-llvm-toolchain", f"${tool.display()} uses a glibc interpreter")?
 
   if program_headers.contains("INTERP") {
-    ensure(program_headers.contains("ld-musl"), "proof-llvm-toolchain", f"${tool.display()} does not use a musl interpreter")?
+    ensure(
+      program_headers.contains("ld-musl"),
+      "proof-llvm-toolchain",
+      f"${tool.display()} does not use a musl interpreter",
+    )?
   }
 
   let dynamic = run.text $readelf "-d" $tool ?
@@ -119,10 +124,7 @@ proc prove_public_surface(root: Path, arch: Str) [fs, process, env, error] {
   }
 
   ensure_file(fp"${root}/usr/lib/llvm22/lib/clang/22/include/stddef.h", "Clang resource headers")?
-  ensure_file(
-    fp"${root}/usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-${arch}.a",
-    "compiler-rt builtins",
-  )?
+  ensure_file(fp"${root}/usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-${arch}.a", "compiler-rt builtins")?
 }
 
 proc prove_default_compile(root: Path, arch: Str) [fs, process, env, error] {
@@ -265,10 +267,8 @@ proc prove_target_tools(root: Path, arch: Str) [fs, process, env, error] {
   let clang = fp"${root}/usr/lib/llvm22/bin/clang"
   let clang_header = run.text $readelf "-h" $clang ?
   ensure(clang_header.contains(machine), "proof-llvm-toolchain", f"clang is not ${arch}")?
-
   let cc_text = fs.read_text(cc)?
   ensure(cc_text.starts_with("#!/usr/local/bin/xsh"), "proof-llvm-toolchain", "cc wrapper is not an XSH script")?
-
   let tmp = fp"${root}/var/tmp/proof-llvm-toolchain-wrapper"
   fs.remove(tmp, missing_ok: true)?
   fs.mkdir(tmp)?

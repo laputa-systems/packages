@@ -81,10 +81,7 @@ proc preview_text(text: Str, limit: Int) [error] -> Result[Str] {
     count = count + 1
   }
 
-  return out.replace(
-    "\n",
-    "\\n",
-  )
+  return out.replace("\n", "\\n")
 }
 
 pure repeat_space(count: Int) -> Str {
@@ -688,10 +685,7 @@ pure b4_symbol_id_name(st: Map[Str], num: Str) -> Str {
   let tag = raw_tag.replace("\"", "").replace("'", "").replace("$", "").replace("[", "").replace("]", "").replace(
     " ",
     "_",
-  ).replace(
-    "\n",
-    "_",
-  ).replace("-", "_").replace("{", "_").replace("}", "_").replace(";", "_")
+  ).replace("\n", "_").replace("-", "_").replace("{", "_").replace("}", "_").replace(";", "_")
 
   if tag == "" {
     return f"symbol_${num}"
@@ -1788,7 +1782,7 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
 
   if name == "errprint" {
     let msg = if margs.len() >= 1 { margs[0] } else { "" }
-    eprint ${msg}
+    eprint $msg
     return {text: "", st}
   }
 
@@ -2330,9 +2324,7 @@ proc main(margs: List[Str] = []) [fs, process, env, error, io] {
   st["sysval"] = "0"
   st["file"] = ""
   st["line"] = "1"
-
   st["include_paths"] = include_paths.join("\n")
-
   st = register_builtins(st, prefix)?
   st = mac_set(st, "__gnu__", "")
   st = mac_set(st, "__unix__", "")

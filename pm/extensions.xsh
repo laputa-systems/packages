@@ -72,7 +72,7 @@ export proc print_extension_help() [fs, env, error] {
   }
 
   for extension in extensions {
-    print extension ${extension.name} ${extension.summary}
+    print $extension ${extension.name} ${extension.summary}
   }
 }
 
@@ -111,13 +111,7 @@ export proc invoke_extension(action: Str, ctx: PmContext, raw: List[Str]) [fs, p
     argv = argv.push(item)
   }
 
-  run_extension_process(
-    action,
-    extension.path,
-    argv,
-    raw.join("\n"),
-    ctx,
-  )?
+  run_extension_process(action, extension.path, argv, raw.join("\n"), ctx)?
 }
 
 export stream hook_paths() [env, error] -> Stream[Path] {

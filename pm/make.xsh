@@ -603,7 +603,7 @@ proc cancel_running_uncompleted(running: List[Record], completed_indices: Map[Bo
 
 proc make_progress(message: Str) [env] {
   if (env.get("XSH_MAKE_PROGRESS") ?? "") == "1" or (env.get("XSH_LINUX_KBUILD_PROGRESS") ?? "") == "1" {
-    print ${message}
+    print $message
   }
 }
 

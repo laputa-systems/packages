@@ -15,19 +15,13 @@ export let mkdeps: List[Str] = ["llvm-toolchain"]
 
 export let nostrip: Bool = true
 
-export let sources: List[Path] = [
-  p"https://musl.libc.org/releases/musl-VERSION.tar.gz",
-]
+export let sources: List[Path] = [p"https://musl.libc.org/releases/musl-VERSION.tar.gz"]
 
 export let checksums: List[Str] = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
-export let checksums_aarch64: List[Str] = [
-  "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
-]
+export let checksums_aarch64: List[Str] = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
-export let checksums_x86_64: List[Str] = [
-  "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
-]
+export let checksums_x86_64: List[Str] = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
 pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {
   let re = regex.compile(pattern)?
@@ -124,10 +118,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     }
   }
 
-  fs.write(
-    p"include/bits/alltypes.h",
-    at_lines.join("\n"),
-  )?
+  fs.write(p"include/bits/alltypes.h", at_lines.join("\n"))?
 
   # Generate include/bits/syscall.h: rename __NR_* → SYS_*.
   let syscall_in = fs.read_text(fp"arch/${arch}/bits/syscall.h.in")?
@@ -383,7 +374,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   let ar = process.which("ar")?
   let libssp = p"obj/libssp_nonshared.a"
   run $ar "rcs" $libssp ?
-
   fs.install(libssp, fp"${dest}/usr/lib/libssp_nonshared.a", 0o644, parents: true, overwrite: true)?
 
   # Install public headers from include/ (.h.in templates are excluded by the

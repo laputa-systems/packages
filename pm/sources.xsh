@@ -525,9 +525,7 @@ export proc collect_checksum_updates(
 
 export proc write_checksum_field(pkg: Package, field: Str, values: List[Str]) [fs, error] {
   let pkgbuild = fp"${pkg.dir}/PKGBUILD.xsh"
-
   let lines = fs.read_text(pkgbuild)?.split("\n")
-
   var output: List[Str] = []
   var in_block = false
   var found = false
@@ -561,8 +559,5 @@ export proc write_checksum_field(pkg: Package, field: Str, values: List[Str]) [f
     return Err(PmError.ChecksumField(f"${pkgbuild.display()} does not contain ${field}"))
   }
 
-  fs.write_atomic(
-    pkgbuild,
-    output.join("\n"),
-  )?
+  fs.write_atomic(pkgbuild, output.join("\n"))?
 }

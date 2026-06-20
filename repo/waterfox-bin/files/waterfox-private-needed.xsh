@@ -114,6 +114,6 @@ export proc verify_private_needed(
     private_sonames: report.private_sonames,
   }
 
-  print ${json.encode(json_report, pretty: true)?}
+  print (json.encode(json_report, pretty: true)?)
   report
 }

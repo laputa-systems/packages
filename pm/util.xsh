@@ -272,7 +272,7 @@ export proc parse_pm_cli(argv: List[Str]) [error] -> Result[Cli] {
     help_ext: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
   }
 
-  let parsed: Cli = args.commands(
+  let parsed: Cli = cli.commands(
     argv,
     rootless_default: "smoke",
     commands: commands,

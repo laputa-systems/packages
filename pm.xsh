@@ -851,7 +851,7 @@ proc sync_world_rels(
 
     if sync_package_rel(pkg, planned)? {
       changed += 1
-      print ${pkg.name} ${version_id(pkg.ver, pkg.rel)} "->" ${version_id(planned.ver, planned.rel)} rel-synced
+      print ${pkg.name} version_id(pkg.ver, pkg.rel) "->" version_id(planned.ver, planned.rel) rel-synced
     }
   }
 
@@ -1375,7 +1375,7 @@ proc install_world_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs
     if world_should_install_built_package(ctx.root, item)? {
       installable = installable.push(item)
     } else {
-      print ${item.pkg.name} ${world_package_id(item.pkg)} staged-by wlroots0.19-mesa
+      print ${item.pkg.name} world_package_id(item.pkg) staged-by $wlroots0.19-mesa
     }
   }
 
@@ -1692,7 +1692,7 @@ proc publish_built_package(
 
   let updated = upsert_remote_package(index, entry)?
   run_lifecycle_hooks("post-upload", item.pkg.name, upload_ctx, "")?
-  print ${item.pkg.name} ${version_id(item.pkg.ver, item.pkg.rel)} published
+  print ${item.pkg.name} version_id(item.pkg.ver, item.pkg.rel) published
   updated
 }
 
@@ -1996,7 +1996,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
         )? {
           built_names[pkg.name] = true
           unchanged_names[pkg.name] = true
-          print ${pkg.name} ${id} unchanged
+          print ${pkg.name} $id unchanged
         } else if recorded_built.contains(id) and recorded_proofed.contains(id) and world_stage_package_present_in_roots(
           root,
           build_root,
@@ -2004,7 +2004,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
           cross_build,
         )? {
           built_names[pkg.name] = true
-          print ${pkg.name} ${id} staged
+          print ${pkg.name} $id staged
         } else {
           var build_dependency_names = effective_world_build_dependencies(pkg, cross_build)
 
@@ -2099,7 +2099,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
                 built_names[original_pkg.name] = true
                 unchanged_names[original_pkg.name] = true
                 unchanged = true
-                print ${original_pkg.name} ${world_package_id(original_pkg)} metadata unchanged
+                print ${original_pkg.name} world_package_id(original_pkg) metadata $unchanged
               }
             }
           }
@@ -2318,7 +2318,7 @@ proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, error] {
 
   for entry in export_index {
     if remote_export_entry_same(remote_index, entry) {
-      print ${entry.arch} ${entry.name} ${version_id(entry.ver, entry.rel)} already-exported
+      print ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) already-exported
       continue
     }
 
@@ -2361,11 +2361,11 @@ proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, error] {
     }
 
     remote_index = upsert_remote_package(remote_index, uploaded)?
-    print ${entry.arch} ${entry.name} ${version_id(entry.ver, entry.rel)} exported
+    print ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) exported
   }
 
   write_remote_index_to_repo(repo, work, out, remote_index, token)?
-  print repo export uploaded
+  print $repo export uploaded
 }
 
 pure supports_repo_default_context(command: Str) -> Bool {
@@ -2564,10 +2564,12 @@ proc main(...argv: List[Str]) [fs, net, process, env, time, error] {
   if a.len() >= 1 and a[0] == "--" {
     var shifted: List[Str] = []
     var i = 1
+
     while i < a.len() {
       shifted = shifted.push(a[i])
       i += 1
     }
+
     a = shifted
   }
 

@@ -40,10 +40,7 @@ proc drop_prefix(text: Str, prefix: Str) [error] -> Result[Str] {
 }
 
 pure c_quote(text: Str) -> Str {
-  return text.replace("\\", "\\\\").replace("\"", "\\\"").replace(
-    "\n",
-    "\\n",
-  )
+  return text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
 }
 
 pure c_ident(name: Str) -> Str {
@@ -275,7 +272,6 @@ pure token_code_expr(symbol: Str, tokens: Map[Int]) -> Str {
 
 proc generate_token_defines(tokens: Map[Int]) [error] -> Result[Str] {
   var lines = [f"#define ${name} ${tokens.get(name, 0)}" for name in tokens.keys() if ! name.starts_with("'")]
-
   return lines.join("\n")
 }
 
@@ -354,9 +350,7 @@ proc token_enum_lines(names: List[Str]) [error] -> Result[List[Str]] {
 proc generate_linux_header(decls: Str, tokens: Map[Int]) [error] -> Result[Str] {
   let _ = tokens
   let names = parse_token_names(decls)?
-
   let enum_body = token_enum_lines(names)?.join("\n")
-
   let union_body = extract_union_body(decls)?
 
   let location = if has_locations(decls) {

@@ -46,10 +46,7 @@ proc drop_prefix(text: Str, prefix: Str) [error] -> Result[Str] {
 }
 
 pure c_quote(text: Str) -> Str {
-  return text.replace("\\", "\\\\").replace("\"", "\\\"").replace(
-    "\n",
-    "\\n",
-  )
+  return text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
 }
 
 proc lex_literal_to_regex(raw: Str) [error] -> Result[Str] {

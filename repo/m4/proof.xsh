@@ -17,7 +17,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, error] {
 """,
   )?
 
-  let out = run.text (m4.display()) (fp"${tmp}/test.m4".display()) ?
+  let out = run.text m4.display() fp"${tmp}/test.m4".display() ?
   let trimmed = out.trim()
 
   if trimmed != "hello from m4" {

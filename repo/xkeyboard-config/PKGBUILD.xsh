@@ -42,7 +42,6 @@ proc merged_rules(ruleset: Str) [fs, error] -> Result[Str] {
 
   for part in rule_parts(ruleset)? {
     let lines = part.read_text()?.split("\n")
-
     var start = 0
 
     if lines.len() > 0 and lines[0].starts_with("! ") {

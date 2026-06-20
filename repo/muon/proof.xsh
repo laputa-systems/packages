@@ -13,7 +13,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   proof.target_elf(rootfs, p"usr/bin/muon", "muon")?
 
   if pm_util.build_arch()? == pm_util.target_arch()? {
-    let out = run.text (muon.display()) "version" ?
+    let out = run.text muon.display() "version" ?
     let trimmed = out.trim()
 
     if trimmed == "" {

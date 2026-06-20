@@ -251,11 +251,7 @@ proc write_sysdeps_h(target: Str, sysdeps: Map[Str]) [fs, error] {
   }
 
   lines = lines.push("#endif")
-
-  fs.write(
-    p"skalibs/src/include/skalibs/sysdeps.h",
-    lines.join("\n"),
-  )?
+  fs.write(p"skalibs/src/include/skalibs/sysdeps.h", lines.join("\n"))?
 }
 
 proc write_uint_header(bits: Int, dfmt: Str, ofmt: Str, xfmt: Str, bfmt: Str, sysdeps: Map[Str]) [fs, error] {

@@ -828,7 +828,7 @@ set (CMAKE_INSTALL_RPATH "$ORIGIN/../lib" CACHE STRING "Runtime library search p
         let err_log = fp"CMakeFiles/CMakeError.log"
 
         if fs.exists(err_log)? {
-          print ${fs.read_text(err_log)?}
+          print (fs.read_text(err_log)?)
         }
 
         Err(ScriptError.Failed("cmake-configure-failed", "bootstrap cmake configure failed"))?

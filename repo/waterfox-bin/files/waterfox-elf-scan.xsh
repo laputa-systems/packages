@@ -149,6 +149,6 @@ export proc scan_waterfox_elf(
     external: report.external,
   }
 
-  print ${json.encode(json_report, pretty: true)?}
+  print (json.encode(json_report, pretty: true)?)
   report
 }

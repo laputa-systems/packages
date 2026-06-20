@@ -1398,7 +1398,6 @@ export proc prune_inactive_objects(
   var objects = [obj for obj in plan.objects if active.get(path_key(obj), false)]
   var composites = [composite for composite in plan.composites if active.get(path_key(composite.object), false)]
   var lib_objects = [obj for obj in plan.lib_objects if active.get(path_key(obj), false)]
-
   return {...plan, objects: objects, lib_objects: lib_objects, composites: composites}
 }
 
@@ -1789,7 +1788,6 @@ export proc refresh_plan_composite_members(
   }
 
   var top_objects = [obj for obj in plan.objects if ! member_paths.get(path_key(obj), false)]
-
   return normalize_plan({...plan, objects: top_objects, composites: composites})
 }
 
@@ -1909,7 +1907,7 @@ proc emit_discover_progress(root: Path, options: DiscoverOptions, state: Discove
 """,
       )?
 
-      print ${message}
+      print $message
     }
   }
 }
@@ -1922,7 +1920,7 @@ proc emit_stage_progress(root: Path, options: DiscoverOptions, message: Str) [fs
 """,
     )?
 
-    print ${message}
+    print $message
   }
 }
 
@@ -3324,7 +3322,7 @@ export proc generate_crc32table_header(root: Path, cc: Path) [fs, process, env, 
     return Err(ScriptError.Failed("linux-crc32table-compile", f"command failed: ${argv.join(" ")}"))
   }
 
-  let output = run.text (gen.display()) ?
+  let output = run.text gen.display() ?
   write_text_if_changed(fp"${root}/lib/crc/crc32table.h", output)?
 }
 
@@ -3380,7 +3378,7 @@ export proc generate_raid6_sources(root: Path, cc: Path) [fs, process, env, erro
     return Err(ScriptError.Failed("linux-raid6-mktables-compile", f"command failed: ${argv.join(" ")}"))
   }
 
-  write_text_if_changed(fp"${root}/lib/raid6/tables.c", run.text (gen.display())?)?
+  write_text_if_changed(fp"${root}/lib/raid6/tables.c", run.text gen.display()?)?
 }
 
 pure dir_archive(dir: Path) -> Path {
@@ -4308,13 +4306,13 @@ proc write_gzip_store(input: Path, out: Path) [fs, error] {
 
 proc append_x86_relocs(relocs: Path, input: Path, out: Path) [fs, process, error] {
   let input_text = input.display()
-  let reloc_data = run.capture --bytes (relocs.display()) $input_text ?
+  let reloc_data = run.capture --bytes relocs.display() $input_text ?
 
   if ! reloc_data.status.ok {
     return Err(ScriptError.Failed("linux-x86-relocs", f"relocs failed for ${input.display()}"))?
   }
 
-  let abs_relocs = run.capture --bytes (relocs.display()) "--abs-relocs" $input_text ?
+  let abs_relocs = run.capture --bytes relocs.display() "--abs-relocs" $input_text ?
 
   if ! abs_relocs.status.ok {
     return Err(ScriptError.Failed("linux-x86-relocs", f"relocs --abs-relocs failed for ${input.display()}"))?
@@ -4328,7 +4326,7 @@ proc write_x86_voffset_header(nm: Path, input: Path) [fs, process, error] {
     "^([0-9a-fA-F]+) [ABbCDGRSTtVW] (_text|__start_rodata|_sinittext|__inittext_end|__bss_start|_end)$",
   )?
 
-  let symbols = run.text (nm.display()) (input.display()) ?
+  let symbols = run.text nm.display() input.display() ?
   var lines: List[Str] = []
 
   for raw in symbols.lines() {
@@ -4355,7 +4353,7 @@ proc write_x86_zoffset_header(nm: Path, input: Path) [fs, process, error] {
     "^([0-9a-fA-F]+) [a-zA-Z] (startup_32|efi.._stub_entry|efi(32)?_pe_entry|input_data|kernel_info|_end|_ehead|_text|_e?data|_e?sbat|z_.*)$",
   )?
 
-  let symbols = run.text (nm.display()) (input.display()) ?
+  let symbols = run.text nm.display() input.display() ?
   var lines: List[Str] = []
 
   for raw in symbols.lines() {
@@ -4540,7 +4538,7 @@ proc build_x86_compressed_kernel(
   append_x86_relocs(relocs, vmlinux, kernel_all)?
   write_gzip_store(kernel_all, kernel_gz)?
   run $cc "-O2" "-std=gnu11" "-Wall" "-I./tools/include" "-o" $mkpiggy "arch/x86/boot/compressed/mkpiggy.c" ?
-  let piggy_text = run.text (mkpiggy.display()) (kernel_gz.display()) ?
+  let piggy_text = run.text mkpiggy.display() kernel_gz.display() ?
   write_text_if_changed(piggy_s, piggy_text)?
   write_x86_voffset_header(nm, unstripped)?
   preprocess_x86_boot_lds(cc, fp"${compressed}/vmlinux.lds.S", compressed_lds, x86_linker_script_includes())?
@@ -5277,7 +5275,7 @@ export proc run_builtin_archive_plan(
   jobs_count: Int,
 ) [fs, process, env, error] -> Result[List[Path]] {
   if archive_plan.missing_sources.len() > 0 {
-    print xsh-kbuild-missing-objects ${archive_plan.missing_sources.len()} tolerated
+    print xsh-kbuild-missing-objects archive_plan.missing_sources.len() tolerated
   }
 
   if archive_plan.generated_objects.len() > 0 {
@@ -5602,7 +5600,7 @@ proc x86_jump_label_helper_source() [fs, error] -> Result[Path] {
   }
 
   if p"../pkg/files/x86-jump-label-patch.c".exists()? {
-    return p"../pkg/files/x86-jump-label-patch.c"
+    return ../pkg/files/x86-jump-label-patch.c
   }
 
   return Err(ScriptError.Failed("kbuild-x86-jump-label-helper", "missing x86-jump-label-patch.c"))
@@ -5646,7 +5644,6 @@ pure parse_jump_label_helper_summary(line: Str) -> JumpLabelPatchResult {
 export proc patch_x86_jump_label_outputs(outputs: List[Path]) [fs, process, error] -> Result[Record] {
   let helper = x86_jump_label_helper()?
   var argv = [output.display() for output in outputs if output.exists()?]
-
   archive_plan_progress(f"xsh-kbuild-x86-jump-label-scan start ${argv.len()} objects")?
   let output = run.text $helper @argv ?
   let summary = parse_jump_label_helper_summary(output.trim())
@@ -5682,7 +5679,6 @@ pure archive_rerun_tasks(tasks: List[Record]) -> List[Record] {
   for task in tasks {
     continue unless has_archive_output(task)
     var deps = [dep for dep in task.deps if archive_names.get(dep, false)]
-
     rerun = rerun.push({...task, deps})
   }
 
@@ -5712,7 +5708,7 @@ export proc patch_x86_jump_label_archive_plan(archive_plan: Record, jobs_count: 
   let patches: Int = result.get("patches")?
 
   if patches > 0 {
-    print xsh-kbuild-x86-jump-label-nops ${patches} in ${objects} objects
+    print xsh-kbuild-x86-jump-label-nops $patches in $objects $objects
     rerun_x86_jump_label_archives(archive_plan.tasks, jobs_count)?
   }
 }
