@@ -86,10 +86,18 @@ source-built packages for ordinary libraries and tools.
 
 The durable C/C++ toolchain contract is LLVM plus musl, not GNU runtime
 compatibility. Packages must not depend on `libgcc`, `libgcc_s`, or
-`libstdc++`, and the package manager must not add those libraries as implicit
-compiler defaults. When an upstream build assumes GNU runtime pieces, patch the
-package or wrapper invocation to use the Laputa LLVM/musl surface instead of
-reintroducing GNU compatibility libraries.
+`libstdc++` as runtime dependencies, and the package manager must not add those
+libraries as implicit compiler defaults. When an upstream build assumes GNU
+runtime pieces, patch the package or wrapper invocation to use the Laputa
+LLVM/musl surface instead of reintroducing GNU compatibility libraries.
+
+The `llvm-toolchain` package itself may provide narrow GNU-compatibility stubs
+(`crtbeginS.o`, `crtendS.o`, `libgcc_s.so`) built from the prebuilt LLVM
+tree's own `libunwind.a`. These stubs exist for packages (e.g. `sudo-rs`) that
+hard-code GNU runtime object or library names and cannot be patched around
+practically. They are toolchain-owned implementation details, not a separate
+compatibility layer, and must not grow into a general `libgcc` replacement.
+Packages that can build without them should do so.
 
 Runtime `deps` should mean installed files needed by installed files. `mkdeps`
 should mean executable build tools. `target_build_deps` should mean target-side
