@@ -18,7 +18,7 @@ export let checksums: List[Str] = ["a098c33924754ad43f981b740f6d576c70f9ed1006e1
 proc patch_musl_math() [fs, error] {
   let meson = p"meson.build"
 
-  meson.write_atomic(
+  fs.write(meson, 
     meson.read_text()?.replace(
       "dep_m = cc.find_library('m', required : false)",
       "dep_m = declare_dependency(link_args : ['-lm'])",

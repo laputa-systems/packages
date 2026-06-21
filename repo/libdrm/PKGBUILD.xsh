@@ -93,7 +93,7 @@ format_mod_static_table = custom_target(
 """,
   )
 
-  meson.write_atomic(text)?
+  fs.write(meson, text)?
 }
 
 export proc build(dest: Path) [fs, process, env, error] {

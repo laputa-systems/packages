@@ -146,7 +146,7 @@ proc patch_build(root: Str) [fs, error] {
   write_shader_headers()?
   let meson = p"meson.build"
 
-  meson.write_atomic(
+  fs.write(meson, 
     meson.read_text()?.replace(
       """math = cc.find_library('m')
 rt = cc.find_library('rt')""",
@@ -158,7 +158,7 @@ rt = declare_dependency()""",
 
   let drm_meson = p"backend/drm/meson.build"
 
-  drm_meson.write_atomic(
+  fs.write(drm_meson, 
     drm_meson.read_text()?.replace(
       """pnpids_c = custom_target(
 	'pnpids.c',
@@ -176,7 +176,7 @@ rt = declare_dependency()""",
 
   let protocol_meson = p"protocol/meson.build"
 
-  protocol_meson.write_atomic(
+  fs.write(protocol_meson, 
     protocol_meson.read_text()?.replace(
       """	'xwayland-shell-v1': wl_protocol_dir / 'staging/xwayland-shell/xwayland-shell-v1.xml',
 """,
@@ -186,7 +186,7 @@ rt = declare_dependency()""",
 
   let renderer = p"render/gles2/renderer.c"
 
-  renderer.write_atomic(
+  fs.write(renderer, 
     renderer.read_text()?.replace(
       """#include "common_vert_src.h"
 #include "quad_frag_src.h"
@@ -205,7 +205,7 @@ rt = declare_dependency()""",
 
   let shader_meson = p"render/gles2/shaders/meson.build"
 
-  shader_meson.write_atomic(
+  fs.write(shader_meson, 
     shader_meson.read_text()?.replace(
       """embed = find_program('./embed.sh', native: true)
 
@@ -330,7 +330,7 @@ exec "${build_root}/usr/bin/wayland-scanner" "$@"
       ninja_text = ninja_text.replace("../../../../root/usr/bin/wayland-scanner", scanner_text)
       ninja_text = ninja_text.replace("../../../../build-root/usr/bin/wayland-scanner", scanner_text)
       ninja_text = ninja_text.replace(f"${build_root}/usr/bin/wayland-scanner", scanner_text)
-      ninja.write_atomic(ninja_text)?
+      fs.write(ninja, ninja_text)?
     }
 
     run $muon "-C" "build" samu $jobs_flag ?

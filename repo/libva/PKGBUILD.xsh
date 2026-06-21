@@ -19,7 +19,7 @@ export let checksums: List[Str] = ["e3da2250654c8d52b3f59f8cb3f3d8e7fb1a2ee64378
 
 export proc process_sources(src: Path) [fs, error] {
   let trace = fp"${src}/va/va_trace.c"
-  trace.write_atomic(trace.read_text()?.replace("syscall(__NR_gettid)", "syscall(SYS_gettid)"))?
+  fs.write(trace, trace.read_text()?.replace("syscall(__NR_gettid)", "syscall(SYS_gettid)"))?
 }
 
 proc prune_install(dest: Path) [fs, error] {
@@ -62,7 +62,7 @@ exec "${build_root}/usr/bin/wayland-scanner" "$@"
       fs.chmod(native_scanner_wrapper, 0o755)?
       let ninja = p"build/build.ninja"
       let scanner_text = native_scanner_wrapper.display()
-      ninja.write_atomic(ninja.read_text()?.replace("../../../../root/usr/bin/wayland-scanner", scanner_text))?
+      fs.write(ninja, ninja.read_text()?.replace("../../../../root/usr/bin/wayland-scanner", scanner_text))?
     }
 
     run $muon "-C" "build" samu $jobs_flag ?

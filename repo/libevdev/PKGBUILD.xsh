@@ -331,7 +331,7 @@ dep_lm = declare_dependency(link_args: ['-lm'])""",
 dep_rt = declare_dependency()""",
   )
 
-  meson.write_atomic(text)?
+  fs.write(meson, text)?
 }
 
 export proc build(dest: Path) [fs, process, env, error] {

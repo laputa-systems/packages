@@ -29,7 +29,7 @@ prog_scanner = find_program(dep_scanner.get_variable(pkgconfig: 'wayland_scanner
 """
 
   if text.contains(scanner_old) {
-    build_file.write_atomic(text.replace(scanner_old, ""))?
+    fs.write(build_file, text.replace(scanner_old, ""))?
   }
 
   text = fs.read_text(build_file)?
@@ -41,7 +41,7 @@ if dep_scanner.version().version_compare('>=1.22.90')
 endif"""
 
   if text.contains(old) {
-    build_file.write_atomic(text.replace(old, "include_dirs = []"))?
+    fs.write(build_file, text.replace(old, "include_dirs = []"))?
   }
 }
 

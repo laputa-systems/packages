@@ -161,7 +161,7 @@ run(char *startup_cmd)
 """,
   )
 
-  source.write_atomic(text)?
+  fs.write(source, text)?
 }
 
 proc write_config() [fs, error] {
@@ -188,7 +188,7 @@ static const char *browsercmd[] = { "/usr/bin/waterfox", NULL };
 """,
   )
 
-  p"config.h".write_atomic(config)?
+  fs.write(p"config.h", config)?
 }
 
 export proc build(dest: Path) [fs, process, env, error] {

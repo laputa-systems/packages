@@ -71,7 +71,7 @@ version = files('version.h')
 """,
   )
 
-  meson.write_atomic(text)?
+  fs.write(meson, text)?
 }
 
 export proc build(dest: Path) [fs, process, env, error] {

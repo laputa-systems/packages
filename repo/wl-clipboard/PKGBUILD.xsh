@@ -66,7 +66,7 @@ exec "${build_root}/usr/bin/wayland-scanner" "$@"
       ninja_text = ninja_text.replace("../../../../root/usr/bin/wayland-scanner", scanner_text)
       ninja_text = ninja_text.replace("../../../../build-root/usr/bin/wayland-scanner", scanner_text)
       ninja_text = ninja_text.replace(f"${build_root}/usr/bin/wayland-scanner", scanner_text)
-      ninja.write_atomic(ninja_text)?
+      fs.write(ninja, ninja_text)?
     }
 
     run $muon "-C" "build" samu $jobs_flag ?

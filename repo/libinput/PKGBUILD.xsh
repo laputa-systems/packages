@@ -82,7 +82,7 @@ endif
     "",
   )
 
-  meson.write_atomic(text)?
+  fs.write(meson, text)?
 }
 
 export proc build(dest: Path) [fs, process, env, error] {
@@ -105,7 +105,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
     if target_root != "" and target_root != "/" {
       let ninja = p"build/build.ninja"
-      ninja.write_atomic(ninja.read_text()?.replace(" -Wl,--end-group", f" -Wl,--end-group ${builtins}"))?
+      fs.write(ninja, ninja.read_text()?.replace(" -Wl,--end-group", f" -Wl,--end-group ${builtins}"))?
     }
 
     run $muon "-C" "build" samu $jobs_flag ?

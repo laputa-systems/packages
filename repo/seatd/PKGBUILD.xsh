@@ -93,7 +93,7 @@ proc patch_realtime_dependency() [fs, error] {
   let meson = p"meson.build"
   let text = fs.read_text(meson)?
 
-  fs.write_atomic(
+  fs.write(
     meson,
     text.replace(
       """# needed for cross-compilation

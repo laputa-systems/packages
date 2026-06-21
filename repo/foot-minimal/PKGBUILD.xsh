@@ -173,7 +173,7 @@ srgb_funcs = files('srgb.c', 'srgb.h')
   text = text.replace("subdir('completions')", "")
   text = text.replace("subdir('icons')", "")
   text = text.replace("subdir('utils')", "")
-  meson.write_atomic(text)?
+  fs.write(meson, text)?
 }
 
 proc write_minimal_config(dest: Path) [fs, error] {
@@ -231,7 +231,7 @@ exec "${build_root}/usr/bin/wayland-scanner" "$@"
       ninja_text = ninja_text.replace("../../../../root/usr/bin/wayland-scanner", scanner_text)
       ninja_text = ninja_text.replace("../../../../build-root/usr/bin/wayland-scanner", scanner_text)
       ninja_text = ninja_text.replace(f"${build_root}/usr/bin/wayland-scanner", scanner_text)
-      ninja.write_atomic(ninja_text)?
+      fs.write(ninja, ninja_text)?
     }
 
     run $muon "-C" "build" samu $jobs_flag ?

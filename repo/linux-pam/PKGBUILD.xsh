@@ -34,7 +34,7 @@ endif
 """,
   )
 
-  root_build.write_atomic(root_text)?
+  fs.write(root_build, root_text)?
   let modules_build = p"modules/meson.build"
 
   let modules_text = modules_build.read_text()?.replace(
@@ -43,7 +43,7 @@ endif
     "",
   )
 
-  modules_build.write_atomic(modules_text)?
+  fs.write(modules_build, modules_text)?
 }
 
 export proc build(dest: Path) [fs, process, env, error] {

@@ -62,10 +62,10 @@ proc patch_python_generator() [fs, error] {
 """,
   )
 
-  meson_path.write_atomic(patched)?
+  fs.write(meson_path, patched)?
   let root_meson = p"meson.build"
 
-  root_meson.write_atomic(
+  fs.write(root_meson, 
     root_meson.read_text()?.replace(
       """	rt_dep = []
 	if not cc.has_function('clock_gettime', prefix: '#include <time.h>')
@@ -81,7 +81,7 @@ proc patch_python_generator() [fs, error] {
     ),
   )?
 
-  meson_path.write_atomic(
+  fs.write(meson_path, 
     meson_path.read_text()?.replace(
       "\tmathlib_dep = cc.find_library('m', required: false)",
       "\tmathlib_dep = declare_dependency(link_args: ['-lm'])",
@@ -131,7 +131,7 @@ exec "${native_scanner_path.display()}" "$@"
       fs.chmod(native_scanner_wrapper, 0o755)?
       let ninja = p"build/build.ninja"
       let scanner_text = native_scanner_wrapper.display()
-      ninja.write_atomic(ninja.read_text()?.replace(" -- src/wayland-scanner ", f" -- ${scanner_text} "))?
+      fs.write(ninja, ninja.read_text()?.replace(" -- src/wayland-scanner ", f" -- ${scanner_text} "))?
     }
 
     run $muon "-C" "build" samu $jobs_flag ?

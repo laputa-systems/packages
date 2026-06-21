@@ -102,7 +102,7 @@ proc order_repo_build_packages(
 }
 
 pure world_dependency_is_seeded(pkg: Package, dep: Str, cross_build: Bool) -> Bool {
-  ! cross_build and pkg.name == "musl" and (dep == "llvm-toolchain" or dep == "zlib")
+  ! cross_build and (pkg.name == "musl" and (dep == "llvm-toolchain" or dep == "zlib") or pkg.name == "gnu-stubs" and dep == "llvm-toolchain")
 }
 
 proc order_world_build_packages(
