@@ -1,9 +1,11 @@
 error ChrootRunError = Failed(message: Str)
 
-proc main(root: Path, ...argv: List[Str]) [fs, process, env, error] {
+proc main(root: Path, package_name: Str, ...argv: List[Str]) [fs, process, env, error] {
   if argv.len() == 0 {
     return Err(ChrootRunError.Failed("missing command"))?
   }
+
+  print f"building ${package_name}"
 
   linux.chroot(root)?
   let root_dir = /
@@ -52,7 +54,7 @@ proc main(root: Path, ...argv: List[Str]) [fs, process, env, error] {
         abort(status.exit_code()?)
       }
 
-      return Err(ChrootRunError.Failed(f"${argv[0]} was signaled"))?
+      return Err(ChrootRunError.Failed(f"${package_name}: ${argv[0]} was signaled"))?
     } ?
   } ?
 }

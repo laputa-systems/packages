@@ -1023,6 +1023,7 @@ proc build_packages_in_chroot(
       host_chroot_runner.display(),
       "--",
       chroot_root.display(),
+      pkg.name,
       "/usr/local/bin/xsh",
       "/usr/lib/pm/pm.xsh",
       "--",
@@ -1516,7 +1517,7 @@ proc run_package_proof(
       XSH_PM_TARGET_ARCH = target_arch
       SHELL = "/usr/local/bin/xshi"
     } {
-      run $xsh $host_chroot_runner "--" $proof_root "/usr/local/bin/xsh" fp"/var/tmp/pm-proof/${pkg.name}/proof.xsh" "--" "/" ?
+      run $xsh $host_chroot_runner "--" $proof_root $pkg.name "/usr/local/bin/xsh" fp"/var/tmp/pm-proof/${pkg.name}/proof.xsh" "--" "/" ?
     } ?
   } else {
     env {

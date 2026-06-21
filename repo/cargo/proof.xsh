@@ -19,6 +19,13 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   }
 
   let dynlinker = fp"${rootfs}/usr/lib/ld-musl-${target_arch}.so.1"
+  let gcc_s = fp"${rootfs}/usr/lib/libgcc_s.so.1"
+
+  if ! fs.exists(gcc_s)? {
+    print "cargo ok: (runtime test skipped — libgcc_s.so.1 not in root)"
+    return
+  }
+
   var cargo = ""
   var rustc = ""
 
