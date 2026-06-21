@@ -19,9 +19,8 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   let arch = os.machine
   let dynlinker = fp"${rootfs}/usr/lib/ld-musl-${arch}.so.1"
   let dropbearkey = fp"${rootfs}/usr/bin/dropbearkey"
-  let tmp_root = fs.tempdir()?
-  defer fs.close_root(tmp_root)?
-  let tmp = fs.root_path(tmp_root)?
+  let tmp = p"/tmp/dropbear-proof"
+  fs.mkdir(tmp)?
 
   # RSA: exercises libtommath (big-integer arithmetic) + libtomcrypt (RSA ops).
   let rsa_key = fp"${tmp}/host_rsa"

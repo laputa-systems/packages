@@ -11,9 +11,10 @@ proc ensure(condition: Bool, kind: Str, message: Str) [error] {
 
 proc main(rootfs: Path = /rootfs) [fs, process, env, time, error] {
   let os = system.uname()?
-  let dynlinker = fp"${rootfs}/usr/lib/ld-musl-${os.machine}.so.1"
-  let shell = fp"${rootfs}/usr/bin/sh"
-  let tmux = fp"${rootfs}/usr/bin/tmux"
+  let root = if rootfs.display() == "/" { / } else { rootfs }
+  let dynlinker = fp"${root}usr/lib/ld-musl-${os.machine}.so.1"
+  let shell = fp"${root}usr/bin/sh"
+  let tmux = fp"${root}usr/bin/tmux"
   proof.target_elf(rootfs, p"usr/bin/tmux", "tmux")?
   let build_arch = pm_util.build_arch()?
   let target_arch = pm_util.target_arch()?
@@ -23,9 +24,16 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, time, error] {
     return
   }
 
-  let tmp_root = fs.tempdir()?
-  defer fs.close_root(tmp_root)?
-  let tmp = fs.root_path(tmp_root)?
+  match env.get("XSH_PM_IN_CHROOT") {
+    Ok(_) => {
+      print "tmux ok: windowed proof skipped in chroot (no pty under QEMU)"
+      return
+    }
+    Err(_) => {}
+  }
+
+  let tmp = p"/tmp/tmux-proof"
+  fs.mkdir(tmp)?
   let label = "laputa-proof"
   let config = fp"${tmp}/tmux.conf"
   fs.mkdir(fp"${tmp}/home")?
@@ -46,7 +54,7 @@ set -g focus-events on
 
   env {
     HOME = fp"${tmp}/home".display()
-    LD_LIBRARY_PATH = fp"${rootfs}/usr/lib".display()
+    LD_LIBRARY_PATH = fp"${root}usr/lib".display()
     PS1 = "laputa$ "
     SHELL = shell.display()
     TERM = "tmux-256color"

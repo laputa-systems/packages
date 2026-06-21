@@ -213,6 +213,7 @@ export pure package_with_extract_install(pkg: Package, extract_install: Bool) ->
     deps: pkg.deps,
     mkdeps: pkg.mkdeps,
     target_build_deps: pkg.target_build_deps,
+    replaces: pkg.replaces,
     sources: pkg.sources,
     checksums: pkg.checksums,
     nostrip: pkg.nostrip,
@@ -352,7 +353,7 @@ export proc ensure_installable(root: Path, pkg: Package, manifest: List[Path], i
     if installed_owners.has(key) {
       let owner: Str = installed_owners.get(key)?
 
-      if owner != pkg.name and ! can_replace_installed_owner(pkg, owner) {
+      if owner != pkg.name and ! pkg.replaces.contains(owner) {
         return Err(PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
       }
     } else if fs.exists(fp"${root}/${rel_path}")? and ! is_etc_file(rel_path) {
@@ -367,18 +368,6 @@ export proc ensure_installable(root: Path, pkg: Package, manifest: List[Path], i
       return Err(PmError.DirtyFilesystem(msg))
     }
   }
-}
-
-pure can_replace_installed_owner(pkg: Package, owner: Str) -> Bool {
-  if pkg.name == "llvm-toolchain" {
-    return owner == "ca-certificates" or owner == "libffi"
-  }
-
-  if owner != "llvm-toolchain" {
-    return pkg.name == "wlroots0.19-mesa" and owner == "wlroots0.19-minimal"
-  }
-
-  return pkg.name == "ca-certificates" or pkg.name == "libffi"
 }
 
 export proc install_etc_file(
@@ -438,7 +427,7 @@ export proc install_manifest_entries(
     if installed_owners.has(key) {
       let owner: Str = installed_owners.get(key)?
 
-      if owner == pkg.name or can_replace_installed_owner(pkg, owner) {
+      if owner == pkg.name or pkg.replaces.contains(owner) {
         overwrite = true
       }
     }
@@ -528,6 +517,7 @@ export proc write_package_db(root: Path, pkg: Package, manifest: List[Path], etc
       deps: pkg.deps,
       mkdeps: pkg.mkdeps,
       target_build_deps: pkg.target_build_deps,
+      replaces: pkg.replaces,
       nostrip: pkg.nostrip,
       extract_install: pkg.extract_install,
       dir: pkg.dir.display(),
@@ -582,6 +572,7 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
     let checksums = select_checksums(exports, base_checksums)?
     var nostrip = false
     var extract_install = false
+    var replaces: List[Str] = []
 
     if exports.has("target_build_deps") {
       target_build_deps = exports.get("target_build_deps")?
@@ -595,6 +586,10 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
     if exports.has("extract_install") {
       let value: Bool = exports.get("extract_install")?
       extract_install = value
+    }
+
+    if exports.has("replaces") {
+      replaces = exports.get("replaces")?
     }
 
     if name == "" {
@@ -625,6 +620,7 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
         deps,
         mkdeps,
         target_build_deps,
+        replaces,
         sources,
         checksums,
         nostrip,
@@ -1304,10 +1300,8 @@ proc seed_chroot_device_paths(root: Path) [fs, error] {
   }
 
   let dev_fd = fp"${root}/dev/fd"
-
-  if ! fs.exists(dev_fd)? {
-    fs.symlink(/proc/self/fd, dev_fd)?
-  }
+  fs.remove(dev_fd, missing_ok: true)?
+  fs.symlink(/proc/self/fd, dev_fd)?
 }
 
 proc mount_package_proof_devpts(proof_root: Path) [fs, process, error] -> Result[Path] {
@@ -1485,7 +1479,7 @@ proc run_package_proof(
     } else {
       let owner: Str = installed_owners.get(key)?
 
-      if can_replace_installed_owner(pkg, owner) {
+      if pkg.replaces.contains(owner) {
         fs.remove(fp"${proof_root}/${rel_path}", missing_ok: true)?
       }
     }

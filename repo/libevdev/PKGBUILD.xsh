@@ -10,9 +10,9 @@ export let deps: List[Str] = ["musl", "linux"]
 
 export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "pkgconf"]
 
-export let sources: List[Path] = [p"https://www.freedesktop.org/software/libevdev/libevdev-VERSION.tar.xz"]
+export let sources: List[Path] = [p"https://gitlab.freedesktop.org/libevdev/libevdev/-/archive/libevdev-VERSION/libevdev-libevdev-VERSION.tar.gz"]
 
-export let checksums: List[Str] = ["73f215eccbd8233f414737ac06bca2687e67c44b97d2d7576091aa9718551110"]
+export let checksums: List[Str] = ["54748fded25633399a8418d7c4c123fe365037c901b4389e0bf3dd7688fb1c7e"]
 
 type EventDef = {attr: Str, value: Int, name: Str}
 

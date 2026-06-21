@@ -209,9 +209,8 @@ proc main(rootfs: Path = /rootfs, port: Int = 22222) [fs, process, env, time, er
   let log_dir = fp"${rootfs}/var/log/dropbear"
   let chroot = process.which("chroot")?
   let timeout_bin = process.which("timeout")?
-  let tmp_root = fs.tempdir()?
-  defer fs.close_root(tmp_root)?
-  let tmp = fs.root_path(tmp_root)?
+  let tmp = p"/tmp/dropbear-proof-xinit"
+  fs.mkdir(tmp)?
 
   ensure(
     fs.exists(fp"${rootfs}/usr/local/bin/xsh")?,

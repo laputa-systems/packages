@@ -4,13 +4,15 @@ export let name: Str = "seatd"
 
 export let ver: Str = "0.9.3"
 
-export let rel: Str = "3"
+export let rel: Str = "4"
 
-export let deps: List[Str] = ["musl", "libseat"]
+export let deps: List[Str] = ["musl"]
 
 export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "pkgconf", "xinit"]
 
-export let sources: List[Path] = [p"https://git.sr.ht/~kennylevinsen/seatd/archive/VERSION.tar.gz", p"service.xsh"]
+export let replaces: List[Str] = ["libseat"]
+
+export let sources: List[Path] = [p"https://github.com/kennylevinsen/seatd/archive/refs/tags/VERSION.tar.gz", p"service.xsh"]
 
 export let checksums: List[Str] = ["302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96", "SKIP"]
 
@@ -129,14 +131,5 @@ export proc build(dest: Path) [fs, process, env, error] {
   } ?
 
   fs.remove(fp"${dest}/usr/bin/seatd-launch", missing_ok: true)?
-  fs.remove(fp"${dest}/usr/include", missing_ok: true)?
-  fs.remove(fp"${dest}/usr/lib/pkgconfig", missing_ok: true)?
-
-  for entry in fs.ls(fp"${dest}/usr/lib")? {
-    if entry.name.starts_with("libseat.so") {
-      fs.remove(entry.path, missing_ok: true)?
-    }
-  }
-
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/seatd.xsh", 0o644, parents: true, overwrite: true)?
 }

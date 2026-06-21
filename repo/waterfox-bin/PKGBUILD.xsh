@@ -2,7 +2,7 @@ export let name: Str = "waterfox-bin"
 
 export let ver: Str = "140.11.0esr"
 
-export let rel: Str = "3"
+export let rel: Str = "5"
 
 export let deps: List[Str] = ["musl", "ca-certificates"]
 
@@ -19,8 +19,8 @@ export let sources: List[Path] = [
 
 export let checksums: List[Str] = [
   "f22e9a92b15f26a1b805d85a7a1418ede89d8c6116b65b5af1d5600771ae89f2",
-  "cdea9932b95e2ce360fa3dc86c0b15db9fe08bd03842830ace0843318ebcc16a",
-  "d92e13cca637ddc6bc7a2fdae1714dd87195836552da432f2e6eb8c6f6cbbfdd",
+  "0219070d80bdb05529e73db1e0ffbe5d9e997237851ba680006b9beaba8eea65",
+  "7a490e4ed78686a50d2548e58f6bdacae040636db0686c9021e6c38530b85f6f",
   "2190dcebd0a465fb2ed33caec377f8f9e3a0e6ab60b715e7cfa0e5bf179ef6ea",
 ]
 

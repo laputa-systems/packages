@@ -19,7 +19,7 @@ export let sources: List[Path] = [
 
 export let checksums: List[Str] = [
   "e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995",
-  "b74121d51256b23ceed3a40eb3bbc0e54672cdd9d43b1e6260b6dc12f0546031",
+  "1619dfa4377e04000e4143d04bc008dd5652fd36501065a35ce9892029eeeed7",
 ]
 
 export proc build(dest: Path) [fs, process, env, error] {

@@ -21,6 +21,8 @@ export let deps: List[Str] = [
   "libdisplay-info",
 ]
 
+export let replaces: List[Str] = ["wlroots0.19-minimal"]
+
 export let mkdeps: List[Str] = [
   "llvm-toolchain",
   "linux",

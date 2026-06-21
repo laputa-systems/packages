@@ -31,6 +31,7 @@ export type Package = {
   deps: List[Str],
   mkdeps: List[Str],
   target_build_deps: List[Str],
+  replaces: List[Str],
   sources: List[Path],
   checksums: List[Str],
   nostrip: Bool,

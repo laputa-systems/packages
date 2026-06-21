@@ -6,7 +6,7 @@ export let name: Str = "llvm-toolchain"
 
 export let ver: Str = "22.1.8"
 
-export let rel: Str = "6"
+export let rel: Str = "7"
 
 export let deps: List[Str] = ["musl"]
 
@@ -437,12 +437,16 @@ export proc build(dest: Path) [fs, process, env, error] {
   if build_arch == target_arch {
     let stub_src = fp"${dest}/.stub.c"
     fs.write(stub_src, "")?
-    let clang = process.which("clang")?
-    run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${dest}/usr/lib/crtbeginS.o" ?
-    run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${dest}/usr/lib/crtendS.o" ?
-    fs.remove(stub_src)?
-    run $clang "-target" f"${target_arch}-linux-musl" "-shared" "-o" fp"${dest}/usr/lib/libgcc_s.so" "-Wl,--whole-archive" fp"${dest}/usr/lib/llvm22/lib/libunwind.a" "-Wl,--no-whole-archive" ?
-    fs.symlink(p"libgcc_s.so", fp"${dest}/usr/lib/libgcc_s.so.1")?
+    let clang = fp"${dest}/usr/lib/llvm22/bin/clang"
+    env {
+      LD_LIBRARY_PATH = f"${dest}/usr/lib/llvm22/lib:${env.get("LD_LIBRARY_PATH") ?? ""}"
+    } {
+      run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${dest}/usr/lib/crtbeginS.o" ?
+      run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${dest}/usr/lib/crtendS.o" ?
+      fs.remove(stub_src)?
+      run $clang "-target" f"${target_arch}-linux-musl" "-shared" "-nostartfiles" "-nostdlib" "-o" fp"${dest}/usr/lib/libgcc_s.so" "-Wl,--whole-archive" fp"${dest}/usr/lib/llvm22/lib/libunwind.a" "-Wl,--no-whole-archive" ?
+      fs.symlink(p"libgcc_s.so", fp"${dest}/usr/lib/libgcc_s.so.1")?
+    } ?
   }
 
   write_wrapper(dest, "cc", /usr/lib/llvm22/bin/clang, clang: true)?

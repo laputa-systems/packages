@@ -4,7 +4,7 @@ export let name: Str = "tmux"
 
 export let ver: Str = "next-3.7"
 
-export let rel: Str = "3"
+export let rel: Str = "6"
 
 export let deps: List[Str] = ["musl", "libevent", "utf8proc"]
 
