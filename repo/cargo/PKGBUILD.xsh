@@ -4,7 +4,7 @@ export let name: Str = "cargo"
 
 export let ver: Str = "1.95.0"
 
-export let rel: Str = "3"
+export let rel: Str = "4"
 
 export let deps: List[Str] = ["musl", "llvm-toolchain"]
 

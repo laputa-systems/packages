@@ -8,7 +8,7 @@ export let ver: Str = "0.2.13"
 
 export let rel: Str = "11"
 
-export let deps: List[Str] = ["linux-pam"]
+export let deps: List[Str] = ["linux-pam", "gnu-stubs"]
 
 export let mkdeps: List[Str] = ["cargo", "llvm-toolchain", "linux-pam", "ca-certificates"]
 
