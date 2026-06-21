@@ -35,8 +35,8 @@
    especially those whose name start with YY_ or yy_.  They are
    private implementation details that can be changed or removed.  */
 
-#ifndef YY__XKBCOMMON_GEN_PARSER_H_INCLUDED
-# define YY__XKBCOMMON_GEN_PARSER_H_INCLUDED
+#ifndef YY__XKBCOMMON_PARSER_H_INCLUDED
+# define YY__XKBCOMMON_PARSER_H_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -52,7 +52,7 @@ extern int _xkbcommon_debug;
 #include "scanner-utils.h"
 #include "xkbcomp/ast.h"
 
-#line 56 "gen/parser.h"
+#line 56 "parser.h"
 
 /* Token kinds.  */
 #ifndef YYTOKENTYPE
@@ -165,7 +165,7 @@ union YYSTYPE
         XkbFile         *file;
         struct { XkbFile *head; XkbFile *last; } fileList;
 
-#line 169 "gen/parser.h"
+#line 169 "parser.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -179,4 +179,4 @@ typedef union YYSTYPE YYSTYPE;
 int _xkbcommon_parse (struct parser_param *param);
 
 
-#endif /* !YY__XKBCOMMON_GEN_PARSER_H_INCLUDED  */
+#endif /* !YY__XKBCOMMON_PARSER_H_INCLUDED  */

@@ -8,7 +8,7 @@ export let ver: Str = "22.1.8"
 
 export let rel: Str = "8"
 
-export let deps: List[Str] = ["musl", "gnu-stubs"]
+export let deps: List[Str] = ["musl"]
 
 export let mkdeps: List[Str] = []
 

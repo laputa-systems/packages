@@ -4,7 +4,7 @@ export let name: Str = "libxkbcommon"
 
 export let ver: Str = "1.11.0"
 
-export let rel: Str = "2"
+export let rel: Str = "3"
 
 export let deps: List[Str] = ["musl", "xkeyboard-config"]
 
@@ -18,8 +18,8 @@ export let sources: List[Path] = [
 
 export let checksums: List[Str] = [
   "78a6b14f16e9a55025978c252e53ce9e16a02bfdb929550b9a0db5af87db7e02",
-  "daf7f1f7aa43c171101d156f65921fede315e31cf9342a6434e98b48ce1eb06c",
-  "13e7772276a17d4a803c5591bef231f268ae60bd4b9dbfa14fb7b80c955da3d4",
+  "e237a6b6396515462e50c56041681c1b1ce83f8582e8ab661a48d91cdaf97a8e",
+  "5abcf6696e29a393960b9d842a719b025fcaea2c8c41b2976b5fa5f28e763b96",
 ]
 
 proc patch_vendored_parser() [fs, error] {

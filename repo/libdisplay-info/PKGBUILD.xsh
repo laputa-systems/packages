@@ -4,7 +4,7 @@ export let name: Str = "libdisplay-info"
 
 export let ver: Str = "0.3.0"
 
-export let rel: Str = "3"
+export let rel: Str = "4"
 
 export let deps: List[Str] = ["musl", "hwdata"]
 
