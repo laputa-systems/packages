@@ -2060,7 +2060,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
 
         let built_batches = pending
           |> par-map --jobs=world_jobs { |pkg|
-            build_world_package(build_ctx, root, build_root, pkg, target_arch, world_build_arch, cross_build)?
+            build_world_package(build_ctx, root, build_root, pkg, target_arch, world_build_arch, cross_build)
           }
 
         let remote_hashes = world_remote_metadata_hashes(
@@ -2072,57 +2072,76 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
         )?
 
         var pending_index = 0
+        var tranche_errors: List[Str] = []
 
         for built in built_batches {
           let original_pkg = pending_originals[pending_index]
           let build_pkg = pending[pending_index]
-          var unchanged = false
 
-          if world_package_id(build_pkg) == world_package_id(original_pkg) and repo_urls.repo != "" and remote_latest.has(
-            original_pkg.name,
-          ) {
-            let remote: RemotePackage = remote_latest.get(original_pkg.name)?
+          if built.len() == 0 {
+            let pkg_id = world_package_id(build_pkg)
+            let msg = f"${original_pkg.name} ${pkg_id}"
+            tranche_errors.push(msg)
+            eprint f"world-build: ${msg} failed"
+          } else {
+            var unchanged = false
 
-            if compare_version_text(original_pkg.ver, remote.ver) == 0 and compare_version_text(
-              original_pkg.rel,
-              remote.rel,
-            ) <= 0 {
-              let remote_hash = remote_hashes.get(original_pkg.name, "")
+            if world_package_id(build_pkg) == world_package_id(original_pkg) and repo_urls.repo != "" and remote_latest.has(
+              original_pkg.name,
+            ) {
+              let remote: RemotePackage = remote_latest.get(original_pkg.name)?
 
-              if remote_hash != "" and built.len() > 0 and remote_hash == built[0].metadata_sha256 {
-                install_remote_dependency_set_for_arch(root_ctx, [original_pkg.name], target_arch)?
+              if compare_version_text(original_pkg.ver, remote.ver) == 0 and compare_version_text(
+                original_pkg.rel,
+                remote.rel,
+              ) <= 0 {
+                let remote_hash = remote_hashes.get(original_pkg.name, "")
 
-                if ! cross_build {
-                  install_remote_dependency_set_for_arch(build_ctx, [original_pkg.name], world_build_arch)?
+                if remote_hash != "" and remote_hash == built[0].metadata_sha256 {
+                  install_remote_dependency_set_for_arch(root_ctx, [original_pkg.name], target_arch)?
+
+                  if ! cross_build {
+                    install_remote_dependency_set_for_arch(build_ctx, [original_pkg.name], world_build_arch)?
+                  }
+
+                  built_names[original_pkg.name] = true
+                  unchanged_names[original_pkg.name] = true
+                  unchanged = true
+                  print ${original_pkg.name} world_package_id(original_pkg) "metadata" "unchanged"
                 }
-
-                built_names[original_pkg.name] = true
-                unchanged_names[original_pkg.name] = true
-                unchanged = true
-                print ${original_pkg.name} world_package_id(original_pkg) "metadata" "unchanged"
               }
             }
-          }
 
-          if ! unchanged {
-            for item in built {
-              index = publish_built_package(repo_dir, upload_ctx, index, item)?
+            if ! unchanged {
+              for item in built {
+                index = publish_built_package(repo_dir, upload_ctx, index, item)?
+              }
+
+              json.write(index_path, index)?
+              remove_world_unowned_install_conflicts(root, built)?
+              install_world_built_packages(root_ctx, built)?
+
+              if ! cross_build and root.display() != build_root.display() {
+                remove_world_unowned_install_conflicts(build_root, built)?
+                install_world_built_packages(build_ctx, built)?
+              }
+
+              built_names[original_pkg.name] = true
             }
 
-            json.write(index_path, index)?
-            remove_world_unowned_install_conflicts(root, built)?
-            install_world_built_packages(root_ctx, built)?
-
-            if ! cross_build and root.display() != build_root.display() {
-              remove_world_unowned_install_conflicts(build_root, built)?
-              install_world_built_packages(build_ctx, built)?
-            }
-
-            built_names[original_pkg.name] = true
+            write_world_state(repo_dir, fingerprint, planned, built_names, unchanged_names, false)?
           }
-
-          write_world_state(repo_dir, fingerprint, planned, built_names, unchanged_names, false)?
           pending_index += 1
+        }
+
+        if tranche_errors.len() > 0 {
+          eprint f"tranche ${level}: ${tranche_errors.len()}/${pending.len()} failed:"
+          for error in tranche_errors {
+            eprint f"  ${error}"
+          }
+          return Err(PmError.Usage(
+            f"tranche ${level} had ${tranche_errors.len()} failure(s); state saved for successes",
+          ))
         }
       }
 
