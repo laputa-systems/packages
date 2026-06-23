@@ -976,9 +976,9 @@ proc main(...argv: List[Str]) [fs, error] {
   }
 
   if source_root.display() == "" {
-    let empty_root = fs.tempdir()?
-    defer fs.close_root(empty_root)?
-    source_root = fs.root_path(empty_root)?
+    let empty_dir = p"/tmp/mkfs-ext4-empty"
+    fs.mkdir(empty_dir)?
+    source_root = empty_dir
   }
 
   format_ext_image(Path.parse(image)?, source_root, label)?

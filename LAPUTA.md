@@ -78,11 +78,18 @@ tools must come from the staged Laputa build root rather than from the ambient
 host. Target libraries, headers, pkg-config files, and protocol data must come
 from the target root.
 
-Prebuilt package payloads are acceptable when the package is unusually hard to
-bootstrap without already having a large toolchain or browser stack. `cargo`,
-`waterfox`, and `llvm` are the current strategic exceptions. Treat them as
-explicit bootstrap anchors, keep their source URLs and hashes pinned, and prefer
-source-built packages for ordinary libraries and tools.
+Prebuilt package payloads are acceptable only when the package is unusually
+hard to bootstrap without already having a large toolchain or browser stack.
+`cargo`, `waterfox`, and `llvm` are the current strategic exceptions.  Treat
+them as explicit bootstrap anchors, keep their source URLs and hashes pinned,
+and prefer source-built packages for ordinary libraries and tools.
+
+**Do not use pre-built packages from other distributions** (Alpine, Debian,
+Arch, etc.) as Laputa package payloads.  Every package that is not a named
+bootstrap anchor must build from its upstream source tree inside the Laputa
+chroot, using `pm.make`, `pm.configure`, cmake+ninja, or muon.  This keeps the
+package graph provable, reproducible, and owned by the Laputa toolchain rather
+than by a foreign distribution's build decisions.
 
 The durable C/C++ toolchain contract is LLVM plus musl, not GNU runtime
 compatibility. Packages must not depend on `libgcc`, `libgcc_s`, or

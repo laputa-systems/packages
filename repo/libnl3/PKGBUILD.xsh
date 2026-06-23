@@ -1,0 +1,242 @@
+use pm.make as make
+
+export let name: Str = "libnl3"
+
+export let ver: Str = "3.11.0"
+
+export let rel: Str = "1"
+
+export let deps: List[Str] = ["musl", "linux"]
+
+export let mkdeps: List[Str] = []
+
+export let sources: List[Path] = [
+  p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz",
+]
+
+export let checksums: List[Str] = [
+  "2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d",
+]
+
+export proc build(dest: Path) [fs, process, env, error] {
+  let cwd = fs.cwd()?
+  let src = cwd
+  let objs = fp"${dest}/objs"
+  fs.mkdir(objs)?
+
+  # Generate include/netlink/version.h from version.h.in
+  fs.mkdir(fp"${src}/include/netlink")?
+  let version_h = fp"${src}/include/netlink/version.h"
+  let version_in = fp"${src}/include/netlink/version.h.in"
+
+  if ! fs.exists(version_h)? and fs.exists(version_in)? {
+    let tmpl = fs.read_text(version_in)?
+    let parts = ver.split(".")
+    let major = parts[0]
+    let minor = if parts.len() > 1 { parts[1] } else { "0" }
+    let micro = if parts.len() > 2 { parts[2] } else { "0" }
+    var body = tmpl.replace("@MAJOR_VERSION@", major)
+    body = body.replace("@MINOR_VERSION@", minor)
+    body = body.replace("@MICRO_VERSION@", micro)
+    fs.write(version_h, body)?
+  }
+
+  # Generate include/config.h (minimal — configure would produce this)
+  let config_h = fp"${src}/include/config.h"
+
+  if ! fs.exists(config_h)? {
+    let cfg_body = f"""#ifndef LIBNL_CONFIG_H
+#define LIBNL_CONFIG_H
+#define PACKAGE_STRING "libnl ${ver}"
+#define PACKAGE_NAME "libnl"
+#define PACKAGE_VERSION "${ver}"
+#define SYSCONFDIR "/etc"
+#define PACKAGE_URL "http://www.infradead.org/~tgr/libnl/"
+#define PACKAGE "libnl-3-11-0"
+#define STDC_HEADERS 1
+#define HAVE_STDINT_H 1
+#define HAVE_STDDEF_H 1
+#define HAVE_STDLIB_H 1
+#define HAVE_STRING_H 1
+#define HAVE_UNISTD_H 1
+#define HAVE_SYS_SOCKET_H 1
+#define HAVE_SYS_TIME_H 1
+#define HAVE_LINUX_IF_TUN_H 1
+#define HAVE_LINUX_IF_PACKET_H 1
+#define HAVE_ARPA_INET_H 1
+#define HAVE_DLFCN_H 1
+#define HAVE_FCNTL_H 1
+#define HAVE_NETDB_H 1
+#define HAVE_NETINET_IN_H 1
+#define HAVE_SYS_SELECT_H 1
+#define HAVE_STRERROR_L 1
+#define HAVE_FLOCK 1
+#define HAVE_GETTIMEOFDAY 1
+#define TIME_WITH_SYS_TIME 1
+#define NL_DEBUG 0
+#define const /**/
+#endif
+"""
+    fs.write(config_h, cfg_body)?
+  }
+
+  let cc = process.which("cc")?
+  let triple = f"${env.get("XSH_PM_ARCH") ?? "aarch64"}-linux-musl"
+
+  # Pre-create install directories.
+  fs.mkdir(fp"${dest}/usr")?
+  fs.mkdir(fp"${dest}/usr/lib")?
+  fs.mkdir(fp"${dest}/usr/include")?
+
+  var cflags: List[Str] = ["-O2", "-fPIC", "-DPIC", "-D_GNU_SOURCE"]
+  var defs: List[Str] = []
+  var includes: List[Str] = [
+    "-I", fp"${src}/include".display(),
+    "-I", fp"${src}/include/linux-private".display(),
+    "-I", fp"${src}/lib".display(),
+    "-I", fp"${src}".display(),
+  ]
+
+  # Core source files for libnl-3.so
+  let core_sources: List[Str] = [
+    "lib/mpls.c",
+    "lib/addr.c",
+    "lib/attr.c",
+    "lib/cache.c",
+    "lib/cache_mngr.c",
+    "lib/cache_mngt.c",
+    "lib/data.c",
+    "lib/error.c",
+    "lib/handlers.c",
+    "lib/hash.c",
+    "lib/hashtable.c",
+    "lib/msg.c",
+    "lib/nl.c",
+    "lib/object.c",
+    "lib/socket.c",
+    "lib/utils.c",
+    "lib/version.c",
+  ]
+
+  # genl source files for libnl-genl-3.so
+  let genl_sources: List[Str] = [
+    "lib/genl/ctrl.c",
+    "lib/genl/family.c",
+    "lib/genl/genl.c",
+    "lib/genl/mngt.c",
+  ]
+
+  # Compile all core objects
+  var core_objs: List[Path] = []
+  var all_tasks: List[Record] = []
+
+  for src_path in core_sources {
+    let full_src = fp"${src}/${src_path}"
+    var obj_name = src_path.replace("/", "_")
+    obj_name = obj_name.replace(".c", ".lo")
+    let out = fp"${objs}/${obj_name}"
+
+    if ! fs.exists(full_src)? {
+      continue
+    }
+
+    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, full_src, out)
+    all_tasks = all_tasks.push(task)
+    core_objs = core_objs.push(out)
+  }
+
+  # Compile genl objects
+  var genl_objs: List[Path] = []
+
+  for src_path in genl_sources {
+    let full_src = fp"${src}/${src_path}"
+    var obj_name = src_path.replace("/", "_")
+    obj_name = obj_name.replace(".c", ".lo")
+    let out = fp"${objs}/${obj_name}"
+
+    if ! fs.exists(full_src)? {
+      continue
+    }
+
+    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, full_src, out)
+    all_tasks = all_tasks.push(task)
+    genl_objs = genl_objs.push(out)
+  }
+
+  # Run all compile tasks
+  make.run_tasks(all_tasks, make.jobs()?)?
+
+  # Link shared libraries
+  let core_so = fp"${dest}/usr/lib/libnl-3.so.200.26.0"
+  let core_deps = [task.name for task in all_tasks if task.outputs[0] in core_objs]
+  make.link_shared(cc, triple, core_objs, "libnl-3.so.200", [], core_so)?
+
+  let genl_so = fp"${dest}/usr/lib/libnl-genl-3.so.200.26.0"
+  let genl_deps = [task.name for task in all_tasks if task.outputs[0] in genl_objs]
+  make.link_shared(cc, triple, genl_objs, "libnl-genl-3.so.200", [], genl_so)?
+
+  # Create symlinks
+  for lib in [core_so, genl_so] {
+    let basename = lib.name
+    let parts = basename.split(".so.")
+    let soname = f"${parts[0]}.so.${parts[1].split(".")[0]}"
+    let linker = f"${parts[0]}.so"
+
+    fs.symlink(fp"${basename}", fp"${dest}/usr/lib/${soname}")?
+    fs.symlink(fp"${soname}", fp"${dest}/usr/lib/${linker}")?
+  }
+
+  # Stub missing kernel header.  linux/filter.h (UAPI) includes linux/compiler.h
+  # which is a kernel-internal header not exported to userspace.
+  let linux_hdrs = fp"${dest}/usr/include/linux"
+  fs.mkdir(linux_hdrs)?
+  fs.write(fp"${linux_hdrs}/compiler.h", r"""#ifndef _UAPI_LINUX_COMPILER_H
+#define _UAPI_LINUX_COMPILER_H
+#define __user
+#define __force
+#define __iomem
+#define __bitwise __bitwise__
+#define __attribute_const__ __attribute__((__const__))
+#define __printf(a, b) __attribute__((__format__(printf, a, b)))
+#define __scanf(a, b) __attribute__((__format__(__scanf__, a, b)))
+#define __cold __attribute__((__cold__))
+#define __visible __attribute__((__externally_visible__))
+#define __packed __attribute__((__packed__))
+#define __aligned(x) __attribute__((__aligned__(x)))
+#define __section(x) __attribute__((__section__(x)))
+#define __always_inline inline __attribute__((__always_inline__))
+#define __noinline __attribute__((__noinline__))
+#define __must_check __attribute__((__warn_unused_result__))
+#define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))
+#define __is_constexpr(x) __builtin_constant_p(x)
+#define __counted_by(m)
+#define __rcu
+#define __nocast
+#define __read_mostly
+#define __ro_after_init
+#endif
+""")?
+
+  # Install public headers at /usr/include/netlink/
+  let usr_include = fp"${dest}/usr/include"
+  fs.mkdir(usr_include)?
+  let headers_src = fp"${src}/include/netlink"
+  let headers_dest = fp"${dest}/usr/include/netlink"
+  fs.mkdir(headers_dest)?
+
+  for entry in fs.walk(headers_src, gitignore: false)? {
+    let rel = entry.path.relative_to(headers_src)
+
+    if rel.display() == "version.h.in" {
+      continue
+    }
+
+    let target = fp"${headers_dest}/${rel}"
+
+    if entry.kind == "dir" {
+      fs.mkdir(target)?
+    } else {
+      fs.install(entry.path, target, 0o644, parents: true, overwrite: true)?
+    }
+  }
+}

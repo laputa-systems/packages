@@ -2,10 +2,11 @@ export let name: Str = "laputa-net"
 
 export let ver: Str = "1"
 
-export let rel: Str = "2"
+export let rel: Str = "4"
 
-# ifup (the DHCP/static client) is an xsh core applet; the net service drives it.
-export let deps: List[Str] = ["xsh"]
+# ifup/ifdown are xsh core applets; the net service drives them.
+# wpa_supplicant provides Wi-Fi association for wireless interfaces.
+export let deps: List[Str] = ["xsh", "wpa_supplicant"]
 
 export let mkdeps: List[Str] = ["xinit"]
 
@@ -19,8 +20,11 @@ export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/etc/network/if-pre-up.d")?
   fs.mkdir(fp"${dest}/etc/network/if-up.d")?
   fs.mkdir(fp"${dest}/etc/network/if-down.d")?
+  fs.mkdir(fp"${dest}/etc/network/if-pre-down.d")?
+  fs.mkdir(fp"${dest}/etc/network/if-post-down.d")?
 
-  # Expose the ifup core applet as a command for the net service and operators.
+  # Expose the ifup/ifdown core applets as commands for the net service and operators.
   fs.mkdir(fp"${dest}/usr/bin")?
   fs.symlink(../lib/xsh/core/ifup.xsh, fp"${dest}/usr/bin/ifup")?
+  fs.symlink(../lib/xsh/core/ifdown.xsh, fp"${dest}/usr/bin/ifdown")?
 }
