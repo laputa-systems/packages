@@ -1,1 +1,0 @@
-PKGBUILD-aarch64.xsh

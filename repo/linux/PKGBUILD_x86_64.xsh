@@ -1,1 +1,0 @@
-PKGBUILD-x86_64.xsh

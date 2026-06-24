@@ -1,4 +1,4 @@
-use PKGBUILD_shared
+use PKGBUILD-shared as PKGBUILD_shared
 use kbuild
 use pm.make as make
 

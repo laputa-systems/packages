@@ -1,4 +1,4 @@
-use PKGBUILD_shared
+use PKGBUILD-shared as PKGBUILD_shared
 use kbuild
 
 error ScriptError = Failed(kind: Str, message: Str)

@@ -1,5 +1,5 @@
-use PKGBUILD_aarch64
-use PKGBUILD_x86_64
+use PKGBUILD-aarch64 as PKGBUILD_aarch64
+use PKGBUILD-x86_64 as PKGBUILD_x86_64
 use linux_config
 use parser_gen
 use pm.util as pm_util
