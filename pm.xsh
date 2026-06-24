@@ -1854,7 +1854,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
         min: -1,
         help: "with --build, stop after tranche N and leave stage resumable",
       },
-      jobs: {form: "-j --jobs N", kind: "Uint", default: default_world_jobs()?, min: 1, help: "build jobs per tranche"},
+      jobs: {form: "-j --jobs N", kind: "UInt", default: default_world_jobs()?, min: 1, help: "build jobs per tranche"},
     },
     "pm world-plan",
   )?
