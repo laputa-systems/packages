@@ -663,11 +663,11 @@ export proc downloaded_tarball_failure(tarball: Path, pkg: RemotePackage, url: S
   ""
 }
 
-export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env, time, error] -> Result[Path] {
+export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env, time, error] -> Result[Record] {
   let tarball = remote_cache_tarball_path(out, pkg)?
 
   if verify_cached_tarball(tarball, pkg)? {
-    return tarball
+    return {tarball, from_cache: true}
   }
 
   let repo_urls = load_repo_urls()?
@@ -711,7 +711,7 @@ export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env
   }
 
   if fetched {
-    return tarball
+    return {tarball, from_cache: false}
   }
 
   var detail = "no repository URL configured"

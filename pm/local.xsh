@@ -12,9 +12,10 @@ export proc install_remote_metapackage(ctx: PmContext, pkg: RemotePackage) [fs, 
   print ${pkg.name} version_id(pkg.ver, pkg.rel) "registered"
 }
 
-export proc install_remote_tarball(ctx: PmContext, pkg: RemotePackage, tarball: Path) [fs, process, env, error] {
+export proc install_remote_tarball(ctx: PmContext, pkg: RemotePackage, tarball: Path, from_cache: Bool) [fs, process, env, error] {
   let id = package_id(pkg.name, pkg.ver, pkg.rel)
   let install_stage = fp"${ctx.work}/${id}-remote-install"
+  let label = if from_cache { "cache-installed" } else { "remote-installed" }
   fs.remove(install_stage, missing_ok: true)?
   fs.mkdir(install_stage)?
   archive.tar_extract(tarball, install_stage, 0, "auto", true)?
@@ -32,7 +33,7 @@ export proc install_remote_tarball(ctx: PmContext, pkg: RemotePackage, tarball: 
     run_lifecycle_hooks("pre-install", pkg.name, ctx, "remote-tarball")?
     direct_extract_package(ctx, local_pkg, tarball, manifest, etcsums, installed_owners)?
     run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-tarball")?
-    print ${pkg.name} manifest.len() "remote-installed"
+    print ${pkg.name} manifest.len() $label
     return
   }
 
@@ -47,7 +48,7 @@ export proc install_remote_tarball(ctx: PmContext, pkg: RemotePackage, tarball: 
   install_manifest_entries(ctx.root, install_stage, local_pkg, manifest, old_sums, new_sums, installed_owners)?
   write_package_db(ctx.root, local_pkg, manifest, etcsums)?
   run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-tarball")?
-  print ${pkg.name} manifest.len() "remote-installed"
+  print ${pkg.name} manifest.len() $label
 }
 
 export proc install_remote_packages(ctx: PmContext, names: List[Str]) [fs, net, process, env, time, error] {
@@ -56,16 +57,18 @@ export proc install_remote_packages(ctx: PmContext, names: List[Str]) [fs, net, 
   let ordered = order_remote_packages(ctx.root, selected)?
   let tarball_packages = ordered |> where ! .metapackage
   var tarballs: Map[Path] = {}
+  var tarball_from_cache: Map[Bool] = {}
 
   if tarball_packages.len() > 0 {
     let downloaded = tarball_packages
       |> par-map --jobs=tarball_packages.len() { |pkg|
-        let tarball = download_remote_tarball(ctx.out, pkg)?
-        {name: pkg.name, tarball}
+        let result = download_remote_tarball(ctx.out, pkg)?
+        {name: pkg.name, tarball: result.tarball, from_cache: result.from_cache}
       }
 
     for item in downloaded {
       tarballs[item.name] = item.tarball
+      tarball_from_cache[item.name] = item.from_cache
     }
   }
 
@@ -74,7 +77,8 @@ export proc install_remote_packages(ctx: PmContext, names: List[Str]) [fs, net, 
       install_remote_metapackage(ctx, pkg)?
     } else {
       let tarball: Path = tarballs.get(pkg.name)?
-      install_remote_tarball(ctx, pkg, tarball)?
+      let from_cache: Bool = tarball_from_cache.get(pkg.name, false)
+      install_remote_tarball(ctx, pkg, tarball, from_cache)?
     }
   }
 }
