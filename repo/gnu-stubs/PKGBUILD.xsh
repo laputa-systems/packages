@@ -10,8 +10,6 @@ export let rel: Str = "2"
 
 export let deps: List[Str] = []
 
-export let replaces: List[Str] = ["llvm-toolchain"]
-
 export let mkdeps: List[Str] = ["llvm-toolchain"]
 
 export let sources: List[Path] = [p"files/.keep"]

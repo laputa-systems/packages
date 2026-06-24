@@ -21,7 +21,6 @@ export let deps: List[Str] = [
   "libdisplay-info",
 ]
 
-export let replaces: List[Str] = ["wlroots0.19-minimal"]
 
 export let mkdeps: List[Str] = [
   "llvm-toolchain",
@@ -236,63 +235,6 @@ proc prune_xwayland_headers(root: Path) [fs, error] {
   fs.remove(fp"${root}/usr/include/wlroots-0.19/wlr/xwayland", missing_ok: true)?
 }
 
-proc replace_dep(input_deps: List[Str], old_dep: Str, new_dep: Str) [error] -> List[Str] {
-  var next: List[Str] = []
-
-  for dep in input_deps {
-    if dep == old_dep {
-      if ! next.contains(new_dep) {
-        next = next.push(new_dep)
-      }
-    } else if ! next.contains(dep) {
-      next = next.push(dep)
-    }
-  }
-
-  next
-}
-
-proc rewrite_installed_dependency(root: Path, old_dep: Str, new_dep: Str) [fs, error] {
-  let packages = fp"${root}/var/lib/xsh-pm/packages"
-
-  if ! fs.exists(packages)? {
-    return
-  }
-
-  for entry in fs.ls(packages)? |> where .kind == "dir" {
-    let metadata_path = fp"${entry.path}/metadata.json"
-
-    if fs.exists(metadata_path)? {
-      let metadata: Record = json.read(metadata_path)?
-      let metadata_deps: List[Str] = metadata.get("deps")?
-      let metadata_mkdeps: List[Str] = metadata.get("mkdeps")?
-      let next_deps = replace_dep(metadata_deps, old_dep, new_dep)
-      let next_mkdeps = replace_dep(metadata_mkdeps, old_dep, new_dep)
-
-      if next_deps != metadata_deps or next_mkdeps != metadata_mkdeps {
-        let metadata_name: Str = metadata.get("name")?
-        let metadata_ver: Str = metadata.get("ver")?
-        let metadata_rel: Str = metadata.get("rel")?
-        let nostrip: Bool = metadata.get("nostrip")?
-        let dir: Str = metadata.get("dir")?
-
-        json.write(
-          metadata_path,
-          {
-            name: metadata_name,
-            ver: metadata_ver,
-            rel: metadata_rel,
-            deps: next_deps,
-            mkdeps: next_mkdeps,
-            nostrip,
-            dir,
-          },
-        )?
-      }
-    }
-  }
-}
-
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"
@@ -344,13 +286,4 @@ exec "${build_root}/usr/bin/wayland-scanner" "$@"
   } ?
 
   prune_xwayland_headers(dest)?
-}
-
-export proc pre_install(root: Path) [fs, error] {
-  prune_xwayland_headers(root)?
-  fs.remove(fp"${root}/var/lib/xsh-pm/packages/wlroots0.19-minimal", missing_ok: true)?
-}
-
-export proc post_install(root: Path) [fs, error] {
-  rewrite_installed_dependency(root, "wlroots0.19-minimal", "wlroots0.19-mesa")?
 }

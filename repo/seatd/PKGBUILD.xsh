@@ -10,8 +10,6 @@ export let deps: List[Str] = ["musl"]
 
 export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "xinit"]
 
-export let replaces: List[Str] = ["libseat"]
-
 export let sources: List[Path] = [p"https://github.com/kennylevinsen/seatd/archive/refs/tags/VERSION.tar.gz", p"service.xsh"]
 
 export let checksums: List[Str] = ["302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96", "SKIP"]

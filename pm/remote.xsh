@@ -726,7 +726,6 @@ export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env
 export pure package_from_remote(pkg: RemotePackage) -> Result[Package] {
   let sources: List[Path] = []
   let checksums: List[Str] = []
-  let empty_replaces: List[Str] = []
 
   {
     dir: p".",
@@ -737,7 +736,6 @@ export pure package_from_remote(pkg: RemotePackage) -> Result[Package] {
     deps: pkg.deps,
     mkdeps: pkg.mkdeps,
     target_build_deps: pkg.target_build_deps,
-    replaces: empty_replaces,
     sources,
     checksums,
     nostrip: false,

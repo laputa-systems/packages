@@ -1332,15 +1332,7 @@ proc remove_world_unowned_install_conflicts(root: Path, built: List[BuiltPackage
 }
 
 proc world_stage_package_present(root: Path, name: Str) [fs, error] -> Result[Bool] {
-  if fs.exists(package_db_path(root, name))? {
-    return true
-  }
-
-  if name == "wlroots0.19-minimal" and fs.exists(package_db_path(root, "wlroots0.19-mesa"))? {
-    return true
-  }
-
-  false
+  fs.exists(package_db_path(root, name))?
 }
 
 proc world_stage_package_present_in_roots(
@@ -1361,10 +1353,6 @@ proc world_stage_package_present_in_roots(
 }
 
 proc world_should_install_built_package(root: Path, item: BuiltPackage) [fs, error] -> Result[Bool] {
-  if item.pkg.name == "wlroots0.19-minimal" and fs.exists(package_db_path(root, "wlroots0.19-mesa"))? {
-    return false
-  }
-
   true
 }
 
