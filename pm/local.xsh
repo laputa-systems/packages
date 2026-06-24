@@ -92,7 +92,7 @@ export proc upload_package(ctx: PmContext, pkg: Package) [fs, net, process, env,
     index = upsert_remote_package(index, entry)?
     write_remote_index_to_repo(repo, ctx.work, ctx.out, index, token)?
     run_lifecycle_hooks("post-upload", pkg.name, ctx, "metapackage")?
-    print ${pkg.name} version_id(pkg.ver, pkg.rel) "published"
+    print ${pkg.name} version_id(pkg.ver, pkg.rel) "staged"
     return
   }
 

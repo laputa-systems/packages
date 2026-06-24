@@ -407,7 +407,7 @@ proc test_pm_build_repo(ctx: TestContext) [fs, process, env, error] {
   let repo = test.temp_dir(ctx, name: "repo")?
   let output = run.text xsh_bin() pm.xsh -- build $repo baseinit_dir() ?
   test.contains(output, "baseinit")?
-  test.contains(output, "published")?
+  test.contains(output, "staged")?
   test.ok(fp"${repo}/index.json".exists()?)?
   let arch = fixture_arch()?
   test.ok(fp"${repo}/packages/${arch}/baseinit/baseinit-2.0.0-1.tar.gz".exists()?)?

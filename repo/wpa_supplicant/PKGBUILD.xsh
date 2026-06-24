@@ -11,16 +11,18 @@ export let rel: Str = "1"
 # headers and library are required at build time (TODO: create libnl3 package).
 export let deps: List[Str] = ["musl", "linux"]
 
-export let mkdeps: List[Str] = ["xsh", "llvm-toolchain", "libnl3"]
+export let mkdeps: List[Str] = ["xsh", "llvm-toolchain", "libnl3", "xinit"]
 
 export let sources: List[Path] = [
   p"https://w1.fi/releases/wpa_supplicant-2.11.tar.gz",
   p"config",
+  p"service.xsh",
   p"wpa_supplicant.conf",
 ]
 
 export let checksums: List[Str] = [
   "912ea06f74e30a8e36fbb68064d6cdff218d8d591db0fc5d75dee6c81ac7fc0a",
+  "SKIP",
   "SKIP",
   "SKIP",
 ]
@@ -246,11 +248,11 @@ export proc build(dest: Path) [fs, process, env, error] {
   make.run_tasks(all_tasks, make.jobs()?)?
 
 
-  # Install
-  fs.mkdir(fp"${dest}/usr/sbin")?
-  fs.install(wpa_supplicant_out, fp"${dest}/usr/sbin/wpa_supplicant", 0o755, parents: true, overwrite: true)?
-  fs.install(wpa_cli_out, fp"${dest}/usr/sbin/wpa_cli", 0o755, parents: true, overwrite: true)?
-  fs.install(passphrase_out, fp"${dest}/usr/sbin/wpa_passphrase", 0o755, parents: true, overwrite: true)?
+  # Install under /usr/bin: baselayout symlinks /usr/sbin -> bin so
+  # installing to /usr/sbin would fail proof extraction with "symlink escape".
+  fs.install(wpa_supplicant_out, fp"${dest}/usr/bin/wpa_supplicant", 0o755, parents: true, overwrite: true)?
+  fs.install(wpa_cli_out, fp"${dest}/usr/bin/wpa_cli", 0o755, parents: true, overwrite: true)?
+  fs.install(passphrase_out, fp"${dest}/usr/bin/wpa_passphrase", 0o755, parents: true, overwrite: true)?
 
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/wpa_supplicant.xsh", 0o644, parents: true, overwrite: true)?
   fs.mkdir(fp"${dest}/etc/wpa_supplicant")?

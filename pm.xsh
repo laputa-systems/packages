@@ -1662,7 +1662,7 @@ proc command_for_each_package(ctx: PmContext, raw: List[Str], action: Str) [fs, 
   }
 }
 
-proc publish_built_package(
+proc stage_built_package(
   repo_dir: Path,
   upload_ctx: PmContext,
   index: List[RemotePackage],
@@ -1692,7 +1692,7 @@ proc publish_built_package(
 
   let updated = upsert_remote_package(index, entry)?
   run_lifecycle_hooks("post-upload", item.pkg.name, upload_ctx, "")?
-  print ${item.pkg.name} version_id(item.pkg.ver, item.pkg.rel) "published"
+  print ${item.pkg.name} version_id(item.pkg.ver, item.pkg.rel) "staged"
   updated
 }
 
@@ -2114,7 +2114,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
 
             if ! unchanged {
               for item in built {
-                index = publish_built_package(repo_dir, upload_ctx, index, item)?
+                index = stage_built_package(repo_dir, upload_ctx, index, item)?
               }
 
               json.write(index_path, index)?
@@ -2243,7 +2243,7 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     } ?
 
     for item in built {
-      index = publish_built_package(repo_dir, upload_ctx, index, item)?
+      index = stage_built_package(repo_dir, upload_ctx, index, item)?
     }
 
     json.write(index_path, index)?
@@ -2571,7 +2571,7 @@ proc build_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let built = build_packages(ctx, ordered)?
 
   for item in built {
-    index = publish_built_package(repo_dir, upload_ctx, index, item)?
+    index = stage_built_package(repo_dir, upload_ctx, index, item)?
   }
 
   json.write(index_path, index)?

@@ -593,7 +593,7 @@ getprogname (void)
     """#define PREFIX "/usr"
 #define EXEC_PREFIX "/usr"
 #define BINDIR "/usr/bin"
-#define SBINDIR "/usr/sbin"
+#define SBINDIR "/usr/bin"
 #define LIBEXECDIR "/usr/libexec"
 #define DATAROOTDIR "/usr/share"
 #define DATADIR "/usr/share"
