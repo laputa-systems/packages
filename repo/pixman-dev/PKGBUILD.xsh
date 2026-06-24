@@ -9,7 +9,7 @@ export let rel: Str = "4"
 
 export let deps: List[Str] = ["pixman"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "pkgconf"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "samurai", "pkgconf"]
 
 export let sources: List[Path] = [p"https://xorg.freedesktop.org/releases/individual/lib/pixman-VERSION.tar.xz"]
 

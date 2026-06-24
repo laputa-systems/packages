@@ -9,7 +9,7 @@ export let rel: Str = "2"
 
 export let deps: List[Str] = ["musl", "libdrm", "wayland-libs-client"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "pkgconf", "libdrm", "wayland-dev"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "libdrm", "wayland-dev"]
 
 export let target_build_deps: List[Str] = ["wayland-dev"]
 

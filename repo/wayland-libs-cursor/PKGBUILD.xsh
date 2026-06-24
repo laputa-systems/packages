@@ -9,7 +9,7 @@ export let rel: Str = "3"
 
 export let deps: List[Str] = ["musl", "wayland-libs-client"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "pkgconf", "expat", "libffi"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "samurai", "pkgconf", "expat", "libffi"]
 
 export let sources: List[Path] = [
   p"https://gitlab.freedesktop.org/wayland/wayland/-/releases/VERSION/downloads/wayland-VERSION.tar.xz",

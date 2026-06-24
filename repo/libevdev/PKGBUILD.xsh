@@ -8,7 +8,7 @@ export let rel: Str = "3"
 
 export let deps: List[Str] = ["musl", "linux"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "pkgconf"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf"]
 
 export let sources: List[Path] = [p"https://gitlab.freedesktop.org/libevdev/libevdev/-/archive/libevdev-VERSION/libevdev-libevdev-VERSION.tar.gz"]
 

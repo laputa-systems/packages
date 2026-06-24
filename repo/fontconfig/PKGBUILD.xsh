@@ -9,7 +9,7 @@ export let rel: Str = "2"
 
 export let deps: List[Str] = ["musl", "freetype", "expat"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "pkgconf", "freetype", "expat"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "samurai", "pkgconf", "freetype", "expat"]
 
 export let sources: List[Path] = [
   p"https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/VERSION/fontconfig-VERSION.tar.xz",

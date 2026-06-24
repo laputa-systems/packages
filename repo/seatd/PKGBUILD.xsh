@@ -8,7 +8,7 @@ export let rel: Str = "4"
 
 export let deps: List[Str] = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "pkgconf", "xinit"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "xinit"]
 
 export let replaces: List[Str] = ["libseat"]
 

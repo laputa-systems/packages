@@ -13,6 +13,7 @@ export let deps: List[Str] = ["musl", "wayland-libs-client"]
 export let mkdeps: List[Str] = [
   "llvm-toolchain",
   "muon",
+  "samurai",
   "pkgconf",
   "wayland-dev",
   "wayland-protocols",

@@ -8,7 +8,7 @@ export let rel: Str = "4"
 
 export let deps: List[Str] = ["musl", "hwdata"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "pkgconf", "hwdata"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "samurai", "pkgconf", "hwdata"]
 
 export let sources: List[Path] = [
   p"https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/VERSION/downloads/libdisplay-info-VERSION.tar.xz",

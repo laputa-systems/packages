@@ -8,7 +8,7 @@ export let rel: Str = "3"
 
 export let deps: List[Str] = ["musl", "xkeyboard-config"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "pkgconf", "xkeyboard-config"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "samurai", "pkgconf", "xkeyboard-config"]
 
 export let sources: List[Path] = [
   p"https://github.com/xkbcommon/libxkbcommon/archive/xkbcommon-VERSION.tar.gz",

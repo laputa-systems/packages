@@ -8,7 +8,7 @@ export let rel: Str = "3"
 
 export let deps: List[Str] = ["musl", "libudev-zero"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "pkgconf", "libudev-zero"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "libudev-zero"]
 
 export let sources: List[Path] = [p"https://dri.freedesktop.org/libdrm/libdrm-VERSION.tar.xz"]
 

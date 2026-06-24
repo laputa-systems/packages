@@ -26,6 +26,7 @@ export let mkdeps: List[Str] = [
   "linux",
   "pkgconf",
   "muon",
+  "samurai",
   "libffi",
   "wayland-dev",
   "wayland-protocols",

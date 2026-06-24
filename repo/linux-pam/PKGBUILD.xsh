@@ -6,7 +6,7 @@ export let rel: Str = "4"
 
 export let deps: List[Str] = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "samurai"]
 
 export let sources: List[Path] = [
   p"https://github.com/linux-pam/linux-pam/releases/download/vVERSION/Linux-PAM-VERSION.tar.xz",

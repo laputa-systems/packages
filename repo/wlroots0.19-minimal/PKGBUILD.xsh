@@ -24,6 +24,7 @@ export let mkdeps: List[Str] = [
   "llvm-toolchain",
   "linux",
   "muon",
+  "samurai",
   "pkgconf",
   "wayland-dev",
   "wayland-protocols",

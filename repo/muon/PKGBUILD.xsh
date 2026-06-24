@@ -8,7 +8,7 @@ export let rel: Str = "4"
 
 export let deps: List[Str] = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "samurai"]
 
 export let sources: List[Path] = [p"https://github.com/muon-build/muon/archive/refs/tags/VERSION.tar.gz"]
 
