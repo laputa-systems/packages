@@ -58,21 +58,13 @@ pure regex_matches(text: Str, pattern: Str) -> Result[Bool] {
   return re.matches(text)
 }
 
-pure empty_paths() -> List[Path] {
-  []
-}
-
-pure empty_composites() -> List[CompositeObject] {
-  []
-}
-
 pure empty_plan() -> KbuildPlan {
   return {
-    dirs: empty_paths(),
-    objects: empty_paths(),
-    lib_objects: empty_paths(),
-    composites: empty_composites(),
-    unsupported: make.empty_strings(),
+    dirs: [],
+    objects: [],
+    lib_objects: [],
+    composites: [],
+    unsupported: [],
   }
 }
 
@@ -732,19 +724,19 @@ proc included_kbuild_lines(
   srcarch: Str,
 ) [fs, error] -> Result[List[Str]] {
   if ! line.starts_with("include ") {
-    return make.empty_strings()
+    return []
   }
 
   let raw_spec = line.split("include ").get(1, "").trim()
 
   if raw_spec.contains("$(objtree)") {
-    return make.empty_strings()
+    return []
   }
 
   let spec = expand_vars(raw_spec, vars, config, srcarch)
 
   if spec == "" or spec.contains(" ") or spec.contains("$(") or spec.starts_with("/") {
-    return make.empty_strings()
+    return []
   }
 
   let rel = normalize_rel_path(fp"${spec}")
@@ -934,7 +926,7 @@ pure extra_objects_for_dir(dir: Path) -> List[Path] {
     return [join_rel(dir, "vdso64-image.o")]
   }
 
-  return empty_paths()
+  return []
 }
 
 pure plan_objects(plan: KbuildPlan) -> List[Path] {
@@ -1091,7 +1083,7 @@ proc kbuild_compile_flags_for_dir(
 
         if object_name != "" {
           let key = path_key(join_rel(dir, object_name))
-          let current = flags.get(key, make.empty_strings())
+          let current = flags.get(key, [])
 
           if assign.op == "+=" {
             flags[key] = current.extend(rhs.fields())
@@ -1158,7 +1150,7 @@ pure compile_flags_cache_entries(flags: Map[Map[List[Str]]]) -> List[Record] {
     let dir_flags = flags.get(dir_key, map.empty())
 
     for object_key in dir_flags.keys() {
-      entries = entries.push({dir: dir_key, object: object_key, flags: dir_flags.get(object_key, make.empty_strings())})
+      entries = entries.push({dir: dir_key, object: object_key, flags: dir_flags.get(object_key, [])})
     }
   }
 
@@ -1293,8 +1285,8 @@ proc cached_kbuild_compile_flags_for_dirs(
 
 pure kbuild_compile_flags_for_object(by_dir: Map[Map[List[Str]]], obj: Path) -> List[Str] {
   let dir_flags = by_dir.get(path_key(object_dir(obj)), map.empty())
-  let object_flags = dir_flags.get(path_key(obj), make.empty_strings())
-  return dir_flags.get("*", make.empty_strings()).extend(object_flags)
+  let object_flags = dir_flags.get(path_key(obj), [])
+  return dir_flags.get("*", []).extend(object_flags)
 }
 
 pure object_cflags(base: List[Str], by_dir: Map[Map[List[Str]]], obj: Path) -> List[Str] {
@@ -1323,7 +1315,7 @@ export proc augment_missing_composites(
                 Err(_) => {
                   let dir = object_dir(obj)
                   let dir_key = path_key(dir)
-                  let current = missing_by_dir.get(dir_key, empty_paths())
+                  let current = missing_by_dir.get(dir_key, [])
 
                   if current.len() == 0 {
                     dirs = dirs.push(dir)
@@ -1342,9 +1334,9 @@ export proc augment_missing_composites(
   let scans: List[CompositeScan] = dirs
     |> par-map --jobs=planner_jobs() { |dir|
       let vars = vars_for_dir(root, dir, config, srcarch)?
-      var found = empty_composites()
+      var found = []
 
-      for obj in missing_by_dir.get(path_key(dir), empty_paths()) {
+      for obj in missing_by_dir.get(path_key(dir), []) {
         let members = composite_members(dir, obj.name, vars)
 
         if members.len() > 0 {
@@ -1362,7 +1354,7 @@ export proc augment_missing_composites(
   }
 
   for dir in dirs {
-    composites = composites.extend(composites_by_dir.get(path_key(dir), empty_composites()))
+    composites = composites.extend(composites_by_dir.get(path_key(dir), []))
   }
 
   return {...plan, composites: composites}
@@ -1425,7 +1417,7 @@ export proc refresh_plan_dirs(
 
     let vars = vars_for_dir(root, dir, config, srcarch)?
     var objects: List[Path] = []
-    var composites = empty_composites()
+    var composites = []
 
     for obj in active_objects_for_dir(dir, vars) {
       objects = objects.push(obj)
@@ -1455,8 +1447,8 @@ export proc refresh_plan_dirs(
     )?
 
     dirs_all = dirs_all.push(dir)
-    objects_all = objects_all.extend(objects_by_dir.get(path_key(dir), empty_paths()))
-    composites_all = composites_all.extend(composites_by_dir.get(path_key(dir), empty_composites()))
+    objects_all = objects_all.extend(objects_by_dir.get(path_key(dir), []))
+    composites_all = composites_all.extend(composites_by_dir.get(path_key(dir), []))
   }
 
   return normalize_plan({...next, dirs: dirs_all, objects: objects_all, composites: composites_all})
@@ -1818,14 +1810,14 @@ export proc add_plan_objects(plan: KbuildPlan, objects: List[Path]) [] -> Kbuild
 
 proc apply_item(plan: KbuildPlan, dir: Path, item: Str, vars: Map[Str], as_lib: Bool = false) [] -> ItemResult {
   if item == "" {
-    return {plan: plan, dirs: empty_paths(), entries: empty_paths()}
+    return {plan: plan, dirs: [], entries: []}
   }
 
   if item.contains("$(") {
     return {
       plan: add_unsupported(plan, f"${path_key(dir)}: unresolved token ${item}"),
-      dirs: empty_paths(),
-      entries: empty_paths(),
+      dirs: [],
+      entries: [],
     }
   }
 
@@ -1844,13 +1836,13 @@ proc apply_item(plan: KbuildPlan, dir: Path, item: Str, vars: Map[Str], as_lib: 
       next = add_composite(next, {object: obj, members: members})
     }
 
-    return {plan: next, dirs: empty_paths(), entries: [obj]}
+    return {plan: next, dirs: [], entries: [obj]}
   }
 
   return {
     plan: add_unsupported(plan, f"${path_key(dir)}: unsupported token ${item}"),
-    dirs: empty_paths(),
-    entries: empty_paths(),
+    dirs: [],
+    entries: [],
   }
 }
 
@@ -1967,7 +1959,7 @@ proc scan_discover_dir(
   match file_result {
     Err(err) => {
       let plan = add_unsupported(add_dir(empty_plan(), rel), err.message)
-      return {dir: rel, plan: plan, child_dirs: empty_paths(), entries: empty_paths()}
+      return {dir: rel, plan: plan, child_dirs: [], entries: []}
     }
     Ok(_) => {}
   }
@@ -2108,7 +2100,7 @@ proc discover_scans(
     emit_stage_progress(root, options, f"xsh-kbuild-frontier-start frontier=${frontier.len()}")?
     let pending = unique_unseen_paths(frontier, seen)
     emit_stage_progress(root, options, f"xsh-kbuild-frontier-pending pending=${pending.len()}")?
-    frontier = empty_paths()
+    frontier = []
 
     for dir in pending {
       seen[path_key(dir)] = true
@@ -2694,7 +2686,7 @@ proc collect_task_closure(task_deps: Map[List[Str]], target: Str, selected: Map[
 
   var next = selected.set(target, true)
 
-  for dep in task_deps.get(target, make.empty_strings()) {
+  for dep in task_deps.get(target, []) {
     next = collect_task_closure(task_deps, dep, next)
   }
 
@@ -3227,7 +3219,7 @@ proc pi_relacheck_build_task(cc: Path) [env] -> make.MakeTask {
     name: out.display(),
     outputs: [out],
     inputs: [src],
-    deps: make.empty_strings(),
+    deps: [],
     argv: [
       host_cc.display(),
       "-Wall",
@@ -4060,7 +4052,7 @@ proc vmlinux_lds_task(cc: Path, out: Path) [] -> make.MakeTask {
     name: out.display(),
     outputs: [out],
     inputs: [src],
-    deps: make.empty_strings(),
+    deps: [],
     argv: argv,
     cwd: p".",
     env: {},
@@ -4199,7 +4191,7 @@ proc vmlinux_x86_lds_task(cc: Path, out: Path) [] -> make.MakeTask {
     name: out.display(),
     outputs: [out],
     inputs: [src],
-    deps: make.empty_strings(),
+    deps: [],
     argv: argv,
     cwd: p".",
     env: {},
@@ -5818,8 +5810,8 @@ export proc plan_builtin_archives(
         let dir_key = path_key(object_dir(obj))
         tasks = tasks.push(base_task).push(task).push(check_task)
         link_inputs = link_inputs.push(out)
-        objects_by_dir[dir_key] = objects_by_dir.get(dir_key, empty_paths()).push(out)
-        deps_by_dir[dir_key] = deps_by_dir.get(dir_key, make.empty_strings()).push(check_task.name)
+        objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
+        deps_by_dir[dir_key] = deps_by_dir.get(dir_key, []).push(check_task.name)
       } else {
         generated_objects = generated_objects.push(obj)
       }
@@ -5873,8 +5865,8 @@ export proc plan_builtin_archives(
         if member_outs.len() > 0 {
           let dir_key = path_key(object_dir(obj))
           link_inputs = link_inputs.extend(member_outs)
-          objects_by_dir[dir_key] = objects_by_dir.get(dir_key, empty_paths()).extend(member_outs)
-          deps_by_dir[dir_key] = deps_by_dir.get(dir_key, make.empty_strings()).extend(member_deps)
+          objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).extend(member_outs)
+          deps_by_dir[dir_key] = deps_by_dir.get(dir_key, []).extend(member_deps)
         }
       }
       Err(_) => {
@@ -5895,8 +5887,8 @@ export proc plan_builtin_archives(
             let dir_key = path_key(object_dir(obj))
             tasks = tasks.push(task)
             link_inputs = link_inputs.push(out)
-            objects_by_dir[dir_key] = objects_by_dir.get(dir_key, empty_paths()).push(out)
-            deps_by_dir[dir_key] = deps_by_dir.get(dir_key, make.empty_strings()).push(task.name)
+            objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
+            deps_by_dir[dir_key] = deps_by_dir.get(dir_key, []).push(task.name)
           }
           Err(err) => {
             match err {
@@ -5907,7 +5899,7 @@ export proc plan_builtin_archives(
                   if out.exists()? {
                     let dir_key = path_key(object_dir(obj))
                     link_inputs = link_inputs.push(out)
-                    objects_by_dir[dir_key] = objects_by_dir.get(dir_key, empty_paths()).push(out)
+                    objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
                   } else if is_known_generated_object(obj) {
                     generated_objects = generated_objects.push(obj)
                   } else {
@@ -5983,8 +5975,8 @@ export proc plan_builtin_archives(
         if member_outs.len() > 0 {
           let dir_key = path_key(object_dir(obj))
           lib_link_inputs = lib_link_inputs.extend(member_outs)
-          lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, empty_paths()).extend(member_outs)
-          lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, make.empty_strings()).extend(member_deps)
+          lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).extend(member_outs)
+          lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, []).extend(member_deps)
         }
       }
       Err(_) => {
@@ -6005,8 +5997,8 @@ export proc plan_builtin_archives(
             let dir_key = path_key(object_dir(obj))
             tasks = tasks.push(task)
             lib_link_inputs = lib_link_inputs.push(out)
-            lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, empty_paths()).push(out)
-            lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, make.empty_strings()).push(task.name)
+            lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).push(out)
+            lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, []).push(task.name)
           }
           Err(err) => {
             match err {
@@ -6017,7 +6009,7 @@ export proc plan_builtin_archives(
                   if out.exists()? {
                     let dir_key = path_key(object_dir(obj))
                     lib_link_inputs = lib_link_inputs.push(out)
-                    lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, empty_paths()).push(out)
+                    lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).push(out)
                   } else if is_known_generated_object(obj) {
                     generated_objects = generated_objects.push(obj)
                   } else {
@@ -6049,7 +6041,7 @@ export proc plan_builtin_archives(
     if path_key(dir) != "." {
       let parent = archive_parent_dir(dir)
       let parent_key = path_key(parent)
-      children_by_dir[parent_key] = children_by_dir.get(parent_key, empty_paths()).push(dir)
+      children_by_dir[parent_key] = children_by_dir.get(parent_key, []).push(dir)
     }
   }
 
@@ -6060,9 +6052,9 @@ export proc plan_builtin_archives(
     dir_index -= 1
     let dir = plan.dirs[dir_index]
     let dir_key = path_key(dir)
-    var needed = objects_by_dir.get(dir_key, empty_paths()).len() > 0
+    var needed = objects_by_dir.get(dir_key, []).len() > 0
 
-    for child in children_by_dir.get(dir_key, empty_paths()) {
+    for child in children_by_dir.get(dir_key, []) {
       if archive_needed.get(path_key(child), false) {
         needed = true
       }
@@ -6084,20 +6076,20 @@ export proc plan_builtin_archives(
     }
 
     let dir_key = path_key(dir)
-    let lib_objs = lib_objects_by_dir.get(dir_key, empty_paths())
+    let lib_objs = lib_objects_by_dir.get(dir_key, [])
 
     if lib_objs.len() > 0 {
       let sorted_lib_objs = sorted_paths(lib_objs)
       let lib_archive = dir_lib_archive(dir)
-      let lib_deps = lib_deps_by_dir.get(dir_key, make.empty_strings())
+      let lib_deps = lib_deps_by_dir.get(dir_key, [])
       tasks = tasks.push(vmlinux_archive_argv_task(["llvm-ar"], sorted_lib_objs, lib_archive, lib_deps))
       archives = archives.push(lib_archive)
     }
 
-    var objs = objects_by_dir.get(dir_key, empty_paths())
-    var deps = deps_by_dir.get(dir_key, make.empty_strings())
+    var objs = objects_by_dir.get(dir_key, [])
+    var deps = deps_by_dir.get(dir_key, [])
 
-    for child in children_by_dir.get(dir_key, empty_paths()) {
+    for child in children_by_dir.get(dir_key, []) {
       if archive_needed.get(path_key(child), false) {
         let child_archive = dir_archive(child)
 

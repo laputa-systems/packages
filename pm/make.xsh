@@ -12,14 +12,6 @@ export type MakeTask = {
   stamp: Path,
 }
 
-pure empty_path() -> Path {
-  return p""
-}
-
-export pure empty_strings() -> List[Str] {
-  []
-}
-
 pure empty_records() -> List[Record] {
   []
 }
@@ -643,7 +635,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
     }
 
     for dep in task.deps {
-      dependents[dep] = dependents.get(dep, empty_strings()).push(task.name)
+      dependents[dep] = dependents.get(dep, []).push(task.name)
     }
   }
 
@@ -678,7 +670,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
             )
           }
 
-          for dependent in dependents.get(task.name, empty_strings()) {
+          for dependent in dependents.get(task.name, []) {
             let remaining = remaining_deps.get(dependent, 0) - 1
             remaining_deps[dependent] = remaining
 
@@ -724,7 +716,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
       done[row.task.name] = true
       done_count += 1
 
-      for dependent in dependents.get(row.task.name, empty_strings()) {
+      for dependent in dependents.get(row.task.name, []) {
         let remaining = remaining_deps.get(dependent, 0) - 1
         remaining_deps[dependent] = remaining
 
@@ -761,7 +753,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
               )
             }
 
-            for dependent in dependents.get(task.name, empty_strings()) {
+            for dependent in dependents.get(task.name, []) {
               let remaining = remaining_deps.get(dependent, 0) - 1
               remaining_deps[dependent] = remaining
 
@@ -897,7 +889,7 @@ export proc link_shared_task(
     argv: argv,
     cwd: p".",
     env: {},
-    depfile: empty_path(),
+    depfile: p"",
     stamp: stamp_path(out),
   }
 }
@@ -923,7 +915,7 @@ export proc link_executable_cxx_task(
     argv: argv,
     cwd: p".",
     env: {},
-    depfile: empty_path(),
+    depfile: p"",
     stamp: stamp_path(out),
   }
 }
@@ -951,7 +943,7 @@ export proc link_executable_task(
     argv: argv,
     cwd: p".",
     env: {},
-    depfile: empty_path(),
+    depfile: p"",
     stamp: stamp_path(out),
   }
 }
@@ -969,7 +961,7 @@ export proc link_archive_task(toolchain: Path, objs: List[Path], out: Path, deps
     argv: argv,
     cwd: p".",
     env: {},
-    depfile: empty_path(),
+    depfile: p"",
     stamp: stamp_path(out),
   }
 }
