@@ -16,7 +16,7 @@ pure empty_path() -> Path {
   return p""
 }
 
-pure empty_strings() -> List[Str] {
+export pure empty_strings() -> List[Str] {
   []
 }
 

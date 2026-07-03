@@ -34,7 +34,7 @@ export pure setup_args(options: List[Str]) -> List[Str] {
   return ["setup", "-Dprefix=/usr", "-Dlibdir=lib"].extend(options).push("build")
 }
 
-export proc build(dest: Path, options: List[Str], jobs_count: Int = 0) [process, env, error] {
+proc muon_build(dest: Path, options: List[Str], jobs_count: Int = 0) [process, env, error] {
   let muon = process.which("muon")?
   let jobs = if jobs_count > 0 { jobs_count } else { make.jobs()? }
   let jobs_flag = f"-j${jobs}"

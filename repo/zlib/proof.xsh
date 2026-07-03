@@ -3,7 +3,7 @@ use pm.util as pm_util
 
 error ScriptError = Failed(kind: Str, message: Str)
 
-proc ensure(condition: Bool, kind: Str, message: Str) [error] {
+proc check(condition: Bool, kind: Str, message: Str) [error] {
   if ! condition {
     Err(ScriptError.Failed(kind, message))?
   }
@@ -52,8 +52,8 @@ int main(void) {
     proof.target_elf(root, p"usr/lib/libz.so", "zlib")?
   }
 
-  ensure(fs.exists(fp"${root}/usr/include/zlib.h")?, "zlib", "missing zlib.h")?
-  ensure(fs.exists(fp"${root}/usr/lib/libz.so")?, "zlib", "missing libz.so")?
+  check(fs.exists(fp"${root}/usr/include/zlib.h")?, "zlib", "missing zlib.h")?
+  check(fs.exists(fp"${root}/usr/lib/libz.so")?, "zlib", "missing libz.so")?
   print "zlib ok"
 }
 

@@ -1,8 +1,6 @@
 use PKGBUILD-shared as PKGBUILD_shared
 use kbuild
 
-error ScriptError = Failed(kind: Str, message: Str)
-
 pure x86_kbuild_cflags() -> List[Str] {
   return [
     "-D__KERNEL__",
@@ -610,7 +608,7 @@ proc build_x86_realmode_payload(cc: Path) [fs, process, env, error] {
   )?
 }
 
-export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, error] {
+export proc build_x86_64_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, error] {
   let prepare_start = PKGBUILD_shared.timing_start("prepare")
   kbuild.write_config_headers(p".config", p".", ver, srcarch)?
   kbuild.write_build_headers(p".", ver, srcarch)?

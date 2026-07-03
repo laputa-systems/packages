@@ -70,7 +70,7 @@ endif
   )?
 }
 
-pure has_path(paths: List[Path], target: Str) -> Bool {
+pure contains_path(paths: List[Path], target: Str) -> Bool {
   for path_value in paths {
     if path_value.display() == target {
       return true
@@ -85,28 +85,28 @@ proc test_kbuild_discovers_configured_obj_y_dirs_and_objects(ctx: TestContext) [
   write_fixture(root)?
   let config = kbuild.load_config(fp"${root}/.config")?
   let plan = kbuild.discover_plan(root, config, "arm64")?
-  test.ok(has_path(plan.dirs, "."))?
-  test.ok(has_path(plan.dirs, "init"))?
-  test.ok(has_path(plan.dirs, "init/lib"))?
-  test.ok(has_path(plan.dirs, "block"))?
-  test.ok(has_path(plan.dirs, "net"))?
-  test.ok(has_path(plan.dirs, "arch/arm64/kernel"))?
-  test.eq(has_path(plan.dirs, "unused"), false)?
-  test.ok(has_path(plan.objects, "core.o"))?
-  test.ok(has_path(plan.lib_objects, "libhelper.o"))?
-  test.ok(has_path(plan.objects, "combo.o"))?
+  test.ok(contains_path(plan.dirs, "."))?
+  test.ok(contains_path(plan.dirs, "init"))?
+  test.ok(contains_path(plan.dirs, "init/lib"))?
+  test.ok(contains_path(plan.dirs, "block"))?
+  test.ok(contains_path(plan.dirs, "net"))?
+  test.ok(contains_path(plan.dirs, "arch/arm64/kernel"))?
+  test.eq(contains_path(plan.dirs, "unused"), false)?
+  test.ok(contains_path(plan.objects, "core.o"))?
+  test.ok(contains_path(plan.lib_objects, "libhelper.o"))?
+  test.ok(contains_path(plan.objects, "combo.o"))?
   test.eq(plan.composites.len(), 1)?
   test.eq(plan.composites[0].object.display(), "combo.o")?
-  test.ok(has_path(plan.composites[0].members, "combo-a.o"))?
-  test.ok(has_path(plan.composites[0].members, "combo-b.o"))?
-  test.ok(has_path(plan.objects, "hyperv.o"))?
-  test.ok(has_path(plan.objects, "conditional.o"))?
-  test.eq(has_path(plan.objects, "skipped.o"), false)?
-  test.ok(has_path(plan.objects, "init/main.o"))?
-  test.ok(has_path(plan.objects, "init/lib/helper.o"))?
-  test.ok(has_path(plan.objects, "block/blk-core.o"))?
-  test.ok(has_path(plan.objects, "net/ipv4.o"))?
-  test.ok(has_path(plan.objects, "arch/arm64/kernel/head.o"))?
+  test.ok(contains_path(plan.composites[0].members, "combo-a.o"))?
+  test.ok(contains_path(plan.composites[0].members, "combo-b.o"))?
+  test.ok(contains_path(plan.objects, "hyperv.o"))?
+  test.ok(contains_path(plan.objects, "conditional.o"))?
+  test.eq(contains_path(plan.objects, "skipped.o"), false)?
+  test.ok(contains_path(plan.objects, "init/main.o"))?
+  test.ok(contains_path(plan.objects, "init/lib/helper.o"))?
+  test.ok(contains_path(plan.objects, "block/blk-core.o"))?
+  test.ok(contains_path(plan.objects, "net/ipv4.o"))?
+  test.ok(contains_path(plan.objects, "arch/arm64/kernel/head.o"))?
   test.eq(plan.unsupported.len(), 0)?
 }
 
@@ -119,7 +119,7 @@ proc test_kbuild_writes_text_plan(ctx: TestContext) [fs, error] {
   test.ok(stored.contains("obj\tinit/main.o"))?
   let loaded = kbuild.read_discovered_plan(out)?
   test.eq(loaded.objects.len(), plan.objects.len())?
-  test.ok(has_path(loaded.objects, "init/main.o"))?
+  test.ok(contains_path(loaded.objects, "init/main.o"))?
 }
 
 proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, error] {
@@ -219,10 +219,10 @@ proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, er
     test.eq(archive_plan.missing_sources.len(), 0)?
     test.eq(archive_plan.generated_objects.len(), 0)?
     test.eq(archive_plan.tasks.len(), 18)?
-    test.ok(has_path(archive_plan.archives, ".xsh-kbuild/built-in.a"))?
-    test.ok(has_path(archive_plan.archives, ".xsh-kbuild/lib.a"))?
-    test.ok(has_path(archive_plan.archives, ".xsh-kbuild/init/built-in.a"))?
-    test.ok(has_path(archive_plan.archives, ".xsh-kbuild/init/lib/built-in.a"))?
+    test.ok(contains_path(archive_plan.archives, ".xsh-kbuild/built-in.a"))?
+    test.ok(contains_path(archive_plan.archives, ".xsh-kbuild/lib.a"))?
+    test.ok(contains_path(archive_plan.archives, ".xsh-kbuild/init/built-in.a"))?
+    test.ok(contains_path(archive_plan.archives, ".xsh-kbuild/init/lib/built-in.a"))?
     let report = fp"${root}/archive-plan.json"
     kbuild.write_archive_plan_report(archive_plan, report)?
     let stored: Record = json.read(report)?
@@ -392,7 +392,7 @@ proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, 
     let archive_plan = kbuild.plan_builtin_archives(plan, /usr/bin/cc, "aarch64-linux-gnu", [], [], [])?
     test.eq(archive_plan.missing_sources.len(), 1)?
     test.eq(archive_plan.generated_objects.len(), 0)?
-    test.ok(has_path(archive_plan.missing_sources, "missing.o"))?
+    test.ok(contains_path(archive_plan.missing_sources, "missing.o"))?
     test.eq(archive_plan.archives.len(), 1)?
   } ?
 }

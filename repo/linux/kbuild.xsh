@@ -1,6 +1,6 @@
 use pm.make as make
 
-error ScriptError = Failed(kind: Str, message: Str)
+export error ScriptError = Failed(kind: Str, message: Str)
 
 export type Kconfig = {enabled: Map[Bool], values: Map[Str]}
 
@@ -62,10 +62,6 @@ pure empty_paths() -> List[Path] {
   []
 }
 
-pure empty_strings() -> List[Str] {
-  []
-}
-
 pure empty_composites() -> List[CompositeObject] {
   []
 }
@@ -76,7 +72,7 @@ pure empty_plan() -> KbuildPlan {
     objects: empty_paths(),
     lib_objects: empty_paths(),
     composites: empty_composites(),
-    unsupported: empty_strings(),
+    unsupported: make.empty_strings(),
   }
 }
 
@@ -736,19 +732,19 @@ proc included_kbuild_lines(
   srcarch: Str,
 ) [fs, error] -> Result[List[Str]] {
   if ! line.starts_with("include ") {
-    return empty_strings()
+    return make.empty_strings()
   }
 
   let raw_spec = line.split("include ").get(1, "").trim()
 
   if raw_spec.contains("$(objtree)") {
-    return empty_strings()
+    return make.empty_strings()
   }
 
   let spec = expand_vars(raw_spec, vars, config, srcarch)
 
   if spec == "" or spec.contains(" ") or spec.contains("$(") or spec.starts_with("/") {
-    return empty_strings()
+    return make.empty_strings()
   }
 
   let rel = normalize_rel_path(fp"${spec}")
@@ -1095,7 +1091,7 @@ proc kbuild_compile_flags_for_dir(
 
         if object_name != "" {
           let key = path_key(join_rel(dir, object_name))
-          let current = flags.get(key, empty_strings())
+          let current = flags.get(key, make.empty_strings())
 
           if assign.op == "+=" {
             flags[key] = current.extend(rhs.fields())
@@ -1162,7 +1158,7 @@ pure compile_flags_cache_entries(flags: Map[Map[List[Str]]]) -> List[Record] {
     let dir_flags = flags.get(dir_key, map.empty())
 
     for object_key in dir_flags.keys() {
-      entries = entries.push({dir: dir_key, object: object_key, flags: dir_flags.get(object_key, empty_strings())})
+      entries = entries.push({dir: dir_key, object: object_key, flags: dir_flags.get(object_key, make.empty_strings())})
     }
   }
 
@@ -1297,8 +1293,8 @@ proc cached_kbuild_compile_flags_for_dirs(
 
 pure kbuild_compile_flags_for_object(by_dir: Map[Map[List[Str]]], obj: Path) -> List[Str] {
   let dir_flags = by_dir.get(path_key(object_dir(obj)), map.empty())
-  let object_flags = dir_flags.get(path_key(obj), empty_strings())
-  return dir_flags.get("*", empty_strings()).extend(object_flags)
+  let object_flags = dir_flags.get(path_key(obj), make.empty_strings())
+  return dir_flags.get("*", make.empty_strings()).extend(object_flags)
 }
 
 pure object_cflags(base: List[Str], by_dir: Map[Map[List[Str]]], obj: Path) -> List[Str] {
@@ -2698,7 +2694,7 @@ proc collect_task_closure(task_deps: Map[List[Str]], target: Str, selected: Map[
 
   var next = selected.set(target, true)
 
-  for dep in task_deps.get(target, empty_strings()) {
+  for dep in task_deps.get(target, make.empty_strings()) {
     next = collect_task_closure(task_deps, dep, next)
   }
 
@@ -3231,7 +3227,7 @@ proc pi_relacheck_build_task(cc: Path) [env] -> make.MakeTask {
     name: out.display(),
     outputs: [out],
     inputs: [src],
-    deps: empty_strings(),
+    deps: make.empty_strings(),
     argv: [
       host_cc.display(),
       "-Wall",
@@ -4064,7 +4060,7 @@ proc vmlinux_lds_task(cc: Path, out: Path) [] -> make.MakeTask {
     name: out.display(),
     outputs: [out],
     inputs: [src],
-    deps: empty_strings(),
+    deps: make.empty_strings(),
     argv: argv,
     cwd: p".",
     env: {},
@@ -4203,7 +4199,7 @@ proc vmlinux_x86_lds_task(cc: Path, out: Path) [] -> make.MakeTask {
     name: out.display(),
     outputs: [out],
     inputs: [src],
-    deps: empty_strings(),
+    deps: make.empty_strings(),
     argv: argv,
     cwd: p".",
     env: {},
@@ -5823,7 +5819,7 @@ export proc plan_builtin_archives(
         tasks = tasks.push(base_task).push(task).push(check_task)
         link_inputs = link_inputs.push(out)
         objects_by_dir[dir_key] = objects_by_dir.get(dir_key, empty_paths()).push(out)
-        deps_by_dir[dir_key] = deps_by_dir.get(dir_key, empty_strings()).push(check_task.name)
+        deps_by_dir[dir_key] = deps_by_dir.get(dir_key, make.empty_strings()).push(check_task.name)
       } else {
         generated_objects = generated_objects.push(obj)
       }
@@ -5878,7 +5874,7 @@ export proc plan_builtin_archives(
           let dir_key = path_key(object_dir(obj))
           link_inputs = link_inputs.extend(member_outs)
           objects_by_dir[dir_key] = objects_by_dir.get(dir_key, empty_paths()).extend(member_outs)
-          deps_by_dir[dir_key] = deps_by_dir.get(dir_key, empty_strings()).extend(member_deps)
+          deps_by_dir[dir_key] = deps_by_dir.get(dir_key, make.empty_strings()).extend(member_deps)
         }
       }
       Err(_) => {
@@ -5900,7 +5896,7 @@ export proc plan_builtin_archives(
             tasks = tasks.push(task)
             link_inputs = link_inputs.push(out)
             objects_by_dir[dir_key] = objects_by_dir.get(dir_key, empty_paths()).push(out)
-            deps_by_dir[dir_key] = deps_by_dir.get(dir_key, empty_strings()).push(task.name)
+            deps_by_dir[dir_key] = deps_by_dir.get(dir_key, make.empty_strings()).push(task.name)
           }
           Err(err) => {
             match err {
@@ -5988,7 +5984,7 @@ export proc plan_builtin_archives(
           let dir_key = path_key(object_dir(obj))
           lib_link_inputs = lib_link_inputs.extend(member_outs)
           lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, empty_paths()).extend(member_outs)
-          lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, empty_strings()).extend(member_deps)
+          lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, make.empty_strings()).extend(member_deps)
         }
       }
       Err(_) => {
@@ -6010,7 +6006,7 @@ export proc plan_builtin_archives(
             tasks = tasks.push(task)
             lib_link_inputs = lib_link_inputs.push(out)
             lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, empty_paths()).push(out)
-            lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, empty_strings()).push(task.name)
+            lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, make.empty_strings()).push(task.name)
           }
           Err(err) => {
             match err {
@@ -6093,13 +6089,13 @@ export proc plan_builtin_archives(
     if lib_objs.len() > 0 {
       let sorted_lib_objs = sorted_paths(lib_objs)
       let lib_archive = dir_lib_archive(dir)
-      let lib_deps = lib_deps_by_dir.get(dir_key, empty_strings())
+      let lib_deps = lib_deps_by_dir.get(dir_key, make.empty_strings())
       tasks = tasks.push(vmlinux_archive_argv_task(["llvm-ar"], sorted_lib_objs, lib_archive, lib_deps))
       archives = archives.push(lib_archive)
     }
 
     var objs = objects_by_dir.get(dir_key, empty_paths())
-    var deps = deps_by_dir.get(dir_key, empty_strings())
+    var deps = deps_by_dir.get(dir_key, make.empty_strings())
 
     for child in children_by_dir.get(dir_key, empty_paths()) {
       if archive_needed.get(path_key(child), false) {

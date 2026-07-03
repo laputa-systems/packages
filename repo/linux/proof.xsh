@@ -1,4 +1,4 @@
-error ScriptError = Failed(kind: Str, message: Str)
+use kbuild
 
 proc ensure_file(path_value: Path, label: Str) [fs, error] {
   if ! fs.exists(path_value)? {

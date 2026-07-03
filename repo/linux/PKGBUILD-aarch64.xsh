@@ -2,8 +2,6 @@ use PKGBUILD-shared as PKGBUILD_shared
 use kbuild
 use pm.make as make
 
-error ScriptError = Failed(kind: Str, message: Str)
-
 pure native_kbuild_cflags() -> List[Str] {
   return [
     "-D__KERNEL__",
@@ -280,7 +278,7 @@ pure native_nvhe_objects() -> List[Record] {
   ]
 }
 
-pure path_strings(paths: List[Path]) -> List[Str] {
+pure display_paths(paths: List[Path]) -> List[Str] {
   return [item.display() for item in paths]
 }
 
@@ -335,7 +333,7 @@ proc nvhe_ld_task(
     argv = argv.extend(["-T", linker_script.display()])
   }
 
-  argv = argv.extend(["-o", out.display()]).extend(path_strings(inputs))
+  argv = argv.extend(["-o", out.display()]).extend(display_paths(inputs))
 
   return {
     name: out.display(),
@@ -395,7 +393,7 @@ proc build_native_nvhe(cc: Path, jobs_count: Int) [fs, process, env, error] {
   let reloc_o = fp"${nvhe_dir}/hyp-reloc.o"
   let rel = fp"${nvhe_dir}/kvm_nvhe.rel.o"
   let out = fp"${nvhe_dir}/kvm_nvhe.o"
-  object_tasks = object_tasks.push(nvhe_ld_task(ld, tmp, object_outputs, path_strings(object_outputs), linker_script))
+  object_tasks = object_tasks.push(nvhe_ld_task(ld, tmp, object_outputs, display_paths(object_outputs), linker_script))
   make.run_tasks(object_tasks, jobs_count)?
   write_native_nvhe_hyprel(gen, tmp, reloc_asm)?
   var final_tasks: List[make.MakeTask] = []

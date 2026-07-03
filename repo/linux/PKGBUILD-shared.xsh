@@ -1,8 +1,6 @@
 use kbuild
 use pm.make as make
 
-error ScriptError = Failed(kind: Str, message: Str)
-
 export proc build_jobs() [env, error] -> Result[Int] {
   let raw = env.get("XSH_LINUX_KBUILD_JOBS") ?? ""
 

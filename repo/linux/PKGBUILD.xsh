@@ -1,10 +1,9 @@
 use PKGBUILD-aarch64 as PKGBUILD_aarch64
 use PKGBUILD-x86_64 as PKGBUILD_x86_64
+use kbuild
 use linux_config
 use parser_gen
 use pm.util as pm_util
-
-error ScriptError = Failed(kind: Str, message: Str)
 
 export let name: Str = "linux"
 
@@ -149,7 +148,7 @@ proc build_native_scratch(cc: Path, srcarch: Str) [fs, process, env, error] {
   }
 
   if srcarch == "x86" {
-    PKGBUILD_x86_64.build_scratch(cc, srcarch, ver)?
+    PKGBUILD_x86_64.build_x86_64_scratch(cc, srcarch, ver)?
     return
   }
 
