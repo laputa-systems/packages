@@ -2,27 +2,27 @@ export let name: Str = "xsh"
 
 export let ver: Str = "0.0.0"
 
-export let rel: Str = "3"
+export let rel: Str = "4"
 
 export let deps: List[Str] = []
 
 export let mkdeps: List[Str] = []
 
 export let sources: List[Path] = [
-  p"https://github.com/laputa-systems/xsh/releases/download/release-81e1dff8ab048f3b011eda3e8a276c78cea2bb66/xsh-multicall-release-81e1dff8ab048f3b011eda3e8a276c78cea2bb66-ARCH-linux-musl.xz => xsh-multicall",
-  p"https://github.com/laputa-systems/xsh/archive/81e1dff8ab048f3b011eda3e8a276c78cea2bb66.tar.gz => xsh-src",
+  p"https://github.com/laputa-systems/xsh/releases/download/release-c2b13e32617f226bff4bb207628143b4361aa32e/xsh-multicall-release-c2b13e32617f226bff4bb207628143b4361aa32e-ARCH-linux-musl.xz => xsh-multicall",
+  p"https://github.com/laputa-systems/xsh/archive/c2b13e32617f226bff4bb207628143b4361aa32e.tar.gz => xsh-src",
 ]
 
-export let checksums: List[Str] = ["SKIP", "8eaa6f12175a7bc1f63e35b4965fc2c885967434ab67bba5ceee06ae27508295"]
+export let checksums: List[Str] = ["SKIP", "37fdbd54dbf7443325acff7d57d58dbc42127970fe7911b1cfb478c9b0e05868"]
 
 export let checksums_aarch64: List[Str] = [
-  "bbe1c2c2a0b2d6a5dad438065715afb375a9c44fe9b105a81e5f3ecdd2a2c3b2",
-  "8eaa6f12175a7bc1f63e35b4965fc2c885967434ab67bba5ceee06ae27508295",
+  "de40171ecf14a38ab51361d9375b55c808dfba364785f9ca91c05332ad128cce",
+  "37fdbd54dbf7443325acff7d57d58dbc42127970fe7911b1cfb478c9b0e05868",
 ]
 
 export let checksums_x86_64: List[Str] = [
-  "b5552e9f12fd690287aa21fed13f2eee1246407b6c52f1c4f919a92bc08294c4",
-  "8eaa6f12175a7bc1f63e35b4965fc2c885967434ab67bba5ceee06ae27508295",
+  "ee2f06985a598de1c3616f555026a89cedaec47ac889e1cf364356a850c0ee31",
+  "37fdbd54dbf7443325acff7d57d58dbc42127970fe7911b1cfb478c9b0e05868",
 ]
 
 export let nostrip: Bool = true
