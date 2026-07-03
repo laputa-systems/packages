@@ -21,7 +21,7 @@ export pure ensure_source_dest(dest: Path) -> Result[Unit] {
   let _ = ensure_relative_path(dest, "source destination")?
 }
 
-export proc response_header(headers: List[Record], name: Str) [] -> Str {
+proc sources_response_header(headers: List[Record], name: Str) [] -> Str {
   for header in headers {
     if header.name == name or name == "location" and header.name == "Location" {
       return header.value
@@ -31,7 +31,7 @@ export proc response_header(headers: List[Record], name: Str) [] -> Str {
   ""
 }
 
-export proc resolve_download_redirect(url: Str) [net] -> Str {
+proc sources_resolve_download_redirect(url: Str) [net] -> Str {
   let response = net.request(
     {
       method: "GET",
@@ -46,7 +46,7 @@ export proc resolve_download_redirect(url: Str) [net] -> Str {
   match response {
     Ok(result) => {
       if result.status >= 300 and result.status < 400 {
-        let location = response_header(result.headers, "location")
+        let location = sources_response_header(result.headers, "location")
 
         if location.starts_with("http://") or location.starts_with("https://") {
           return location
@@ -85,7 +85,7 @@ export proc try_download_url_to_cache(url: Str, dest: Path) [fs, net, error] -> 
     return false
   }
 
-  let download_url = resolve_download_redirect(url)
+  let download_url = sources_resolve_download_redirect(url)
 
   let response = net.download(
     {

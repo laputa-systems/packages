@@ -156,7 +156,7 @@ export proc store_auth_token(root: Path, raw: List[Str]) [fs, process, env, erro
   print "auth" "token" "stored"
 }
 
-export proc response_header(headers: List[Record], name: Str) [] -> Str {
+proc remote_response_header(headers: List[Record], name: Str) [] -> Str {
   for header in headers {
     if header.name == name or name == "location" and header.name == "Location" {
       return header.value
@@ -166,7 +166,7 @@ export proc response_header(headers: List[Record], name: Str) [] -> Str {
   ""
 }
 
-export proc resolve_download_redirect(url: Str) [net] -> Str {
+proc remote_resolve_download_redirect(url: Str) [net] -> Str {
   let response = net.request(
     {
       method: "GET",
@@ -181,7 +181,7 @@ export proc resolve_download_redirect(url: Str) [net] -> Str {
   match response {
     Ok(result) => {
       if result.status >= 300 and result.status < 400 {
-        let location = response_header(result.headers, "location")
+        let location = remote_response_header(result.headers, "location")
 
         if location.starts_with("http://") or location.starts_with("https://") {
           return location
@@ -220,7 +220,7 @@ export proc try_fetch_repo_file(
 
   fs.remove(dest, missing_ok: true)?
   let url = repo_url_for(repo, rel)?
-  let download_url = resolve_download_redirect(url)
+  let download_url = remote_resolve_download_redirect(url)
 
   let response = net.download(
     {
