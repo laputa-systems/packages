@@ -413,7 +413,7 @@ int yyparse(void);
 }
 
 proc output_header_name(output: Str) [error] -> Result[Str] {
-  return Path.parse(output)?.name.replace(".c", ".h")
+  return fp"${output}".name.replace(".c", ".h")
 }
 
 pure is_kconfig_parser(decls: Str) -> Bool {
@@ -1542,7 +1542,7 @@ proc parse_options(argv: List[Str]) [error, io] -> Result[YaccOptions] {
 
 proc main(argv: List[Str] = []) [fs, process, env, error, io] {
   let opt = parse_options(argv)?
-  let source = fs.read_text(Path.parse(opt.input)?)?
+  let source = fs.read_text(fp"${opt.input}")?
   let parts = source.split("%%")
 
   if parts.len() < 2 {
@@ -1558,11 +1558,11 @@ proc main(argv: List[Str] = []) [fs, process, env, error, io] {
 
   if unsupported != "" {
     if upstream_disabled() {
-      fs.write(Path.parse(opt.output)?, generate_linux_stub_c(opt.output, decls, prologue, epilogue)?)?
+      fs.write(fp"${opt.output}", generate_linux_stub_c(opt.output, decls, prologue, epilogue)?)?
 
       if opt.defines {
         let header = if opt.defines_file != "" { opt.defines_file } else { opt.output.replace(".c", ".h") }
-        fs.write(Path.parse(header)?, generate_linux_header(decls, tokens)?)?
+        fs.write(fp"${header}", generate_linux_header(decls, tokens)?)?
       }
 
       return
@@ -1575,12 +1575,12 @@ proc main(argv: List[Str] = []) [fs, process, env, error, io] {
   let rules = parse_rules(grammar)?
   let start = parse_start_symbol(decls, rules[0].lhs)
   let code = generate_c(tokens, rules, start, prologue, epilogue)?
-  let out = Path.parse(opt.output)?
+  let out = fp"${opt.output}"
   fs.write(out, code)?
 
   if opt.defines {
     let header = if opt.defines_file != "" { opt.defines_file } else { opt.output.replace(".c", ".h") }
-    fs.write(Path.parse(header)?, generate_header(tokens)?)?
+    fs.write(fp"${header}", generate_header(tokens)?)?
   }
 
   if opt.verbose {

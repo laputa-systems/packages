@@ -37,7 +37,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   var build_task_env: Record = {}
 
   if cross_build {
-    let build_root = Path.parse((env.get("XSH_PM_BUILD_ROOT") ?? "").trim())?
+    let build_root = fp"${env.get("XSH_PM_BUILD_ROOT") ?? ""}"
     build_cc = fp"${build_root}/usr/bin/cc"
 
     build_task_env = {
@@ -108,7 +108,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   var funcs_input = ""
 
   for src in less_srcs {
-    funcs_input = f"${funcs_input}${Path.parse(src)?.read_text()?}"
+    funcs_input = f"${funcs_input}${fp"${src}".read_text()?}"
   }
 
   fs.write(p"obj/less-srcs.c", funcs_input)?
@@ -119,7 +119,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   for src in less_srcs.push("lesskey_parse.c") {
     let out = less_obj(src)
-    tasks = tasks.push(make.compile_c_task(cc, triple, cflags, defs, includes, Path.parse(src)?, out))
+    tasks = tasks.push(make.compile_c_task(cc, triple, cflags, defs, includes, fp"${src}", out))
     objs = objs.push(out)
   }
 

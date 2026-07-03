@@ -12,7 +12,12 @@ export proc install_remote_metapackage(ctx: PmContext, pkg: RemotePackage) [fs, 
   print ${pkg.name} version_id(pkg.ver, pkg.rel) "registered"
 }
 
-export proc install_remote_tarball(ctx: PmContext, pkg: RemotePackage, tarball: Path, from_cache: Bool) [fs, process, env, error] {
+export proc install_remote_tarball(
+  ctx: PmContext,
+  pkg: RemotePackage,
+  tarball: Path,
+  from_cache: Bool,
+) [fs, process, env, error] {
   let id = package_id(pkg.name, pkg.ver, pkg.rel)
   let install_stage = fp"${ctx.work}/${id}-remote-install"
   let label = if from_cache { "cache-installed" } else { "remote-installed" }
@@ -161,7 +166,7 @@ export proc load_manifest(db: Path) [fs, error] -> Result[List[Path]] {
     let stored: List[Str] = json.read(fp"${db}/manifest.json")?
 
     for rel_text in stored {
-      manifest = manifest.push(Path.parse(rel_text)?)
+      manifest = manifest.push(fp"${rel_text}")
     }
   }
 
@@ -365,7 +370,9 @@ export proc ensure_installable(root: Path, pkg: Package, manifest: List[Path], i
 
       if root_str.ends_with("/.world/root") or root_str.ends_with("/.world/build-root") {
         let cache_dir = root.parent.parent
-        msg = f"${msg}\nstale world-plan cache: delete ${cache_dir.display()} to reset"
+
+        msg = f"""${msg}
+stale world-plan cache: delete ${cache_dir.display()} to reset"""
       }
 
       return Err(PmError.DirtyFilesystem(msg))
@@ -542,7 +549,7 @@ export proc call_installed_hook(metadata: Record, hook_name: Str, root: Path) [f
   }
 
   let dir_text: Str = metadata.get("dir")?
-  let pkgbuild = fp"${Path.parse(dir_text)?}/PKGBUILD.xsh"
+  let pkgbuild = fp"${fp"${dir_text}"}/PKGBUILD.xsh"
 
   if ! fs.exists(pkgbuild)? {
     return
@@ -769,7 +776,7 @@ proc pm_source_root() [fs, env, error] -> Result[Path] {
   let module_path = env.get("XSH_MODULE_PATH") ?? "/usr/lib/pm"
 
   for entry in module_path.split(":") {
-    let root = Path.parse(entry)?
+    let root = fp"${entry}"
 
     if fs.exists(fp"${root}/pm.xsh")? and fs.exists(fp"${root}/pm")? {
       return root
@@ -1211,7 +1218,7 @@ proc xsh_runner() [fs, process, env, error] -> Result[Path] {
   let host = (env.get("XSH_HOST") ?? "").trim()
 
   if host != "" {
-    let host_path = Path.parse(host)?
+    let host_path = fp"${host}"
 
     if fs.exists(host_path)? {
       return host_path
@@ -1358,7 +1365,7 @@ proc resolve_service_xinit(name: Str) [fs, process, env, error] -> Result[Path] 
   let host = (env.get("XINIT_HOST") ?? "").trim()
 
   if host != "" {
-    let host_path = Path.parse(host)?
+    let host_path = fp"${host}"
 
     if fs.exists(host_path)? {
       return host_path

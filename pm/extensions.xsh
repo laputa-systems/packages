@@ -131,7 +131,7 @@ export stream hook_paths() [env, error] -> Stream[Path] {
     let trimmed = entry.raw.trim()
 
     if trimmed != "" {
-      yield Path.parse(trimmed)?
+      yield fp"${trimmed}"
     }
   }
 }

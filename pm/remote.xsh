@@ -675,7 +675,7 @@ export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env
   var failures: List[Str] = []
 
   if repo_urls.public_repo != "" {
-    let rel = Path.parse(pkg.tarball)?
+    let rel = fp"${pkg.tarball}"
     let url = repo_url_for(repo_urls.public_repo, rel)?
     let failure = fetch_repo_file_with_retry(repo_urls.public_repo, rel, tarball)?
 
@@ -693,7 +693,7 @@ export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env
   }
 
   if ! fetched and repo_urls.repo != "" {
-    let rel = Path.parse(pkg.tarball)?
+    let rel = fp"${pkg.tarball}"
     let url = repo_url_for(repo_urls.repo, rel)?
     let failure = fetch_repo_file_with_retry(repo_urls.repo, rel, tarball)?
 
@@ -749,7 +749,7 @@ export proc args_are_package_dirs(raw: List[Str]) [fs, error] -> Result[Bool] {
   }
 
   for item in raw {
-    if ! fs.exists(fp"${Path.parse(item)?}/PKGBUILD.xsh")? {
+    if ! fs.exists(fp"${fp"${item}"}/PKGBUILD.xsh")? {
       return false
     }
   }

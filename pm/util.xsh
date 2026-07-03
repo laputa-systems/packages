@@ -75,7 +75,7 @@ export pure ensure_relative_path(path_value: Path, label: Str) -> Result[Path] {
 
 export pure remote_cache_tarball_path(out: Path, pkg: RemotePackage) -> Result[Path] {
   if pkg.tarball != "" {
-    let rel = ensure_relative_path(Path.parse(pkg.tarball)?, "remote tarball")?
+    let rel = ensure_relative_path(fp"${pkg.tarball}", "remote tarball")?
     return fp"${out}/remote-cache/${rel}"
   }
 
@@ -87,7 +87,7 @@ export pure is_file_url(url: Str) -> Bool {
 }
 
 export pure file_url_path(url: Str) -> Result[Path] {
-  Path.parse(url.replace("file://", ""))?
+  fp"${url.replace("file://", "")}"
 }
 
 export pure repo_file_path(repo: Str, rel: Path) -> Result[Path] {
@@ -169,11 +169,11 @@ export pure strip_git_ext(name: Str) -> Str {
 
 export pure source_basename(source: Str) -> Result[Str] {
   if source.starts_with("git+") {
-    let parsed_path = Path.parse(git_source_url(source))?
+    let parsed_path = fp"${git_source_url(source)}"
     return strip_git_ext(parsed_path.name)
   }
 
-  let parsed_path = Path.parse(source.split("#")[0].split("?")[0])?
+  let parsed_path = fp"${source.split("#")[0].split("?")[0]}"
   return parsed_path.name
 }
 
@@ -182,13 +182,13 @@ export pure parse_source_line(raw: Path) -> Result[SourceLine] {
   let spaced = raw_text.split(" => ")
 
   if spaced.len() > 1 {
-    return {source: spaced[0].trim(), dest: Path.parse(spaced[1].trim())?}
+    return {source: spaced[0].trim(), dest: fp"${spaced[1].trim()}"}
   }
 
   let tight = raw_text.split("=>")
 
   if tight.len() > 1 {
-    return {source: tight[0].trim(), dest: Path.parse(tight[1].trim())?}
+    return {source: tight[0].trim(), dest: fp"${tight[1].trim()}"}
   }
 
   return {source: raw_text, dest: p"."}
@@ -295,7 +295,7 @@ export proc parse_pm_cli(argv: List[Str]) [error] -> Result[Cli] {
 }
 
 export proc paths_from_args(raw: List[Str]) [error] -> Result[List[Path]] {
-  let paths = [Path.parse(item)? for item in raw]
+  let paths = [fp"${item}" for item in raw]
   paths
 }
 

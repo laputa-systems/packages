@@ -42,18 +42,23 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.mkdir(objs)?
   fs.install(p"config", fp"${src}/wpa_supplicant/.config", 0o644, parents: true, overwrite: true)?
-
   let cc = process.which("cc")?
   let triple = f"${env.get("XSH_PM_ARCH") ?? "aarch64"}-linux-musl"
 
   # Flags mirror wpa_supplicant's defconfig: no IPv6, no D-Bus, no readline.
   var cflags: List[Str] = ["-O2", "-Wall"]
+
   var includes: List[Str] = [
-    "-I", fp"${src}/src".display(),
-    "-I", fp"${src}/src/utils".display(),
-    "-I", fp"${src}/wpa_supplicant".display(),
-    "-I", "/usr/include",
+    "-I",
+    fp"${src}/src".display(),
+    "-I",
+    fp"${src}/src/utils".display(),
+    "-I",
+    fp"${src}/wpa_supplicant".display(),
+    "-I",
+    "/usr/include",
   ]
+
   var defs: List[Str] = [
     "-DCONFIG_CTRL_IFACE",
     "-DCONFIG_CTRL_IFACE_UNIX",
@@ -68,6 +73,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-DCONFIG_CRYPTO_INTERNAL",
     "-DCONFIG_LIBNL32",
   ]
+
   var ldflags: List[Str] = ["-L", "/usr/lib", "-lnl-3", "-lnl-genl-3"]
 
   # The set of .c files needed for a minimal WPA2-PSK + SAE build with internal
@@ -201,15 +207,12 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   for src_path in source_files {
     let full_src = fp"${src}/${src_path}"
+
     # Use the full source path (with / replaced by _) to avoid name collisions
     # between e.g. src/utils/config.c and wpa_supplicant/config.c.
     let obj_name = fp"${src_path}".display().replace("/", "_").replace(".c", ".o")
     let out = fp"${objs}/${obj_name}"
-
-    if ! fs.exists(full_src)? {
-      continue
-    }
-
+    continue unless fs.exists(full_src)?
     let task = make.compile_c_task(cc, triple, cflags, defs, includes, full_src, out)
     all_tasks = all_tasks.push(task)
 
@@ -228,25 +231,22 @@ export proc build(dest: Path) [fs, process, env, error] {
   let wpa_supplicant_out = fp"${objs}/wpa_supplicant"
   let wpa_cli_out = fp"${objs}/wpa_cli"
   let passphrase_out = fp"${objs}/wpa_passphrase"
-
   let wpa_all = shared_objs.extend(supp_main)
   let cli_all = shared_objs.extend(wpa_cli_objs)
   let pass_all = shared_objs.extend(passphrase_objs)
-
   let compile_names = [task.name for task in all_tasks]
 
   all_tasks = all_tasks.push(
     make.link_executable_task(cc, triple, wpa_all, [], ldflags, wpa_supplicant_out, compile_names),
   )
-  all_tasks = all_tasks.push(
-    make.link_executable_task(cc, triple, cli_all, [], ldflags, wpa_cli_out, compile_names),
-  )
+
+  all_tasks = all_tasks.push(make.link_executable_task(cc, triple, cli_all, [], ldflags, wpa_cli_out, compile_names))
+
   all_tasks = all_tasks.push(
     make.link_executable_task(cc, triple, pass_all, [], ldflags, passphrase_out, compile_names),
   )
 
   make.run_tasks(all_tasks, make.jobs()?)?
-
 
   # Install under /usr/bin: baselayout symlinks /usr/sbin -> bin so
   # installing to /usr/sbin would fail proof extraction with "symlink escape".
@@ -254,7 +254,21 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.install(wpa_cli_out, fp"${dest}/usr/bin/wpa_cli", 0o755, parents: true, overwrite: true)?
   fs.install(passphrase_out, fp"${dest}/usr/bin/wpa_passphrase", 0o755, parents: true, overwrite: true)?
 
-  fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/wpa_supplicant.xsh", 0o644, parents: true, overwrite: true)?
+  fs.install(
+    p"service.xsh",
+    fp"${dest}/usr/lib/xinit/services/wpa_supplicant.xsh",
+    0o644,
+    parents: true,
+    overwrite: true,
+  )?
+
   fs.mkdir(fp"${dest}/etc/wpa_supplicant")?
-  fs.install(p"wpa_supplicant.conf", fp"${dest}/etc/wpa_supplicant/wpa_supplicant.conf", 0o600, parents: true, overwrite: true)?
+
+  fs.install(
+    p"wpa_supplicant.conf",
+    fp"${dest}/etc/wpa_supplicant/wpa_supplicant.conf",
+    0o600,
+    parents: true,
+    overwrite: true,
+  )?
 }

@@ -202,7 +202,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   for src in srcs {
     let out = fp"obj/${src.replace("/", "-").replace(".c", "").replace(".S", "")}.lo"
-    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, Path.parse(src)?, out)
+    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, fp"${src}", out)
     tasks = tasks.push(task)
     task_deps = task_deps.push(task.name)
     objs = objs.push(out)

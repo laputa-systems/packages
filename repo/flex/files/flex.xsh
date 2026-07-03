@@ -809,7 +809,7 @@ proc main(argv: List[Str] = []) [fs, process, env, error, io] {
     return
   }
 
-  let source = if opt.input == "-" { io.stdin_text()? } else { fs.read_text(Path.parse(opt.input)?)? }
+  let source = if opt.input == "-" { io.stdin_text()? } else { fs.read_text(fp"${opt.input}")? }
   let upstream_reason = upstream_flex_source_reason(source)
 
   if upstream_reason != "" {
@@ -819,7 +819,7 @@ proc main(argv: List[Str] = []) [fs, process, env, error, io] {
       if opt.to_stdout {
         io.write_stdout(code)?
       } else {
-        fs.write(Path.parse(opt.output)?, code)?
+        fs.write(fp"${opt.output}", code)?
       }
 
       return
@@ -839,7 +839,7 @@ proc main(argv: List[Str] = []) [fs, process, env, error, io] {
   if opt.to_stdout {
     io.write_stdout(code)?
   } else {
-    fs.write(Path.parse(opt.output)?, code)?
+    fs.write(fp"${opt.output}", code)?
   }
 }
 

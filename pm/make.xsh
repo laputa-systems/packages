@@ -261,8 +261,8 @@ export proc effective_task_argv(argv: List[Str], task_env: Record) [fs, env, err
   }
 
   let target = native_cross_target_arch()
-  let target_root = Path.parse(env_value("LAPUTA_ROOT"))?
-  let build_root = Path.parse(env_value("XSH_PM_BUILD_ROOT"))?
+  let target_root = fp"${env_value("LAPUTA_ROOT")}"
+  let build_root = fp"${env_value("XSH_PM_BUILD_ROOT")}"
 
   let driver = if cxx {
     fp"${build_root}/usr/lib/llvm22/bin/clang++"
@@ -335,7 +335,7 @@ export proc effective_task_env(argv: List[Str], task_env: Record) [env, error] -
     return task_env
   }
 
-  let build_root = Path.parse(env_value("XSH_PM_BUILD_ROOT"))?
+  let build_root = fp"${env_value("XSH_PM_BUILD_ROOT")}"
   let ld_library_path = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
   let path_value = f"${build_root}/usr/lib/llvm-toolchain/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}"
   return {...task_env, LD_LIBRARY_PATH: ld_library_path, PATH: path_value}

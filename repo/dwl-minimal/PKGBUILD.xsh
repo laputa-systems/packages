@@ -30,7 +30,7 @@ export let sources: List[Path] = [p"https://codeberg.org/dwl/dwl/archive/vVERSIO
 export let checksums: List[Str] = ["a80cc39794a17b9753349496e2cb127f1de22eb179d78f2c22ef647f2643a654"]
 
 proc sysroot_path(root: Str, raw: Str) [fs, error] -> Result[Path] {
-  let path_value = Path.parse(raw.trim())?
+  let path_value = fp"${raw.trim()}"
 
   if fs.exists(path_value)? {
     return path_value
@@ -194,7 +194,7 @@ static const char *browsercmd[] = { "/usr/bin/waterfox", NULL };
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let pc = pm_meson.pkg_config_env()?
-  let pkg_config = Path.parse(pc.pkg_config)?
+  let pkg_config = fp"${pc.pkg_config}"
   let root = env.get("LAPUTA_ROOT") ?? "/"
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
   let cross_build = pm_util.build_arch()? != pm_util.target_arch()? and build_root != ""

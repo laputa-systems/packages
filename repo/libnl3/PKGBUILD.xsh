@@ -10,13 +10,9 @@ export let deps: List[Str] = ["musl", "linux"]
 
 export let mkdeps: List[Str] = []
 
-export let sources: List[Path] = [
-  p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz",
-]
+export let sources: List[Path] = [p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz"]
 
-export let checksums: List[Str] = [
-  "2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d",
-]
+export let checksums: List[Str] = ["2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cwd = fs.cwd()?
@@ -77,6 +73,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 #define const /**/
 #endif
 """
+
     fs.write(config_h, cfg_body)?
   }
 
@@ -87,14 +84,18 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.mkdir(fp"${dest}/usr")?
   fs.mkdir(fp"${dest}/usr/lib")?
   fs.mkdir(fp"${dest}/usr/include")?
-
   var cflags: List[Str] = ["-O2", "-fPIC", "-DPIC", "-D_GNU_SOURCE"]
   var defs: List[Str] = []
+
   var includes: List[Str] = [
-    "-I", fp"${src}/include".display(),
-    "-I", fp"${src}/include/linux-private".display(),
-    "-I", fp"${src}/lib".display(),
-    "-I", fp"${src}".display(),
+    "-I",
+    fp"${src}/include".display(),
+    "-I",
+    fp"${src}/include/linux-private".display(),
+    "-I",
+    fp"${src}/lib".display(),
+    "-I",
+    src.display(),
   ]
 
   # Core source files for libnl-3.so
@@ -119,12 +120,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   ]
 
   # genl source files for libnl-genl-3.so
-  let genl_sources: List[Str] = [
-    "lib/genl/ctrl.c",
-    "lib/genl/family.c",
-    "lib/genl/genl.c",
-    "lib/genl/mngt.c",
-  ]
+  let genl_sources: List[Str] = ["lib/genl/ctrl.c", "lib/genl/family.c", "lib/genl/genl.c", "lib/genl/mngt.c"]
 
   # Compile all core objects
   var core_objs: List[Path] = []
@@ -135,11 +131,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     var obj_name = src_path.replace("/", "_")
     obj_name = obj_name.replace(".c", ".lo")
     let out = fp"${objs}/${obj_name}"
-
-    if ! fs.exists(full_src)? {
-      continue
-    }
-
+    continue unless fs.exists(full_src)?
     let task = make.compile_lo_task(cc, triple, cflags, defs, includes, full_src, out)
     all_tasks = all_tasks.push(task)
     core_objs = core_objs.push(out)
@@ -153,11 +145,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     var obj_name = src_path.replace("/", "_")
     obj_name = obj_name.replace(".c", ".lo")
     let out = fp"${objs}/${obj_name}"
-
-    if ! fs.exists(full_src)? {
-      continue
-    }
-
+    continue unless fs.exists(full_src)?
     let task = make.compile_lo_task(cc, triple, cflags, defs, includes, full_src, out)
     all_tasks = all_tasks.push(task)
     genl_objs = genl_objs.push(out)
@@ -170,7 +158,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   let core_so = fp"${dest}/usr/lib/libnl-3.so.200.26.0"
   let core_deps = [task.name for task in all_tasks if task.outputs[0] in core_objs]
   make.link_shared(cc, triple, core_objs, "libnl-3.so.200", [], core_so)?
-
   let genl_so = fp"${dest}/usr/lib/libnl-genl-3.so.200.26.0"
   let genl_deps = [task.name for task in all_tasks if task.outputs[0] in genl_objs]
   make.link_shared(cc, triple, genl_objs, "libnl-genl-3.so.200", [], genl_so)?
@@ -181,7 +168,6 @@ export proc build(dest: Path) [fs, process, env, error] {
     let parts = basename.split(".so.")
     let soname = f"${parts[0]}.so.${parts[1].split(".")[0]}"
     let linker = f"${parts[0]}.so"
-
     fs.symlink(fp"${basename}", fp"${dest}/usr/lib/${soname}")?
     fs.symlink(fp"${soname}", fp"${dest}/usr/lib/${linker}")?
   }
@@ -190,7 +176,10 @@ export proc build(dest: Path) [fs, process, env, error] {
   # which is a kernel-internal header not exported to userspace.
   let linux_hdrs = fp"${dest}/usr/include/linux"
   fs.mkdir(linux_hdrs)?
-  fs.write(fp"${linux_hdrs}/compiler.h", r"""#ifndef _UAPI_LINUX_COMPILER_H
+
+  fs.write(
+    fp"${linux_hdrs}/compiler.h",
+    """#ifndef _UAPI_LINUX_COMPILER_H
 #define _UAPI_LINUX_COMPILER_H
 #define __user
 #define __force
@@ -215,7 +204,8 @@ export proc build(dest: Path) [fs, process, env, error] {
 #define __read_mostly
 #define __ro_after_init
 #endif
-""")?
+""",
+  )?
 
   # Install public headers at /usr/include/netlink/
   let usr_include = fp"${dest}/usr/include"
@@ -226,11 +216,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   for entry in fs.walk(headers_src, gitignore: false)? {
     let rel = entry.path.relative_to(headers_src)
-
-    if rel.display() == "version.h.in" {
-      continue
-    }
-
+    continue when rel.display() == "version.h.in"
     let target = fp"${headers_dest}/${rel}"
 
     if entry.kind == "dir" {

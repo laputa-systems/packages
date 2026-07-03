@@ -132,7 +132,7 @@ proc main(...argv: List[Str]) [error] {
     return Err(Ext4FsckError.Failed("usage", "usage: fsck.ext4 [-n|-p] IMAGE"))
   }
 
-  check_image(Path.parse(image)?)?
+  check_image(fp"${image}")?
 }
 
 main(@args)?

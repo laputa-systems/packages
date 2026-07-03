@@ -169,7 +169,7 @@ export proc cached_archive_plan(
 
   let archive_report = p".xsh-kbuild-archive-plan.json"
   let archive_fingerprint = p".xsh-kbuild-archive-plan.fingerprint"
-  let stable_cache_dir = Path.parse(env.get("XSH_LINUX_KBUILD_PLAN_CACHE_DIR") ?? "/var/cache/laputa/linux-kbuild")?
+  let stable_cache_dir = fp"${env.get("XSH_LINUX_KBUILD_PLAN_CACHE_DIR") ?? "/var/cache/laputa/linux-kbuild"}"
   let stable_archive_report = fp"${stable_cache_dir.display()}/linux-${srcarch}.archive-plan.json"
   let stable_archive_fingerprint = fp"${stable_cache_dir.display()}/linux-${srcarch}.archive-plan.fingerprint"
   let fingerprint = archive_plan_cache_fingerprint(plan, srcarch, triple, cflags, includes)?
@@ -279,14 +279,14 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
 
   if explicit_text != "" {
     emit_kbuild_progress(f"xsh-kbuild-plan-cache explicit-text-read ${explicit_text}")?
-    let plan = kbuild.read_discovered_plan_text(Path.parse(explicit_text)?)?
+    let plan = kbuild.read_discovered_plan_text(fp"${explicit_text}")?
     print "xsh-kbuild-plan-cache" "explicit-text" $explicit_text plan.dirs.len() "dirs" plan.objects.len() "objects" plan.composites.len() "composites"
     return plan
   }
 
   if explicit != "" {
     emit_kbuild_progress(f"xsh-kbuild-plan-cache explicit-read ${explicit}")?
-    let plan = kbuild.read_discovered_plan(Path.parse(explicit)?)?
+    let plan = kbuild.read_discovered_plan(fp"${explicit}")?
     print "xsh-kbuild-plan-cache" "explicit" $explicit plan.dirs.len() "dirs" plan.objects.len() "objects" plan.composites.len() "composites"
     return plan
   }
@@ -294,7 +294,7 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
   let force_discover = (env.get("XSH_LINUX_KBUILD_FORCE_DISCOVER") ?? "") == "1"
   let plan_path = p".xsh-kbuild-plan.json"
   let fingerprint_path = p".xsh-kbuild-plan.fingerprint"
-  let stable_cache_dir = Path.parse(env.get("XSH_LINUX_KBUILD_PLAN_CACHE_DIR") ?? "/var/cache/laputa/linux-kbuild")?
+  let stable_cache_dir = fp"${env.get("XSH_LINUX_KBUILD_PLAN_CACHE_DIR") ?? "/var/cache/laputa/linux-kbuild"}"
   let stable_plan_path = fp"${stable_cache_dir.display()}/linux-${srcarch}.plan.json"
   let stable_fingerprint_path = fp"${stable_cache_dir.display()}/linux-${srcarch}.plan.fingerprint"
 
@@ -495,7 +495,7 @@ export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.
 
 export proc add_extra_objects_from_env(plan: kbuild.KbuildPlan) [env, error] -> Result[kbuild.KbuildPlan] {
   let raw = (env.get("XSH_LINUX_KBUILD_EXTRA_OBJECTS") ?? "").replace(",", " ")
-  var objects = [Path.parse(item)? for item in raw.words()]
+  var objects = [fp"${item}" for item in raw.words()]
   return kbuild.add_plan_objects(plan, objects)
 }
 
@@ -506,7 +506,7 @@ proc parse_kbuild_only_outputs(raw: Str) [error] -> Result[List[Path]] {
     let trimmed = item.trim()
 
     if trimmed != "" {
-      outputs = outputs.push(Path.parse(trimmed)?)
+      outputs = outputs.push(fp"${trimmed}")
     }
   }
 

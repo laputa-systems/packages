@@ -67,9 +67,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   let cargo = process.which("cargo")?
   let cc = process.which("cc")?
   let target_arch = pm_util.target_arch()?
-  let build_root = Path.parse((env.get("XSH_PM_BUILD_ROOT") ?? "").trim())?
+  let build_root = fp"${env.get("XSH_PM_BUILD_ROOT") ?? ""}"
   let target_root_value = (env.get("LAPUTA_ROOT") ?? env.get("XSH_PM_ROOT") ?? "").trim()
-  let target_root = if target_root_value != "" { Path.parse(target_root_value)? } else { cc.parent.parent }
+  let target_root = if target_root_value != "" { fp"${target_root_value}" } else { cc.parent.parent }
   var libdir = fp"${target_root}/usr/lib"
 
   if ! fs.exists(libdir)? {

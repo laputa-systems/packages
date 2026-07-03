@@ -6,13 +6,12 @@ proc main(root: Path, package_name: Str, ...argv: List[Str]) [fs, process, env, 
   }
 
   print f"building ${package_name}"
-
   linux.chroot(root)?
   let root_dir = /
   let _ = root_dir
 
   cd root_dir {
-    let target = Path.parse(argv[0])?
+    let target = fp"${argv[0]}"
 
     env {
       LAPUTA_ROOT = env.get("LAPUTA_ROOT") ?? ""

@@ -24,7 +24,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     return Err(GnuStubsError.Failed("gnu-stubs requires a native build (build_arch == target_arch)"))
   }
 
-  let laputa_root = Path.parse((env.get("LAPUTA_ROOT") ?? "").trim())?
+  let laputa_root = fp"${env.get("LAPUTA_ROOT") ?? ""}"
   let clang = fp"${laputa_root}/usr/lib/llvm22/bin/clang"
   let libunwind = fp"${laputa_root}/usr/lib/llvm22/lib/libunwind.a"
 

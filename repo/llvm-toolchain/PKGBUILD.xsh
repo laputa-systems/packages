@@ -85,11 +85,11 @@ proc sysroot_arg(argv: List[Str]) [error] -> Result[Path] {
     let arg = argv[index]
 
     if arg == "--sysroot" and index + 1 < argv.len() {
-      return Path.parse(argv[index + 1])?
+      return Path(argv[index + 1])
     }
 
     if arg.starts_with("--sysroot=") {
-      return Path.parse(arg.replace("--sysroot=", ""))?
+      return Path(arg.replace("--sysroot=", ""))
     }
 
     index += 1
@@ -100,7 +100,7 @@ proc sysroot_arg(argv: List[Str]) [error] -> Result[Path] {
 
 proc rooted(root: Path, rel: Str) [error] -> Result[Path] {
   if root.display() == "/" {
-    return Path.parse(f"/\${rel}")?
+    return Path(f"/\${rel}")
   }
 
   fp"\${root}/\${rel}"
@@ -341,7 +341,7 @@ proc require_env_path(env_name: Str) [env, error] -> Result[Path] {
     return Err(LlvmToolchainError.Failed(f"${env_name} is required"))
   }
 
-  Path.parse(value)?
+  fp"${value}"
 }
 
 proc write_wrapper(dest: Path, wrapper_name: Str, real: Path, clang: Bool = false, cxx: Bool = false) [fs, error] {
@@ -375,7 +375,7 @@ proc install_tool_alias(bin: Path, tool_name: Str, target: Str) [fs, error] {
   }
 
   require_file(fp"${bin}/${target}", target)?
-  fs.symlink(Path.parse(target)?, link)?
+  fs.symlink(fp"${target}", link)?
 }
 
 proc install_prebuilt_tree(dest: Path) [fs, env, error] {
@@ -416,7 +416,6 @@ proc install_prebuilt_tree(dest: Path) [fs, env, error] {
 
 export proc build(dest: Path) [fs, process, env, error] {
   install_prebuilt_tree(dest)?
-
   write_wrapper(dest, "cc", /usr/lib/llvm22/bin/clang, clang: true)?
   write_wrapper(dest, "clang", /usr/lib/llvm22/bin/clang, clang: true)?
   write_wrapper(dest, "c++", /usr/lib/llvm22/bin/clang++, clang: true, cxx: true)?

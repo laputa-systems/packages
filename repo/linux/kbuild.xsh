@@ -204,7 +204,7 @@ proc merge_plan(base: KbuildPlan, addition: KbuildPlan) [] -> KbuildPlan {
 
 pure join_rel(dir: Path, item: Str) -> Path {
   if path_key(dir) == "." {
-    return normalize_rel_path(Path.parse(item) ?? p".")
+    return normalize_rel_path(fp"${item}")
   }
 
   return normalize_rel_path(fp"${dir}/${item}")
@@ -239,7 +239,7 @@ pure normalize_rel_path(path_value: Path) -> Path {
     return p"."
   }
 
-  return Path.parse(parts.join("/")) ?? p"."
+  return fp"${parts.join("/")}"
 }
 
 export proc write_text_if_changed(path_value: Path, data: Str) [fs, error] {
@@ -751,7 +751,7 @@ proc included_kbuild_lines(
     return empty_strings()
   }
 
-  let rel = normalize_rel_path(Path.parse(spec) ?? p".")
+  let rel = normalize_rel_path(fp"${spec}")
   return logical_lines(join_root(root, rel).read_text()?)
 }
 
@@ -1234,10 +1234,7 @@ proc cached_kbuild_compile_flags_for_dirs(
   config: Kconfig,
   srcarch: Str,
 ) [fs, env, error] -> Result[Map[Map[List[Str]]]] {
-  let cache_dir = Path.parse(
-    env.get("XSH_LINUX_KBUILD_COMPILE_FLAGS_CACHE_DIR") ?? env.get("XSH_LINUX_KBUILD_PLAN_CACHE_DIR") ?? "/var/cache/laputa/linux-kbuild",
-  )?
-
+  let cache_dir = fp"${env.get("XSH_LINUX_KBUILD_COMPILE_FLAGS_CACHE_DIR") ?? env.get("XSH_LINUX_KBUILD_PLAN_CACHE_DIR") ?? "/var/cache/laputa/linux-kbuild"}"
   let stable_cache_path = fp"${cache_dir.display()}/linux-${srcarch}.compile-flags.json"
   let local_cache_path = fp"${root}/.xsh-kbuild-compile-flags.json"
   let fingerprint = compile_flags_fingerprint(root, dirs, fp"${root}/.config", srcarch)?
@@ -2330,7 +2327,7 @@ proc composites_from_records(items: List[Record]) [error] -> Result[List[Composi
   for item in items {
     let object_key: Str = item.get("object")?
     let members: List[Str] = item.get("members")?
-    composites = composites.push({object: Path.parse(object_key)?, members: paths_from_strings(members)?})
+    composites = composites.push({object: fp"${object_key}", members: paths_from_strings(members)?})
   }
 
   return composites
@@ -2427,7 +2424,7 @@ export proc parse_discovered_plan_text(text: Str) [error] -> Result[KbuildPlan] 
       "lib_objects" => lib_objects = parts |> drop(1)
       "lib" => lib_objects = lib_objects.push(parts.get(1, ""))
       "composite" => composites = composites.push(
-        {object: Path.parse(parts.get(1, ""))?, members: paths_from_strings(parts |> drop(2))?},
+        {object: fp"${parts.get(1, "")}", members: paths_from_strings(parts |> drop(2))?},
       )
       "unsupported" => unsupported = unsupported.push(parts.get(1, ""))
       _ => {}
@@ -2563,7 +2560,7 @@ proc path_from_string(item: Str) [error] -> Result[Path] {
     return p""
   }
 
-  return Path.parse(item)?
+  return fp"${item}"
 }
 
 proc task_from_record(item: Record) [error] -> Result[make.MakeTask] {

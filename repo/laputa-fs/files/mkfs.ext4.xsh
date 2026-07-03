@@ -955,7 +955,7 @@ proc main(...argv: List[Str]) [fs, error] {
       if arg == "-L" {
         label = value
       } else if arg == "-d" {
-        source_root = Path.parse(value)?
+        source_root = fp"${value}"
       } else if arg == "-O" {
         if value != "^64bit,^metadata_csum" and value != "^metadata_csum,^64bit" {
           return Err(Ext4ToolError.Failed("unsupported-feature", value))
@@ -976,12 +976,12 @@ proc main(...argv: List[Str]) [fs, error] {
   }
 
   if source_root.display() == "" {
-    let empty_dir = p"/tmp/mkfs-ext4-empty"
+    let empty_dir = /tmp/mkfs-ext4-empty
     fs.mkdir(empty_dir)?
     source_root = empty_dir
   }
 
-  format_ext_image(Path.parse(image)?, source_root, label)?
+  format_ext_image(fp"${image}", source_root, label)?
 }
 
 main(@args)?

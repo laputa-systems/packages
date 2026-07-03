@@ -1850,7 +1850,7 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
   if name == "include" or name == "sinclude" {
     let filepath = if margs.len() >= 1 { margs[0] } else { "" }
     let paths_str = sg(st, "include_paths", "")
-    var found_path: Path = Path.parse(filepath)?
+    var found_path: Path = fp"${filepath}"
     var found = false
 
     for p in paths_str.split("\n") {
@@ -1865,7 +1865,7 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
     }
 
     if ! found {
-      let cand = Path.parse(filepath)?
+      let cand = fp"${filepath}"
 
       if fs.exists(cand)? {
         found_path = cand
@@ -2348,7 +2348,7 @@ proc main(margs: List[Str] = []) [fs, process, env, error, io] {
     st = r.st
   } else {
     for filepath in files {
-      let content = if filepath == "-" { io.stdin_text()? } else { fs.read_text(Path.parse(filepath)?)? }
+      let content = if filepath == "-" { io.stdin_text()? } else { fs.read_text(fp"${filepath}")? }
       st["file"] = if filepath == "-" { "stdin" } else { filepath }
       let r = expand_full(content, st)?
       st = r.st

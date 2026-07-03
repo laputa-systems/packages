@@ -97,7 +97,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   for src in lib_srcs {
     let out = fp"obj/${src.replace("/", "-").replace(".c", ".lo")}"
-    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, Path.parse(src)?, out)
+    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, fp"${src}", out)
     tasks = tasks.push(task)
     lib_deps = lib_deps.push(task.name)
     lib_objs = lib_objs.push(out)
@@ -119,8 +119,8 @@ export proc build(dest: Path) [fs, process, env, error] {
   var pkgconf_deps: List[Str] = []
 
   for src in pkgconf_srcs {
-    let out = fp"obj/pkgconf-${Path.parse(src)?.name.replace(".c", ".o")}"
-    let task = make.compile_c_task(cc, triple, cflags, defs, includes, Path.parse(src)?, out)
+    let out = fp"obj/pkgconf-${fp"${src}".name.replace(".c", ".o")}"
+    let task = make.compile_c_task(cc, triple, cflags, defs, includes, fp"${src}", out)
     tasks = tasks.push(task)
     pkgconf_deps = pkgconf_deps.push(task.name)
     pkgconf_objs = pkgconf_objs.push(out)
@@ -147,8 +147,8 @@ export proc build(dest: Path) [fs, process, env, error] {
   var bomtool_deps: List[Str] = []
 
   for src in bomtool_srcs {
-    let out = fp"obj/bomtool-${Path.parse(src)?.name.replace(".c", ".o")}"
-    let task = make.compile_c_task(cc, triple, cflags, defs, includes, Path.parse(src)?, out)
+    let out = fp"obj/bomtool-${fp"${src}".name.replace(".c", ".o")}"
+    let task = make.compile_c_task(cc, triple, cflags, defs, includes, fp"${src}", out)
     tasks = tasks.push(task)
     bomtool_deps = bomtool_deps.push(task.name)
     bomtool_objs = bomtool_objs.push(out)

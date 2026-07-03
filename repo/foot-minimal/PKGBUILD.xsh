@@ -56,7 +56,7 @@ export let checksums: List[Str] = [
 ]
 
 proc sysroot_path(root: Str, raw: Str) [fs, error] -> Result[Path] {
-  let path_value = Path.parse(raw.trim())?
+  let path_value = fp"${raw.trim()}"
 
   if fs.exists(path_value)? {
     return path_value

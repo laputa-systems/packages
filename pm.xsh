@@ -452,7 +452,7 @@ proc pm_module_root_path() [fs, env, error] -> Result[Path] {
     let raw = entry.trim()
 
     if raw != "" {
-      let candidate = Path.parse(raw)?
+      let candidate = fp"${raw}"
 
       if fs.exists(fp"${candidate}/pm.xsh")? and fs.exists(fp"${candidate}/pm")? {
         return path.absolute(candidate)?
@@ -527,7 +527,7 @@ proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]]
   var seen: Map[Bool] = {}
 
   for item in raw {
-    let input = path.absolute(Path.parse(item)?)?
+    let input = path.absolute(fp"${item}")?
     let pkgbuild = fp"${input}/PKGBUILD.xsh"
 
     if fs.exists(pkgbuild)? {
@@ -1128,7 +1128,7 @@ proc remote_metadata_sha256(repo: Str, out: Path, entry: RemotePackage) [fs, net
     return ""
   }
 
-  let rel = ensure_relative_path(Path.parse(entry.metadata)?, "remote metadata")?
+  let rel = ensure_relative_path(fp"${entry.metadata}", "remote metadata")?
   let cache = fp"${out}/remote-metadata/${rel.display()}"
   let failure = fetch_repo_file_with_retry(repo, rel, cache, timeout: 60s)?
 
@@ -1621,7 +1621,7 @@ proc command_search(ctx: PmContext, raw: List[Str]) [fs, env, error] {
   var search_index = 1
 
   while search_index < raw.len() {
-    dirs = dirs.push(Path.parse(raw[search_index])?)
+    dirs = dirs.push(fp"${raw[search_index]}")
     search_index += 1
   }
 
@@ -1789,10 +1789,10 @@ proc build_install_packages(argv: List[Str]) [fs, net, process, env, time, error
     return Err(usage("pm build-install ROOT BUILD_ROOT WORK OUT PKGDIR..."))
   }
 
-  let root = path.absolute(Path.parse(argv[1])?)?
-  let build_root = path.absolute(Path.parse(argv[2])?)?
-  let work = path.absolute(Path.parse(argv[3])?)?
-  let out = path.absolute(Path.parse(argv[4])?)?
+  let root = path.absolute(fp"${argv[1]}")?
+  let build_root = path.absolute(fp"${argv[2]}")?
+  let work = path.absolute(fp"${argv[3]}")?
+  let out = path.absolute(fp"${argv[4]}")?
   var raw_args: List[Str] = []
   var build_i = 5
 
@@ -2119,17 +2119,20 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
 
             write_world_state(repo_dir, fingerprint, planned, built_names, unchanged_names, false)?
           }
+
           pending_index += 1
         }
 
         if tranche_errors.len() > 0 {
           eprint f"tranche ${level}: ${tranche_errors.len()}/${pending.len()} failed:"
+
           for error in tranche_errors {
             eprint f"  ${error}"
           }
-          return Err(PmError.Usage(
-            f"tranche ${level} had ${tranche_errors.len()} failure(s); state saved for successes",
-          ))
+
+          return Err(
+            PmError.Usage(f"tranche ${level} had ${tranche_errors.len()} failure(s); state saved for successes"),
+          )
         }
       }
 
@@ -2165,7 +2168,7 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     return Err(usage("pm build-set REPO_DIR PKGDIR..."))
   }
 
-  let repo_dir = path.absolute(Path.parse(argv[1])?)?
+  let repo_dir = path.absolute(fp"${argv[1]}")?
   let root = fp"${repo_dir}/.set-root"
   let build_root = fp"${repo_dir}/.set-build-root"
   let work = fp"${repo_dir}/.work"
@@ -2244,10 +2247,10 @@ proc build_prepared_package_command(argv: List[Str]) [fs, process, env, error] {
   }
 
   build_prepared_package(
-    path.absolute(Path.parse(argv[1])?)?,
-    path.absolute(Path.parse(argv[2])?)?,
-    path.absolute(Path.parse(argv[3])?)?,
-    path.absolute(Path.parse(argv[4])?)?,
+    path.absolute(fp"${argv[1]}")?,
+    path.absolute(fp"${argv[2]}")?,
+    path.absolute(fp"${argv[3]}")?,
+    path.absolute(fp"${argv[4]}")?,
   )?
 }
 
@@ -2256,7 +2259,7 @@ proc upload_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     return Err(usage("pm upload-set REPO_DIR PKGDIR..."))
   }
 
-  let repo_dir = path.absolute(Path.parse(argv[1])?)?
+  let repo_dir = path.absolute(fp"${argv[1]}")?
   let build_root = fp"${repo_dir}/.set-build-root"
   let work = fp"${repo_dir}/.work"
   let out = fp"${repo_dir}/.out"
@@ -2310,7 +2313,7 @@ proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, error] {
     return Err(usage("pm upload-repo-export REPO_DIR"))
   }
 
-  let repo_dir = path.absolute(Path.parse(argv[1])?)?
+  let repo_dir = path.absolute(fp"${argv[1]}")?
   let index_path = fp"${repo_dir}/index.json"
   let work = fp"${repo_dir}/.upload-work"
   let out = fp"${repo_dir}/.upload-out"
@@ -2336,7 +2339,7 @@ proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, error] {
         return Err(PmError.PackageTarball(f"${entry.name} ${version_id(entry.ver, entry.rel)} has no tarball"))
       }
 
-      let tarball_rel = ensure_relative_path(Path.parse(entry.tarball)?, "remote tarball")?
+      let tarball_rel = ensure_relative_path(fp"${entry.tarball}", "remote tarball")?
       let tarball = fp"${repo_dir}/${tarball_rel.display()}"
 
       if ! fs.exists(tarball)? {
@@ -2348,7 +2351,7 @@ proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, error] {
       uploaded = {...uploaded, sha256: hash.sha256(tarball)?.hex(), size: tarball_metadata.size}
 
       if entry.metadata != "" {
-        let metadata_rel = ensure_relative_path(Path.parse(entry.metadata)?, "remote metadata")?
+        let metadata_rel = ensure_relative_path(fp"${entry.metadata}", "remote metadata")?
         let metadata = fp"${repo_dir}/${metadata_rel.display()}"
 
         if ! fs.exists(metadata)? {
@@ -2416,7 +2419,7 @@ proc all_args_are_package_dirs(argv: List[Str], start: Int) [fs, error] -> Resul
   var i = start
 
   while i < argv.len() {
-    let dir = Path.parse(argv[i])?
+    let dir = fp"${argv[i]}"
 
     if ! fs.exists(fp"${dir}/PKGBUILD.xsh")? {
       return false
@@ -2530,7 +2533,7 @@ proc build_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     return Err(usage("pm build REPO_DIR PKGDIR..."))
   }
 
-  let repo_dir = path.absolute(Path.parse(argv[1])?)?
+  let repo_dir = path.absolute(fp"${argv[1]}")?
   let build_work = fp"${repo_dir}/.work"
   let build_out = fp"${repo_dir}/.out"
   let build_root = fp"${repo_dir}/.root"

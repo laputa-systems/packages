@@ -74,7 +74,7 @@ export proc try_download_url_to_cache(url: Str, dest: Path) [fs, net, error] -> 
   defer fs.remove(tmp, missing_ok: true)?
 
   if url.starts_with("file://") {
-    let source = Path.parse(url.replace("file://", ""))?
+    let source = fp"${url.replace("file://", "")}"
 
     if fs.exists(source)? {
       fs.copy(source, tmp, overwrite: true)?
@@ -209,7 +209,7 @@ export proc resolve_source(
     return {path: cache, kind: "file"}
   }
 
-  let source_path = Path.parse(source)?
+  let source_path = fp"${source}"
   var local = source_path
 
   if ! source.starts_with("/") {

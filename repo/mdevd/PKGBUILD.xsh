@@ -278,7 +278,7 @@ proc write_uint_header(bits: Int, dfmt: Str, ofmt: Str, xfmt: Str, bfmt: Str, sy
     return Err(ScriptError.Failed("skalibs-gen-bits", "unsupported non-little-endian target"))
   }
 
-  parts = parts.push(Path.parse(f"skalibs/src/headers/uint${bits}-bswap")?.read_text()?)
+  parts = parts.push(fp"skalibs/src/headers/uint${bits}-bswap".read_text()?)
   parts = parts.push(gen_types_internal(p"skalibs/src/headers/bits-lendian".read_text()?, "", "", bits))
   parts = parts.push(gen_bits_template(p"skalibs/src/headers/bits-template".read_text()?, bits, dfmt, ofmt, xfmt, bfmt))
   parts = parts.push(gen_types_internal(p"skalibs/src/headers/bits-footer".read_text()?, "", "", bits))
@@ -481,7 +481,7 @@ struct sockaddr_nl {
 
   for src in srcs {
     let out = fp"obj/${src.replace("/", "-").replace(".c", ".o")}"
-    let task = make.compile_c_task(cc, triple, cflags, defs, includes, Path.parse(src)?, out)
+    let task = make.compile_c_task(cc, triple, cflags, defs, includes, fp"${src}", out)
     tasks = tasks.push(task)
     task_deps = task_deps.push(task.name)
     objs[src] = out

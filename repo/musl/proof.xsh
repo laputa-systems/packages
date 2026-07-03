@@ -31,7 +31,7 @@ pure elf_machine_name(arch: Str) -> Str {
 proc build_root_path() [env, error] -> Result[Path] {
   let build_root_value = (env.get("XSH_PM_BUILD_ROOT") ?? "").trim()
   ensure(build_root_value != "", "proof-musl", "XSH_PM_BUILD_ROOT is required for native-cross proof")?
-  return Path.parse(build_root_value)?
+  return fp"${build_root_value}"
 }
 
 proc cross_cc(default_cc: Path, build_arch: Str, target_arch: Str) [env, error] -> Result[Path] {
