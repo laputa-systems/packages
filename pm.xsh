@@ -235,11 +235,11 @@ proc missing_fresh_world_dependencies(
       var needs_install = ! fs.exists(db)?
 
       if ! needs_install and remote_latest.has(dep) {
-        let remote: RemotePackage = remote_latest.get(dep)?
+        let remote_pkg: RemotePackage = remote_latest.get(dep)?
         let metadata = load_metadata(db)?
         let ver: Str = metadata.get("ver")?
         let rel: Str = metadata.get("rel")?
-        needs_install = compare_version_release(ver, rel, remote.ver, remote.rel) < 0
+        needs_install = compare_version_release(ver, rel, remote_pkg.ver, remote_pkg.rel) < 0
       }
 
       if needs_install {
@@ -663,14 +663,14 @@ proc world_plan_remote_annotation(
     return ""
   }
 
-  let remote: RemotePackage = remote_latest.get(pkg.name)?
-  let cmp = compare_version_release(planned.ver, planned.rel, remote.ver, remote.rel)
+  let remote_pkg: RemotePackage = remote_latest.get(pkg.name)?
+  let cmp = compare_version_release(planned.ver, planned.rel, remote_pkg.ver, remote_pkg.rel)
 
   if cmp >= 0 {
     return ""
   }
 
-  f"remote newer ${version_id(remote.ver, remote.rel)}"
+  f"remote newer ${version_id(remote_pkg.ver, remote_pkg.rel)}"
 }
 
 proc planned_world_packages(
@@ -693,33 +693,33 @@ proc planned_world_packages(
     }
 
     if remote_latest.has(pkg.name) {
-      let remote: RemotePackage = remote_latest.get(pkg.name)?
+      let remote_pkg: RemotePackage = remote_latest.get(pkg.name)?
 
-      if compare_version_text(pkg.ver, remote.ver) == 0 {
+      if compare_version_text(pkg.ver, remote_pkg.ver) == 0 {
         if state_planned_rels.has(pkg.name) {
           let state_rel = state_planned_rels.get(pkg.name)?
           let planned_rel = if compare_version_text(pkg.rel, state_rel) > 0 { pkg.rel } else { state_rel }
-          let remote_to_planned = compare_version_text(remote.rel, planned_rel)
+          let remote_to_planned = compare_version_text(remote_pkg.rel, planned_rel)
 
           if remote_to_planned < 0 or remote_to_planned == 0 and ! changed_dep {
             planned_pkg = package_with_rel(pkg, planned_rel)
           } else {
-            let rel_cmp = compare_version_text(planned_pkg.rel, remote.rel)
+            let rel_cmp = compare_version_text(planned_pkg.rel, remote_pkg.rel)
 
             if rel_cmp < 0 or changed_dep and rel_cmp <= 0 {
-              planned_pkg = package_with_rel(pkg, next_world_rel(remote.rel))
+              planned_pkg = package_with_rel(pkg, next_world_rel(remote_pkg.rel))
             }
           }
         } else {
-          let rel_cmp = compare_version_text(planned_pkg.rel, remote.rel)
+          let rel_cmp = compare_version_text(planned_pkg.rel, remote_pkg.rel)
 
           if rel_cmp < 0 or changed_dep and rel_cmp <= 0 {
-            planned_pkg = package_with_rel(pkg, next_world_rel(remote.rel))
+            planned_pkg = package_with_rel(pkg, next_world_rel(remote_pkg.rel))
           }
         }
       }
 
-      changed[pkg.name] = compare_version_release(planned_pkg.ver, planned_pkg.rel, remote.ver, remote.rel) != 0
+      changed[pkg.name] = compare_version_release(planned_pkg.ver, planned_pkg.rel, remote_pkg.ver, remote_pkg.rel) != 0
     } else {
       if state_planned_rels.has(pkg.name) {
         let state_rel = state_planned_rels.get(pkg.name)?

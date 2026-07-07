@@ -576,7 +576,7 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
     let deps: List[Str] = exports.get("deps")?
     let mkdeps: List[Str] = exports.get("mkdeps")?
     var target_build_deps: List[Str] = []
-    let sources: List[Path] = exports.get("sources")?
+    let pkg_sources: List[Path] = exports.get("sources")?
     let base_checksums: List[Str] = exports.get("checksums")?
     let checksums = select_checksums(exports, base_checksums)?
     var nostrip = false
@@ -604,7 +604,7 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
       return Err(PmError.PackageContract(f"${name} exports an empty version or release"))
     }
 
-    if sources.len() != checksums.len() {
+    if pkg_sources.len() != checksums.len() {
       return Err(PmError.PackageContract(f"${name} source/checksum count mismatch"))
     }
 
@@ -624,7 +624,7 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
         deps,
         mkdeps,
         target_build_deps,
-        sources,
+        sources: pkg_sources,
         checksums,
         nostrip,
         extract_install,
