@@ -2,21 +2,21 @@ export let name: Str = "xinit"
 
 export let ver: Str = "release-f9034b48f96f49f42914498cd7bbe8a080b945b3"
 
-export let rel: Str = "4"
+export let rel: Str = "5"
 
 export let deps: List[Str] = ["xsh"]
 
 export let mkdeps: List[Str] = []
 
 export let sources: List[Path] = [
-  p"https://github.com/laputa-systems/xinit/raw/17b5fe2cb1b261a02b8950c66ff1c9b5a135368e/xinit.xsh",
+  p"https://github.com/laputa-systems/xinit/raw/c6af71070559d01a81ee88d3c5a4afb5c54b7f16/xinit.xsh",
 ]
 
-export let checksums: List[Str] = [""]
+export let checksums: List[Str] = ["9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"]
 
-export let checksums_aarch64 = ["2e4437d4746860393a16b967632ae1802e1ca73dcb0cf61e40e4278e9af93766"]
+export let checksums_aarch64 = ["9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"]
 
-export let checksums_x86_64 = ["2e4437d4746860393a16b967632ae1802e1ca73dcb0cf61e40e4278e9af93766"]
+export let checksums_x86_64 = ["9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"]
 
 export let nostrip: Bool = true
 

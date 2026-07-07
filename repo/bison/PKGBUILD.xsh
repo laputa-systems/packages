@@ -7,7 +7,7 @@ export let name: Str = "bison"
 
 export let ver: Str = "3.8.2"
 
-export let rel: Str = "4"
+export let rel: Str = "5"
 
 export let deps: List[Str] = ["musl"]
 
@@ -17,7 +17,7 @@ export let sources: List[Path] = [p"https://mirrors.kernel.org/gnu/bison/bison-V
 
 export let checksums: List[Str] = [
   "9bba0214ccf7f1079c5d59210045227bcf619519840ebfa80cd3849cff5a5bf2",
-  "770990aaf079cab9af45536b76650b5093fcc9cb6f84059b2f54a08a4a610fb0",
+  "8d5a90d09af0d60aa203e197840fb3e4e2d95863de1f102d399793c1a47e7eb4",
 ]
 
 proc install_data_tree(src: Path, dest: Path) [fs, error] {
@@ -646,7 +646,7 @@ getprogname (void)
   var in_sources = false
 
   for line in p"lib/gnulib.mk".lines()? {
-    var chunk = line
+    var chunk: Str = line
 
     if line.starts_with("lib_libbison_a_SOURCES +=") {
       chunk = line.replace("lib_libbison_a_SOURCES +=", "")

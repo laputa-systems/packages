@@ -413,7 +413,7 @@ proc depfile_inputs(depfile: Path, cwd: Path) [fs, error] -> Result[List[Path]] 
 }
 
 proc all_inputs(task: Record) [fs, error] -> Result[List[Path]] {
-  var inputs = task.inputs
+  var inputs: List[Path] = task.inputs
 
   if has_path(task.depfile) {
     inputs = inputs.extend(depfile_inputs(task.depfile, task.cwd)?)

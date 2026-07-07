@@ -6,7 +6,7 @@ export let name: Str = "flex"
 
 export let ver: Str = "2.6.4"
 
-export let rel: Str = "6"
+export let rel: Str = "7"
 
 export let deps: List[Str] = ["musl", "m4"]
 
@@ -19,7 +19,7 @@ export let sources: List[Path] = [
 
 export let checksums: List[Str] = [
   "e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995",
-  "1619dfa4377e04000e4143d04bc008dd5652fd36501065a35ce9892029eeeed7",
+  "7b82e1303c127dc7b81eb5ac2138500b6e02e081c74ccf5939e90c4d027bd72d",
 ]
 
 export proc build(dest: Path) [fs, process, env, error] {

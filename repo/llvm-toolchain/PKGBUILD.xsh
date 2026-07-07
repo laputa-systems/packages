@@ -6,7 +6,7 @@ export let name: Str = "llvm-toolchain"
 
 export let ver: Str = "22.1.8"
 
-export let rel: Str = "8"
+export let rel: Str = "9"
 
 export let deps: List[Str] = ["musl"]
 
@@ -98,9 +98,9 @@ proc sysroot_arg(argv: List[Str]) [error] -> Result[Path] {
   return p"/"
 }
 
-proc rooted(root: Path, rel: Str) [error] -> Result[Path] {
+proc rooted(root: Path, rel: Str) [] -> Path {
   if root.display() == "/" {
-    return Path(f"/\${rel}")
+    return fp"/\${rel}"
   }
 
   fp"\${root}/\${rel}"
@@ -271,9 +271,9 @@ env {
     exec_args = exec_args.extend([
       "-fuse-ld=lld",
       "-L",
-      rooted(sysroot, "usr/lib")?.display(),
+      rooted(sysroot, "usr/lib").display(),
       "-L",
-      rooted(sysroot, "usr/lib/llvm22/lib")?.display(),
+      rooted(sysroot, "usr/lib/llvm22/lib").display(),
     ])
 
     if runtime {
@@ -282,12 +282,12 @@ env {
 
     if startfiles and ! shared_link(argv) {
       if static_link(argv) {
-        exec_args = exec_args.push(rooted(sysroot, "usr/lib/crt1.o")?.display())
+        exec_args = exec_args.push(rooted(sysroot, "usr/lib/crt1.o").display())
       } else {
-        exec_args = exec_args.push(rooted(sysroot, "usr/lib/Scrt1.o")?.display())
+        exec_args = exec_args.push(rooted(sysroot, "usr/lib/Scrt1.o").display())
       }
 
-      exec_args = exec_args.push(rooted(sysroot, "usr/lib/crti.o")?.display())
+      exec_args = exec_args.push(rooted(sysroot, "usr/lib/crti.o").display())
     }
   }
 
@@ -295,7 +295,7 @@ env {
 
   if linking and is_cxx and runtime {
     exec_args = exec_args.extend(["-lc++", "-lc++abi"])
-    let unwind = rooted(sysroot, "usr/lib/llvm22/lib/libunwind.a")?
+    let unwind = rooted(sysroot, "usr/lib/llvm22/lib/libunwind.a")
 
     if fs.exists(unwind)? {
       exec_args = exec_args.push(unwind.display())
@@ -308,14 +308,14 @@ env {
     exec_args = exec_args.push("-lc")
   }
 
-  let builtins = rooted(sysroot, f"usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-\${arch}.a")?
+  let builtins = rooted(sysroot, f"usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-\${arch}.a")
 
   if linking and runtime and fs.exists(builtins)? {
     exec_args = exec_args.push(builtins.display())
   }
 
   if linking and startfiles and ! shared_link(argv) {
-    exec_args = exec_args.push(rooted(sysroot, "usr/lib/crtn.o")?.display())
+    exec_args = exec_args.push(rooted(sysroot, "usr/lib/crtn.o").display())
   }
 
   env {
