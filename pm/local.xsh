@@ -444,7 +444,7 @@ export proc install_manifest_entries(
 
     match fs.root_readlink(source_root, rel_path) {
       Ok(target) => {
-        fs.root_symlink(dest_root, target, rel_path, overwrite: overwrite)?
+        fs.root_symlink(dest_root, target, rel_path, true, overwrite)?
         continue
       }
       Err(_) => {}
@@ -569,8 +569,8 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
 
   for dir in dirs {
     let pkgbuild = fp"${dir}/PKGBUILD.xsh"
-    let exports = module.load(pkgbuild)?
-    let name: Str = exports.get("name")?
+    let exports = module.load(pkgbuild).context("package-load", pkgbuild.display())?
+    let name: Str = exports.get("name").context("package-load", pkgbuild.display())?
     let ver: Str = exports.get("ver")?
     let rel: Str = exports.get("rel")?
     let deps: List[Str] = exports.get("deps")?
@@ -830,10 +830,13 @@ run /usr/local/bin/xshi @args ?
     let source = fp"/proc/${name}"
     let dest = fp"${root}/proc/${name}"
 
-    if fs.exists(source)? {
-      fs.copy(source, dest, overwrite: true)?
-    } else if ! fs.exists(dest)? {
-      fs.write(dest, "")?
+    match fs.metadata(source) {
+      Ok(metadata) if metadata.kind == "file" => fs.copy(source, dest, overwrite: true)?
+      _ => {
+        if ! fs.exists(dest)? {
+          fs.write(dest, "")?
+        }
+      }
     }
   }
 
@@ -842,9 +845,12 @@ run /usr/local/bin/xshi @args ?
 
   for name in ["resolv.conf", "hosts", "nsswitch.conf"] {
     let source = fp"/etc/${name}"
+    let dest = fp"${root}/etc/${name}"
 
-    if fs.exists(source)? {
-      fs.copy(source, fp"${root}/etc/${name}", overwrite: true)?
+    match fs.metadata(source) {
+      Ok(metadata) if metadata.kind == "file" => fs.copy(source, dest, overwrite: true)?
+      Ok(metadata) if metadata.kind == "symlink" => fs.write(dest, source.read_text()?)?
+      _ => {}
     }
   }
 }

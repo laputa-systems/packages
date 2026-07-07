@@ -1854,7 +1854,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
         min: -1,
         help: "with --build, stop after tranche N and leave stage resumable",
       },
-      jobs: {form: "-j --jobs N", kind: "UInt", default: default_world_jobs()?, min: 1, help: "build jobs per tranche"},
+      jobs: {form: "-j --jobs N", kind: "Int", default: default_world_jobs()?, min: 1, help: "build jobs per tranche"},
     },
     "pm world-plan",
   )?
@@ -2046,10 +2046,20 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
           f"jobs ${world_jobs}",
         )}"
 
-        let built_batches = pending
-          |> par-map --jobs=world_jobs { |pkg|
-            build_world_package(build_ctx, root, build_root, pkg, target_arch, world_build_arch, cross_build)
+        var built_batches: List[List[BuiltPackage]] = []
+
+        if world_jobs == 1 {
+          for pkg in pending {
+            built_batches = built_batches.push(
+              build_world_package(build_ctx, root, build_root, pkg, target_arch, world_build_arch, cross_build)?,
+            )
           }
+        } else {
+          built_batches = pending
+            |> par-map --jobs=world_jobs { |pkg|
+              build_world_package(build_ctx, root, build_root, pkg, target_arch, world_build_arch, cross_build)
+            }
+        }
 
         let remote_hashes = world_remote_metadata_hashes(
           repo_urls.repo,

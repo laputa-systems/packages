@@ -414,8 +414,7 @@ proc install_prebuilt_tree(dest: Path) [fs, env, error] {
   require_file(fp"${target}/lib/clang/22/lib/linux/libclang_rt.builtins-${arch}.a", "compiler-rt builtins")?
 }
 
-export proc build(dest: Path) [fs, process, env, error] {
-  install_prebuilt_tree(dest)?
+export proc install_wrappers(dest: Path) [fs, error] {
   write_wrapper(dest, "cc", /usr/lib/llvm22/bin/clang, clang: true)?
   write_wrapper(dest, "clang", /usr/lib/llvm22/bin/clang, clang: true)?
   write_wrapper(dest, "c++", /usr/lib/llvm22/bin/clang++, clang: true, cxx: true)?
@@ -433,4 +432,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   for tool in ["ar", "ranlib", "nm", "objcopy", "objdump", "readelf", "strip"] {
     write_wrapper(dest, f"llvm-${tool}", fp"/usr/lib/llvm22/bin/llvm-${tool}")?
   }
+}
+
+export proc build(dest: Path) [fs, process, env, error] {
+  install_prebuilt_tree(dest)?
+  install_wrappers(dest)?
 }

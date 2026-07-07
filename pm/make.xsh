@@ -622,6 +622,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
   var scheduled: Map[Bool] = {}
   var running: List[Record] = []
   var pending_stamps: List[Record] = []
+  let no_dependents: List[Str] = []
   var done_count = 0
   var spawn_count = 0
   var skip_count = 0
@@ -635,7 +636,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
     }
 
     for dep in task.deps {
-      dependents[dep] = dependents.get(dep, []).push(task.name)
+      dependents[dep] = dependents.get(dep, no_dependents).push(task.name)
     }
   }
 
@@ -670,7 +671,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
             )
           }
 
-          for dependent in dependents.get(task.name, []) {
+          for dependent in dependents.get(task.name, no_dependents) {
             let remaining = remaining_deps.get(dependent, 0) - 1
             remaining_deps[dependent] = remaining
 
@@ -716,7 +717,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
       done[row.task.name] = true
       done_count += 1
 
-      for dependent in dependents.get(row.task.name, []) {
+      for dependent in dependents.get(row.task.name, no_dependents) {
         let remaining = remaining_deps.get(dependent, 0) - 1
         remaining_deps[dependent] = remaining
 
@@ -753,7 +754,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
               )
             }
 
-            for dependent in dependents.get(task.name, []) {
+            for dependent in dependents.get(task.name, no_dependents) {
               let remaining = remaining_deps.get(dependent, 0) - 1
               remaining_deps[dependent] = remaining
 
