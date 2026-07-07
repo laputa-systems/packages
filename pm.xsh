@@ -754,13 +754,13 @@ proc world_plan_version_text(
 
   if current == next {
     if remote_latest.has(pkg.name) {
-      let remote: RemotePackage = remote_latest.get(pkg.name)?
+      let rpkg: RemotePackage = remote_latest.get(pkg.name)?
 
-      if compare_version_release(remote.ver, remote.rel, planned.ver, planned.rel) < 0 or world_package_always_newer_than_remote(
+      if compare_version_release(rpkg.ver, rpkg.rel, planned.ver, planned.rel) < 0 or world_package_always_newer_than_remote(
         pkg.name,
         planned.ver,
       ) {
-        return f"${ansi(colors, "2", version_id(remote.ver, remote.rel))} ${ansi(colors, "1;33", "->")} ${ansi(
+        return f"${ansi(colors, "2", version_id(rpkg.ver, rpkg.rel))} ${ansi(colors, "1;33", "->")} ${ansi(
           colors,
           "1;33",
           next,
@@ -823,14 +823,14 @@ proc verify_planned_rels_published(
       return Err(PmError.RemotePackage(f"${pkg.name} ${version_id(planned.ver, planned.rel)} is not in remote index"))
     }
 
-    let remote: RemotePackage = remote_latest.get(pkg.name)?
+    let rpkg: RemotePackage = remote_latest.get(pkg.name)?
 
-    if compare_version_release(remote.ver, remote.rel, planned.ver, planned.rel) != 0 {
+    if compare_version_release(rpkg.ver, rpkg.rel, planned.ver, planned.rel) != 0 {
       return Err(
         PmError.RemotePackage(
           f"${pkg.name} planned ${version_id(planned.ver, planned.rel)} but remote has ${version_id(
-            remote.ver,
-            remote.rel,
+            rpkg.ver,
+            rpkg.rel,
           )}",
         ),
       )
@@ -1031,14 +1031,14 @@ proc validate_world_remote_versions_for_plan(
 ) [env, error] {
   for pkg in packages {
     if remote_latest.has(pkg.name) and ! world_package_always_newer_than_remote(pkg.name, pkg.ver) {
-      let remote: RemotePackage = remote_latest.get(pkg.name)?
-      let cmp = compare_version_release(pkg.ver, pkg.rel, remote.ver, remote.rel)
-      let ver_cmp = compare_version_text(pkg.ver, remote.ver)
+      let rpkg: RemotePackage = remote_latest.get(pkg.name)?
+      let cmp = compare_version_release(pkg.ver, pkg.rel, rpkg.ver, rpkg.rel)
+      let ver_cmp = compare_version_text(pkg.ver, rpkg.ver)
 
       if ! allow_equal and cmp <= 0 or allow_equal and ver_cmp < 0 {
         return Err(
           PmError.PackageContract(
-            f"${pkg.name} ${version_id(pkg.ver, pkg.rel)} is not newer than remote ${version_id(remote.ver, remote.rel)}",
+            f"${pkg.name} ${version_id(pkg.ver, pkg.rel)} is not newer than remote ${version_id(rpkg.ver, rpkg.rel)}",
           ),
         )
       }
@@ -1158,10 +1158,10 @@ proc world_remote_metadata_hashes(
 
   for pkg in packages {
     if remote_latest.has(pkg.name) {
-      let remote: RemotePackage = remote_latest.get(pkg.name)?
+      let rpkg: RemotePackage = remote_latest.get(pkg.name)?
 
-      if compare_version_text(pkg.ver, remote.ver) == 0 and compare_version_text(pkg.rel, remote.rel) <= 0 {
-        candidates = candidates.push(remote)
+      if compare_version_text(pkg.ver, rpkg.ver) == 0 and compare_version_text(pkg.rel, rpkg.rel) <= 0 {
+        candidates = candidates.push(rpkg)
       }
     }
   }
@@ -2087,11 +2087,11 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
             if world_package_id(build_pkg) == world_package_id(original_pkg) and repo_urls.repo != "" and remote_latest.has(
               original_pkg.name,
             ) {
-              let remote: RemotePackage = remote_latest.get(original_pkg.name)?
+              let rpkg: RemotePackage = remote_latest.get(original_pkg.name)?
 
-              if compare_version_text(original_pkg.ver, remote.ver) == 0 and compare_version_text(
+              if compare_version_text(original_pkg.ver, rpkg.ver) == 0 and compare_version_text(
                 original_pkg.rel,
-                remote.rel,
+                rpkg.rel,
               ) <= 0 {
                 let remote_hash = remote_hashes.get(original_pkg.name, "")
 
@@ -2309,9 +2309,9 @@ proc upload_repo_export_file(repo: Str, rel: Path, source: Path, token: Str, wor
 }
 
 proc remote_export_entry_same(remote_index: List[RemotePackage], entry: RemotePackage) [] -> Bool {
-  for remote in remote_index {
-    if remote.arch == entry.arch and remote.name == entry.name {
-      return remote.ver == entry.ver and remote.rel == entry.rel and remote.deps == entry.deps and remote.mkdeps == entry.mkdeps and remote.target_build_deps == entry.target_build_deps and remote.sha256 == entry.sha256 and remote.size == entry.size and remote.tarball == entry.tarball and remote.metadata == entry.metadata and remote.source_sha256 == entry.source_sha256 and remote.source_tarball == entry.source_tarball and remote.metapackage == entry.metapackage
+  for rpkg in remote_index {
+    if rpkg.arch == entry.arch and rpkg.name == entry.name {
+      return rpkg.ver == entry.ver and rpkg.rel == entry.rel and rpkg.deps == entry.deps and rpkg.mkdeps == entry.mkdeps and rpkg.target_build_deps == entry.target_build_deps and rpkg.sha256 == entry.sha256 and rpkg.size == entry.size and rpkg.tarball == entry.tarball and rpkg.metadata == entry.metadata and rpkg.source_sha256 == entry.source_sha256 and rpkg.source_tarball == entry.source_tarball and rpkg.metapackage == entry.metapackage
     }
   }
 
