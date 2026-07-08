@@ -255,14 +255,14 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-Wl,-e,_dlstart",
   ]
 
-  var so_argv: List[Str] = [cc.display(), "-target", triple]
+  var so_argv: List[Any] = [cc, "-target", triple]
   so_argv = so_argv.extend(so_ldflags)
 
   for obj in all_so_objs {
-    so_argv = so_argv.push(obj.display())
+    so_argv = so_argv.push(obj)
   }
 
-  so_argv = so_argv.extend(["-o", libc_so.display()])
+  so_argv = so_argv.extend(["-o", libc_so])
 
   tasks = tasks.push(
     {
@@ -345,7 +345,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   for e in fs.files(p"include")? |> where .ext == "h" {
     let rel_path = e.path.relative_to(include_root)
-    fs.install(e.path, fp"${dest}/usr/include/${rel_path.display()}", 0o644, parents: true, overwrite: true)?
+    fs.install(e.path, fp"${dest}/usr/include/${rel_path}", 0o644, parents: true, overwrite: true)?
   }
 
   for bits_dir in [p"arch/generic/bits", fp"arch/${arch}/bits"] {
@@ -353,7 +353,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
     for e in fs.files(bits_dir)? |> where .ext == "h" {
       let rel_path = e.path.relative_to(bits_root)
-      fs.install(e.path, fp"${dest}/usr/include/bits/${rel_path.display()}", 0o644, parents: true, overwrite: true)?
+      fs.install(e.path, fp"${dest}/usr/include/bits/${rel_path}", 0o644, parents: true, overwrite: true)?
     }
   }
 

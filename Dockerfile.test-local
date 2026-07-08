@@ -14,7 +14,8 @@ FROM scratch
 
 COPY --from=rootfs /image/ /
 
-ENV PATH=/bin:/usr/bin
+ENV PATH=/bin:/usr/bin \
+    XSH_MODULE_PATH=/src/packages
 
 WORKDIR /src/packages
 

@@ -1204,12 +1204,12 @@ pure has_arg(argv: List[Str], name: Str) -> Bool {{
   return argv |> any . == name
 }}
 
-proc run_compiler(argv: List[Str]) [process, error] {{
+proc run_compiler(argv: List[Any]) [process, error] {{
   let status = process.run(
     process.command_argv(
-      fp"${real.display()}",
+      fp"${real}",
       argv,
-      env: {{LD_LIBRARY_PATH: "${build_root.display()}/usr/lib:${build_root.display()}/usr/lib/llvm22/lib"}},
+      env: {{LD_LIBRARY_PATH: "${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"}},
     ),
   )?
 
@@ -1219,46 +1219,46 @@ proc run_compiler(argv: List[Str]) [process, error] {{
 }}
 
 proc main(...argv: List[Str]) [fs, process, error] {{
-  var cxx_args: List[Str] = []
-  var cxx_libs: List[Str] = []
-  var builtins_arg: List[Str] = []
-  let builtins = fp"${target_root.display()}/usr/lib/libclang_rt.builtins-${target_arch}.a"
+  var cxx_args: List[Any] = []
+  var cxx_libs: List[Any] = []
+  var builtins_arg: List[Any] = []
+  let builtins = fp"${target_root}/usr/lib/libclang_rt.builtins-${target_arch}.a"
 
   if fs.exists(builtins)? {{
-    builtins_arg = [builtins.display()]
+    builtins_arg = [builtins]
   }}
 
   if ${cxx_text} {{
-    let target_cxx = fp"${target_root.display()}/usr/lib/llvm22/include/c++/v1"
-    let build_cxx = fp"${build_root.display()}/usr/lib/llvm22/include/c++/v1"
-    let target_cxx_arch = fp"${target_root.display()}/usr/lib/llvm22/include/${target_arch}-linux-musl/c++/v1"
-    let unwind = fp"${target_root.display()}/usr/lib/llvm22/lib/libunwind.a"
+    let target_cxx = fp"${target_root}/usr/lib/llvm22/include/c++/v1"
+    let build_cxx = fp"${build_root}/usr/lib/llvm22/include/c++/v1"
+    let target_cxx_arch = fp"${target_root}/usr/lib/llvm22/include/${target_arch}-linux-musl/c++/v1"
+    let unwind = fp"${target_root}/usr/lib/llvm22/lib/libunwind.a"
 
     if fs.exists(target_cxx)? {{
-      cxx_args = ["-isystem", target_cxx.display()]
+      cxx_args = ["-isystem", target_cxx]
     }} else if fs.exists(build_cxx)? {{
-      cxx_args = ["-isystem", build_cxx.display()]
+      cxx_args = ["-isystem", build_cxx]
     }}
 
     if fs.exists(target_cxx_arch)? {{
-      cxx_args = cxx_args.extend(["-isystem", target_cxx_arch.display()])
+      cxx_args = cxx_args.extend(["-isystem", target_cxx_arch])
     }}
 
-    cxx_libs = ["-L${target_root.display()}/usr/lib/llvm22/lib", "-lc++", "-lc++abi"]
+    cxx_libs = ["-L${target_root}/usr/lib/llvm22/lib", "-lc++", "-lc++abi"]
 
     if fs.exists(unwind)? {{
-      cxx_libs = cxx_libs.push(unwind.display())
+      cxx_libs = cxx_libs.push(unwind)
     }}
 
     cxx_libs = cxx_libs.push("-lm")
   }}
 
   let base = [
-    fp"${real.display()}".display(),
+    fp"${real}",
     "--target=${target_arch}-linux-musl",
-    "--sysroot=${target_root.display()}",
+    "--sysroot=${target_root}",
     "-resource-dir",
-    "${build_root.display()}/usr/lib/llvm22/lib/clang/22",
+    "${build_root}/usr/lib/llvm22/lib/clang/22",
   ]
 
   if has_arg(argv, "-c") or has_arg(argv, "-S") or has_arg(argv, "-E") {{
@@ -1267,19 +1267,17 @@ proc main(...argv: List[Str]) [fs, process, error] {{
   }}
 
   if has_arg(argv, "-shared") {{
-    run_compiler(base.extend(["-fuse-ld=lld", "-nostdlib"]).extend(argv).push("-L${target_root.display()}/usr/lib").extend(cxx_libs).extend(builtins_arg).push("-lc"))?
+    run_compiler(base.extend(["-fuse-ld=lld", "-nostdlib"]).extend(argv).push("-L${target_root}/usr/lib").extend(cxx_libs).extend(builtins_arg).push("-lc"))?
     return
   }}
 
-  run_compiler(
-    base
-      .extend(["-fuse-ld=lld", "-nostdlib", "${target_root.display()}/usr/lib/Scrt1.o", "${target_root.display()}/usr/lib/crti.o"])
-      .extend(argv)
-      .push("-L${target_root.display()}/usr/lib")
-      .extend(cxx_libs)
-      .extend(builtins_arg)
-      .extend(["-lc", "${target_root.display()}/usr/lib/crtn.o", "-Wl,-dynamic-linker,/usr/lib/${native_cross_ldso_name(target_arch)}"]),
-  )?
+  var link_argv = base.extend(["-fuse-ld=lld", "-nostdlib", fp"${target_root}/usr/lib/Scrt1.o", fp"${target_root}/usr/lib/crti.o"])
+  link_argv = link_argv.extend(argv)
+  link_argv = link_argv.push("-L${target_root}/usr/lib")
+  link_argv = link_argv.extend(cxx_libs)
+  link_argv = link_argv.extend(builtins_arg)
+  link_argv = link_argv.extend(["-lc", fp"${target_root}/usr/lib/crtn.o", "-Wl,-dynamic-linker,/usr/lib/${native_cross_ldso_name(target_arch)}"])
+  run_compiler(link_argv)?
 }}
 
 main(@args)?

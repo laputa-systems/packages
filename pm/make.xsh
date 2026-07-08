@@ -7,7 +7,7 @@ export type MakeTask = {
   outputs: List[Path],
   inputs: List[Path],
   deps: List[Str],
-  argv: List[Str],
+  argv: List[Any],
   cwd: Path,
   env: Record,
   depfile: Path,
@@ -126,8 +126,8 @@ pure depfile_path(out: Path) -> Path {
   return fp"${out}.d"
 }
 
-pure path_args(paths: List[Path]) -> List[Str] {
-  [path_value.display() for path_value in paths]
+pure argv_text(argv: List[Any]) -> List[Str] {
+  return [f"${arg}" for arg in argv]
 }
 
 pure object_name_for_source(src: Path, ext: Str) -> Str {
@@ -441,7 +441,9 @@ pure strip_cross_driver_args(argv: List[Str]) -> List[Str] {
   return out
 }
 
-export proc effective_task_argv(argv: List[Str], task_env: Record) [fs, env, error] -> Result[List[Str]] {
+export proc effective_task_argv(raw_argv: List[Any], task_env: Record) [fs, env, error] -> Result[List[Str]] {
+  let argv = argv_text(raw_argv)
+
   if argv.len() == 0 or task_disables_native_cross(task_env)? or ! native_cross_active() {
     return argv
   }
@@ -517,7 +519,9 @@ export proc effective_task_argv(argv: List[Str], task_env: Record) [fs, env, err
   return out.push(f"-Wl,-dynamic-linker,/usr/lib/${musl_ldso_name(target)}")
 }
 
-export proc effective_task_env(argv: List[Str], task_env: Record) [env, error] -> Result[Record] {
+export proc effective_task_env(raw_argv: List[Any], task_env: Record) [env, error] -> Result[Record] {
+  let argv = argv_text(raw_argv)
+
   if argv.len() == 0 or task_disables_native_cross(task_env)? or ! native_cross_active() {
     return task_env
   }
@@ -996,9 +1000,9 @@ export proc compile_lo_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let depfile = depfile_path(out)
-  var argv: List[Str] = [toolchain.display(), "-target", triple, "-c", "-fPIC", "-DPIC"]
+  var argv: List[Any] = [toolchain, "-target", triple, "-c", "-fPIC", "-DPIC"]
   argv = argv.extend(cflags).extend(defs).extend(includes)
-  argv = argv.extend([src.display(), "-o", out.display(), "-MMD", "-MP", "-MF", depfile.display()])
+  argv = argv.extend([src, "-o", out, "-MMD", "-MP", "-MF", depfile])
 
   return {
     name: out.display(),
@@ -1045,8 +1049,8 @@ export proc compile_asm_lo_task(
   out: Path,
   deps: List[Str] = [],
 ) [] -> MakeTask {
-  var argv: List[Str] = [toolchain.display(), "-target", triple, "-c", "-fPIC", "-DPIC", "-Wa,--noexecstack"]
-  argv = argv.extend(includes).extend([src.display(), "-o", out.display()])
+  var argv: List[Any] = [toolchain, "-target", triple, "-c", "-fPIC", "-DPIC", "-Wa,--noexecstack"]
+  argv = argv.extend(includes).extend([src, "-o", out])
 
   return {
     name: out.display(),
@@ -1095,9 +1099,9 @@ export proc compile_cxx_task(
 ) [] -> MakeTask {
   let _ = toolchain
   let depfile = depfile_path(out)
-  var argv: List[Str] = ["c++", "-target", triple, "-c"]
+  var argv: List[Any] = ["c++", "-target", triple, "-c"]
   argv = argv.extend(cflags).extend(defs).extend(includes)
-  argv = argv.extend([src.display(), "-o", out.display(), "-MMD", "-MP", "-MF", depfile.display()])
+  argv = argv.extend([src, "-o", out, "-MMD", "-MP", "-MF", depfile])
 
   return {
     name: out.display(),
@@ -1147,9 +1151,9 @@ export proc compile_c_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let depfile = depfile_path(out)
-  var argv: List[Str] = [toolchain.display(), "-target", triple, "-c"]
+  var argv: List[Any] = [toolchain, "-target", triple, "-c"]
   argv = argv.extend(cflags).extend(defs).extend(includes)
-  argv = argv.extend([src.display(), "-o", out.display(), "-MMD", "-MP", "-MF", depfile.display()])
+  argv = argv.extend([src, "-o", out, "-MMD", "-MP", "-MF", depfile])
 
   return {
     name: out.display(),
@@ -1392,8 +1396,8 @@ export proc link_shared_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let _ = toolchain
-  var argv: List[Str] = ["cc", "-target", triple, "-shared", f"-Wl,-soname,${soname}"]
-  argv = argv.extend(ldflags).extend(path_args(objs)).extend(["-o", out.display()])
+  var argv: List[Any] = ["cc", "-target", triple, "-shared", f"-Wl,-soname,${soname}"]
+  argv = argv.extend(ldflags).extend(objs).extend(["-o", out])
 
   return {
     name: out.display(),
@@ -1418,8 +1422,8 @@ export proc link_executable_cxx_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let _ = toolchain
-  var argv: List[Str] = ["c++", "-target", triple]
-  argv = argv.extend(path_args(objs)).extend(path_args(libs)).extend(ldflags).extend(["-o", out.display()])
+  var argv: List[Any] = ["c++", "-target", triple]
+  argv = argv.extend(objs).extend(libs).extend(ldflags).extend(["-o", out])
 
   return {
     name: out.display(),
@@ -1446,8 +1450,8 @@ export proc link_executable_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let _ = toolchain
-  var argv: List[Str] = ["cc", "-target", triple]
-  argv = argv.extend(path_args(objs)).extend(path_args(libs)).extend(ldflags).extend(["-o", out.display()])
+  var argv: List[Any] = ["cc", "-target", triple]
+  argv = argv.extend(objs).extend(libs).extend(ldflags).extend(["-o", out])
 
   return {
     name: out.display(),
@@ -1464,8 +1468,8 @@ export proc link_executable_task(
 
 export proc link_archive_task(toolchain: Path, objs: List[Path], out: Path, deps: List[Str] = []) [] -> MakeTask {
   let _ = toolchain
-  var argv: List[Str] = ["ar", "rcs", out.display()]
-  argv = argv.extend(path_args(objs))
+  var argv: List[Any] = ["ar", "rcs", out]
+  argv = argv.extend(objs)
 
   return {
     name: out.display(),
