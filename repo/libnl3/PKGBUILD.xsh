@@ -31,9 +31,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     let major = parts[0]
     let minor = if parts.len() > 1 { parts[1] } else { "0" }
     let micro = if parts.len() > 2 { parts[2] } else { "0" }
-    var body = tmpl.replace("@MAJOR_VERSION@", major)
-    body = body.replace("@MINOR_VERSION@", minor)
-    body = body.replace("@MICRO_VERSION@", micro)
+    let body = tmpl.replace("@MAJOR_VERSION@", major).replace("@MINOR_VERSION@", minor).replace("@MICRO_VERSION@", micro)
     fs.write(version_h, body)?
   }
 
@@ -128,8 +126,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   for src_path in core_sources {
     let full_src = fp"${src}/${src_path}"
-    var obj_name = src_path.replace("/", "_")
-    obj_name = obj_name.replace(".c", ".lo")
+    let obj_name = src_path.replace("/", "_").replace(".c", ".lo")
     let out = fp"${objs}/${obj_name}"
     continue unless fs.exists(full_src)?
     let task = make.compile_lo_task(cc, triple, cflags, defs, includes, full_src, out)
@@ -142,8 +139,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   for src_path in genl_sources {
     let full_src = fp"${src}/${src_path}"
-    var obj_name = src_path.replace("/", "_")
-    obj_name = obj_name.replace(".c", ".lo")
+    let obj_name = src_path.replace("/", "_").replace(".c", ".lo")
     let out = fp"${objs}/${obj_name}"
     continue unless fs.exists(full_src)?
     let task = make.compile_lo_task(cc, triple, cflags, defs, includes, full_src, out)

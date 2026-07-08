@@ -325,7 +325,7 @@ literal=@UNKNOWN@
 
   fs.write(
     fp"${pkg}/PKGBUILD.xsh",
-    """export let name = "configured-pkg"
+    r"""export let name = "configured-pkg"
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps: List[Str] = []
@@ -334,19 +334,19 @@ export let sources = [p"generated"]
 export let checksums = ["SKIP"]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
-  fs.install(p"config.h", fp"\${dest}/usr/share/configured-pkg/config.h", 0o644, parents: true)?
-  fs.install(p"message.txt", fp"\${dest}/usr/share/configured-pkg/message.txt", 0o644, parents: true)?
+  fs.install(p"config.h", fp"${dest}/usr/share/configured-pkg/config.h", 0o644, parents: true)?
+  fs.install(p"message.txt", fp"${dest}/usr/share/configured-pkg/message.txt", 0o644, parents: true)?
 }
 """,
   )?
 
   fs.write(
     fp"${pkg}/proof.xsh",
-    """error ProofError = Failed(kind: Str, message: Str)
+    r"""error ProofError = Failed(kind: Str, message: Str)
 
 proc main(root: Path = /rootfs) [fs, error] {
-  let header = fp"\${root}/usr/share/configured-pkg/config.h"
-  let message = fp"\${root}/usr/share/configured-pkg/message.txt"
+  let header = fp"${root}/usr/share/configured-pkg/config.h"
+  let message = fp"${root}/usr/share/configured-pkg/message.txt"
 
   if ! header.exists()? or ! message.exists()? {
     return Err(ProofError.Failed("proof-configured-pkg", "missing configured outputs"))
@@ -389,7 +389,7 @@ proc test_pm_package_build_extracts_tar_source(ctx: TestContext) [fs, process, e
 
   fs.write(
     fp"${pkg}/PKGBUILD.xsh",
-    """export let name = "tar-source-pkg"
+    r"""export let name = "tar-source-pkg"
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps: List[Str] = []
@@ -398,17 +398,17 @@ export let sources = [p"files/upstream.tar.gz"]
 export let checksums = ["SKIP"]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
-  fs.install(p"data.txt", fp"\${dest}/usr/share/tar-source-pkg/data.txt", 0o644, parents: true)?
+  fs.install(p"data.txt", fp"${dest}/usr/share/tar-source-pkg/data.txt", 0o644, parents: true)?
 }
 """,
   )?
 
   fs.write(
     fp"${pkg}/proof.xsh",
-    """error ProofError = Failed(kind: Str, message: Str)
+    r"""error ProofError = Failed(kind: Str, message: Str)
 
 proc main(root: Path = /rootfs) [fs, error] {
-  let payload = fp"\${root}/usr/share/tar-source-pkg/data.txt"
+  let payload = fp"${root}/usr/share/tar-source-pkg/data.txt"
 
   if ! payload.exists()? {
     return Err(ProofError.Failed("proof-tar-source-pkg", "missing extracted payload"))
@@ -446,7 +446,7 @@ proc test_pm_build_prepared_package_command_writes_manifest_and_tarball(ctx: Tes
 
   fs.write(
     fp"${pkg}/PKGBUILD.xsh",
-    """export let name = "prepared-pkg"
+    r"""export let name = "prepared-pkg"
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps: List[Str] = []
@@ -455,7 +455,7 @@ export let sources: List[Path] = []
 export let checksums: List[Str] = []
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
-  fs.install(p"payload.txt", fp"\${dest}/usr/share/prepared-pkg/payload.txt", 0o644, parents: true)?
+  fs.install(p"payload.txt", fp"${dest}/usr/share/prepared-pkg/payload.txt", 0o644, parents: true)?
 }
 """,
   )?
@@ -734,17 +734,17 @@ proc test_pm_lifecycle_hooks(ctx: TestContext) [fs, process, error] {
 
   fs.write(
     hook,
-    """#!/bin/xsh --
+    r"""#!/bin/xsh --
 proc main(...argv: List[Str]) [fs, env, error] {
   let _ = argv
-  let log = fp"\${env.get("HOOK_LOG")?}"
+  let log = fp"${env.get("HOOK_LOG")?}"
   var current = ""
 
   if log.exists()? {
     current = log.read_text()?
   }
 
-  fs.write(log, f"\${current}\${env.get("XSH_PM_HOOK")?}|\${env.get("XSH_PM_PACKAGE")?}|\${env.get("XSH_PM_ACTION")?}\\\\n")?
+  fs.write(log, f"${current}${env.get("XSH_PM_HOOK")?}|${env.get("XSH_PM_PACKAGE")?}|${env.get("XSH_PM_ACTION")?}\n")?
 }
 
 main(@args)?
@@ -830,7 +830,7 @@ proc test_pm_requires_package_proof(ctx: TestContext) [fs, process, error] {
 
   fs.write(
     fp"${pkg}/PKGBUILD.xsh",
-    """export let name = "proofless"
+    r"""export let name = "proofless"
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps: List[Str] = []
@@ -839,7 +839,7 @@ export let sources: List[Path] = []
 export let checksums: List[Str] = []
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
-  fs.write(fp"\${dest}/proofless.txt", "proofless\\n")?
+  fs.write(fp"${dest}/proofless.txt", "proofless\n")?
 }
 """,
   )?
@@ -858,7 +858,7 @@ proc test_pm_requires_service_definition(ctx: TestContext) [fs, process, error] 
 
   fs.write(
     fp"${pkg}/PKGBUILD.xsh",
-    """export let name = "svcless"
+    r"""export let name = "svcless"
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps: List[Str] = []
@@ -867,8 +867,8 @@ export let sources: List[Path] = []
 export let checksums: List[Str] = []
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
-  fs.mkdir(fp"\${dest}/usr/lib/xinit/services")?
-  fs.write(fp"\${dest}/usr/lib/xinit/services/svcless.xsh", "export let service = {}\\n")?
+  fs.mkdir(fp"${dest}/usr/lib/xinit/services")?
+  fs.write(fp"${dest}/usr/lib/xinit/services/svcless.xsh", "export let service = {}\n")?
 }
 """,
   )?
@@ -1269,12 +1269,12 @@ proc test_pm_extension_invocation_environment(ctx: TestContext) [fs, process, en
 
   fs.write(
     extension,
-    """#!/bin/xsh --
+    r"""#!/bin/xsh --
 proc main(...argv: List[Str]) [fs, env, error] {
   let _ = argv
   fs.write(
-    fp"\${env.get("EXT_LOG")?}",
-    f"root=\${env.get("XSH_PM_ROOT")?}\\\\nwork=\${env.get("XSH_PM_WORK")?}\\\\nout=\${env.get("XSH_PM_OUT")?}\\\\naction=\${env.get("XSH_PM_ACTION")?}\\\\nargs=<\${env.get("XSH_PM_ARGS")?}>\\\\n",
+    fp"${env.get("EXT_LOG")?}",
+    f"root=${env.get("XSH_PM_ROOT")?}\nwork=${env.get("XSH_PM_WORK")?}\nout=${env.get("XSH_PM_OUT")?}\naction=${env.get("XSH_PM_ACTION")?}\nargs=<${env.get("XSH_PM_ARGS")?}>\n",
   )?
 }
 
@@ -1343,7 +1343,7 @@ proc test_pm_refresh_empty_file_repo_writes_empty_cache(ctx: TestContext) [fs, p
 proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error] {
   let helper = test.temp_path(ctx, name: "make-task-helper.xsh")
 
-  helper.write("""#!/bin/xsh --
+  helper.write(r"""#!/bin/xsh --
 proc count_value(path: Path) [fs, error] -> Result[Int] {
   if path.exists()? {
     return path.read_text()?.parse_int()?
@@ -1355,27 +1355,27 @@ proc count_value(path: Path) [fs, error] -> Result[Int] {
 proc main(mode: Str, ...argv: List[Str]) [fs, time, error] {
   match mode {
     "write" => {
-      fs.write(fp"\${argv[0]}", argv[1])?
+      fs.write(fp"${argv[0]}", argv[1])?
     }
     "copy-append" => {
-      fs.write(fp"\${argv[1]}", fp"\${argv[0]}".read_text()? + argv[2])?
+      fs.write(fp"${argv[1]}", fp"${argv[0]}".read_text()? + argv[2])?
     }
     "sleep-write" => {
       time.sleep(250ms)?
-      fs.write(fp"\${argv[0]}", argv[1])?
+      fs.write(fp"${argv[0]}", argv[1])?
     }
     "compile" => {
-      let count_path = fp"\${argv[0]}"
+      let count_path = fp"${argv[0]}"
       let next = count_value(count_path)? + 1
-      fs.write(count_path, f"\${next}")?
-      fs.write(fp"\${argv[1]}", f"object \${next}")?
-      fs.write(fp"\${argv[2]}", f"\${argv[1]}: \${argv[3]} \${argv[4]}\\n")?
+      fs.write(count_path, f"${next}")?
+      fs.write(fp"${argv[1]}", f"object ${next}")?
+      fs.write(fp"${argv[2]}", f"${argv[1]}: ${argv[3]} ${argv[4]}\n")?
     }
     "stamp" => {
-      let count_path = fp"\${argv[0]}"
+      let count_path = fp"${argv[0]}"
       let next = count_value(count_path)? + 1
-      fs.write(count_path, f"\${next}")?
-      fs.write(fp"\${argv[1]}", argv[2])?
+      fs.write(count_path, f"${next}")?
+      fs.write(fp"${argv[1]}", argv[2])?
     }
     _ => abort(2)
   }

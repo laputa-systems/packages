@@ -23,11 +23,11 @@ export let checksums: List[Str] = []
 proc install_session(dest: Path) [fs, error] {
   fs.write(
     fp"${dest}/usr/bin/waterfox-dwl-session",
-    """#!/bin/xsh --
+    r"""#!/bin/xsh --
 error SessionError = Failed(kind: Str, message: Str)
 
 proc marker(line: Str) [fs] {
-  match fs.write(/dev/console, f"\${line}\\n") {
+  match fs.write(/dev/console, f"${line}\n") {
     Ok(_) => {}
     Err(_) => {}
   }
@@ -57,7 +57,7 @@ proc wait_for_socket(path_value: Path) [fs, time, error] {
     tries -= 1
   }
 
-  return Err(SessionError.Failed("seatd", f"seatd did not create \${path_value.display()}"))
+  return Err(SessionError.Failed("seatd", f"seatd did not create ${path_value.display()}"))
 }
 
 proc terminate_if_live(pid: Int) [process] {
@@ -163,7 +163,7 @@ proc run_user_session(mode: Str) [fs, process, time, error] {
       match wait compositor {
         Ok(_) => {}
         Err(ProcessError.Timeout {message: _}) => terminate_if_live(compositor.pid)
-        Err(e) => return Err(SessionError.Failed("dwl", f"clipboard dwl wait failed: \${e.message}"))
+        Err(e) => return Err(SessionError.Failed("dwl", f"clipboard dwl wait failed: ${e.message}"))
       }
 
       return
@@ -173,8 +173,8 @@ proc run_user_session(mode: Str) [fs, process, time, error] {
 
     if ! status.ok {
       let code = status.exit_code()?
-      marker(f"waterfox-session user dwl failed code=\${code}")
-      return Err(SessionError.Failed("dwl", f"dwl exited with code \${code}"))
+      marker(f"waterfox-session user dwl failed code=${code}")
+      return Err(SessionError.Failed("dwl", f"dwl exited with code ${code}"))
     }
   } ?
 }
@@ -224,8 +224,8 @@ proc run_root_session(mode: Str) [fs, process, time, error] {
 
     if ! su_status.ok {
       let code = su_status.exit_code()?
-      marker(f"waterfox-session su failed code=\${code}")
-      return Err(SessionError.Failed("su", f"su handoff failed with exit code \${code}"))
+      marker(f"waterfox-session su failed code=${code}")
+      return Err(SessionError.Failed("su", f"su handoff failed with exit code ${code}"))
     }
   } ?
 }
@@ -250,11 +250,11 @@ main(@args)?
 proc install_clipboard_proof(dest: Path) [fs, error] {
   fs.write(
     fp"${dest}/usr/bin/waterfox-session-clipboard-proof",
-    """#!/bin/xsh --
+    r"""#!/bin/xsh --
 error ClipboardProofError = Failed(message: Str)
 
 proc marker(line: Str) [fs] {
-  match fs.write(/dev/console, f"\${line}\\n") {
+  match fs.write(/dev/console, f"${line}\n") {
     Ok(_) => {}
     Err(_) => {}
   }
@@ -290,7 +290,7 @@ proc main() [fs, process, time, error] {
   let pasted = out.stdout
 
   if pasted.trim() != value {
-    return Err(ClipboardProofError.Failed(f"wl-paste returned '\${pasted.trim()}'"))
+    return Err(ClipboardProofError.Failed(f"wl-paste returned '${pasted.trim()}'"))
   }
 
   marker("waterfox-qemu clipboard ok")

@@ -1,106 +1,110 @@
-# pm/make.xsh — Improvement Plan
+# pm/make.xsh TODO
 
-`pm.make` is a task-based build executor that replaces GNU make for Laputa
-package builds.  It provides `compile_c_task`, `link_executable_task`,
-`run_tasks`, and related helpers.  It works well for packages with a small,
-known set of source files (dropbear, samurai, pkgconf, libffi).  For larger
-packages like wpa_supplicant (~100 source files) and libnl3 (~20 source files),
-several friction points made the build experience painful.
+`pm.make` is the small task executor used by package recipes that need a
+self-hosted replacement for GNU make. It already handles explicit task
+dependencies, depfiles, stale-command detection, cycle checks, duplicate output
+validation, and parallel scheduling. The remaining work is mostly about recipe
+ergonomics and build-environment contracts, not the scheduler core.
 
-## Friction points (observed during libnl3 + wpa_supplicant builds)
+## Source And Task Ergonomics
 
-1. **Hardcoded source file lists.**  Every `.c` file must be listed manually in
-   the PKGBUILD.  For wpa_supplicant this is ~100 files across 8 source
-   directories.  Miss one and you get a linker error.  Add one that needs a
-   missing config option and you get a compile error.  The feedback loop is
-   slow (Docker build for each iteration).
+- Add source-list helpers for common C/C++ package shapes.
 
-2. **No glob or directory-based source discovery.**  There is no way to say
-   "compile all `.c` files under `src/`".  Each file must be enumerated.
+  Recipes still hand-roll loops over source files, object naming, and task
+  collection. A helper should compile a list of source paths into a stable
+  directory-aware object layout, avoiding collisions such as
+  `src/utils/config.c` and `wpa_supplicant/config.c`.
 
-3. **No automatic dependency resolution between tasks.**  When compiling
-   `wpa_cli.c`, the linker needs `edit.o` (from `utils/edit.c`).  The
-   PKGBUILD author must manually wire these dependencies.  A mistake means
-   linker errors.
+  Candidate API:
 
-4. **No `-D` / `-I` flag inheritance from package dependencies.**  libnl3
-   installs headers to `/usr/include/netlink/`.  wpa_supplicant needs
-   `-I/usr/include` and `-DCONFIG_LIBNL32` to find them.  These must be
-   hardcoded in wpa_supplicant's PKGBUILD instead of being discovered through
-   pkg-config or a dependency-provided contract.
+  ```xsh
+  make.compile_c_tasks(cc, triple, cflags, defs, includes, sources, out_dir)
+  make.compile_lo_tasks(cc, triple, cflags, defs, includes, sources, out_dir)
+  make.compile_cxx_tasks(cc, triple, cflags, defs, includes, sources, out_dir)
+  ```
 
-5. **Duplicate object filenames from different directories.**  `src/utils/config.c`
-   and `wpa_supplicant/config.c` both produce `config.o`.  The PKGBUILD must
-   manually disambiguate by mangling filenames (`src_utils_config.o`).  A
-   directory-aware object layout would avoid this.
+  Return a record with `tasks`, `objects`, and `deps` so link tasks can consume
+  it directly.
 
-6. **No shared library dependency chaining.**  libnl-genl-3.so links against
-   libnl-3.so.  This dependency must be expressed manually through linker
-   flags.  Package-level `deps`/`mkdeps` don't automatically translate to
-   `-l` flags.
+- Add optional directory discovery on top of the explicit-list helpers.
 
-7. **Method chaining not supported.**  `path.display().replace("/", "_")`
-   is a parse error.  Intermediate `var` assignments are required.  This is
-   a language limitation but surfaced repeatedly while building source lists.
+  A convenience wrapper can walk a source tree and compile matching `.c`,
+  `.cc`, `.cpp`, or `.cxx` files. This should remain opt-in; many upstreams
+  contain platform-specific files that must not be compiled just because they
+  exist.
 
-8. **No `r"""..."""` (raw string) syntax for triple-quoted strings.**  When
-   generating config headers that contain `$` characters (e.g., version
-   strings), the PKGBUILD must use `f"""..."""` and carefully avoid unwanted
-   interpolation.  Raw triple-quoted strings would eliminate this friction.
+  Candidate API:
 
-## Proposed improvements
+  ```xsh
+  make.discover_sources(root, extensions, exclude)
+  make.compile_c_dir(cc, triple, cflags, defs, includes, src_dir, out_dir)
+  ```
 
-### Short term (low effort, high impact)
+- Add a small dependency helper for custom task sets.
 
-- **`make.compile_dir(cc, triple, cflags, defs, includes, src_dir, out_dir)`**
-  — compiles all `.c` files under `src_dir` into `out_dir`, preserving
-  directory structure in object names (`src_utils_config.o`).  Returns the
-  list of object paths and task names for linking.  Eliminates hardcoded
-  source file lists for most packages.
+  Recipes that create tasks manually still often need "deps for these object
+  outputs." That should not require repeated comprehensions in every recipe.
 
-- **`make.compile_filtered(cc, triple, cflags, defs, includes, files, out_dir)`**
-  — like `compile_dir` but takes an explicit file list and automatically
-  mangles object names to avoid collisions.  The existing per-file API
-  (`compile_c_task`) is preserved for packages with special per-file flags.
+  Candidate API:
 
-- **`make.link_deps(task_names)`** — given a list of task names, returns the
-  correct `deps` list for `link_executable_task`.  Eliminates the manual
-  `[task.name for task in all_tasks if ...]` pattern.
+  ```xsh
+  make.task_deps(tasks, outputs)
+  ```
 
-### Medium term
+## Build Flag Discovery
 
-- **`make.pkg_config(package_name)`** — returns `cflags` and `ldflags` from a
-  package's installed `.pc` file.  Would let wpa_supplicant get `-I` and `-l`
-  flags from libnl3 automatically.
+- Add a general pkg-config helper outside `pm.meson`.
 
-- **`make.install_headers(src_dir, dest_dir)`** — walks a source directory
-  and installs headers to a destination, handling directory creation and
-  symlinks.  libnl3's header install loop would be a one-liner.
+  `pm.meson.pkg_config_env()` configures pkg-config for Meson-style builds, but
+  handwritten `pm.make` recipes still duplicate flag extraction. A make-level
+  helper should return `cflags` and `ldflags` for one or more `.pc` packages
+  using the active `LAPUTA_ROOT` sysroot.
 
-- **Automatic `mkdep` → `-l` translation.**  If package A declares `mkdeps:
-  ["libnl3"]`, the build environment should set `CFLAGS` and `LDFLAGS` so
-  that headers and libraries from libnl3 are found without manual `-I`/`-L`
-  flags.  This could be done through a `build-env` record passed to
-  `build(dest)`.
+  Candidate API:
 
-### Language improvements (xsh)
+  ```xsh
+  make.pkg_config_flags(packages)
+  ```
 
-- **Method chaining on `Str` and `Path`.**  `s.replace("/", "_").replace(".c",
-  ".lo")` should work without intermediate variables.
+- Define the build contract for dependency-provided flags.
 
-- **Raw triple-quoted strings (`r"""..."""`).**  Needed for embedding C header
-  content with literal `$` and `\` characters.
+  Package-level `mkdeps` should ensure dependencies are installed in the build
+  root, but it should not blindly translate every dependency into `-l` flags.
+  The better contract is:
 
-### Build workflow improvements (PM)
+  - packages that expose compiler/linker flags install `.pc` files;
+  - recipes ask for the flags they need via pkg-config;
+  - PM ensures pkg-config sees the build root consistently.
 
-- **Multi-package `build-set` with local `mkdeps`.**  When building packages
-  A and B together (where B `mkdep`s A), PM should build A, publish it to the
-  local repo, and make it available for B's build — all in one `build-set`
-  invocation.  Currently this fails with "has not been built yet" due to a
-  type error in `missing_world_dependencies`.
+  This keeps link inputs explicit while avoiding hardcoded include and library
+  paths in recipes such as `wpa_supplicant`.
 
-- **Merged index from primary + public repos.**  PM's `refresh_remote_index`
-  uses only the public repo for its index.  When iterating locally, packages
-  built into a `file://` primary repo are invisible unless the index is
-  manually merged.  PM should merge indices from both repos, with primary
-  taking precedence over public.
+- Consider a generic header-install helper.
+
+  Several recipes copy public headers by walking a source directory and
+  preserving relative paths. A helper would reduce boilerplate, but it should
+  support excludes for templates and generated headers.
+
+  Candidate API:
+
+  ```xsh
+  make.install_headers(src_dir, dest_dir, exclude)
+  ```
+
+## PM Workflow Gaps
+
+- Fix and test multi-package `build-set` with local build dependencies.
+
+  `build-set` should build local packages in dependency order, stage each built
+  package into the local repo, and make it available to later packages in the
+  same invocation. The current implementation initializes `built_names` but
+  does not update it as packages are staged, so local dependencies can still be
+  rejected as "has not been built yet."
+
+- Merge primary and public remote indexes for local iteration.
+
+  `refresh_remote_index` currently prefers the public repo when configured and
+  falls back to the primary repo. Local packages built into a `file://` primary
+  repo should be visible without manually merging indexes. The desired behavior
+  is to load both indexes when both are configured, with primary entries taking
+  precedence over public entries for the same package/arch.
