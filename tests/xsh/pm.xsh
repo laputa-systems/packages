@@ -1020,7 +1020,7 @@ proc main(mode: Str, ...argv: List[Str]) [fs, time, error] {
       fs.write(fp"${argv[1]}", fp"${argv[0]}".read_text()? + argv[2])?
     }
     "sleep-write" => {
-      time.sleep(1000ms)?
+      time.sleep(250ms)?
       fs.write(fp"${argv[0]}", argv[1])?
     }
     "compile" => {
@@ -1070,7 +1070,7 @@ main(@args)?
     let start = time.now()
     make.run_tasks([one_task, two_task], 2)?
     let elapsed = time.now() - start
-    test.ok(elapsed < 1800, f"parallel make tasks took ${elapsed}ms")?
+    test.ok(elapsed < 800, f"parallel make tasks took ${elapsed}ms")?
     test.eq(one.read_text()?, "one")?
     test.eq(two.read_text()?, "two")?
 
@@ -1089,8 +1089,8 @@ main(@args)?
     make.run_tasks([dep_task], 1)?
     make.run_tasks([dep_task], 1)?
     test.eq(dep_count.read_text()?, "1")?
-    time.sleep(1100ms)?
     header.write("header two\n")?
+    dep_out.touch_from(fp"${dep_dir()}/PKGBUILD.xsh")?
     make.run_tasks([dep_task], 1)?
     test.eq(dep_count.read_text()?, "2")?
 
@@ -1109,4 +1109,30 @@ main(@args)?
     test.eq(stamp_count.read_text()?, "2")?
     test.eq(artifact.read_text()?, "two")?
   } ?
+}
+
+proc expect_make_error(result: Result[Unit]) [error] {
+  match result {
+    Ok(_) => {
+      test.ok(false, "expected make error")?
+    }
+    Err(_) => {}
+  }
+}
+
+proc test_make_runner_rejects_invalid_graphs(ctx: TestContext) [fs, process, env, error] {
+  let root = test.temp_dir(ctx, name: "make-invalid-root")?
+  let out_a = fp"${root}/a.txt"
+  let out_b = fp"${root}/b.txt"
+  let base = make_helper_task("base", root, [out_a], [], [], p"/bin/true", "unused", [], fp"${root}/base.cmd")
+
+  let missing_dep = make_helper_task("missing", root, [out_b], [], ["absent"], p"/bin/true", "unused", [], fp"${root}/missing.cmd")
+  expect_make_error(make.run_tasks([base, missing_dep], 1))?
+
+  let duplicate_output = make_helper_task("duplicate", root, [out_a], [], [], p"/bin/true", "unused", [], fp"${root}/duplicate.cmd")
+  expect_make_error(make.run_tasks([base, duplicate_output], 1))?
+
+  let cycle_a = make_helper_task("cycle-a", root, [out_a], [], ["cycle-b"], p"/bin/true", "unused", [], fp"${root}/cycle-a.cmd")
+  let cycle_b = make_helper_task("cycle-b", root, [out_b], [], ["cycle-a"], p"/bin/true", "unused", [], fp"${root}/cycle-b.cmd")
+  expect_make_error(make.run_tasks([cycle_a, cycle_b], 1))?
 }
