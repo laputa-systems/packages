@@ -1262,6 +1262,7 @@ proc write_native_cross_tool_shims(build_root: Path, target_root: Path, target_a
 }
 
 proc build_world_package(
+  repo_dir: Path,
   build_ctx: PmContext,
   target_staged_root: Path,
   build_staged_root: Path,
@@ -1271,6 +1272,8 @@ proc build_world_package(
   cross_build: Bool,
 ) [fs, net, process, env, time, error] -> Result[List[BuiltPackage]] {
   var built: List[BuiltPackage] = []
+  let started_at = time.now()
+  let log_path = fp"${repo_dir}/packages/${target_arch}/${pkg.name}/build.log"
   print --flush ${pkg.name} world_package_id(pkg) "build:" "starting"
   let package_root = fp"${build_ctx.work}/world-build/${world_package_id(pkg)}/root"
   let package_build_root = fp"${build_ctx.work}/world-build/${world_package_id(pkg)}/build-root"
@@ -1309,12 +1312,14 @@ proc build_world_package(
     XSH_PM_ARCH = target_arch
     XSH_PM_TARGET_ARCH = target_arch
     XSH_PM_BUILD_ARCH = build_arch
+    XSH_PM_BUILD_LOG = log_path.display()
     XSH_PM_BUILD_ROOT = package_path_root.display()
     XSH_PM_BUILD_CHROOT = build_chroot
   } {
     built = build_packages(package_ctx, [pkg])?
   } ?
 
+  print --flush ${pkg.name} world_package_id(pkg) "build:" "finished" time.duration_compact((time.now() - started_at) / 1000) "log:" log_path.display()
   built
 }
 
@@ -2065,13 +2070,13 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
         if world_jobs == 1 {
           for pkg in pending {
             built_batches = built_batches.push(
-              build_world_package(build_ctx, root, build_root, pkg, target_arch, world_build_arch, cross_build)?,
+              build_world_package(repo_dir, build_ctx, root, build_root, pkg, target_arch, world_build_arch, cross_build)?,
             )
           }
         } else {
           built_batches = pending
             |> par-map --jobs=world_jobs { |pkg|
-              build_world_package(build_ctx, root, build_root, pkg, target_arch, world_build_arch, cross_build)
+              build_world_package(repo_dir, build_ctx, root, build_root, pkg, target_arch, world_build_arch, cross_build)
             }
         }
 

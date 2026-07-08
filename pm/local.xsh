@@ -60,7 +60,7 @@ export proc install_remote_tarball(
   pkg: RemotePackage,
   tarball: Path,
   from_cache: Bool,
-) [fs, process, env, error] {
+) [fs, net, process, env, time, error] {
   let id = package_id(pkg.name, pkg.ver, pkg.rel)
   let install_stage = fp"${ctx.work}/${id}-remote-install"
   let label = if from_cache { "cache-installed" } else { "remote-installed" }
@@ -1057,6 +1057,64 @@ proc preserve_chroot_build_cache(ctx: PmContext, pkg: Package, src: Path) [fs, e
   }
 }
 
+proc run_chroot_build_command(
+  host_xsh: Path,
+  chroot_argv: List[Str],
+  build_log_text: Str,
+  build_log: Path,
+) [fs, process, error] -> Result[Status] {
+  if build_log_text != "" {
+    fs.remove(build_log, missing_ok: true)?
+    fs.mkdir(build_log.parent)?
+    return process.run(process.command_argv(host_xsh, chroot_argv, stdout: build_log, stderr: build_log))
+  }
+
+  process.run(process.command_argv(host_xsh, chroot_argv))
+}
+
+proc append_build_log_or_print(build_log_text: Str, build_log: Path, line: Str) [fs, error] {
+  if build_log_text == "" {
+    print --flush $line
+    return
+  }
+
+  let existing = if fs.exists(build_log)? { build_log.read_text()? } else { "" }
+  fs.mkdir(build_log.parent)?
+  fs.write(build_log, f"${existing}${line}\n")?
+}
+
+proc run_logged_proof_command(
+  target: Path,
+  argv: List[Str],
+  build_log_text: Str,
+  build_log: Path,
+) [fs, process, error] {
+  if build_log_text != "" {
+    fs.mkdir(build_log.parent)?
+    let status = process.run(process.command_argv(target, argv, stdout: build_log, stderr: build_log, stdout_append: true, stderr_append: true))?
+
+    if ! status.ok {
+      if status.exited() {
+        abort(status.exit_code()?)
+      }
+
+      return Err(PmError.ExtensionFailed("package proof was signaled"))
+    }
+
+    return
+  }
+
+  let status = process.run(process.command_argv(target, argv))?
+
+  if ! status.ok {
+    if status.exited() {
+      abort(status.exit_code()?)
+    }
+
+    return Err(PmError.ExtensionFailed("package proof was signaled"))
+  }
+}
+
 proc build_packages_in_chroot(
   ctx: PmContext,
   packages: List[Package],
@@ -1083,6 +1141,8 @@ proc build_packages_in_chroot(
     let chroot_root = ctx.root
     let host_xsh = xsh_runner()?
     let host_chroot_runner = fp"${pm_source_root()?}/pm/chroot-run.xsh"
+    let build_log_text = (env.get("XSH_PM_BUILD_LOG") ?? "").trim()
+    let build_log = fp"${build_log_text}"
     let makeflags = env.get("MAKEFLAGS") ?? f"-s -j${cpu.count()}"
     let build_arch = util.build_arch()?
     let target_arch = util.target_arch()?
@@ -1136,10 +1196,16 @@ proc build_packages_in_chroot(
       XSH_PM_IN_CHROOT = "1"
       SHELL = "/bin/xshi"
     } {
-      let status = process.run(process.command_argv(host_xsh, chroot_argv))?
+      let started_at = time.now()
+      let status = run_chroot_build_command(host_xsh, chroot_argv, build_log_text, build_log)?
+
       preserve_chroot_build_cache(ctx, pkg, src)?
 
       if ! status.ok {
+        if build_log_text != "" {
+          eprint --flush ${pkg.name} ${id} "build:" "failed" time.duration_compact((time.now() - started_at) / 1000) "log:" build_log.display()
+        }
+
         if status.exited() {
           abort(status.exit_code()?)
         }
@@ -1162,10 +1228,10 @@ proc build_packages_in_chroot(
       owners[key] = pkg.name
     }
 
-    run_package_proof(ctx, pkg, id, tarball, item.manifest, built)?
+    run_package_proof(ctx, pkg, id, tarball, item.manifest, built, build_log_text, build_log)?
     run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     built = built.push(item)
-    print --flush ${pkg.name} ${id} "build:" item.manifest.len() "files"
+    append_build_log_or_print(build_log_text, build_log, f"${pkg.name} ${id} build: ${item.manifest.len()} files")?
   }
 
   built
@@ -1263,7 +1329,7 @@ export proc build_packages(
     archive_paths = archive_paths |> sort-by .display()
     fs.mkdir(ctx.out)?
     archive.tar_create(tarball, dest, archive_paths, compression: "gz", overwrite: true)?
-    run_package_proof(ctx, pkg, id, tarball, manifest, built)?
+    run_package_proof(ctx, pkg, id, tarball, manifest, built, "", fp"")?
     run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     let metadata_files = collect_metadata_files(dest, manifest)?
     let metadata_sha256 = metadata_files_sha256(pkg, metadata_files)?
@@ -1280,7 +1346,7 @@ export proc build_packages(
       },
     )
 
-    print --flush ${pkg.name} ${id} "build:" manifest.len() "files"
+    append_build_log_or_print("", fp"", f"${pkg.name} ${id} build: ${manifest.len()} files")?
   }
 
   built
@@ -1515,6 +1581,8 @@ proc run_package_proof(
   tarball: Path,
   manifest: List[Path],
   previous: List[BuiltPackage],
+  build_log_text: Str,
+  build_log: Path,
 ) [fs, process, env, error] {
   let proof = fp"${pkg.dir}/proof.xsh"
 
@@ -1584,7 +1652,22 @@ proc run_package_proof(
       XSH_PM_TARGET_ARCH = target_arch
       SHELL = "/bin/xshi"
     } {
-      run $xsh $host_chroot_runner "--" $proof_root $pkg.name "/bin/xsh" fp"/var/tmp/pm-proof/${pkg.name}/proof.xsh" "--" "/" ?
+      run_logged_proof_command(
+        xsh,
+        [
+          xsh.display(),
+          host_chroot_runner.display(),
+          "--",
+          proof_root.display(),
+          pkg.name,
+          "/bin/xsh",
+          f"/var/tmp/pm-proof/${pkg.name}/proof.xsh",
+          "--",
+          "/",
+        ],
+        build_log_text,
+        build_log,
+      )?
     } ?
   } else {
     env {
@@ -1594,11 +1677,16 @@ proc run_package_proof(
       XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
       SHELL = fp"${proof_root}/bin/xshi".display()
     } {
-      run $xsh $proof "--" $proof_root ?
+      run_logged_proof_command(
+        xsh,
+        [xsh.display(), proof.display(), "--", proof_root.display()],
+        build_log_text,
+        build_log,
+      )?
     } ?
   }
 
-  print --flush ${pkg.name} "proof:" "ok"
+  append_build_log_or_print(build_log_text, build_log, f"${pkg.name} proof: ok")?
 }
 
 export proc install_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs, process, env, error] {
