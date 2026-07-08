@@ -10,10 +10,7 @@ export let mkdeps = []
 
 export let sources = [../../pm.xsh, p"../../pm => pm"]
 
-export let checksums = [
-  "SKIP",
-  "SKIP",
-]
+export let checksums = ["SKIP", "SKIP"]
 
 export proc build(dest: Path) [fs, env, error] {
   fs.install(p"pm.xsh", fp"${dest}/usr/lib/pm/pm.xsh", 0o644, parents: true, overwrite: true)?

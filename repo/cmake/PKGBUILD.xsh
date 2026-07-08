@@ -504,7 +504,11 @@ export proc build(dest: Path) [fs, process, env, error] {
   let std_cxx_sources = [fp"Utilities/std/cm/bits/${s}.cxx" for s in ["fs_path", "string_view"]]
 
   # LexerParser CXX
-  let lexer_parser_cxx_sources = [fp"Source/LexerParser/${s}.cxx" for s in ["cmExprLexer", "cmExprParser", "cmGccDepfileLexer"]]
+  let lexer_parser_cxx_sources = [fp"Source/LexerParser/${s}.cxx" for s in [
+    "cmExprLexer",
+    "cmExprParser",
+    "cmGccDepfileLexer",
+  ]]
 
   # kwsys C sources (KWSYS_C_SOURCES from bootstrap — unix branch).
   # Per-source flags: String.c requires -DKWSYS_STRING_C to activate its body.
@@ -532,9 +536,14 @@ export proc build(dest: Path) [fs, process, env, error] {
   ]
 
   # kwsys CXX (KWSYS_CXX_SOURCES from bootstrap)
-  let kwsys_cxx_sources = [
-    fp"Source/kwsys/${s}.cxx" for s in ["Directory", "EncodingCXX", "FStream", "Glob", "RegularExpression", "Status"]
-  ]
+  let kwsys_cxx_sources = [fp"Source/kwsys/${s}.cxx" for s in [
+    "Directory",
+    "EncodingCXX",
+    "FStream",
+    "Glob",
+    "RegularExpression",
+    "Status",
+  ]]
 
   # libuv C sources (unix branch, bundled)
   let uv_sources = [fp"Utilities/cmlibuv/${s}" for s in [
@@ -574,12 +583,15 @@ export proc build(dest: Path) [fs, process, env, error] {
   ]]
 
   # jsoncpp CXX sources (bundled)
-  let jsoncpp_sources = [
-    fp"Utilities/cmjsoncpp/${s}" for s in ["src/lib_json/json_reader.cpp", "src/lib_json/json_value.cpp", "src/lib_json/json_writer.cpp"]
-  ]
+  let jsoncpp_sources = [fp"Utilities/cmjsoncpp/${s}" for s in [
+    "src/lib_json/json_reader.cpp",
+    "src/lib_json/json_value.cpp",
+    "src/lib_json/json_writer.cpp",
+  ]]
 
   # Step 4: link the bootstrap cmake binary (C++ program needs C++ compiler driver).
   let bootstrap_cmake = fp"${bsdir}/cmake"
+
   let bootstrap_target = make.c_multi_program({
     cc: bootstrap_cc,
     triple: bootstrap_triple,
@@ -589,8 +601,26 @@ export proc build(dest: Path) [fs, process, env, error] {
     root: p".",
     out_dir: fp"${bsdir}/obj",
     groups: [
-      {name: "cmake-cxx", cflags: cxx_all, defs: [], includes: [], root: p".", sources: cmake_cxx_sources, out_dir: p"", deps: []},
-      {name: "ninja-cxx", cflags: cxx_all, defs: [], includes: [], root: p".", sources: ninja_cxx_sources, out_dir: p"", deps: []},
+      {
+        name: "cmake-cxx",
+        cflags: cxx_all,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: cmake_cxx_sources,
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "ninja-cxx",
+        cflags: cxx_all,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: ninja_cxx_sources,
+        out_dir: p"",
+        deps: [],
+      },
       {
         name: "fortran-lexer",
         cflags: cxx_all,
@@ -601,8 +631,26 @@ export proc build(dest: Path) [fs, process, env, error] {
         out_dir: p"",
         deps: [],
       },
-      {name: "cmake-c", cflags: c_all, defs: [], includes: [], root: p".", sources: [p"Source/cm_utf8.c"], out_dir: p"", deps: []},
-      {name: "std-cxx", cflags: cxx_all, defs: [], includes: [], root: p".", sources: std_cxx_sources, out_dir: p"", deps: []},
+      {
+        name: "cmake-c",
+        cflags: c_all,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: [p"Source/cm_utf8.c"],
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "std-cxx",
+        cflags: cxx_all,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: std_cxx_sources,
+        out_dir: p"",
+        deps: [],
+      },
       {
         name: "lexer-parser-cxx",
         cflags: cxx_all,
@@ -623,13 +671,76 @@ export proc build(dest: Path) [fs, process, env, error] {
         out_dir: p"",
         deps: [],
       },
-      {name: "kwsys-c", cflags: kwsys_c_base, defs: [], includes: [], root: p".", sources: kwsys_c_sources, out_dir: p"", deps: []},
-      {name: "kwsys-string", cflags: string_flags, defs: [], includes: [], root: p".", sources: [p"Source/kwsys/String.c"], out_dir: p"", deps: []},
-      {name: "kwsys-cxx", cflags: kwsys_all, defs: [], includes: [], root: p".", sources: kwsys_cxx_sources, out_dir: p"", deps: []},
-      {name: "kwsys-system-tools", cflags: kwsys_st, defs: [], includes: [], root: p".", sources: [p"Source/kwsys/SystemTools.cxx"], out_dir: p"", deps: []},
-      {name: "uv", cflags: uv_all, defs: [], includes: [], root: p".", sources: uv_sources, out_dir: p"", deps: []},
-      {name: "rhash", cflags: rhash_all, defs: [], includes: [], root: p".", sources: rhash_sources, out_dir: p"", deps: []},
-      {name: "jsoncpp", cflags: jsoncpp_all, defs: [], includes: [], root: p".", sources: jsoncpp_sources, out_dir: p"", deps: []},
+      {
+        name: "kwsys-c",
+        cflags: kwsys_c_base,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: kwsys_c_sources,
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "kwsys-string",
+        cflags: string_flags,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: [p"Source/kwsys/String.c"],
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "kwsys-cxx",
+        cflags: kwsys_all,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: kwsys_cxx_sources,
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "kwsys-system-tools",
+        cflags: kwsys_st,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: [p"Source/kwsys/SystemTools.cxx"],
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "uv",
+        cflags: uv_all,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: uv_sources,
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "rhash",
+        cflags: rhash_all,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: rhash_sources,
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "jsoncpp",
+        cflags: jsoncpp_all,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: jsoncpp_sources,
+        out_dir: p"",
+        deps: [],
+      },
     ],
     targets: [
       {
@@ -658,6 +769,7 @@ export proc build(dest: Path) [fs, process, env, error] {
       },
     ],
   })?
+
   var tasks = bootstrap_target.tasks
 
   if cross_build {

@@ -244,7 +244,7 @@ proc parse_rules(text: Str, defs: Map[Str]) [error] -> Result[List[LexRule]] {
     var pattern = parsed.pattern
     let action = parsed.action
 
-    if action.contains("REJECT") {
+    if "REJECT" in action {
       return Err(ToolError.Failed("unsupported", "flex.xsh does not support REJECT"))
     }
 
@@ -279,26 +279,26 @@ proc reject_unsupported_options(text: Str) [error] {
   for raw in text.lines() {
     let line = raw.trim()
 
-    if line.starts_with("%option") and line.contains("reject") {
+    if line.starts_with("%option") and "reject" in line {
       return Err(ToolError.Failed("unsupported", "flex.xsh does not support REJECT"))
     }
   }
 }
 
 pure upstream_flex_source_reason(text: Str) -> Str {
-  if text.contains("<<EOF>>") {
+  if "<<EOF>>" in text {
     return "flex.xsh delegates EOF-rule scanners to upstream flex"
   }
 
-  if text.contains("YY_USER_ACTION") {
+  if "YY_USER_ACTION" in text {
     return "flex.xsh delegates scanners with YY_USER_ACTION to upstream flex"
   }
 
-  if text.contains("yyterminate") {
+  if "yyterminate" in text {
     return "flex.xsh delegates scanners using yyterminate to upstream flex"
   }
 
-  if text.contains("yyless") or text.contains("unput") {
+  if "yyless" in text or "unput" in text {
     return "flex.xsh delegates scanners using flex buffer mutation APIs to upstream flex"
   }
 
@@ -554,7 +554,7 @@ proc generate_actions(rules: List[LexRule]) [error] -> Result[Str] {
 }
 
 pure generated_main(user_code: Str) -> Str {
-  if user_code.contains(" main(") or user_code.contains("int main(") {
+  if " main(" in user_code or "int main(" in user_code {
     return ""
   }
 

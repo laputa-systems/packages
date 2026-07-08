@@ -13,9 +13,7 @@ export let mkdeps = ["llvm-toolchain", "cmake", "samurai"]
 
 export let sources = [p"https://zlib.net/fossils/zlib-VERSION.tar.gz"]
 
-export let checksums = [
-  "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
-]
+export let checksums = ["bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?

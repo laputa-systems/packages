@@ -12,9 +12,7 @@ export let mkdeps = ["llvm-toolchain"]
 
 export let sources = [p"https://www.netfilter.org/projects/iptables/files/iptables-VERSION.tar.xz"]
 
-export let checksums = [
-  "d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2",
-]
+export let checksums = ["d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2"]
 
 proc write_iptables_stub() [fs, error] {
   fs.write(
@@ -52,6 +50,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let os = system.uname()?
   let triple = f"${os.machine}-linux-musl"
   write_iptables_stub()?
+
   let iptables = make.c_program({
     cc,
     triple,

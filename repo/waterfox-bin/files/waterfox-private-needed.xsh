@@ -72,7 +72,7 @@ export proc verify_private_needed(
               )
             }
 
-            let resolved: Path = private.get(soname)?
+            let resolved = private.get(soname)?
             needed = needed.push({path: entry.path, soname, resolved})
           }
         }

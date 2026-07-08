@@ -20,13 +20,9 @@ export let sources = [
 
 export let checksums = ["SKIP"]
 
-export let checksums_aarch64 = [
-  "675f9cf871313a5672a63882d4d30dd6dd55df0aa9caee70970542eb03a23da3",
-]
+export let checksums_aarch64 = ["675f9cf871313a5672a63882d4d30dd6dd55df0aa9caee70970542eb03a23da3"]
 
-export let checksums_x86_64 = [
-  "ac0bd443a1933bbd2c0efbedf6ebc97ff8ca2469e5ba65eadb966fb75f65dd1c",
-]
+export let checksums_x86_64 = ["ac0bd443a1933bbd2c0efbedf6ebc97ff8ca2469e5ba65eadb966fb75f65dd1c"]
 
 pure bool_literal(value: Bool) -> Str {
   if value {
@@ -322,10 +318,9 @@ env {
 main(@args)?
 """
 
-  return template.replace("__REAL__", real.display()).replace("__CLANG__", bool_literal(clang)).replace(
-    "__CXX__",
-    bool_literal(cxx),
-  )
+  return template.replace("__REAL__", real.display()).replace("__CLANG__", bool_literal(clang)).replace("__CXX__", bool_literal(
+  cxx,
+))
 }
 
 proc require_env_path(env_name: Str) [env, error] -> Result[Path] {

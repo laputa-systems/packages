@@ -475,7 +475,7 @@ export proc build(dest: Path) [fs, error] -> Result[Unit] {
     "usr/share/prepared-pkg/payload.txt",
   )?
 
-  let tar_records: List[Record] = archive.tar_list(tarball)?
+  let tar_records = archive.tar_list(tarball)?
   let tar_entries = [entry.path.display() for entry in tar_records]
   test.contains(tar_entries.join("\n"), "usr/share/prepared-pkg/payload.txt")?
 }
@@ -577,14 +577,17 @@ proc test_pm_source_checksum(ctx: TestContext) [fs, process, error] {
   let pkg = test.temp_dir(ctx, name: "pkg")?
   let _ = fs.copy_tree(source_pkg_dir(), pkg, parents: true, overwrite: true)?
   let pkgbuild_path = fp"${pkg}/PKGBUILD.xsh"
+
   fs.write(
     pkgbuild_path,
     pkgbuild_path.read_text()?.replace("export let checksums = [", "export let checksums: List[Str] = ["),
   )?
+
   let checksum_out = run.text xsh_bin() pm.xsh -- checksum $root $work $out $pkg ?
   test.contains(checksum_out, "source-pkg 6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
   let update_out = run.text xsh_bin() pm.xsh -- update-checksums $root $work $out $pkg ?
   test.contains(update_out, "source-pkg checksums updated")?
+
   test.eq(
     pkgbuild_path.read_text()?,
     r"""export let name = "source-pkg"
@@ -610,6 +613,7 @@ export proc build(dest: Path) [fs, error] -> Result[Unit] {
 }
 """,
   )?
+
   let shorthand_pkg = test.temp_dir(ctx, name: "shorthand-pkg")?
   let shorthand_copy = fs.copy_tree(source_pkg_dir(), shorthand_pkg, parents: true, overwrite: true)?
   test.ok(shorthand_copy.files > 0)?
@@ -980,16 +984,12 @@ proc test_pm_world_elf_dependency_audit_detects_missing_provider_deps(ctx: TestC
   var providers: Map[Str] = {}
   providers["libz.so.1"] = "zlib"
   providers["libssl.so.3"] = "openssl"
-
   let missing = pm_world.missing_elf_runtime_dependencies("app", ["zlib"], ["libz.so.1", "libssl.so.3"], "", providers)
   test.eq(missing.len(), 1)?
   test.eq(missing[0].soname, "libssl.so.3")?
   test.eq(missing[0].provider, "openssl")?
+  test.eq(pm_world.missing_elf_runtime_dependencies("zlib", [], ["libz.so.1"], "", providers).len(), 0)?
 
-  test.eq(
-    pm_world.missing_elf_runtime_dependencies("zlib", [], ["libz.so.1"], "", providers).len(),
-    0,
-  )?
   test.eq(
     pm_world.missing_elf_runtime_dependencies("app", ["zlib", "openssl"], ["libz.so.1", "libssl.so.3"], "", providers).len(),
     0,
@@ -1078,8 +1078,8 @@ proc test_pm_world_plan_build_and_upload(ctx: TestContext) [fs, process, env, er
   test.contains(output, "jobs 2")?
   test.contains(output, "tranche 0")?
   test.contains(output, "tranche 1")?
-  test.ok(! output.contains("`--"))?
-  test.ok(! output.contains("after "))?
+  test.ok(! ("`--" in output))?
+  test.ok(! ("after " in output))?
   test.contains(output, "world-lib proof: ok")?
   test.contains(output, "world-app proof: ok")?
   test.contains(output, "world-plan build complete")?
@@ -1137,15 +1137,11 @@ proc test_pm_world_plan_parallel_package_setup_error_goes_to_build_log(ctx: Test
   let err = test.temp_path(ctx, name: "pm.err")
   let pkg = test.temp_dir(ctx, name: "bad-source-world-pkg")?
   let _ = fs.copy_tree(source_pkg_dir(), pkg, parents: true, overwrite: true)?
-  fs.write(
-    fp"${pkg}/PKGBUILD.xsh",
-    fp"${pkg}/PKGBUILD.xsh".read_text()?.replace("source-pkg", "laputa-pm"),
-  )?
-
+  fs.write(fp"${pkg}/PKGBUILD.xsh", fp"${pkg}/PKGBUILD.xsh".read_text()?.replace("source-pkg", "laputa-pm"))?
   let status = run.status HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan $pkg --build --jobs 2 2> $err
   test.eq(status.ok, false)?
   let stderr = err.read_text()?
-  test.ok(! stderr.contains("par-map error"))?
+  test.ok(! ("par-map error" in stderr))?
   test.contains(stderr, "tranche 0: 1/1 failed")?
   let stage = single_world_cache(home)?
   let arch = fixture_arch()?
@@ -1170,9 +1166,9 @@ proc test_pm_world_plan_annotates_remote_not_newer(ctx: TestContext) [fs, proces
   run.text xsh_bin() pm.xsh -- build $repo world_pm_dir() ?
   let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() ?
   test.contains(output, "laputa-pm 1.0.0-1")?
-  test.ok(! output.contains("remote same"))?
-  test.ok(! output.contains("remote newer"))?
-  test.ok(! output.contains("->"))?
+  test.ok(! ("remote same" in output))?
+  test.ok(! ("remote newer" in output))?
+  test.ok(! ("->" in output))?
 }
 
 proc test_pm_world_plan_displays_remote_to_local_catchup(ctx: TestContext) [fs, process, env, error] {
@@ -1206,7 +1202,7 @@ proc test_pm_world_plan_displays_remote_to_local_catchup(ctx: TestContext) [fs, 
 
   let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() ?
   test.contains(output, "laputa-pm 1.0.0-0 -> 1.0.0-1")?
-  test.ok(! output.contains("remote newer"))?
+  test.ok(! ("remote newer" in output))?
 }
 
 proc test_pm_world_plan_arch_option(ctx: TestContext) [fs, process, env, error] {
@@ -1281,8 +1277,8 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
   test.contains(output, "laputa-pm 1.0.0-0 -> 1.0.0-1")?
   test.contains(output, "world-lib 1.0.0-1 -> 1.0.0-2")?
   test.contains(output, "world-app 1.0.0-1 -> 1.0.0-2")?
-  test.ok(! output.contains("remote same"))?
-  test.ok(! output.contains("remote newer"))?
+  test.ok(! ("remote same" in output))?
+  test.ok(! ("remote newer" in output))?
 }
 
 proc test_pm_world_plan_autobumps_rel_for_changed_metadata(ctx: TestContext) [fs, process, env, error] {
@@ -1364,7 +1360,7 @@ proc test_pm_world_plan_sync_rels_updates_pkgbuilds_after_upload(ctx: TestContex
   test.contains(fp"${pkg}/PKGBUILD.xsh".read_text()?, "export let rel = \"3\"")?
   let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan $pkg ?
   test.contains(output, "laputa-pm 1.0.0-3")?
-  test.ok(! output.contains("->"))?
+  test.ok(! ("->" in output))?
 }
 
 proc test_pm_world_plan_upload_verifies_staged_artifacts(ctx: TestContext) [fs, process, env, error] {
@@ -1450,9 +1446,9 @@ not a comment summary
   let path_text = f"${first.display()}:${second.display()}:${env.get("PATH")?}"
   let help = run.text PATH=$path_text xsh_bin() pm.xsh -- help-ext $root $work $out ?
   test.contains(help, "extension shadow first summary")?
-  test.eq(help.contains("ignored"), false)?
-  test.eq(help.contains("second summary"), false)?
-  test.eq(help.contains("not a comment summary"), false)?
+  test.eq("ignored" in help, false)?
+  test.eq("second summary" in help, false)?
+  test.eq("not a comment summary" in help, false)?
 }
 
 proc test_pm_extension_invocation_environment(ctx: TestContext) [fs, process, env, error] {
@@ -1617,6 +1613,7 @@ proc test_pm_refresh_index_merges_primary_over_public(ctx: TestContext) [fs, pro
 
 proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error] {
   let helper = test.temp_path(ctx, name: "make-task-helper.xsh")
+
   let compiled = make.compile_c_tasks(
     /bin/cc,
     "aarch64-linux-musl",
@@ -1633,6 +1630,7 @@ proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error
   test.eq(compiled.tasks[0].inputs[0].display(), "srcroot/src/utils/config.c")?
   test.eq(compiled.deps, [compiled.tasks[0].name, compiled.tasks[1].name])?
   test.eq(make.task_deps(compiled.tasks, [compiled.objects[1]]), [compiled.tasks[1].name])?
+
   let program = make.c_program({
     cc: /bin/cc,
     triple: "aarch64-linux-musl",
@@ -1652,6 +1650,7 @@ proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error
   test.eq(program.tasks.len(), 3)?
   test.eq(program.deps[2], "obj/tool")?
   test.eq(program.tasks[2].deps, [program.tasks[0].name, program.tasks[1].name])?
+
   let multi = make.c_multi_program({
     cc: /bin/cc,
     triple: "aarch64-linux-musl",
@@ -1661,12 +1660,46 @@ proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error
     root: p"src",
     out_dir: p"obj",
     groups: [
-      {name: "shared", cflags: [], defs: [], includes: [], root: p"", sources: [p"common.c", p"util.c"], out_dir: p"", deps: []},
-      {name: "feature", cflags: ["-fPIC"], defs: ["-DFEATURE"], includes: [], root: p"", sources: [p"feature.cxx"], out_dir: p"", deps: []},
+      {
+        name: "shared",
+        cflags: [],
+        defs: [],
+        includes: [],
+        root: p"",
+        sources: [p"common.c", p"util.c"],
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "feature",
+        cflags: ["-fPIC"],
+        defs: ["-DFEATURE"],
+        includes: [],
+        root: p"",
+        sources: [p"feature.cxx"],
+        out_dir: p"",
+        deps: [],
+      },
     ],
     targets: [
-      {name: "tool-a", groups: ["shared"], sources: [p"main-a.c"], libs: [], ldflags: ["-static"], out: p"bin/tool-a", deps: []},
-      {name: "tool-b", groups: ["shared", "feature"], sources: [p"main-b.c"], libs: [], ldflags: [], out: p"bin/tool-b", deps: []},
+      {
+        name: "tool-a",
+        groups: ["shared"],
+        sources: [p"main-a.c"],
+        libs: [],
+        ldflags: ["-static"],
+        out: p"bin/tool-a",
+        deps: [],
+      },
+      {
+        name: "tool-b",
+        groups: ["shared", "feature"],
+        sources: [p"main-b.c"],
+        libs: [],
+        ldflags: [],
+        out: p"bin/tool-b",
+        deps: [],
+      },
     ],
   })?
 
@@ -1675,14 +1708,12 @@ proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error
   test.eq(multi.tasks.len(), 7)?
   test.eq(multi.tasks[0].outputs[0].display(), "obj/shared/common.o")?
   test.eq(multi.tasks[2].argv[0], "c++")?
-  test.eq(multi.tasks[2].argv.contains("-DFEATURE"), true)?
+  test.eq("-DFEATURE" in multi.tasks[2].argv, true)?
   test.eq(multi.tasks[3].outputs[0].display(), "obj/tool-a/main-a.o")?
   test.eq(multi.tasks[4].deps, [multi.tasks[0].name, multi.tasks[1].name, multi.tasks[3].name])?
   test.eq(multi.tasks[6].argv[0], "c++")?
-  test.eq(
-    multi.tasks[6].deps,
-    [multi.tasks[0].name, multi.tasks[1].name, multi.tasks[2].name, multi.tasks[5].name],
-  )?
+  test.eq(multi.tasks[6].deps, [multi.tasks[0].name, multi.tasks[1].name, multi.tasks[2].name, multi.tasks[5].name])?
+
   match make.c_multi_program({
     cc: /bin/cc,
     triple: "aarch64-linux-musl",
@@ -1692,7 +1723,17 @@ proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error
     root: p".",
     out_dir: p"obj",
     groups: [],
-    targets: [{name: "bad", groups: ["missing"], sources: [], libs: [], ldflags: [], out: p"bad", deps: []}],
+    targets: [
+      {
+        name: "bad",
+        groups: ["missing"],
+        sources: [],
+        libs: [],
+        ldflags: [],
+        out: p"bad",
+        deps: [],
+      },
+    ],
   }) {
     Ok(_) => test.eq("missing group accepted", "missing group rejected")?
     Err(_) => {}
@@ -1700,19 +1741,57 @@ proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error
 
   let src_tree = test.temp_dir(ctx, name: "make-src-tree")?
   fs.mkdir(fp"${src_tree}/sub")?
-  fs.write(fp"${src_tree}/main.c", "int main(void) { return 0; }\n")?
-  fs.write(fp"${src_tree}/skip.c", "int skip(void) { return 0; }\n")?
-  fs.write(fp"${src_tree}/sub/util.c", "int util(void) { return 0; }\n")?
-  fs.write(fp"${src_tree}/sub/readme.txt", "ignore\n")?
+
+  fs.write(
+    fp"${src_tree}/main.c",
+    """int main(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${src_tree}/skip.c",
+    """int skip(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${src_tree}/sub/util.c",
+    """int util(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${src_tree}/sub/readme.txt",
+    """ignore
+""",
+  )?
+
   let discovered = make.discover_sources(src_tree, ["c"], [p"skip.c"])?
   test.eq([item.display() for item in discovered], ["main.c", "sub/util.c"])?
   let headers = test.temp_dir(ctx, name: "make-headers")?
   let header_out = test.temp_dir(ctx, name: "make-header-out")?
   fs.mkdir(fp"${headers}/sub")?
-  fs.write(fp"${headers}/api.h", "api\n")?
-  fs.write(fp"${headers}/sub/private.h", "private\n")?
+
+  fs.write(
+    fp"${headers}/api.h",
+    """api
+""",
+  )?
+
+  fs.write(
+    fp"${headers}/sub/private.h",
+    """private
+""",
+  )?
+
   make.install_header_tree(headers, header_out, [p"sub/private.h"])?
-  test.eq(fp"${header_out}/api.h".read_text()?, "api\n")?
+
+  test.eq(
+    fp"${header_out}/api.h".read_text()?,
+    """api
+""",
+  )?
+
   test.eq(fp"${header_out}/sub/private.h".exists()?, false)?
 
   helper.write(r"""#!/bin/xsh --

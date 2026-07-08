@@ -10,9 +10,7 @@ export let mkdeps = []
 
 export let sources = [p"files/rootfs"]
 
-export let checksums = [
-  "SKIP",
-]
+export let checksums = ["SKIP"]
 
 export let extract_install = true
 

@@ -4,22 +4,13 @@ export let ver = "1"
 
 export let rel = "17"
 
-export let deps = [
-  "waterfox-bin",
-  "dwl-minimal",
-  "seatd",
-  "mdevd",
-  "libudev-zero",
-  "ca-certificates",
-  "foot-minimal",
-]
+export let deps = ["waterfox-bin", "dwl-minimal", "seatd", "mdevd", "libudev-zero", "ca-certificates", "foot-minimal"]
 
 export let mkdeps = []
 
 export let sources = []
 
-export let checksums = [
-]
+export let checksums = []
 
 proc install_session(dest: Path) [fs, error] {
   fs.write(
@@ -353,7 +344,7 @@ pure group_with_member(line: Str, user_name: Str) -> Str {
 
   let members = fields[3].split(",") |> where .trim() != ""
 
-  if members.contains(user_name) {
+  if user_name in members {
     return line
   }
 

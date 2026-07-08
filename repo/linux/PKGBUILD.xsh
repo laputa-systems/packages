@@ -5,19 +5,19 @@ use linux_config
 use parser_gen
 use pm.util as pm_util
 
-export let name: Str = "linux"
+export let name = "linux"
 
-export let ver: Str = "7.0.5"
+export let ver = "7.0.5"
 
-export let rel: Str = "30"
+export let rel = "30"
 
 export let deps: List[Str] = []
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "flex", "bison"]
+export let mkdeps = ["llvm-toolchain", "flex", "bison"]
 
-export let nostrip: Bool = true
+export let nostrip = true
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.0.5.tar.xz",
   p"files/config/aarch64/base-aarch64.fragment",
   p"files/config/x86_64/base-x86_64.fragment",

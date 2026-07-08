@@ -212,24 +212,24 @@ proc build_x86_vdso(cc: Path) [fs, process, env, error] {
 
   PKGBUILD_shared.run_native_command(
     [
-      "ld.lld",
-      "-shared",
-      "--hash-style=both",
-      "--build-id=sha1",
-      "--no-undefined",
-      "--eh-frame-hdr",
-      "-Bsymbolic",
-      "-z",
-      "noexecstack",
-      "-m",
-      "elf_x86_64",
-      "-soname",
-      "linux-vdso.so.1",
-      "-z",
-      "max-page-size=4096",
-      "-T",
-      lds.display(),
-    ].extend(linked_objects).extend(["-o", "arch/x86/entry/vdso/vdso64/vdso64.so.dbg"]),
+  "ld.lld",
+  "-shared",
+  "--hash-style=both",
+  "--build-id=sha1",
+  "--no-undefined",
+  "--eh-frame-hdr",
+  "-Bsymbolic",
+  "-z",
+  "noexecstack",
+  "-m",
+  "elf_x86_64",
+  "-soname",
+  "linux-vdso.so.1",
+  "-z",
+  "max-page-size=4096",
+  "-T",
+  lds.display(),
+].extend(linked_objects).extend(["-o", "arch/x86/entry/vdso/vdso64/vdso64.so.dbg"]),
   )?
 
   PKGBUILD_shared.emit_kbuild_progress("xsh-kbuild-x86-vdso strip vdso64.so")?
@@ -339,7 +339,7 @@ proc write_x86_orc_hash_header() [fs, error] {
 }
 
 proc x86_capflag_array(array: Str, size: Str, prefix: Str, postfix: Str, input: Path) [fs, error] -> Result[List[Str]] {
-  var lines: List[Str] = [f"const char * const ${array}[${size}] = {"]
+  var lines = [f"const char * const ${array}[${size}] = {"]
 
   for raw in input.read_text()?.split("\n") {
     let line = raw.replace("\t", " ").trim()
@@ -361,7 +361,7 @@ proc x86_capflag_array(array: Str, size: Str, prefix: Str, postfix: Str, input: 
 proc generate_x86_capflags_source() [fs, error] {
   let cpufeature = p"arch/x86/include/asm/cpufeatures.h"
   let vmxfeature = p"arch/x86/include/asm/vmxfeatures.h"
-  var lines: List[Str] = ["#ifndef _ASM_X86_CPUFEATURES_H", "#include <asm/cpufeatures.h>", "#endif", ""]
+  var lines = ["#ifndef _ASM_X86_CPUFEATURES_H", "#include <asm/cpufeatures.h>", "#endif", ""]
   lines = lines.extend(x86_capflag_array("x86_cap_flags", "NCAPINTS*32", "X86_FEATURE_", "", cpufeature)?)
   lines = lines.push("")
   lines = lines.extend(x86_capflag_array("x86_bug_flags", "NBUGINTS*32", "X86_BUG_", "NCAPINTS*32", cpufeature)?)
@@ -455,7 +455,7 @@ proc build_x86_realmode_payload(cc: Path) [fs, process, env, error] {
     ],
   )?
 
-  var realmode_objects: List[Str] = ["header.o", "trampoline_64.o", "stack.o", "reboot.o"]
+  var realmode_objects = ["header.o", "trampoline_64.o", "stack.o", "reboot.o"]
   let acpi_sleep = p".config".read_text()?.contains("CONFIG_ACPI_SLEEP=y")
 
   if acpi_sleep {

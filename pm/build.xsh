@@ -127,9 +127,7 @@ proc seed_chroot_runner(root: Path) [fs, process, env, error] {
   for sh in [fp"${root}/usr/bin/sh", fp"${root}/bin/sh"] {
     fs.mkdir(sh.parent)?
     fs.remove(sh, missing_ok: true)?
-
     fs.write(sh, seeded_shell_script())?
-
     fs.chmod(sh, 0o755)?
   }
 
@@ -194,35 +192,48 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
   } {
     let exports = pkg.exports
     let runner = fp"${pkg_dir}/run-package-build.xsh"
-    let prepare_call = if exports.has("prepare") { "  prepare(src)?\n" } else { "" }
-    let build_call = if exports.has("build") {
-      "  cd src {\n    build(dest)?\n  } ?\n"
+
+    let prepare_call = if exports.has("prepare") {
+      """  prepare(src)?
+"""
     } else {
       ""
     }
 
-    let runner_text = [
-      """use PKGBUILD
+    let build_call = if exports.has("build") {
+      """  cd src {
+    build(dest)?
+  } ?
+"""
+    } else {
+      ""
+    }
+
+    let runner_text = """use PKGBUILD
 
 proc main(src: Path, dest: Path) [fs, process, env, error] {
-""",
-      prepare_call,
-      """  fs.remove(dest, missing_ok: true)?
+""" + prepare_call + """  fs.remove(dest, missing_ok: true)?
   fs.mkdir(dest)?
-""",
-      build_call,
-      """}
+""" + build_call + """}
 main(@args)?
-""",
-    ].join("")
+"""
 
     fs.write(runner, runner_text)?
-
     let trace_path = fp"${pkg_dir.parent}/run-package-build.trace"
+
     let status = process.run(
       process.command_argv(
         "/bin/xsht",
-        ["/bin/xsht", "trace", "--trace-file", trace_path.display(), runner.display(), "--", src.display(), dest.display()],
+        [
+          "/bin/xsht",
+          "trace",
+          "--trace-file",
+          trace_path.display(),
+          runner.display(),
+          "--",
+          src.display(),
+          dest.display(),
+        ],
       ),
     )?
 
@@ -495,7 +506,7 @@ proc build_packages_in_chroot(
       let key = rel_path.display()
 
       if owners.has(key) {
-        let owner: Str = owners.get(key)?
+        let owner = owners.get(key)?
         return Err(PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
       }
 
@@ -580,7 +591,7 @@ export proc build_packages(
       let key = rel_path.display()
 
       if owners.has(key) {
-        let owner: Str = owners.get(key)?
+        let owner = owners.get(key)?
         return Err(PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
       }
 
@@ -612,17 +623,15 @@ export proc build_packages(
     let metadata_files = collect_metadata_files(dest, manifest)?
     let metadata_sha256 = metadata_files_sha256(pkg, metadata_files)?
 
-    built = built.push(
-      {
-        pkg,
-        id,
-        tarball,
-        manifest,
-        etcsums,
-        metadata_sha256,
-        metadata_files,
-      },
-    )
+    built = built.push({
+      pkg,
+      id,
+      tarball,
+      manifest,
+      etcsums,
+      metadata_sha256,
+      metadata_files,
+    })
 
     append_build_log_or_print("", fp"", f"${pkg.name} ${id} build: ${manifest.len()} files")?
   }
@@ -687,9 +696,7 @@ proc seed_package_proof_shell(proof_root: Path, xsh: Path) [fs, process, env, er
   for proof_sh in [fp"${proof_root}/usr/bin/sh", fp"${proof_root}/bin/sh"] {
     fs.mkdir(proof_sh.parent)?
     fs.remove(proof_sh, missing_ok: true)?
-
     fs.write(proof_sh, seeded_shell_script())?
-
     fs.chmod(proof_sh, 0o755)?
   }
 

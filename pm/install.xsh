@@ -150,8 +150,8 @@ export proc install_remote_packages(ctx: PmContext, names: List[Str]) [fs, net, 
     if pkg.metapackage {
       install_remote_metapackage(ctx, pkg)?
     } else {
-      let tarball: Path = tarballs.get(pkg.name)?
-      let from_cache: Bool = tarball_from_cache.get(pkg.name, false)
+      let tarball = tarballs.get(pkg.name)?
+      let from_cache = tarball_from_cache.get(pkg.name, false)
       install_remote_tarball(ctx, pkg, tarball, from_cache)?
     }
   }
@@ -287,7 +287,7 @@ export proc print_package_info(root: Path, name: Str) [fs, error] {
   let mkdeps: List[Str] = metadata.get("mkdeps")?
   let empty_target_build_deps = []
 
-  let target_build_deps: List[Str] = if metadata.has("target_build_deps") {
+  let target_build_deps = if metadata.has("target_build_deps") {
     metadata.get("target_build_deps")?
   } else {
     empty_target_build_deps

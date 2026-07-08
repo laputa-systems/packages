@@ -16,10 +16,7 @@ export let sources = [
   p"service.xsh",
 ]
 
-export let checksums = [
-  "ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c",
-  "SKIP",
-]
+export let checksums = ["ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c", "SKIP"]
 
 proc install_manpage(source: Path, dest: Path) [fs, error] {
   if source.exists()? {
@@ -256,10 +253,7 @@ ${default_options_guard}
 
   let key_stems = ["dropbearkey"]
   let convert_stems = ["dropbearconvert", "keyimport", "signkey_ossh"]
-
-  let all_dropbear_stems = common_stems.extend(clisvr_stems).extend(svr_stems).extend(cli_stems).extend(key_stems).extend(
-    convert_stems,
-  )
+  let all_dropbear_stems = common_stems.extend(clisvr_stems).extend(svr_stems).extend(cli_stems).extend(key_stems).extend(convert_stems)
 
   let defs = [
     "-DHAVE_CONFIG_H",
@@ -274,13 +268,16 @@ ${default_options_guard}
   let ltc_cflags = ["-W", "-Wall", "-Wno-pointer-sign", "-Os", "-DLTC_SOURCE", "-fPIC"]
   let ltm_cflags = ["-O3", "-funroll-loops", "-fomit-frame-pointer", "-fPIC"]
   let _ = all_dropbear_stems
-
   let ltc_root = fp"${src}/libtomcrypt/src"
   let ltm_root = fp"${src}/libtommath"
-  let ltc_sources = [entry.path.relative_to(ltc_root) for entry in fs.files(p"libtomcrypt/src")? |> where .ext == "c" and .name != "aes_tab.c" and .name != "safer_tab.c" and .name != "twofish_tab.c" and .name != "whirltab.c" and .name != "sober128tab.c"]
+
+  let ltc_sources = [entry.path.relative_to(ltc_root) for entry in fs.files(p"libtomcrypt/src")?
+    |> where .ext == "c" and .name != "aes_tab.c" and .name != "safer_tab.c" and .name != "twofish_tab.c" and .name != "whirltab.c" and .name != "sober128tab.c"]
+
   let ltm_sources = [entry.path.relative_to(ltm_root) for entry in fs.ls(p"libtommath")? if entry.kind == "file" and entry.ext == "c"]
   let ltc_a = p"obj/libtomcrypt.a"
   let ltm_a = p"obj/libtommath.a"
+
   let ltc = make.c_static_library({
     cc,
     triple,
@@ -293,6 +290,7 @@ ${default_options_guard}
     out: ltc_a,
     deps: [],
   })
+
   let ltm = make.c_static_library({
     cc,
     triple,
@@ -305,9 +303,11 @@ ${default_options_guard}
     out: ltm_a,
     deps: [],
   })
+
   let lib_deps = [ltc_a.display(), ltm_a.display()]
   let libs = [ltc_a, ltm_a]
   let link_flags = [ldflags, "-pie", "-lz"]
+
   let multi = make.c_multi_program({
     cc,
     triple,
@@ -317,17 +317,95 @@ ${default_options_guard}
     root: p"src",
     out_dir: p"obj/dropbear",
     groups: [
-      {name: "common", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in common_stems], out_dir: p"", deps: []},
-      {name: "clisvr", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in clisvr_stems], out_dir: p"", deps: []},
-      {name: "server", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in svr_stems], out_dir: p"", deps: []},
-      {name: "client", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in cli_stems], out_dir: p"", deps: []},
-      {name: "key", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in key_stems], out_dir: p"", deps: []},
-      {name: "convert", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in convert_stems], out_dir: p"", deps: []},
+      {
+        name: "common",
+        cflags: [],
+        defs: [],
+        includes: [],
+        root: p"",
+        sources: [fp"${stem}.c" for stem in common_stems],
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "clisvr",
+        cflags: [],
+        defs: [],
+        includes: [],
+        root: p"",
+        sources: [fp"${stem}.c" for stem in clisvr_stems],
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "server",
+        cflags: [],
+        defs: [],
+        includes: [],
+        root: p"",
+        sources: [fp"${stem}.c" for stem in svr_stems],
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "client",
+        cflags: [],
+        defs: [],
+        includes: [],
+        root: p"",
+        sources: [fp"${stem}.c" for stem in cli_stems],
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "key",
+        cflags: [],
+        defs: [],
+        includes: [],
+        root: p"",
+        sources: [fp"${stem}.c" for stem in key_stems],
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "convert",
+        cflags: [],
+        defs: [],
+        includes: [],
+        root: p"",
+        sources: [fp"${stem}.c" for stem in convert_stems],
+        out_dir: p"",
+        deps: [],
+      },
     ],
     targets: [
-      {name: "dropbear", groups: ["common", "clisvr", "server"], sources: [], libs, ldflags: link_flags, out: p"dropbear", deps: lib_deps},
-      {name: "dbclient", groups: ["common", "clisvr", "client"], sources: [], libs, ldflags: link_flags, out: p"dbclient", deps: lib_deps},
-      {name: "dropbearkey", groups: ["common", "key"], sources: [], libs, ldflags: link_flags, out: p"dropbearkey", deps: lib_deps},
+      {
+        name: "dropbear",
+        groups: ["common", "clisvr", "server"],
+        sources: [],
+        libs,
+        ldflags: link_flags,
+        out: p"dropbear",
+        deps: lib_deps,
+      },
+      {
+        name: "dbclient",
+        groups: ["common", "clisvr", "client"],
+        sources: [],
+        libs,
+        ldflags: link_flags,
+        out: p"dbclient",
+        deps: lib_deps,
+      },
+      {
+        name: "dropbearkey",
+        groups: ["common", "key"],
+        sources: [],
+        libs,
+        ldflags: link_flags,
+        out: p"dropbearkey",
+        deps: lib_deps,
+      },
       {
         name: "dropbearconvert",
         groups: ["common", "convert"],
@@ -339,6 +417,7 @@ ${default_options_guard}
       },
     ],
   })?
+
   make.run_tasks(ltc.tasks.extend(ltm.tasks).extend(multi.tasks), make.jobs()?)?
   fs.install(p"dropbear", fp"${dest}/usr/bin/dropbear", 0o755, parents: true, overwrite: true)?
   fs.install(p"dbclient", fp"${dest}/usr/bin/dbclient", 0o755, parents: true, overwrite: true)?

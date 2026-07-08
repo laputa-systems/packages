@@ -100,6 +100,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # With HAVE_MALLOC=1 and HAVE_REALLOC=1 musl's implementations are used
   # directly, so no rpl_* symbols are needed; omit lib/ from the link.
   let flex_sources = make.discover_sources(p"src", ["c"], [p"libmain.c", p"libyywrap.c"])?
+
   let flex = make.c_program({
     cc,
     triple,

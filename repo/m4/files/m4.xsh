@@ -682,10 +682,7 @@ pure b4_symbol_id_name(st: Map[Str], num: Str) -> Str {
     return "RBRACE"
   }
 
-  let tag = raw_tag.replace("\"", "").replace("'", "").replace("$", "").replace("[", "").replace("]", "").replace(
-    " ",
-    "_",
-  ).replace("\n", "_").replace("-", "_").replace("{", "_").replace("}", "_").replace(";", "_")
+  let tag = raw_tag.replace("\"", "").replace("'", "").replace("$", "").replace("[", "").replace("]", "").replace(" ", "_").replace("\n", "_").replace("-", "_").replace("{", "_").replace("}", "_").replace(";", "_")
 
   if tag == "" {
     return f"symbol_${num}"

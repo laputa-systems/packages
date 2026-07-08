@@ -26,16 +26,7 @@ export let checksums = [
 ]
 
 pure upper_ascii(text: Str) -> Str {
-  text.replace("a", "A").replace("b", "B").replace("c", "C").replace("d", "D").replace("e", "E").replace("f", "F").replace(
-    "g",
-    "G",
-  ).replace("h", "H").replace("i", "I").replace("j", "J").replace("k", "K").replace("l", "L").replace("m", "M").replace(
-    "n",
-    "N",
-  ).replace("o", "O").replace("p", "P").replace("q", "Q").replace("r", "R").replace("s", "S").replace("t", "T").replace(
-    "u",
-    "U",
-  ).replace("v", "V").replace("w", "W").replace("x", "X").replace("y", "Y").replace("z", "Z")
+  text.replace("a", "A").replace("b", "B").replace("c", "C").replace("d", "D").replace("e", "E").replace("f", "F").replace("g", "G").replace("h", "H").replace("i", "I").replace("j", "J").replace("k", "K").replace("l", "L").replace("m", "M").replace("n", "N").replace("o", "O").replace("p", "P").replace("q", "Q").replace("r", "R").replace("s", "S").replace("t", "T").replace("u", "U").replace("v", "V").replace("w", "W").replace("x", "X").replace("y", "Y").replace("z", "Z")
 }
 
 pure bytes_for_bits(bits: Int) -> Int {
@@ -43,17 +34,13 @@ pure bytes_for_bits(bits: Int) -> Int {
 }
 
 pure gen_types_internal(text: Str, type_name: Str, type_caps: Str, bits: Int) -> Str {
-  text.replace("@type@", type_name).replace("@TYPE@", type_caps).replace("@BITS@", f"${bits}").replace(
-    "@BYTES@",
-    f"${bytes_for_bits(bits)}",
-  )
+  text.replace("@type@", type_name).replace("@TYPE@", type_caps).replace("@BITS@", f"${bits}").replace("@BYTES@", f"${bytes_for_bits(
+  bits,
+)}")
 }
 
 pure gen_bits_template(text: Str, bits: Int, dfmt: Str, ofmt: Str, xfmt: Str, bfmt: Str) -> Str {
-  text.replace("@BITS@", f"${bits}").replace("@DFMT@", dfmt).replace("@OFMT@", ofmt).replace("@XFMT@", xfmt).replace(
-    "@BFMT@",
-    bfmt,
-  )
+  text.replace("@BITS@", f"${bits}").replace("@DFMT@", dfmt).replace("@OFMT@", ofmt).replace("@XFMT@", xfmt).replace("@BFMT@", bfmt)
 }
 
 proc read_sysdeps(path_value: Path) [fs, error] -> Result[Map[Str]] {
@@ -405,6 +392,7 @@ proc compile_skalibs(cc: Path, triple: Str, target: Str) [fs, process, env, erro
   }
 
   let skarnet_archive = p"obj/libskarnet.a"
+
   let skarnet = make.c_static_library({
     cc,
     triple,
@@ -471,8 +459,8 @@ struct sockaddr_nl {
   ]
 
   let includes = ["-iquote", "src/include-local", "-Ilaputa-headers", "-Isrc/include", "-Iskalibs/src/include"]
-
   write_mdevd_config()?
+
   let multi = make.c_multi_program({
     cc,
     triple,

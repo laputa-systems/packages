@@ -284,7 +284,7 @@ export proc load_config(path_value: Path) [fs, error] -> Result[Kconfig] {
   for raw in path_value.read_text()?.split("\n") {
     let line = raw.trim()
 
-    if line.starts_with("CONFIG_") and line.contains("=") {
+    if line.starts_with("CONFIG_") and "=" in line {
       let parts = line.split("=")
       let name = parts[0].replace("CONFIG_", "")
       let value = clean_config_value(parts.get(1, ""))
@@ -302,14 +302,14 @@ export proc load_config(path_value: Path) [fs, error] -> Result[Kconfig] {
 export proc write_config_headers(config_path: Path, root: Path, release: Str, arch: Str = "arm64") [fs, error] {
   let config = load_config(config_path)?
 
-  var autoconf: List[Str] = [
+  var autoconf = [
     "/*",
     " * Automatically generated file; DO NOT EDIT.",
     f" * Linux/${arch} ${release} Kernel Configuration",
     " */",
   ]
 
-  var auto_conf: List[Str] = [
+  var auto_conf = [
     "#",
     "# Automatically generated file; DO NOT EDIT.",
     f"# Linux/${arch} ${release} Kernel Configuration",
@@ -533,7 +533,7 @@ export proc write_asm_generic_wrappers(root: Path, srcarch: Str = "arm64") [fs, 
 }
 
 export proc generate_arm64_cpucap_defs(root: Path) [fs, error] {
-  var lines: List[Str] = [
+  var lines = [
     "#ifndef __ASM_CPUCAP_DEFS_H",
     "#define __ASM_CPUCAP_DEFS_H",
     "",
@@ -571,7 +571,7 @@ pure config_value(config: Kconfig, name: Str) -> Str {
 pure expand_subst(raw: Str, config: Kconfig) -> Str {
   let marker = "$(subst m,y,$(CONFIG_"
 
-  if ! raw.contains(marker) {
+  if ! (marker in raw) {
     return raw
   }
 
@@ -601,7 +601,7 @@ pure expand_subst(raw: Str, config: Kconfig) -> Str {
 pure expand_config_refs(raw: Str, config: Kconfig) -> Str {
   let marker = "$(CONFIG_"
 
-  if ! raw.contains(marker) {
+  if ! (marker in raw) {
     return raw
   }
 
@@ -624,7 +624,7 @@ pure expand_config_refs(raw: Str, config: Kconfig) -> Str {
 pure expand_make_vars(raw: Str, vars: Map[Str]) -> Str {
   let marker = "$("
 
-  if ! raw.contains(marker) {
+  if ! (marker in raw) {
     return raw
   }
 
@@ -647,7 +647,7 @@ pure expand_make_vars(raw: Str, vars: Map[Str]) -> Str {
 pure expand_braced_config_refs(raw: Str, config: Kconfig) -> Str {
   let marker = "\${CONFIG_"
 
-  if ! raw.contains(marker) {
+  if ! (marker in raw) {
     return raw
   }
 
@@ -670,7 +670,7 @@ pure expand_braced_config_refs(raw: Str, config: Kconfig) -> Str {
 pure expand_vars(raw: Str, vars: Map[Str], config: Kconfig, srcarch: Str) -> Str {
   var out = expand_braced_config_refs(expand_subst(raw, config).replace("$(SRCARCH)", srcarch), config)
 
-  if ! out.contains("$(") {
+  if ! ("$(" in out) {
     return out
   }
 
@@ -723,13 +723,13 @@ proc included_kbuild_lines(
 
   let raw_spec = line.split("include ").get(1, "").trim()
 
-  if raw_spec.contains("$(objtree)") {
+  if "$(objtree)" in raw_spec {
     return []
   }
 
   let spec = expand_vars(raw_spec, vars, config, srcarch)
 
-  if spec == "" or spec.contains(" ") or spec.contains("$(") or spec.starts_with("/") {
+  if spec == "" or " " in spec or "$(" in spec or spec.starts_with("/") {
     return []
   }
 
@@ -738,22 +738,22 @@ proc included_kbuild_lines(
 }
 
 pure parse_assignment(line: Str) -> Result[ParsedAssignment] {
-  if line.contains("+=") {
+  if "+=" in line {
     let parts = line.split("+=")
     return {lhs: parts[0].trim(), op: "+=", rhs: parts.get(1, "").trim()}
   }
 
-  if line.contains(":=") {
+  if ":=" in line {
     let parts = line.split(":=")
     return {lhs: parts[0].trim(), op: ":=", rhs: parts.get(1, "").trim()}
   }
 
-  if line.contains("?=") {
+  if "?=" in line {
     let parts = line.split("?=")
     return {lhs: parts[0].trim(), op: "?=", rhs: parts.get(1, "").trim()}
   }
 
-  if line.contains("=") {
+  if "=" in line {
     let parts = line.split("=")
     return {lhs: parts[0].trim(), op: "=", rhs: parts.get(1, "").trim()}
   }
@@ -929,8 +929,8 @@ pure plan_objects(plan: KbuildPlan) -> List[Path] {
 
 proc vars_for_dir(root: Path, dir: Path, config: Kconfig, srcarch: Str) [fs, error] -> Result[Map[Str]] {
   let file = kbuild_file(join_root(root, dir))?
-  var vars: Map[Str] = kbuild_vars_for_dir(dir, srcarch)
-  var active_stack: List[Bool] = [true]
+  var vars = kbuild_vars_for_dir(dir, srcarch)
+  var active_stack = [true]
   var lines = logical_lines(file.read_text()?)
   var line_index = 0
 
@@ -1014,10 +1014,10 @@ proc kbuild_compile_flags_for_dir(
   srcarch: Str,
 ) [fs, error] -> Result[Map[List[Str]]] {
   let file = kbuild_file(join_root(root, dir))?
-  var vars: Map[Str] = kbuild_vars_for_dir(dir, srcarch)
+  var vars = kbuild_vars_for_dir(dir, srcarch)
   var flags: Map[List[Str]] = {}
   var subdir_flags: List[Str] = []
-  var active_stack: List[Bool] = [true]
+  var active_stack = [true]
   var lines = logical_lines(file.read_text()?)
   var line_index = 0
 
@@ -1185,7 +1185,7 @@ ${dir_fingerprints.join("\n")}
 
 proc read_compile_flags_cache(path_value: Path, fingerprint: Str) [fs, error] -> Result[Map[Map[List[Str]]]] {
   let stored: Record = json.read(path_value)?
-  let format: Str = if stored.has("format") { stored.get("format")? } else { "" }
+  let format = if stored.has("format") { stored.get("format")? } else { "" }
 
   if format != compile_flags_cache_format() {
     return Err(ScriptError.Failed("kbuild-compile-flags-cache-stale", "compile flags cache has stale format"))
@@ -1807,7 +1807,7 @@ proc apply_item(plan: KbuildPlan, dir: Path, item: Str, vars: Map[Str], as_lib: 
     return {plan: plan, dirs: [], entries: []}
   }
 
-  if item.contains("$(") {
+  if "$(" in item {
     return {plan: add_unsupported(plan, f"${path_key(dir)}: unresolved token ${item}"), dirs: [], entries: []}
   }
 
@@ -1952,12 +1952,12 @@ proc scan_discover_dir(
 
   let file = file_result?
   var plan = add_dir(empty_plan(), rel)
-  var vars: Map[Str] = kbuild_vars_for_dir(rel, srcarch)
+  var vars = kbuild_vars_for_dir(rel, srcarch)
   var child_dirs: List[Path] = []
   var entries: List[Path] = []
   var object_rhs: List[Str] = []
   var lib_rhs: List[Str] = []
-  var active_stack: List[Bool] = [true]
+  var active_stack = [true]
   var line_no = 0
 
   if options.progress and options.progress_every == 1 {
@@ -2078,7 +2078,7 @@ proc discover_scans(
 ) [fs, error] -> Result[Map[DirScan]] {
   var scans: Map[DirScan] = {}
   var seen: Map[Bool] = {}
-  var frontier: List[Path] = [p"."]
+  var frontier = [p"."]
   var aggregate = empty_plan()
   var visited = 0
 
@@ -2368,9 +2368,9 @@ export proc read_discovered_plan(path_value: Path) [fs, error] -> Result[KbuildP
   let objects: List[Str] = stored.get("objects")?
   let no_composites: List[Record] = []
   let no_strings: List[Str] = []
-  let lib_objects: List[Str] = if stored.has("lib_objects") { stored.get("lib_objects")? } else { no_strings }
-  let composites: List[Record] = if stored.has("composites") { stored.get("composites")? } else { no_composites }
-  let unsupported: List[Str] = if stored.has("unsupported") { stored.get("unsupported")? } else { no_strings }
+  let lib_objects = if stored.has("lib_objects") { stored.get("lib_objects")? } else { no_strings }
+  let composites = if stored.has("composites") { stored.get("composites")? } else { no_composites }
+  let unsupported = if stored.has("unsupported") { stored.get("unsupported")? } else { no_strings }
 
   return {
     dirs: unique_paths(paths_from_strings(dirs)?),
@@ -2499,35 +2499,31 @@ pure duplicate_task_outputs(tasks: List[make.MakeTask]) -> List[Path] {
 export proc write_archive_plan_summary(archive_plan: Record, out: Path) [fs, error] {
   write_text_if_changed(
     out,
-    json.encode(
-      {
-        format: archive_plan_report_format(),
-        archives: path_strings(archive_plan.archives),
-        link_inputs: path_strings(archive_plan.link_inputs),
-        generated_objects: path_strings(archive_plan.generated_objects),
-        missing_sources: path_strings(archive_plan.missing_sources),
-        duplicate_outputs: path_strings(duplicate_task_outputs(archive_plan.tasks)),
-        task_count: archive_plan.tasks.len(),
-      },
-    )?,
+    json.encode({
+      format: archive_plan_report_format(),
+      archives: path_strings(archive_plan.archives),
+      link_inputs: path_strings(archive_plan.link_inputs),
+      generated_objects: path_strings(archive_plan.generated_objects),
+      missing_sources: path_strings(archive_plan.missing_sources),
+      duplicate_outputs: path_strings(duplicate_task_outputs(archive_plan.tasks)),
+      task_count: archive_plan.tasks.len(),
+    })?,
   )?
 }
 
 export proc write_archive_plan_report(archive_plan: Record, out: Path) [fs, error] {
   write_text_if_changed(
     out,
-    json.encode(
-      {
-        format: archive_plan_report_format(),
-        archives: path_strings(archive_plan.archives),
-        link_inputs: path_strings(archive_plan.link_inputs),
-        generated_objects: path_strings(archive_plan.generated_objects),
-        missing_sources: path_strings(archive_plan.missing_sources),
-        duplicate_outputs: path_strings(duplicate_task_outputs(archive_plan.tasks)),
-        task_count: archive_plan.tasks.len(),
-        tasks: task_records(archive_plan.tasks),
-      },
-    )?,
+    json.encode({
+      format: archive_plan_report_format(),
+      archives: path_strings(archive_plan.archives),
+      link_inputs: path_strings(archive_plan.link_inputs),
+      generated_objects: path_strings(archive_plan.generated_objects),
+      missing_sources: path_strings(archive_plan.missing_sources),
+      duplicate_outputs: path_strings(duplicate_task_outputs(archive_plan.tasks)),
+      task_count: archive_plan.tasks.len(),
+      tasks: task_records(archive_plan.tasks),
+    })?,
   )?
 
   write_archive_plan_summary(archive_plan, archive_plan_summary_path(out))?
@@ -2572,7 +2568,7 @@ proc read_archive_plan_tasks(path_value: Path) [fs, error] -> Result[List[make.M
 
 export proc read_archive_plan_report(path_value: Path) [fs, error] -> Result[Record] {
   let stored: Record = json.read(path_value)?
-  let format: Str = if stored.has("format") { stored.get("format")? } else { "" }
+  let format = if stored.has("format") { stored.get("format")? } else { "" }
 
   if format != archive_plan_report_format() {
     return Err(ScriptError.Failed("kbuild-archive-plan-cache-stale", "archive plan cache has stale format"))
@@ -2582,8 +2578,8 @@ export proc read_archive_plan_report(path_value: Path) [fs, error] -> Result[Rec
   let link_inputs: List[Str] = stored.get("link_inputs")?
   let generated_objects: List[Str] = stored.get("generated_objects")?
   let missing_sources: List[Str] = stored.get("missing_sources")?
-  let duplicate_outputs: List[Str] = if stored.has("duplicate_outputs") { stored.get("duplicate_outputs")? } else { [] }
-  let task_count: Int = if stored.has("task_count") { stored.get("task_count")? } else { 0 }
+  let duplicate_outputs = if stored.has("duplicate_outputs") { stored.get("duplicate_outputs")? } else { [] }
+  let task_count = if stored.has("task_count") { stored.get("task_count")? } else { 0 }
 
   return {
     tasks: read_archive_plan_tasks(path_value)?,
@@ -2598,7 +2594,7 @@ export proc read_archive_plan_report(path_value: Path) [fs, error] -> Result[Rec
 
 export proc read_archive_plan_summary(path_value: Path) [fs, error] -> Result[Record] {
   let stored: Record = json.read(path_value)?
-  let format: Str = if stored.has("format") { stored.get("format")? } else { "" }
+  let format = if stored.has("format") { stored.get("format")? } else { "" }
 
   if format != archive_plan_report_format() {
     return Err(ScriptError.Failed("kbuild-archive-plan-cache-stale", "archive plan summary has stale format"))
@@ -2608,7 +2604,7 @@ export proc read_archive_plan_summary(path_value: Path) [fs, error] -> Result[Re
   let link_inputs: List[Str] = stored.get("link_inputs")?
   let generated_objects: List[Str] = stored.get("generated_objects")?
   let missing_sources: List[Str] = stored.get("missing_sources")?
-  let duplicate_outputs: List[Str] = if stored.has("duplicate_outputs") { stored.get("duplicate_outputs")? } else { [] }
+  let duplicate_outputs = if stored.has("duplicate_outputs") { stored.get("duplicate_outputs")? } else { [] }
   let task_count: Int = stored.get("task_count")?
   let tasks: List[make.MakeTask] = []
 
@@ -2625,7 +2621,7 @@ export proc read_archive_plan_summary(path_value: Path) [fs, error] -> Result[Re
 
 export proc read_archive_plan_object_outputs(path_value: Path) [fs, error] -> Result[List[Path]] {
   let stored: Record = json.read(path_value)?
-  let format: Str = if stored.has("format") { stored.get("format")? } else { "" }
+  let format = if stored.has("format") { stored.get("format")? } else { "" }
 
   if format != archive_plan_report_format() {
     return Err(ScriptError.Failed("kbuild-archive-plan-cache-stale", "archive plan cache has stale format"))
@@ -2783,7 +2779,7 @@ proc composite_for_map(composites: Map[CompositeObject], obj: Path) [error] -> R
 }
 
 proc source_for_object(obj: Path) [fs, error] -> Result[Path] {
-  var candidates: List[Path] = [obj]
+  var candidates = [obj]
   let stem = obj.name.replace(".o", "")
 
   if stem.ends_with("_") {
@@ -2823,7 +2819,7 @@ pure is_asm_source(src: Path) -> Bool {
 }
 
 pure asm_keeps_forced_include(arg: Str) -> Bool {
-  return [
+  return arg in [
     "include/linux/compiler-version.h",
     "./include/linux/compiler-version.h",
     "include/linux/kconfig.h",
@@ -2832,7 +2828,7 @@ pure asm_keeps_forced_include(arg: Str) -> Bool {
     "./include/linux/compiler_types.h",
     "include/generated/asm-offsets.h",
     "./include/generated/asm-offsets.h",
-  ].contains(arg)
+  ]
 }
 
 proc asm_includes(args: List[Str]) [] -> List[Str] {
@@ -2918,11 +2914,11 @@ pure kbuild_object_defs_for_module(out: Path, mod_out: Path) -> List[Str] {
 }
 
 pure is_pi_output(out: Path) -> Bool {
-  return out.display().contains("/arch/arm64/kernel/pi/")
+  return "/arch/arm64/kernel/pi/" in out.display()
 }
 
 pure is_x86_startup_pi_base_output(out: Path) -> Bool {
-  return out.display().contains("/arch/x86/boot/startup/")
+  return "/arch/x86/boot/startup/" in out.display()
 }
 
 proc pi_compile_cflags(args: List[Str], out: Path) [] -> List[Str] {
@@ -3117,7 +3113,7 @@ proc compile_kbuild_task_for_module(
 proc relocatable_object_task(cc: Path, inputs: List[Path], out: Path, deps: List[Str] = []) [env] -> make.MakeTask {
   let _ = cc
   let tool_path = host_build_path()
-  var argv: List[Str] = ["ld.lld", "-r", "-o", out.display()]
+  var argv = ["ld.lld", "-r", "-o", out.display()]
   argv = argv.extend(path_strings(inputs))
 
   return {
@@ -3136,7 +3132,7 @@ proc relocatable_object_task(cc: Path, inputs: List[Path], out: Path, deps: List
 proc pi_objcopy_task(cc: Path, input: Path, out: Path, deps: List[Str] = []) [env] -> make.MakeTask {
   let _ = cc
   let tool_path = host_build_path()
-  var argv: List[Str] = ["llvm-objcopy", "--prefix-symbols=__pi_", "--remove-section=.note.gnu.property"]
+  var argv = ["llvm-objcopy", "--prefix-symbols=__pi_", "--remove-section=.note.gnu.property"]
 
   if out.name.starts_with("lib-") {
     argv = argv.push("--prefix-alloc-sections=.init")
@@ -3308,7 +3304,7 @@ export proc generate_raid6_sources(root: Path, cc: Path) [fs, process, env, erro
     var lines: List[Str] = []
 
     for line in int_uc.split("\n") {
-      let reps = if line.contains("$$") { n } else { 1 }
+      let reps = if "$$" in line { n } else { 1 }
       var i = 0
 
       while i < reps {
@@ -3407,7 +3403,7 @@ proc insert_archive_before(
 }
 
 pure object_dir(obj: Path) -> Path {
-  if ! obj.display().contains("/") {
+  if ! ("/" in obj.display()) {
     return p"."
   }
 
@@ -3415,7 +3411,7 @@ pure object_dir(obj: Path) -> Path {
 }
 
 pure parent_dir(dir: Path) -> Path {
-  if path_key(dir) == "." or ! dir.display().contains("/") {
+  if path_key(dir) == "." or ! ("/" in dir.display()) {
     return p"."
   }
 
@@ -3464,7 +3460,7 @@ pure abi_enabled(abi: Str, abis: List[Str]) -> Bool {
     return true
   }
 
-  return abis.contains(abi)
+  return abi in abis
 }
 
 pure syscall_line(nr: Int, native: Str, compat: Str, noreturn: Str) -> Result[Str] {
@@ -3538,7 +3534,7 @@ export proc generate_syscall_numbers(
   prefix: Str = "",
   abis: List[Str] = [],
 ) [fs, error] {
-  var lines: List[Str] = [f"#ifndef ${header_guard}", f"#define ${header_guard}", ""]
+  var lines = [f"#ifndef ${header_guard}", f"#define ${header_guard}", ""]
   var max_nr = -1
 
   for raw in table.read_text()?.split("\n") {
@@ -3654,7 +3650,7 @@ export proc generate_x86_syscall_tables(root: Path) [fs, error] {
 }
 
 export proc generate_offsets_header(asm_path: Path, out: Path, header_guard: Str) [fs, error] {
-  var lines: List[Str] = [
+  var lines = [
     f"#ifndef ${header_guard}",
     f"#define ${header_guard}",
     "/*",
@@ -4235,7 +4231,7 @@ pure efi_libstub_source_x86(stem: Str) -> Path {
 }
 
 proc gzip_store_bytes(data: Bytes) [error] -> Result[Bytes] {
-  var parts: List[Bytes] = [
+  var parts = [
     bytes.from_ints(
       [
         31,
@@ -4474,16 +4470,16 @@ pure x86_setup_includes() -> List[Str] {
 
 proc preprocess_x86_boot_lds(cc: Path, source: Path, out: Path, includes: List[Str]) [process, error] {
   let argv = [
-    cc.display(),
-    "-target",
-    "x86_64-linux-gnu",
-    "-Wno-unused-command-line-argument",
-    "-D__ASSEMBLY__",
-    "-DLINKER_SCRIPT",
-    "-Ux86_64",
-    "-E",
-    "-P",
-  ].extend(includes).extend([source.display(), "-o", out.display()])
+  cc.display(),
+  "-target",
+  "x86_64-linux-gnu",
+  "-Wno-unused-command-line-argument",
+  "-D__ASSEMBLY__",
+  "-DLINKER_SCRIPT",
+  "-Ux86_64",
+  "-E",
+  "-P",
+].extend(includes).extend([source.display(), "-o", out.display()])
 
   run $cc ${argv |> drop(1)} ?
 }
@@ -5501,7 +5497,7 @@ proc file_has_bytes_at(path_value: Path, offset: Int, values: List[Int]) [error]
 proc patch_x86_jump_label_object(readelf: Path, object: Path) [fs, process, error] -> Result[Int] {
   let section_text = run.text $readelf "-SW" $object ?
 
-  if ! section_text.contains("__jump_table") {
+  if ! ("__jump_table" in section_text) {
     return 0
   }
 

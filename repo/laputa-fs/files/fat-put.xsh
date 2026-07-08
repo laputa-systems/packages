@@ -44,11 +44,7 @@ proc dir_block(
   entries: List[Bytes],
   cluster_size: Int,
 ) [error] -> Result[Bytes] {
-  var parts = [
-    dir_entry(".          ", 16, self_cluster, 0)?,
-    dir_entry("..         ", 16, parent_cluster, 0)?,
-  ]
-
+  var parts = [dir_entry(".          ", 16, self_cluster, 0)?, dir_entry("..         ", 16, parent_cluster, 0)?]
   parts = parts.extend(entries)
   return bytes.concat([bytes.concat(parts), bytes.zero(cluster_size - bytes.concat(parts).len())?])
 }

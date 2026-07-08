@@ -15,9 +15,7 @@ export let target_build_deps = ["wayland-dev"]
 
 export let sources = [p"https://github.com/intel/libva/releases/download/VERSION/libva-VERSION.tar.bz2"]
 
-export let checksums = [
-  "e3da2250654c8d52b3f59f8cb3f3d8e7fb1a2ee64378dbc400fbc5663de7edb8",
-]
+export let checksums = ["e3da2250654c8d52b3f59f8cb3f3d8e7fb1a2ee64378dbc400fbc5663de7edb8"]
 
 export proc process_sources(src: Path) [fs, error] {
   let trace = fp"${src}/va/va_trace.c"
@@ -39,6 +37,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let pc = pm_env.pkg_config_context()?
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
   let native_scanner = pm_util.build_arch()? != pm_util.target_arch()? and build_root != ""
+
   let native_tools_ld = if native_scanner {
     f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib:${pc.ld_library_path}"
   } else {

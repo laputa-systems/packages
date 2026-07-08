@@ -116,7 +116,7 @@ proc test_kbuild_writes_text_plan(ctx: TestContext) [fs, error] {
   write_fixture(root)?
   let plan = kbuild.write_plan(root, fp"${root}/.config", out, "arm64")?
   let stored = out.read_text()?
-  test.ok(stored.contains("obj\tinit/main.o"))?
+  test.ok("obj\tinit/main.o" in stored)?
   let loaded = kbuild.read_discovered_plan(out)?
   test.eq(loaded.objects.len(), plan.objects.len())?
   test.ok(contains_path(loaded.objects, "init/main.o"))?
@@ -230,24 +230,24 @@ proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, er
     let tasks: List[Record] = stored.get("tasks")?
     test.eq(task_count, archive_plan.tasks.len())?
     test.eq(tasks.len(), archive_plan.tasks.len())?
-    let first: Record = tasks[0]
+    let first = tasks[0]
     let argv: List[Str] = first.get("argv")?
     let outputs: List[Str] = first.get("outputs")?
     test.ok(argv.len() > 0)?
     test.ok(outputs.len() > 0)?
-    let asm_task: Record = tasks[7]
+    let asm_task = tasks[7]
     let asm_argv: List[Str] = asm_task.get("argv")?
-    test.ok(asm_argv.contains("-D__ASSEMBLY__"))?
-    test.ok(asm_argv.contains("-fno-PIE"))?
-    test.ok(asm_argv.contains("-DKASAN_SHADOW_SCALE_SHIFT="))?
-    test.ok(asm_argv.contains("-nostdinc"))?
-    test.ok(asm_argv.contains("include/linux/compiler-version.h"))?
-    test.ok(asm_argv.contains("include/linux/kconfig.h"))?
-    test.eq(asm_argv.contains("-O2"), false)?
-    test.eq(asm_argv.contains("-mgeneral-regs-only"), false)?
-    test.eq(asm_argv.contains("-mbranch-protection=pac-ret"), false)?
-    test.eq(asm_argv.contains("include/generated/utsversion.h"), false)?
-    test.eq(asm_argv.contains("include/linux/compiler_types.h"), false)?
+    test.ok("-D__ASSEMBLY__" in asm_argv)?
+    test.ok("-fno-PIE" in asm_argv)?
+    test.ok("-DKASAN_SHADOW_SCALE_SHIFT=" in asm_argv)?
+    test.ok("-nostdinc" in asm_argv)?
+    test.ok("include/linux/compiler-version.h" in asm_argv)?
+    test.ok("include/linux/kconfig.h" in asm_argv)?
+    test.eq("-O2" in asm_argv, false)?
+    test.eq("-mgeneral-regs-only" in asm_argv, false)?
+    test.eq("-mbranch-protection=pac-ret" in asm_argv, false)?
+    test.eq("include/generated/utsversion.h" in asm_argv, false)?
+    test.eq("include/linux/compiler_types.h" in asm_argv, false)?
   } ?
 }
 
@@ -307,15 +307,15 @@ proc test_kbuild_plans_pi_relacheck_after_objcopy(ctx: TestContext) [fs, env, er
 
       if task.name == relacheck_task_name {
         saw_check_task = true
-        test.ok(task.argv.contains(relacheck))?
-        test.ok(task.argv.contains(pi_object.display()))?
-        test.ok(task.outputs.contains(fp"${pi_object}.relacheck.cmd"))?
-        test.ok(task.deps.contains(pi_object.display()))?
-        test.ok(task.deps.contains(relacheck))?
+        test.ok(relacheck in task.argv)?
+        test.ok(pi_object.display() in task.argv)?
+        test.ok(fp"${pi_object}.relacheck.cmd" in task.outputs)?
+        test.ok(pi_object.display() in task.deps)?
+        test.ok(relacheck in task.deps)?
       }
 
       if task.name == ".xsh-kbuild/arch/arm64/kernel/pi/built-in.a" {
-        saw_archive_dep = task.deps.contains(relacheck_task_name)
+        saw_archive_dep = relacheck_task_name in task.deps
       }
     }
 
@@ -423,7 +423,7 @@ int mmu(void) { return 0; }
     for task in archive_plan.tasks {
       if task.name == ".xsh-kbuild/obj/arch/x86/kvm/mmu/mmu.o" {
         saw_mmu = true
-        test.ok(task.argv.contains("-I./arch/x86/kvm"))?
+        test.ok("-I./arch/x86/kvm" in task.argv)?
       }
     }
 
@@ -478,13 +478,13 @@ CFLAGS_intel.o := -I$(src)
     for task in archive_plan.tasks {
       if task.name == ".xsh-kbuild/obj/sound/hda/common/controller.o" {
         saw_controller = true
-        test.ok(task.argv.contains("-I./sound/hda/common"))?
+        test.ok("-I./sound/hda/common" in task.argv)?
       }
 
       if task.name == ".xsh-kbuild/obj/sound/hda/controllers/intel.o" {
         saw_intel = true
-        test.ok(task.argv.contains("-I./sound/hda/controllers"))?
-        test.ok(task.argv.contains("-I./sound/hda/controllers/../common"))?
+        test.ok("-I./sound/hda/controllers" in task.argv)?
+        test.ok("-I./sound/hda/controllers/../common" in task.argv)?
       }
     }
 
@@ -600,9 +600,9 @@ proc test_kbuild_models_final_link_tasks(ctx: TestContext) [fs, env, error] {
   let archive_task = kbuild.vmlinux_archive_task(ar, [built_in, arch_lib], vmlinux_a)
   test.eq(archive_task.argv, ["/usr/bin/ar", "cDPrST", vmlinux_a.display(), built_in.display(), arch_lib.display()])?
   let reloc = kbuild.vmlinux_o_task(ld, ["-EL", "-maarch64elf"], vmlinux_a, [efi_lib], vmlinux_o)
-  test.ok(reloc.argv.contains("--whole-archive"))?
-  test.ok(reloc.argv.contains("--start-group"))?
-  test.ok(reloc.inputs.contains(efi_lib))?
+  test.ok("--whole-archive" in reloc.argv)?
+  test.ok("--start-group" in reloc.argv)?
+  test.ok(efi_lib in reloc.inputs)?
 
   let linked = kbuild.vmlinux_unstripped_task(
     ld,
@@ -616,10 +616,10 @@ proc test_kbuild_models_final_link_tasks(ctx: TestContext) [fs, env, error] {
     unstripped,
   )
 
-  test.ok(linked.argv.contains("--script"))?
-  test.ok(linked.inputs.contains(version_obj))?
+  test.ok("--script" in linked.argv)?
+  test.ok(version_obj in linked.inputs)?
   let stripped = kbuild.vmlinux_strip_task(objcopy, unstripped, vmlinux)
-  test.ok(stripped.argv.contains("--remove-section=.modinfo"))?
+  test.ok("--remove-section=.modinfo" in stripped.argv)?
   let image_task = kbuild.image_task(objcopy, vmlinux, image)
   test.eq(image_task.argv.get(1)?, "-O")?
   test.eq(image_task.argv.get(2)?, "binary")?
@@ -627,10 +627,10 @@ proc test_kbuild_models_final_link_tasks(ctx: TestContext) [fs, env, error] {
   test.eq(llvm_image_task.argv.get(0)?, "llvm-objcopy")?
   let nonrel_config: kbuild.Kconfig = {enabled: map.empty(), values: map.empty().set("RELR", "y")}
   let nonrel_flags = kbuild.arm64_vmlinux_ldflags(nonrel_config)
-  test.eq(nonrel_flags.contains("-shared"), false)?
-  test.ok(nonrel_flags.contains("--pack-dyn-relocs=relr"))?
+  test.eq("-shared" in nonrel_flags, false)?
+  test.ok("--pack-dyn-relocs=relr" in nonrel_flags)?
   let rel_config: kbuild.Kconfig = {enabled: map.empty(), values: map.empty().set("RELOCATABLE", "y").set("RELR", "y")}
   let rel_flags = kbuild.arm64_vmlinux_ldflags(rel_config)
-  test.ok(rel_flags.contains("-shared"))?
-  test.ok(rel_flags.contains("--no-apply-dynamic-relocs"))?
+  test.ok("-shared" in rel_flags)?
+  test.ok("--no-apply-dynamic-relocs" in rel_flags)?
 }

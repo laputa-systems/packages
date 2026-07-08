@@ -20,12 +20,7 @@ export let sources = [
   p"wpa_supplicant.conf",
 ]
 
-export let checksums = [
-  "912ea06f74e30a8e36fbb68064d6cdff218d8d591db0fc5d75dee6c81ac7fc0a",
-  "SKIP",
-  "SKIP",
-  "SKIP",
-]
+export let checksums = ["912ea06f74e30a8e36fbb68064d6cdff218d8d591db0fc5d75dee6c81ac7fc0a", "SKIP", "SKIP", "SKIP"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cwd = fs.cwd()?
@@ -200,7 +195,16 @@ export proc build(dest: Path) [fs, process, env, error] {
     root: src,
     out_dir: fp"${objs}/compile",
     groups: [
-      {name: "shared", cflags: [], defs: [], includes: [], root: p"", sources: shared_sources, out_dir: fp"${objs}/shared-objs", deps: []},
+      {
+        name: "shared",
+        cflags: [],
+        defs: [],
+        includes: [],
+        root: p"",
+        sources: shared_sources,
+        out_dir: fp"${objs}/shared-objs",
+        deps: [],
+      },
     ],
     targets: [
       {
@@ -212,7 +216,15 @@ export proc build(dest: Path) [fs, process, env, error] {
         out: fp"${objs}/wpa_supplicant",
         deps: [],
       },
-      {name: "wpa_cli", groups: ["shared"], sources: [p"wpa_supplicant/wpa_cli.c"], libs: [], ldflags, out: fp"${objs}/wpa_cli", deps: []},
+      {
+        name: "wpa_cli",
+        groups: ["shared"],
+        sources: [p"wpa_supplicant/wpa_cli.c"],
+        libs: [],
+        ldflags,
+        out: fp"${objs}/wpa_cli",
+        deps: [],
+      },
       {
         name: "wpa_passphrase",
         groups: ["shared"],

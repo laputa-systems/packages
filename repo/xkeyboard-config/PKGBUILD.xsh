@@ -12,9 +12,7 @@ export let sources = [
   p"https://xorg.freedesktop.org/archive/individual/data/xkeyboard-config/xkeyboard-config-VERSION.tar.xz",
 ]
 
-export let checksums = [
-  "169e075a92d957a57787c199e84e359df2931b7196c1c5b4a3d576ee6235a87c",
-]
+export let checksums = ["169e075a92d957a57787c199e84e359df2931b7196c1c5b4a3d576ee6235a87c"]
 
 proc rule_parts(ruleset: Str) [fs, error] -> Result[List[Path]] {
   let entries = fs.ls(p"rules")?
@@ -25,9 +23,9 @@ proc rule_parts(ruleset: Str) [fs, error] -> Result[List[Path]] {
   var parts = []
 
   for entry in entries {
-    if ! entry.name.contains("base.") and ! entry.name.contains("evdev.") {
+    if ! ("base." in entry.name) and ! ("evdev." in entry.name) {
       parts = parts.push(entry.path)
-    } else if entry.name.contains(f"${ruleset}.") {
+    } else if f"${ruleset}." in entry.name {
       parts = parts.push(entry.path)
     }
   }

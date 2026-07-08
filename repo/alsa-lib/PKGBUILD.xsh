@@ -12,9 +12,7 @@ export let mkdeps = ["llvm-toolchain"]
 
 export let sources = [p"https://www.alsa-project.org/files/pub/lib/alsa-lib-VERSION.tar.bz2"]
 
-export let checksums = [
-  "7b079d614d582cade7ab8db2364e65271d0877a37df8757ac4ac0c8970be861e",
-]
+export let checksums = ["7b079d614d582cade7ab8db2364e65271d0877a37df8757ac4ac0c8970be861e"]
 
 proc write_asound_stub() [fs, error] {
   fs.write(
@@ -140,6 +138,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let os = system.uname()?
   let triple = f"${os.machine}-linux-musl"
   write_asound_stub()?
+
   let libasound = make.c_shared_library({
     cc,
     triple,
@@ -154,6 +153,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     ldflags: [],
     deps: [],
   })
+
   make.run_tasks(libasound.tasks, make.jobs()?)?
   fs.install(libasound.output, fp"${dest}/usr/lib/libasound.so.2", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"libasound.so.2", fp"${dest}/usr/lib/libasound.so")?

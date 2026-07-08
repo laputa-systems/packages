@@ -167,16 +167,14 @@ proc remote_response_header(headers: List[Record], name: Str) [] -> Str {
 }
 
 proc remote_resolve_download_redirect(url: Str) [net] -> Str {
-  let response = net.request(
-    {
-      method: "GET",
-      url: url,
-      redirects: 0,
-      max_body_bytes: 4096,
-      pool: "pm",
-      fail_status: false,
-    },
-  )
+  let response = net.request({
+    method: "GET",
+    url: url,
+    redirects: 0,
+    max_body_bytes: 4096,
+    pool: "pm",
+    fail_status: false,
+  })
 
   match response {
     Ok(result) => {
@@ -222,18 +220,16 @@ export proc try_fetch_repo_file(
   let url = repo_url_for(repo, rel)?
   let download_url = remote_resolve_download_redirect(url)
 
-  let response = net.download(
-    {
-      url: download_url,
-      dest: tmp,
-      atomic: true,
-      overwrite: true,
-      pool: "pm",
-      connect_timeout: 10s,
-      timeout: timeout,
-      fail_status: true,
-    },
-  )
+  let response = net.download({
+    url: download_url,
+    dest: tmp,
+    atomic: true,
+    overwrite: true,
+    pool: "pm",
+    connect_timeout: 10s,
+    timeout: timeout,
+    fail_status: true,
+  })
 
   match response {
     Ok(_) => {
@@ -289,16 +285,14 @@ export proc fetch_repo_file(repo: Str, rel: Path, dest: Path, required: Bool) [f
 }
 
 export proc net_put_file(url: Str, source: Path, token: Str) [net, error] {
-  let response = net.upload(
-    {
-      method: "PUT",
-      url: url,
-      source: source,
-      headers: [{name: "Authorization", value: f"Bearer ${token}"}],
-      pool: "pm",
-      fail_status: true,
-    },
-  )?
+  let response = net.upload({
+    method: "PUT",
+    url: url,
+    source: source,
+    headers: [{name: "Authorization", value: f"Bearer ${token}"}],
+    pool: "pm",
+    fail_status: true,
+  })?
 
   if response.status < 200 or response.status >= 300 {
     return Err(PmError.RemoteUpload(f"failed to upload ${source.name}"))
@@ -340,16 +334,14 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
   var chunk_index = 0
 
   for chunk in chunks {
-    let response = net.request(
-      {
-        method: "PUT",
-        url: repo_url_for(repo, fp"_uploads/${upload_id}/${chunk_index}")?,
-        body: chunk,
-        headers: [{name: "Authorization", value: f"Bearer ${token}"}],
-        pool: "pm",
-        fail_status: true,
-      },
-    )?
+    let response = net.request({
+      method: "PUT",
+      url: repo_url_for(repo, fp"_uploads/${upload_id}/${chunk_index}")?,
+      body: chunk,
+      headers: [{name: "Authorization", value: f"Bearer ${token}"}],
+      pool: "pm",
+      fail_status: true,
+    })?
 
     if response.status < 200 or response.status >= 300 {
       return Err(PmError.RemoteUpload(f"failed to upload chunk ${chunk_index} for ${source.name}"))
@@ -358,16 +350,14 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
     chunk_index += 1
   }
 
-  let response = net.request(
-    {
-      method: "POST",
-      url: repo_url_for(repo, fp"_uploads/${upload_id}/complete")?,
-      body_text: json.encode({rel: rel.display(), chunks: chunks.len()})?,
-      headers: [{name: "Authorization", value: f"Bearer ${token}"}, {name: "Content-Type", value: "application/json"}],
-      pool: "pm",
-      fail_status: true,
-    },
-  )?
+  let response = net.request({
+    method: "POST",
+    url: repo_url_for(repo, fp"_uploads/${upload_id}/complete")?,
+    body_text: json.encode({rel: rel.display(), chunks: chunks.len()})?,
+    headers: [{name: "Authorization", value: f"Bearer ${token}"}, {name: "Content-Type", value: "application/json"}],
+    pool: "pm",
+    fail_status: true,
+  })?
 
   if response.status < 200 or response.status >= 300 {
     return Err(PmError.RemoteUpload(f"failed to complete chunked upload for ${source.name}"))
@@ -389,16 +379,14 @@ proc try_load_remote_index_from_repo(repo: Str, out: Path) [fs, net, error] -> R
     return load_remote_index_from(repo_file_path(repo, p"index.json")?)?
   }
 
-  let response = net.request(
-    {
-      method: "GET",
-      url: repo_url_for(repo, p"index.json")?,
-      pool: "pm",
-      timeout: 15s,
-      connect_timeout: 5s,
-      max_body_bytes: 10485760,
-    },
-  )?
+  let response = net.request({
+    method: "GET",
+    url: repo_url_for(repo, p"index.json")?,
+    pool: "pm",
+    timeout: 15s,
+    connect_timeout: 5s,
+    max_body_bytes: 10485760,
+  })?
 
   if response.status == 404 {
     let empty = []
@@ -479,7 +467,10 @@ export proc write_remote_index_to_repo(
   upload_repo_file(repo, p"index.json", remote_index_cache_path(out), token, work)?
 }
 
-proc merge_remote_indexes(base: List[RemotePackage], overlay: List[RemotePackage]) [error] -> Result[List[RemotePackage]] {
+proc merge_remote_indexes(
+  base: List[RemotePackage],
+  overlay: List[RemotePackage],
+) [error] -> Result[List[RemotePackage]] {
   var merged = base
 
   for entry in overlay {

@@ -245,11 +245,7 @@ export pure source_vars(source: Str, pkg: Package, arch: Str) -> Str {
   let patch_part = parts.get(2, "")
   let ident = parts.get(3, "")
   let goarch = goarch_for(arch)
-
-  return source.replace("VERSION", pkg.ver).replace("RELEASE", pkg.rel).replace("MAJOR", major).replace("MINOR", minor).replace(
-    "PATCH",
-    patch_part,
-  ).replace("IDENT", ident).replace("PACKAGE", pkg.name).replace("GOARCH", goarch).replace("ARCH", arch)
+  return source.replace("VERSION", pkg.ver).replace("RELEASE", pkg.rel).replace("MAJOR", major).replace("MINOR", minor).replace("PATCH", patch_part).replace("IDENT", ident).replace("PACKAGE", pkg.name).replace("GOARCH", goarch).replace("ARCH", arch)
 }
 
 export pure checksum_field_line(line: Str, field: Str) -> Bool {

@@ -160,13 +160,16 @@ export pure task_deps(tasks: List[MakeTask], outputs: List[Path]) -> List[Str] {
   return [task.name for task in tasks if task.outputs.len() > 0 and wanted.get(task.outputs[0].display(), false)]
 }
 
-proc pkg_config_words(pc: pm_env.PkgConfigContext, mode: Str, packages: List[Str]) [process, env, error] -> Result[List[Str]] {
+proc pkg_config_words(
+  pc: pm_env.PkgConfigContext,
+  mode: Str,
+  packages: List[Str],
+) [process, env, error] -> Result[List[Str]] {
   let pkg_config_path = pc.pkg_config_path
   let pkg_config_libdir = pc.pkg_config_libdir
   let pkg_config_sysroot = pc.pkg_config_sysroot
   let ld_library_path = pc.ld_library_path
   let pkg_config = pc.pkg_config.display()
-
   let out = run.text LD_LIBRARY_PATH=$ld_library_path PKG_CONFIG=$pkg_config PKG_CONFIG_LIBDIR=$pkg_config_libdir PKG_CONFIG_PATH=$pkg_config_path PKG_CONFIG_SYSROOT_DIR=$pkg_config_sysroot $pc.pkg_config $mode @packages ?
   return out.words()
 }
@@ -192,7 +195,11 @@ pure path_in_list(path_value: Path, paths: List[Path]) -> Bool {
   return false
 }
 
-export proc discover_sources(root: Path, extensions: List[Str], exclude: List[Path] = []) [fs, error] -> Result[List[Path]] {
+export proc discover_sources(
+  root: Path,
+  extensions: List[Str],
+  exclude: List[Path] = [],
+) [fs, error] -> Result[List[Path]] {
   let source_root = path.absolute(root)?
   var sources = []
 
@@ -587,7 +594,7 @@ proc depfile_inputs(depfile: Path, cwd: Path) [fs, error] -> Result[List[Path]] 
 
   let first = normalized.split("\n")[0]
 
-  if ! first.contains(":") {
+  if ! (":" in first) {
     let deps = []
     return deps
   }
@@ -652,13 +659,11 @@ proc input_newer(task: Record) [fs, error] -> Result[Bool] {
 }
 
 proc command_signature(task: Record) [fs, env, error] -> Result[Str] {
-  return json.encode(
-    {
-      argv: effective_task_argv(task.argv, task.env)?,
-      cwd: task.cwd.display(),
-      env: effective_task_env(task.argv, task.env)?,
-    },
-  )?
+  return json.encode({
+    argv: effective_task_argv(task.argv, task.env)?,
+    cwd: task.cwd.display(),
+    env: effective_task_env(task.argv, task.env)?,
+  })?
 }
 
 proc stamp_changed(task: Record) [fs, env, error] -> Result[Bool] {
@@ -883,7 +888,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
     var completed_tasks = []
 
     for completed in completed_rows {
-      let completed_index: Int = completed.index
+      let completed_index = completed.index
       let row = running[completed_index]
       completed_indices[completed_index_key(completed_index)] = true
 
@@ -1188,6 +1193,7 @@ export proc compile_mixed_tasks(
 
   for src in sources {
     let out = object_path_for_source(src, out_dir, ".o")
+
     let task = if source_is_cxx(src) {
       compile_cxx_task(toolchain, triple, cflags, defs, includes, source_path(root, src), out, deps)
     } else {
@@ -1245,7 +1251,15 @@ export proc c_shared_library(spec: CSharedLibrary) [] -> CTarget {
     spec.deps,
   )
 
-  let link = link_shared_task(spec.cc, spec.triple, compiled.objects, spec.soname, spec.ldflags, spec.out, compiled.deps)
+  let link = link_shared_task(
+    spec.cc,
+    spec.triple,
+    compiled.objects,
+    spec.soname,
+    spec.ldflags,
+    spec.out,
+    compiled.deps,
+  )
 
   return {
     tasks: compiled.tasks.push(link),
@@ -1293,16 +1307,14 @@ export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget]
     let cflags = spec.cflags.extend(source_group.cflags)
     let defs = spec.defs.extend(source_group.defs)
     let includes = spec.includes.extend(source_group.includes)
-    let root = if source_group.root.display() == "" {
-      spec.root
-    } else {
-      source_group.root
-    }
+    let root = if source_group.root.display() == "" { spec.root } else { source_group.root }
+
     let out_dir = if source_group.out_dir.display() == "" {
       fp"${spec.out_dir}/${source_group.name}"
     } else {
       source_group.out_dir
     }
+
     let compiled = compile_mixed_tasks(
       spec.cc,
       spec.triple,
@@ -1322,12 +1334,16 @@ export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget]
 
   for target in spec.targets {
     var objects = []
-    var target_deps: List[Str] = target.deps
+    var target_deps = target.deps
     var needs_cxx_link = true in [source_is_cxx(src) for src in target.sources]
 
     for group_name in target.groups {
       if ! groups.has(group_name) {
-        return Err(MakeError.MissingDependency(message: f"target '${target.name}' references missing source group '${group_name}'"))
+        return Err(
+          MakeError.MissingDependency(
+            message: f"target '${target.name}' references missing source group '${group_name}'",
+          ),
+        )
       }
 
       let compiled: CompileTasks = groups.get(group_name)?
@@ -1358,6 +1374,7 @@ export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget]
     } else {
       link_executable_task(spec.cc, spec.triple, objects, target.libs, target.ldflags, target.out, target_deps)
     }
+
     tasks = tasks.push(link)
     outputs[target.name] = target.out
     deps = deps.push(link.name)

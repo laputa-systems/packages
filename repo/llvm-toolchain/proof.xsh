@@ -46,7 +46,7 @@ proc ensure_executable(path_value: Path, label: Str) [fs, error] {
   let mode = fs.metadata(path_value)?.mode % 4096
 
   ensure(
-    [0o555, 0o755, 0o775, 0o777].contains(mode),
+    mode in [0o555, 0o755, 0o775, 0o777],
     "proof-llvm-toolchain",
     f"${label} is not executable: ${path_value.display()} mode=${mode}",
   )?
@@ -56,27 +56,23 @@ proc ensure_xsh_wrapper(path_value: Path, label: Str) [fs, error] {
   ensure_file(path_value, label)?
   let text = fs.read_text(path_value)?
   ensure(text.starts_with("#!/bin/xsh"), "proof-llvm-toolchain", f"${label} is not an XSH wrapper")?
-  ensure(! text.contains("libgcc"), "proof-llvm-toolchain", f"${label} mentions libgcc")?
-  ensure(! text.contains("libstdc++"), "proof-llvm-toolchain", f"${label} mentions libstdc++")?
+  ensure(! ("libgcc" in text), "proof-llvm-toolchain", f"${label} mentions libgcc")?
+  ensure(! ("libstdc++" in text), "proof-llvm-toolchain", f"${label} mentions libstdc++")?
 }
 
 proc prove_tool_linkage(readelf: Path, tool: Path) [fs, process, error] {
   ensure_executable(tool, tool.name)?
   let program_headers = run.text $readelf "-l" $tool ?
-  ensure(! program_headers.contains("ld-linux"), "proof-llvm-toolchain", f"${tool.display()} uses a glibc interpreter")?
+  ensure(! ("ld-linux" in program_headers), "proof-llvm-toolchain", f"${tool.display()} uses a glibc interpreter")?
 
-  if program_headers.contains("INTERP") {
-    ensure(
-      program_headers.contains("ld-musl"),
-      "proof-llvm-toolchain",
-      f"${tool.display()} does not use a musl interpreter",
-    )?
+  if "INTERP" in program_headers {
+    ensure("ld-musl" in program_headers, "proof-llvm-toolchain", f"${tool.display()} does not use a musl interpreter")?
   }
 
   let dynamic = run.text $readelf "-d" $tool ?
-  ensure(! dynamic.contains("libunwind.so"), "proof-llvm-toolchain", f"${tool.display()} needs libunwind.so")?
-  ensure(! dynamic.contains("libgcc"), "proof-llvm-toolchain", f"${tool.display()} needs libgcc")?
-  ensure(! dynamic.contains("libstdc++"), "proof-llvm-toolchain", f"${tool.display()} needs libstdc++")?
+  ensure(! ("libunwind.so" in dynamic), "proof-llvm-toolchain", f"${tool.display()} needs libunwind.so")?
+  ensure(! ("libgcc" in dynamic), "proof-llvm-toolchain", f"${tool.display()} needs libgcc")?
+  ensure(! ("libstdc++" in dynamic), "proof-llvm-toolchain", f"${tool.display()} needs libstdc++")?
 }
 
 proc prove_public_surface(root: Path, arch: Str) [fs, process, env, error] {
@@ -147,7 +143,7 @@ proc prove_default_compile(root: Path, arch: Str) [fs, process, env, error] {
   let object = fp"${tmp}/default-target.o"
   run $cc "-target" f"${arch}-linux-musl" "-O2" "-c" fp"${tmp}/default-target.c" "-o" $object ?
   let header = run.text $readelf "-h" $object ?
-  ensure(header.contains(machine), "proof-llvm-toolchain", f"cc wrapper did not produce a ${arch} object")?
+  ensure(machine in header, "proof-llvm-toolchain", f"cc wrapper did not produce a ${arch} object")?
 }
 
 proc prove_native_link(root: Path) [fs, process, env, error] {
@@ -170,9 +166,9 @@ proc prove_native_link(root: Path) [fs, process, env, error] {
   run $cc fp"${tmp}/hello.c" "-o" $exe ?
   run $exe ?
   let dynamic = run.text $readelf "-d" $exe ?
-  ensure(! dynamic.contains("libunwind"), "proof-llvm-toolchain", "native hello links libunwind")?
-  ensure(! dynamic.contains("libgcc"), "proof-llvm-toolchain", "native hello links libgcc")?
-  ensure(! dynamic.contains("libstdc++"), "proof-llvm-toolchain", "native hello links libstdc++")?
+  ensure(! ("libunwind" in dynamic), "proof-llvm-toolchain", "native hello links libunwind")?
+  ensure(! ("libgcc" in dynamic), "proof-llvm-toolchain", "native hello links libgcc")?
+  ensure(! ("libstdc++" in dynamic), "proof-llvm-toolchain", "native hello links libstdc++")?
 }
 
 proc prove_native_cxx_link(root: Path) [fs, process, env, error] {
@@ -198,9 +194,9 @@ int main(void) {
   run $cxx fp"${tmp}/hello.cc" "-o" $exe ?
   run $exe ?
   let dynamic = run.text $readelf "-d" $exe ?
-  ensure(! dynamic.contains("libunwind"), "proof-llvm-toolchain", "native C++ hello links libunwind")?
-  ensure(! dynamic.contains("libgcc"), "proof-llvm-toolchain", "native C++ hello links libgcc")?
-  ensure(! dynamic.contains("libstdc++"), "proof-llvm-toolchain", "native C++ hello links libstdc++")?
+  ensure(! ("libunwind" in dynamic), "proof-llvm-toolchain", "native C++ hello links libunwind")?
+  ensure(! ("libgcc" in dynamic), "proof-llvm-toolchain", "native C++ hello links libgcc")?
+  ensure(! ("libstdc++" in dynamic), "proof-llvm-toolchain", "native C++ hello links libstdc++")?
 }
 
 proc prove_x86_64_v3(root: Path) [fs, process, error] {
@@ -229,8 +225,8 @@ void laputa_v3_toy(const unsigned long long *a, const unsigned long long *b, uns
   let object = fp"${tmp}/v3-toy.o"
   run $cc "-O2" "-c" fp"${tmp}/v3-toy.c" "-o" $object ?
   let asm = run.text $objdump "-d" "--no-show-raw-insn" $object ?
-  ensure(asm.contains("vpaddq"), "proof-llvm-toolchain", "x86-64-v3 proof did not emit AVX2 vpaddq")?
-  ensure(asm.contains("pdep"), "proof-llvm-toolchain", "x86-64-v3 proof did not emit BMI2 pdep")?
+  ensure("vpaddq" in asm, "proof-llvm-toolchain", "x86-64-v3 proof did not emit AVX2 vpaddq")?
+  ensure("pdep" in asm, "proof-llvm-toolchain", "x86-64-v3 proof did not emit BMI2 pdep")?
 }
 
 proc prove_explicit_aarch64_target(root: Path) [fs, process, error] {
@@ -252,12 +248,7 @@ proc prove_explicit_aarch64_target(root: Path) [fs, process, error] {
   let object = fp"${tmp}/aarch64-target-toy.o"
   run $cc "-target" "aarch64-linux-musl" "-O2" "-c" fp"${tmp}/aarch64-target-toy.c" "-o" $object ?
   let header = run.text $readelf "-h" $object ?
-
-  ensure(
-    header.contains("AArch64"),
-    "proof-llvm-toolchain",
-    "explicit aarch64 target did not produce an AArch64 object",
-  )?
+  ensure("AArch64" in header, "proof-llvm-toolchain", "explicit aarch64 target did not produce an AArch64 object")?
 }
 
 proc prove_target_tools(root: Path, arch: Str) [fs, process, env, error] {
@@ -266,7 +257,7 @@ proc prove_target_tools(root: Path, arch: Str) [fs, process, env, error] {
   let cc = fp"${root}/usr/bin/cc"
   let clang = fp"${root}/usr/lib/llvm22/bin/clang"
   let clang_header = run.text $readelf "-h" $clang ?
-  ensure(clang_header.contains(machine), "proof-llvm-toolchain", f"clang is not ${arch}")?
+  ensure(machine in clang_header, "proof-llvm-toolchain", f"clang is not ${arch}")?
   let cc_text = fs.read_text(cc)?
   ensure(cc_text.starts_with("#!/bin/xsh"), "proof-llvm-toolchain", "cc wrapper is not an XSH script")?
   let tmp = fp"${root}/var/tmp/proof-llvm-toolchain-wrapper"
@@ -285,7 +276,7 @@ proc prove_target_tools(root: Path, arch: Str) [fs, process, env, error] {
   let object = fp"${tmp}/wrapper-target.o"
   run $cc "-target" f"${arch}-linux-musl" "-O2" "-c" fp"${tmp}/wrapper-target.c" "-o" $object ?
   let object_header = run.text $readelf "-h" $object ?
-  ensure(object_header.contains(machine), "proof-llvm-toolchain", f"cc wrapper did not produce a ${arch} object")?
+  ensure(machine in object_header, "proof-llvm-toolchain", f"cc wrapper did not produce a ${arch} object")?
 }
 
 proc main(root: Path = /rootfs) [fs, process, env, error] {

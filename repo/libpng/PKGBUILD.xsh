@@ -13,9 +13,7 @@ export let mkdeps = ["llvm-toolchain", "cmake", "samurai", "zlib"]
 
 export let sources = [p"https://download.sourceforge.net/libpng/libpng-VERSION.tar.xz"]
 
-export let checksums = [
-  "4df396518620a7aa3651443e87d1b2862e4e88cad135a8b93423e01706232307",
-]
+export let checksums = ["4df396518620a7aa3651443e87d1b2862e4e88cad135a8b93423e01706232307"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?

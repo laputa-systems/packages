@@ -10,9 +10,7 @@ export let mkdeps = []
 
 export let sources = [p"https://github.com/vcrhonek/hwdata/archive/refs/tags/vVERSION.tar.gz"]
 
-export let checksums = [
-  "05d96821aaae04be4e684eaf9ac22e08efe646321bc64be323b91b66e7e2095c",
-]
+export let checksums = ["05d96821aaae04be4e684eaf9ac22e08efe646321bc64be323b91b66e7e2095c"]
 
 export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/share/hwdata")?

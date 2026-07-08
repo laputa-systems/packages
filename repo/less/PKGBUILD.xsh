@@ -12,13 +12,9 @@ export let deps = ["musl"]
 export let mkdeps = ["llvm-toolchain"]
 
 # Source is a fixed GitHub commit archive (no VERSION substitution needed).
-export let sources = [
-  p"https://github.com/laputa-systems/less/archive/0f176037c66cdeb038b39b0b71d9c291363c26ec.tar.gz",
-]
+export let sources = [p"https://github.com/laputa-systems/less/archive/0f176037c66cdeb038b39b0b71d9c291363c26ec.tar.gz"]
 
-export let checksums = [
-  "846a3b60efa6199bcab518d0934bd83bded678d97e58e8202b55ce7192377f69",
-]
+export let checksums = ["846a3b60efa6199bcab518d0934bd83bded678d97e58e8202b55ce7192377f69"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
@@ -45,6 +41,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let defs = ["-DBINDIR=\"/usr/bin\"", "-DLIBEXECDIR=\"/usr/libexec\"", "-DSYSDIR=\"/etc\"", "-DSECURE_COMPILE=0"]
   let includes = ["-I."]
   fs.mkdir(p"obj")?
+
   let buildgen = make.c_program({
     cc: build_cc,
     triple: build_triple,
@@ -59,6 +56,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     ldflags: [],
     deps: [],
   })
+
   var buildgen_tasks = buildgen.tasks
 
   if cross_build {
@@ -116,6 +114,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.write(p"obj/less-srcs.c", funcs_input)?
   let funcs_input_path = p"obj/less-srcs.c"
   fs.write(p"funcs.h", run.text $buildgen.output "funcs" < ${funcs_input_path}?)?
+
   let less = make.c_program({
     cc,
     triple,

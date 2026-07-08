@@ -124,14 +124,14 @@ proc wait_for_ssh(command: Command, rootfs: Path, chroot: Path, port: Int, tries
 }
 
 proc live_dropbear_diagnostics(port: Int) [process, error] -> Result[Str] {
-  let child_events: List[Str] = unix.reap_child_events()? |> map f"${.pid}:${status_summary(.status)}"
+  let child_events = unix.reap_child_events()? |> map f"${.pid}:${status_summary(.status)}"
 
-  let processes: List[Str] = process.list()?
+  let processes = process.list()?
     |> where "dropbear" in .argv
     |> map f"${.pid}:${.status}:${.argv}"
 
-  let ports: List[Str] = process.port(port)? |> map f"${.pid}:${.protocol}:${.local}:${.state}:${.argv}"
-  let default_ports: List[Str] = process.port(22)? |> map f"${.pid}:${.protocol}:${.local}:${.state}:${.argv}"
+  let ports = process.port(port)? |> map f"${.pid}:${.protocol}:${.local}:${.state}:${.argv}"
+  let default_ports = process.port(22)? |> map f"${.pid}:${.protocol}:${.local}:${.state}:${.argv}"
 
   return f"events=[${child_events.join(" | ")}] processes=[${processes.join(" | ")}] ports=[${ports.join(" | ")}] default_ports=[${default_ports.join(
     " | ",
@@ -258,7 +258,7 @@ proc main(rootfs: Path = /rootfs, port: Int = 22222) [fs, process, env, time, er
   run $chroot $rootfs "/usr/bin/xinit" stop dropbear ?
   let stopped_status = run.text $chroot $rootfs "/usr/bin/xinit" status dropbear ?
   ensure("pid=0" in stopped_status, "dropbear-stop", "xinit status still reported a service pid after stop")?
-  let listeners: List[Str] = process.port(port)? |> map .argv
+  let listeners = process.port(port)? |> map .argv
 
   ensure(
     listeners.len() == 0,

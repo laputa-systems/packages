@@ -11,13 +11,9 @@ export let deps = ["musl"]
 
 export let mkdeps = ["llvm-toolchain", "cmake", "samurai"]
 
-export let sources = [
-  p"https://github.com/libevent/libevent/releases/download/release-VERSION/libevent-VERSION.tar.gz",
-]
+export let sources = [p"https://github.com/libevent/libevent/releases/download/release-VERSION/libevent-VERSION.tar.gz"]
 
-export let checksums = [
-  "92e6de1be9ec176428fd2367677e61ceffc2ee1cb119035037a27d346b0403bb",
-]
+export let checksums = ["92e6de1be9ec176428fd2367677e61ceffc2ee1cb119035037a27d346b0403bb"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?

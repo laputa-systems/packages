@@ -117,8 +117,8 @@ compat/utf8proc.c
 
   let generated_sources = ["cmd-parse.c", "osdep-linux.c"]
   let tmux_sources = [fp"${source}" for source in core_sources.extend(generated_sources).extend(compat_sources)]
-
   let pc = make.pkg_config_flags(["libevent_core", "libutf8proc"])?
+
   let cflags = [
     "-std=gnu99",
     "-include",
@@ -134,6 +134,7 @@ compat/utf8proc.c
   ].extend(pc.cflags)
 
   let arch = pm_util.target_arch()?
+
   let tmux = make.c_program({
     cc,
     triple: f"${arch}-linux-musl",
@@ -157,6 +158,5 @@ export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   write_config_h()?
   let tmux = build_tmux(cc)?
-
   fs.install(tmux, fp"${dest}/usr/bin/tmux", 0o755, parents: true, overwrite: true)?
 }

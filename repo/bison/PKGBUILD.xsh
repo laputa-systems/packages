@@ -543,7 +543,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   var scratch_lines = []
 
   for line in p"lib/malloc/scratch_buffer.h".lines()? {
-    if ! line.contains("libc_hidden_proto") {
+    if ! ("libc_hidden_proto" in line) {
       var generated = line.replace("__always_inline", "inline _GL_ATTRIBUTE_ALWAYS_INLINE")
       generated = generated.replace("__glibc_likely", "_GL_LIKELY")
       generated = generated.replace("__glibc_unlikely", "_GL_UNLIKELY")
@@ -677,7 +677,12 @@ getprogname (void)
   lib_sources = lib_sources.push(p"lib/xsh-getprogname.c")
 
   # Compile bison's src/*.c (scanners and parsers are pre-generated in tarball)
-  let src_sources = make.discover_sources(p"src", ["c"], [p"i18n-strings.c", p"scan-code.c", p"scan-gram.c", p"scan-skel.c"])?
+  let src_sources = make.discover_sources(
+    p"src",
+    ["c"],
+    [p"i18n-strings.c", p"scan-code.c", p"scan-gram.c", p"scan-skel.c"],
+  )?
+
   let bison = make.c_program({
     cc,
     triple,
@@ -692,6 +697,7 @@ getprogname (void)
     ldflags: [],
     deps: [],
   })
+
   make.run_tasks(bison.tasks, make.jobs()?)?
   fs.install(bison.output, fp"${dest}/usr/bin/bison", 0o755, parents: true, overwrite: true)?
 

@@ -14,9 +14,7 @@ export let sources = [
   p"https://gitlab.freedesktop.org/libevdev/libevdev/-/archive/libevdev-VERSION/libevdev-libevdev-VERSION.tar.gz",
 ]
 
-export let checksums = [
-  "54748fded25633399a8418d7c4c123fe365037c901b4389e0bf3dd7688fb1c7e",
-]
+export let checksums = ["54748fded25633399a8418d7c4c123fe365037c901b4389e0bf3dd7688fb1c7e"]
 
 type EventDef = {attr: Str, value: Int, name: Str}
 
@@ -71,13 +69,7 @@ pure duplicate_defines() -> List[Str] {
 }
 
 pure attr_name(prefix: Str) -> Str {
-  prefix.replace("_", "").replace("INPUTPROP", "input_prop").replace("MTTOOL", "mt_tool").replace("EV", "ev").replace(
-    "REL",
-    "rel",
-  ).replace("ABS", "abs").replace("KEY", "key").replace("BTN", "btn").replace("LED", "led").replace("SND", "snd").replace(
-    "MSC",
-    "msc",
-  ).replace("SW", "sw").replace("FF", "ff").replace("SYN", "syn").replace("REP", "rep")
+  prefix.replace("_", "").replace("INPUTPROP", "input_prop").replace("MTTOOL", "mt_tool").replace("EV", "ev").replace("REL", "rel").replace("ABS", "abs").replace("KEY", "key").replace("BTN", "btn").replace("LED", "led").replace("SND", "snd").replace("MSC", "msc").replace("SW", "sw").replace("FF", "ff").replace("SYN", "syn").replace("REP", "rep")
 }
 
 pure lookup_prefix(event_name: Str) -> Str {
@@ -125,13 +117,7 @@ proc c_lookup_lines(
     lookups = lookups.push({name: "BTN_Y", value: "BTN_Y"})
   }
 
-  let max_name = f"${attr.replace("input_prop", "INPUT_PROP").replace("mt_tool", "MT_TOOL").replace("ev", "EV").replace(
-    "rel",
-    "REL",
-  ).replace("abs", "ABS").replace("key", "KEY").replace("btn", "BTN").replace("led", "LED").replace("snd", "SND").replace(
-    "msc",
-    "MSC",
-  ).replace("sw", "SW").replace("ff", "FF").replace("syn", "SYN").replace("rep", "REP")}_MAX"
+  let max_name = f"${attr.replace("input_prop", "INPUT_PROP").replace("mt_tool", "MT_TOOL").replace("ev", "EV").replace("rel", "REL").replace("abs", "ABS").replace("key", "KEY").replace("btn", "BTN").replace("led", "LED").replace("snd", "SND").replace("msc", "MSC").replace("sw", "SW").replace("ff", "FF").replace("syn", "SYN").replace("rep", "REP")}_MAX"
 
   if max_name in duplicate_defines() and max_codes.has(max_name) {
     lookups = lookups.push({name: max_name, value: max_name})
@@ -173,8 +159,8 @@ proc collect_event_defs(path_value: Path) [fs, error] -> Result[Record] {
 proc write_event_names() [fs, error] {
   let input_h = p"include/linux/linux/input.h"
   let input_event_codes_h = p"include/linux/linux/input-event-codes.h"
-  let first: Record = collect_event_defs(input_h)?
-  let second: Record = collect_event_defs(input_event_codes_h)?
+  let first = collect_event_defs(input_h)?
+  let second = collect_event_defs(input_event_codes_h)?
   let first_defs: List[EventDef] = first.defs
   let second_defs: List[EventDef] = second.defs
   var defs = first_defs.extend(second_defs)
@@ -201,14 +187,7 @@ proc write_event_names() [fs, error] {
     }
   }
 
-  var lines = [
-    "/* THIS FILE IS GENERATED, DO NOT EDIT */",
-    "",
-    "#ifndef EVENT_NAMES_H",
-    "#define EVENT_NAMES_H",
-    "",
-  ]
-
+  var lines = ["/* THIS FILE IS GENERATED, DO NOT EDIT */", "", "#ifndef EVENT_NAMES_H", "#define EVENT_NAMES_H", ""]
   lines = lines.extend(c_lines_for_bits(defs, "ev", "EV_MAX", false)?)
   lines = lines.extend(c_lines_for_bits(defs, "rel", "REL_MAX", false)?)
   lines = lines.extend(c_lines_for_bits(defs, "abs", "ABS_MAX", false)?)
@@ -227,15 +206,7 @@ proc write_event_names() [fs, error] {
   for prefix in event_prefixes() {
     if ! (prefix == "BTN_" or prefix == "EV_" or prefix == "INPUT_PROP_" or prefix == "MT_TOOL_") {
       let key = prefix.replace("_", "")
-
-      let map_name = prefix.replace("_", "").replace("REL", "rel").replace("ABS", "abs").replace("KEY", "key").replace(
-        "LED",
-        "led",
-      ).replace("SND", "snd").replace("MSC", "msc").replace("SW", "sw").replace("FF", "ff").replace("SYN", "syn").replace(
-        "REP",
-        "rep",
-      )
-
+      let map_name = prefix.replace("_", "").replace("REL", "rel").replace("ABS", "abs").replace("KEY", "key").replace("LED", "led").replace("SND", "snd").replace("MSC", "msc").replace("SW", "sw").replace("FF", "ff").replace("SYN", "syn").replace("REP", "rep")
       lines = lines.push(f"    [EV_${key}] = ${map_name}_map,")
     }
   }

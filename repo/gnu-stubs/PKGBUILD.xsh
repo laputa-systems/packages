@@ -14,9 +14,7 @@ export let mkdeps = ["llvm-toolchain"]
 
 export let sources = [p"files/.keep"]
 
-export let checksums = [
-  "SKIP",
-]
+export let checksums = ["SKIP"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let build_arch = pm_util.build_arch()?

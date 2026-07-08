@@ -32,16 +32,14 @@ proc sources_response_header(headers: List[Record], name: Str) [] -> Str {
 }
 
 proc sources_resolve_download_redirect(url: Str) [net] -> Str {
-  let response = net.request(
-    {
-      method: "GET",
-      url: url,
-      redirects: 0,
-      max_body_bytes: 4096,
-      pool: "pm",
-      fail_status: false,
-    },
-  )
+  let response = net.request({
+    method: "GET",
+    url: url,
+    redirects: 0,
+    max_body_bytes: 4096,
+    pool: "pm",
+    fail_status: false,
+  })
 
   match response {
     Ok(result) => {
@@ -87,18 +85,16 @@ export proc try_download_url_to_cache(url: Str, dest: Path) [fs, net, error] -> 
 
   let download_url = sources_resolve_download_redirect(url)
 
-  let response = net.download(
-    {
-      url: download_url,
-      dest: tmp,
-      atomic: true,
-      overwrite: true,
-      pool: "pm",
-      connect_timeout: 10s,
-      timeout: 1800s,
-      fail_status: true,
-    },
-  )
+  let response = net.download({
+    url: download_url,
+    dest: tmp,
+    atomic: true,
+    overwrite: true,
+    pool: "pm",
+    connect_timeout: 10s,
+    timeout: 1800s,
+    fail_status: true,
+  })
 
   match response {
     Ok(_) => {
@@ -344,7 +340,10 @@ export proc stage_package_sources(
 
   for entry in entries {
     let resolved = resolve_source(work, pkg, entry.line, arch, force_download)?
-    resolved_sources = resolved_sources.push({index: entry.index, line: entry.line, path: resolved.path, kind: resolved.kind})
+
+    resolved_sources = resolved_sources.push(
+      {index: entry.index, line: entry.line, path: resolved.path, kind: resolved.kind},
+    )
   }
 
   for resolved in resolved_sources {

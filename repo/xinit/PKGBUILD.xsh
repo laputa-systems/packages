@@ -8,19 +8,13 @@ export let deps = ["xsh"]
 
 export let mkdeps = []
 
-export let sources = [
-  p"https://github.com/laputa-systems/xinit/raw/c6af71070559d01a81ee88d3c5a4afb5c54b7f16/xinit.xsh",
-]
+export let sources = [p"https://github.com/laputa-systems/xinit/raw/c6af71070559d01a81ee88d3c5a4afb5c54b7f16/xinit.xsh"]
 
 export let checksums = ["9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"]
 
-export let checksums_aarch64 = [
-  "9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d",
-]
+export let checksums_aarch64 = ["9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"]
 
-export let checksums_x86_64 = [
-  "9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d",
-]
+export let checksums_x86_64 = ["9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"]
 
 export let nostrip = true
 

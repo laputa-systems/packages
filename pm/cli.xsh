@@ -328,7 +328,7 @@ pure command_requires_package_dirs(command: Str) -> Bool {
 }
 
 pure arg_looks_like_path(value: Str) -> Bool {
-  value.starts_with("/") or value.starts_with(".") or value.contains("/")
+  value.starts_with("/") or value.starts_with(".") or "/" in value
 }
 
 pure explicit_context_is_likely(argv: List[Str]) -> Bool {

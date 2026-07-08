@@ -89,17 +89,15 @@ export proc scan_waterfox_elf(
           }
         }
 
-        files = files.push(
-          {
-            path: entry.path,
-            interpreter: info.interpreter,
-            soname: info.soname,
-            needed: info.needed,
-            rpath: info.rpath,
-            runpath: info.runpath,
-            dynamic_tags: info.dynamic_tags,
-          },
-        )
+        files = files.push({
+          path: entry.path,
+          interpreter: info.interpreter,
+          soname: info.soname,
+          needed: info.needed,
+          rpath: info.rpath,
+          runpath: info.runpath,
+          dynamic_tags: info.dynamic_tags,
+        })
       }
     }
   }

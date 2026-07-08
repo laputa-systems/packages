@@ -12,9 +12,7 @@ export let mkdeps = []
 
 export let sources = [p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz"]
 
-export let checksums = [
-  "2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d",
-]
+export let checksums = ["2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cwd = fs.cwd()?
@@ -121,9 +119,9 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   # genl source files for libnl-genl-3.so
   let genl_sources = [p"lib/genl/ctrl.c", p"lib/genl/family.c", p"lib/genl/genl.c", p"lib/genl/mngt.c"]
-
   let core_so = fp"${dest}/usr/lib/libnl-3.so.200.26.0"
   let genl_so = fp"${dest}/usr/lib/libnl-genl-3.so.200.26.0"
+
   let core = make.c_shared_library({
     cc,
     triple,

@@ -23,8 +23,7 @@ export let mkdeps = []
 
 export let sources = []
 
-export let checksums = [
-]
+export let checksums = []
 
 export proc build(dest: Path) [fs, error] {
   fs.mkdir(dest)?

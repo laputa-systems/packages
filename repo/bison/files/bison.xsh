@@ -329,7 +329,7 @@ proc extract_union_body(decls: Str) [error] -> Result[Str] {
 }
 
 pure has_locations(decls: Str) -> Bool {
-  return decls.contains("%locations")
+  return "%locations" in decls
 }
 
 proc token_enum_lines(names: List[Str]) [error] -> Result[List[Str]] {
@@ -417,11 +417,11 @@ proc output_header_name(output: Str) [error] -> Result[Str] {
 }
 
 pure is_kconfig_parser(decls: Str) -> Bool {
-  return decls.contains("\"lkc.h\"")
+  return "\"lkc.h\"" in decls
 }
 
 pure is_dtc_parser(decls: Str) -> Bool {
-  return decls.contains("\"dtc.h\"")
+  return "\"dtc.h\"" in decls
 }
 
 proc generate_kconfig_stub_c(output: Str, prologue: Str, epilogue: Str) [error] -> Result[Str] {

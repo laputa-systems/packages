@@ -208,7 +208,7 @@ export proc ensure_installable(root: Path, pkg: Package, manifest: List[Path], i
     let key = rel_path.display()
 
     if installed_owners.has(key) {
-      let owner: Str = installed_owners.get(key)?
+      let owner = installed_owners.get(key)?
 
       if owner != pkg.name {
         return Err(PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
@@ -239,11 +239,11 @@ export proc install_etc_file(
   old_sums: Map[Str],
   new_sums: Map[Str],
 ) [fs, error] {
-  let new_sum: Str = new_sums.get(key)?
+  let new_sum = new_sums.get(key)?
   var old_sum = ""
 
   if old_sums.has(key) {
-    let value: Str = old_sums.get(key)?
+    let value = old_sums.get(key)?
     old_sum = value
   }
 
@@ -284,7 +284,7 @@ export proc install_manifest_entries(
     var overwrite = false
 
     if installed_owners.has(key) {
-      let owner: Str = installed_owners.get(key)?
+      let owner = installed_owners.get(key)?
 
       if owner == pkg.name {
         overwrite = true
@@ -347,7 +347,7 @@ export proc collect_removable_manifest(
     let key = rel_path.display()
 
     if is_etc_file(rel_path) and etcsums.has(key) and fs.root_exists(root_handle, rel_path)? {
-      let expected: Str = etcsums.get(key)?
+      let expected = etcsums.get(key)?
 
       if fs.root_read(root_handle, rel_path)?.sha256().hex() == expected {
         removable = removable.push(rel_path)
@@ -463,22 +463,20 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
 
     seen[name] = true
 
-    packages = packages.push(
-      {
-        dir,
-        exports,
-        name,
-        ver,
-        rel,
-        deps,
-        mkdeps,
-        target_build_deps,
-        sources: pkg_sources,
-        checksums,
-        nostrip,
-        extract_install,
-      },
-    )
+    packages = packages.push({
+      dir,
+      exports,
+      name,
+      ver,
+      rel,
+      deps,
+      mkdeps,
+      target_build_deps,
+      sources: pkg_sources,
+      checksums,
+      nostrip,
+      extract_install,
+    })
   }
 
   packages

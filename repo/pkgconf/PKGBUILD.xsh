@@ -14,9 +14,7 @@ export let mkdeps = ["llvm-toolchain"]
 
 export let sources = [p"https://distfiles.ariadne.space/pkgconf/pkgconf-VERSION.tar.xz"]
 
-export let checksums = [
-  "cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243",
-]
+export let checksums = ["cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
@@ -111,6 +109,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # Step 3: link libpkgconf.so.7.0.0 and static archive.
   let sofile = lib.output
   let static_lib = p"obj/libpkgconf.a"
+
   let static_target = make.c_static_library({
     cc,
     triple,
@@ -128,6 +127,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # Source files from am_pkgconf_OBJECTS. Automake prefixes objects with the
   # binary name (pkgconf-main.o from main.c) but the sources use plain names.
   let pkgconf_srcs = [p"cli/main.c", p"cli/getopt_long.c", p"cli/renderer-msvc.c"]
+
   let pkgconf = make.c_program({
     cc,
     triple,
@@ -148,6 +148,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # Step 5: compile and link bomtool binary.
   # cli/getopt_long.c is shared with pkgconf; compile separately to a different obj.
   let bomtool_srcs = [p"cli/bomtool/main.c", p"cli/getopt_long.c"]
+
   let bomtool = make.c_program({
     cc,
     triple,
@@ -164,7 +165,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   })
 
   let bomtool_bin = bomtool.output
-
   make.run_tasks(lib.tasks.extend(static_target.tasks).extend(pkgconf.tasks).extend(bomtool.tasks), make.jobs()?)?
 
   # Step 6: install into dest.

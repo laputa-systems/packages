@@ -132,22 +132,20 @@ proc collect_entries(root: Path, dir: Path, entries: List[ExtEntry]) [fs, error]
       bytes.zero(0)?
     }
 
-    out = out.push(
-      {
-        rel,
-        parent,
-        name: child.name,
-        path: child.path,
-        kind: child.kind,
-        mode: child.mode,
-        uid: 0,
-        gid: 0,
-        mtime: FIXED_TIME,
-        size: child.size,
-        target,
-        inode: 0,
-      },
-    )
+    out = out.push({
+      rel,
+      parent,
+      name: child.name,
+      path: child.path,
+      kind: child.kind,
+      mode: child.mode,
+      uid: 0,
+      gid: 0,
+      mtime: FIXED_TIME,
+      size: child.size,
+      target,
+      inode: 0,
+    })
 
     if child.kind == "dir" {
       out = collect_entries(root, child.path, out)?
@@ -226,10 +224,7 @@ proc dirent(item: DirItem, rec_len: Int) [error] -> Result[Bytes] {
 }
 
 proc dir_items(entries: List[ExtEntry], rel: Str, self_inode: Int, parent_inode: Int) [] -> List[DirItem] {
-  var items = [
-    {inode: self_inode, name: ".", kind: "dir"},
-    {inode: parent_inode, name: "..", kind: "dir"},
-  ]
+  var items = [{inode: self_inode, name: ".", kind: "dir"}, {inode: parent_inode, name: "..", kind: "dir"}]
 
   for entry in entries {
     if entry.parent == rel {

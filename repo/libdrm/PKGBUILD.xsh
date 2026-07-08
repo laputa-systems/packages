@@ -12,9 +12,7 @@ export let mkdeps = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "l
 
 export let sources = [p"https://dri.freedesktop.org/libdrm/libdrm-VERSION.tar.xz"]
 
-export let checksums = [
-  "051aeb3e542a57621018ffc443fb088dd69b78eef0ce4808b604ce0feac9f47f",
-]
+export let checksums = ["051aeb3e542a57621018ffc443fb088dd69b78eef0ce4808b604ce0feac9f47f"]
 
 type Modifier = {vendor: Str, mod: Str, name: Str}
 
@@ -34,9 +32,7 @@ proc write_format_modifier_table() [fs, error] {
         intel = intel.push(modifier_name.replace("I915_FORMAT_MOD_", ""))
       } else if modifier_name.starts_with("DRM_FORMAT_MOD_VENDOR_") {
         vendors = vendors.push(modifier_name.replace("DRM_FORMAT_MOD_VENDOR_", ""))
-      } else if modifier_name.starts_with("DRM_FORMAT_MOD_") and ! modifier_name.contains("(") and ! modifier_name.contains(
-        "*",
-      ) and ! modifier_name.contains("-") {
+      } else if modifier_name.starts_with("DRM_FORMAT_MOD_") and ! ("(" in modifier_name) and ! ("*" in modifier_name) and ! ("-" in modifier_name) {
         let entry = modifier_name.replace("DRM_FORMAT_MOD_", "")
         let parts = entry.split("_")
 

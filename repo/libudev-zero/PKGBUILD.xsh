@@ -13,9 +13,7 @@ export let mkdeps = ["llvm-toolchain", "linux"]
 
 export let sources = [p"https://github.com/illiliti/libudev-zero/archive/VERSION.tar.gz"]
 
-export let checksums = [
-  "0bd89b657d62d019598e6c7ed726ff8fed80e8ba092a83b484d66afb80b77da5",
-]
+export let checksums = ["0bd89b657d62d019598e6c7ed726ff8fed80e8ba092a83b484d66afb80b77da5"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
@@ -25,6 +23,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let defs = ["-D_XOPEN_SOURCE=700", "-D__user="]
   let includes = []
   let srcs = [p"udev.c", p"udev_list.c", p"udev_device.c", p"udev_monitor.c", p"udev_enumerate.c"]
+
   let libudev = make.c_shared_library({
     cc,
     triple,

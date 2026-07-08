@@ -19,6 +19,7 @@ type WorldPlanOptions = {
 }
 
 type WorldPlanResult = {packages: List[Package], reasons: Map[Str]}
+
 type ElfDependencyFailure = {pkg: Str, file: Path, soname: Str, provider: Str}
 
 pure world_dependency_is_seeded(pkg: Package, dep: Str, cross_build: Bool) -> Bool {
@@ -348,20 +349,18 @@ proc world_package_rows(packages: List[Package]) [] -> List[Record] {
   for pkg in packages {
     let sources = [source.display() for source in pkg.sources]
 
-    rows = rows.push(
-      {
-        name: pkg.name,
-        ver: pkg.ver,
-        rel: pkg.rel,
-        id: world_package_id(pkg),
-        dir: pkg.dir.display(),
-        deps: pkg.deps,
-        mkdeps: pkg.mkdeps,
-        target_build_deps: pkg.target_build_deps,
-        sources,
-        checksums: pkg.checksums,
-      },
-    )
+    rows = rows.push({
+      name: pkg.name,
+      ver: pkg.ver,
+      rel: pkg.rel,
+      id: world_package_id(pkg),
+      dir: pkg.dir.display(),
+      deps: pkg.deps,
+      mkdeps: pkg.mkdeps,
+      target_build_deps: pkg.target_build_deps,
+      sources,
+      checksums: pkg.checksums,
+    })
   }
 
   rows
@@ -1204,6 +1203,7 @@ type WorldBuildBatch = {
 
 pure native_cross_compiler_script(real: Path, build_root: Path, target_root: Path, target_arch: Str, cxx: Bool) -> Str {
   let cxx_text = if cxx { "true" } else { "false" }
+
   return f"""#!/bin/xsh --
 error NativeCrossCompilerError = Failed(message: Str)
 
@@ -1400,13 +1400,24 @@ proc build_world_package_or_empty(
   let started_at = time.now()
   let log_path = fp"${repo_dir}/packages/${target_arch}/${pkg.name}/build.log"
 
-  match build_world_package(repo_dir, build_ctx, target_staged_root, build_staged_root, pkg, target_arch, build_arch, cross_build) {
+  match build_world_package(
+    repo_dir,
+    build_ctx,
+    target_staged_root,
+    build_staged_root,
+    pkg,
+    target_arch,
+    build_arch,
+    cross_build,
+  ) {
     Ok(built) => return {built, failed: false}
     Err(err) => {
       append_world_package_log(log_path, f"world-build error: ${err.message}")?
+
       eprint --flush ${pkg.name} world_package_id(pkg) "build:" "failed" time.duration_compact(
         (time.now() - started_at) / 1000,
       ) "log:" $log_path
+
       return {built: [], failed: true}
     }
   }
@@ -1524,7 +1535,7 @@ proc ensure_world_state_compatible(
   if stored_fingerprint != fingerprint {
     let old_built: List[Str] = state.get("built")?
     let old_proofed: List[Str] = state.get("proofed")?
-    let old_unchanged: List[Str] = if state.has("unchanged") { state.get("unchanged")? } else { [] }
+    let old_unchanged = if state.has("unchanged") { state.get("unchanged")? } else { [] }
     var built_names: Map[Bool] = {}
     var unchanged_names: Map[Bool] = {}
 
@@ -1646,7 +1657,7 @@ proc verify_world_stage(repo_dir: Path, packages: List[Package], fingerprint: St
 
   let built: List[Str] = state.get("built")?
   let proofed: List[Str] = state.get("proofed")?
-  let unchanged: List[Str] = if state.has("unchanged") { state.get("unchanged")? } else { [] }
+  let unchanged = if state.has("unchanged") { state.get("unchanged")? } else { [] }
   let index_path = fp"${repo_dir}/index.json"
 
   if ! fs.exists(index_path)? {
@@ -1681,7 +1692,6 @@ pure path_basename_text(path_value: Path) -> Str {
 
 pure path_may_provide_library(rel_path: Path) -> Bool {
   let text = rel_path.display()
-
   return (text.starts_with("lib/") or text.starts_with("usr/lib/")) and ".so" in path_basename_text(rel_path)
 }
 
@@ -1708,8 +1718,7 @@ export pure missing_elf_runtime_dependencies(
 
   for soname in needed {
     continue unless providers.has(soname)
-
-    let provider: Str = providers.get(soname, "")
+    let provider = providers.get(soname, "")
 
     if provider != pkg_name and provider not in deps {
       failures = failures.push({pkg: pkg_name, file: fp"", soname, provider})
@@ -1730,8 +1739,8 @@ proc installed_file_elf_dependency_failures(
       var failures = missing_elf_runtime_dependencies(pkg.name, pkg.deps, info.needed, info.interpreter, providers)
       failures = [{pkg: failure.pkg, file: rel_path, soname: failure.soname, provider: failure.provider} for failure in failures]
       failures
-    },
-    Err(_) => [],
+    }
+    Err(_) => []
   }
 }
 
@@ -1761,12 +1770,12 @@ proc collect_world_elf_library_providers(root: Path) [fs, error] -> Result[Map[S
           } else if path_may_provide_library(rel_path) {
             providers[path_basename_text(rel_path)] = entry.name
           }
-        },
+        }
         Err(_) => {
           if path_may_provide_library(rel_path) {
             providers[path_basename_text(rel_path)] = entry.name
           }
-        },
+        }
       }
     }
   }
@@ -1781,7 +1790,6 @@ proc audit_world_elf_dependencies(root: Path, packages: List[Package]) [fs, env,
   for pkg in packages {
     let db = package_db_path(root, pkg.name)
     continue unless fs.exists(db)?
-
     let manifest = load_manifest(db)?
 
     for rel_path in manifest {
@@ -1928,7 +1936,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     let state = ensure_world_state_compatible(repo_dir, fingerprint, planned)?
     let recorded_built: List[Str] = state.get("built")?
     let recorded_proofed: List[Str] = state.get("proofed")?
-    let recorded_unchanged: List[Str] = if state.has("unchanged") { state.get("unchanged")? } else { [] }
+    let recorded_unchanged = if state.has("unchanged") { state.get("unchanged")? } else { [] }
 
     if recorded_built.len() == 0 and recorded_unchanged.len() == 0 {
       fs.remove(root, missing_ok: true)?
@@ -1949,7 +1957,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     let levels = world_plan_levels(ordered, local_names)
     let max_level = world_plan_max_level(ordered, levels)
     let build_max_level = if to_tranche >= 0 and to_tranche < max_level { to_tranche } else { max_level }
-    let build_local_names: Map[Bool] = if cross_build { map.empty() } else { local_names }
+    let build_local_names = if cross_build { map.empty() } else { local_names }
     print --flush ansi(colors, "1;34", "world-build preparing") ansi(colors, "2", "chroot base")
     install_chroot_base_for_arch(root_ctx, local_names, false, target_arch)?
 
@@ -1968,12 +1976,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
         let build_pkg: Package = planned_by_name.get(pkg.name)?
         let id = world_package_id(build_pkg)
 
-        if id in recorded_unchanged and world_stage_package_present_in_roots(
-          root,
-          build_root,
-          pkg.name,
-          cross_build,
-        )? {
+        if id in recorded_unchanged and world_stage_package_present_in_roots(root, build_root, pkg.name, cross_build)? {
           built_names[pkg.name] = true
           unchanged_names[pkg.name] = true
           print --flush ${pkg.name} $id "stage:" "unchanged"

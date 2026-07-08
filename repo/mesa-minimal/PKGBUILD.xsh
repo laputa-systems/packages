@@ -12,9 +12,7 @@ export let mkdeps = ["llvm-toolchain", "linux", "pkgconf", "libdrm", "wayland-de
 
 export let sources = [p"files/source-marker.txt => ."]
 
-export let checksums = [
-  "2f848716fcc0bb55ee07c37ab374d8b8824dd38debcc0be4711b4930f1c67381",
-]
+export let checksums = ["2f848716fcc0bb55ee07c37ab374d8b8824dd38debcc0be4711b4930f1c67381"]
 
 proc write_sources() [fs, error] {
   fs.write(
@@ -980,6 +978,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let triple = f"${os.machine}-linux-musl"
   let cflags = ["-std=c99", "-Wall", "-Wextra"]
   write_sources()?
+
   let egl = make.c_shared_library({
     cc,
     triple,
@@ -994,6 +993,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     ldflags: [],
     deps: [],
   })
+
   let gles = make.c_shared_library({
     cc,
     triple,
@@ -1008,6 +1008,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     ldflags: [],
     deps: [],
   })
+
   let gbm = make.c_shared_library({
     cc,
     triple,
@@ -1024,7 +1025,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   })
 
   make.run_tasks(egl.tasks.extend(gles.tasks).extend(gbm.tasks), make.jobs()?)?
-
   fs.install(egl.output, fp"${dest}/usr/lib/libEGL.so.1.0.0", 0o755, parents: true, overwrite: true)?
   fs.install(gles.output, fp"${dest}/usr/lib/libGLESv2.so.2.0.0", 0o755, parents: true, overwrite: true)?
   fs.install(gbm.output, fp"${dest}/usr/lib/libgbm.so.1.0.0", 0o755, parents: true, overwrite: true)?

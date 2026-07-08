@@ -13,9 +13,7 @@ export let mkdeps = ["llvm-toolchain", "linux"]
 
 export let sources = [p"http://bitmath.org/code/mtdev/mtdev-VERSION.tar.gz"]
 
-export let checksums = [
-  "a55bd02a9af4dd266c0042ec608744fff3a017577614c057da09f1f4566ea32c",
-]
+export let checksums = ["a55bd02a9af4dd266c0042ec608744fff3a017577614c057da09f1f4566ea32c"]
 
 proc write_config() [fs, error] {
   fs.write(
@@ -55,6 +53,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let defs = ["-DHAVE_CONFIG_H", "-D__user="]
   let includes = ["-Iinclude", "-Isrc", "-I."]
   write_config()?
+
   let libmtdev = make.c_shared_library({
     cc,
     triple,
@@ -74,9 +73,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.install(libmtdev.output, fp"${dest}/usr/lib/libmtdev.so.1.0.0", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"libmtdev.so.1.0.0", fp"${dest}/usr/lib/libmtdev.so.1")?
   fs.symlink(p"libmtdev.so.1.0.0", fp"${dest}/usr/lib/libmtdev.so")?
-
   make.install_header_tree(p"include", fp"${dest}/usr/include")?
-
   fs.mkdir(fp"${dest}/usr/lib/pkgconfig")?
 
   fs.write(

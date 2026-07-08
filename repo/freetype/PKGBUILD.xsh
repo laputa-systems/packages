@@ -13,9 +13,7 @@ export let mkdeps = ["llvm-toolchain", "cmake", "samurai", "pkgconf", "zlib", "l
 
 export let sources = [p"https://download-mirror.savannah.gnu.org/releases/freetype/freetype-VERSION.tar.xz"]
 
-export let checksums = [
-  "32427e8c471ac095853212a37aef816c60b42052d4d9e48230bab3bdf2936ccc",
-]
+export let checksums = ["32427e8c471ac095853212a37aef816c60b42052d4d9e48230bab3bdf2936ccc"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?

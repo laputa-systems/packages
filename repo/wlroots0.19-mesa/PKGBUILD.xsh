@@ -41,13 +41,9 @@ export let mkdeps = [
 
 export let target_build_deps = ["wayland-dev", "wayland-protocols", "pixman-dev"]
 
-export let sources = [
-  p"https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/VERSION/wlroots-VERSION.tar.gz",
-]
+export let sources = [p"https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/VERSION/wlroots-VERSION.tar.gz"]
 
-export let checksums = [
-  "a6ff89b64ea15e424d1b0db4a22145fccf5ec2ff2e7b8af0fa35e2ac8975986f",
-]
+export let checksums = ["a6ff89b64ea15e424d1b0db4a22145fccf5ec2ff2e7b8af0fa35e2ac8975986f"]
 
 type PnpRecord = {id: Str, vendor: Str}
 
@@ -247,11 +243,13 @@ export proc build(dest: Path) [fs, process, env, error] {
   let pc = pm_env.pkg_config_context()?
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
   let native_scanner = pm_util.build_arch()? != pm_util.target_arch()? and build_root != ""
+
   let native_tools_ld = if native_scanner {
     f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib:${pc.ld_library_path}"
   } else {
     pc.ld_library_path
   }
+
   let root = env.get("LAPUTA_ROOT") ?? "/"
   patch_build(root)?
 

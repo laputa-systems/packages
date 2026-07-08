@@ -19,13 +19,9 @@ export let sources = [p"https://musl.libc.org/releases/musl-VERSION.tar.gz"]
 
 export let checksums = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
-export let checksums_aarch64 = [
-  "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
-]
+export let checksums_aarch64 = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
-export let checksums_x86_64 = [
-  "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
-]
+export let checksums_x86_64 = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
 pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {
   let re = regex.compile(pattern)?
@@ -186,7 +182,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   for subsys in fs.ls(p"src")? |> where .kind == "dir" {
     for e in fs.ls(subsys.path)? |> where .ext == "c" {
-      if ! arch_stems.contains(e.name.replace(".c", "")) {
+      if ! (e.name.replace(".c", "") in arch_stems) {
         libc_srcs = libc_srcs.push(e.path)
       }
     }
@@ -207,8 +203,8 @@ export proc build(dest: Path) [fs, process, env, error] {
   # Compile arch/ C overrides → LOBJS.
   let arch_c = make.compile_lo_tasks(cc, triple, cflags, [], includes, p"", arch_c_files, p"obj/arch")
   tasks = tasks.extend(arch_c.tasks)
-  var lobjs: List[Path] = libc.objects.extend(arch_c.objects)
-  var lobj_deps: List[Str] = libc.deps.extend(arch_c.deps)
+  var lobjs = libc.objects.extend(arch_c.objects)
+  var lobj_deps = libc.deps.extend(arch_c.deps)
 
   # Compile arch/ assembly overrides → LOBJS (skip C-specific flags; include
   # paths still passed for any .S files that use the C preprocessor).
@@ -268,19 +264,17 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   so_argv = so_argv.extend(["-o", libc_so])
 
-  tasks = tasks.push(
-    {
-      name: libc_so.display(),
-      outputs: [libc_so],
-      inputs: all_so_objs,
-      deps: all_so_deps,
-      argv: so_argv,
-      cwd: p".",
-      env: {},
-      depfile: p"",
-      stamp: fp"${libc_so}.cmd",
-    },
-  )
+  tasks = tasks.push({
+    name: libc_so.display(),
+    outputs: [libc_so],
+    inputs: all_so_objs,
+    deps: all_so_deps,
+    argv: so_argv,
+    cwd: p".",
+    env: {},
+    depfile: p"",
+    stamp: fp"${libc_so}.cmd",
+  })
 
   make.run_tasks(tasks, make.jobs()?)?
 

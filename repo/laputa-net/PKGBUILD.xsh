@@ -12,10 +12,7 @@ export let mkdeps = ["xinit"]
 
 export let sources = [p"service.xsh", p"interfaces"]
 
-export let checksums = [
-  "SKIP",
-  "SKIP",
-]
+export let checksums = ["SKIP", "SKIP"]
 
 export proc build(dest: Path) [fs, error] {
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/net.xsh", 0o644, parents: true, overwrite: true)?
