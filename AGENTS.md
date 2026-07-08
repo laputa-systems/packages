@@ -102,7 +102,7 @@ the checkout mounted at `/src/packages`. Inspect the coverage JSON after the run
 for PM source line/proc coverage by file.
 
 Current PM coverage baseline from `make test`: `tests/xsh/pm.xsh` covers
-1463/6453 PM source lines (22.6%) and 203/375 procs (54.1%). Treat coverage as
+1545/6746 PM source lines (22.9%) and 218/393 procs (55.4%). Treat coverage as
 a refactor aid, not a metric target. Do not add trivial tests just to raise the
 percentage.
 

@@ -57,16 +57,26 @@ export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let os = system.uname()?
   let triple = f"${os.machine}-linux-musl"
-  let src = p"laputa-udev.c"
-  let obj = p"obj/laputa-udev.o"
-  let bin = p"obj/udev"
-  let compile = make.compile_c_task(cc, triple, ["-std=c99", "-Wall", "-Wextra"], [], [], src, obj)
-  let link = make.link_executable_task(cc, triple, [obj], [], [], bin, [compile.name])
   write_udev_stub()?
-  make.run_tasks([compile, link], make.jobs()?)?
-  fs.install(bin, fp"${dest}/usr/bin/udevadm", 0o755, parents: true, overwrite: true)?
-  fs.install(bin, fp"${dest}/usr/bin/udevd", 0o755, parents: true, overwrite: true)?
-  fs.install(bin, fp"${dest}/usr/lib/udev/systemd-udevd", 0o755, parents: true, overwrite: true)?
+  let udev = make.c_program({
+    cc,
+    triple,
+    cflags: ["-std=c99", "-Wall", "-Wextra"],
+    defs: [],
+    includes: [],
+    root: p".",
+    sources: [p"laputa-udev.c"],
+    out_dir: p"obj",
+    out: p"obj/udev",
+    libs: [],
+    ldflags: [],
+    deps: [],
+  })
+
+  make.run_tasks(udev.tasks, make.jobs()?)?
+  fs.install(udev.output, fp"${dest}/usr/bin/udevadm", 0o755, parents: true, overwrite: true)?
+  fs.install(udev.output, fp"${dest}/usr/bin/udevd", 0o755, parents: true, overwrite: true)?
+  fs.install(udev.output, fp"${dest}/usr/lib/udev/systemd-udevd", 0o755, parents: true, overwrite: true)?
   fs.mkdir(fp"${dest}/run")?
   fs.mkdir(fp"${dest}/run/udev")?
   fs.mkdir(fp"${dest}/usr/lib/udev")?

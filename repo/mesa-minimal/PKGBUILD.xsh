@@ -978,31 +978,54 @@ export proc build(dest: Path) [fs, process, env, error] {
   let triple = f"${os.machine}-linux-musl"
   let cflags = ["-std=c99", "-Wall", "-Wextra"]
   write_sources()?
-  let egl_obj = p"obj/egl.lo"
-  let gles_obj = p"obj/gles2.lo"
-  let gbm_obj = p"obj/gbm.lo"
-  let egl = p"obj/libEGL.so.1.0.0"
-  let gles = p"obj/libGLESv2.so.2.0.0"
-  let gbm = p"obj/libgbm.so.1.0.0"
-  let egl_compile = make.compile_lo_task(cc, triple, cflags, [], [], p"laputa-egl.c", egl_obj)
-  let gles_compile = make.compile_lo_task(cc, triple, cflags, [], [], p"laputa-gles2.c", gles_obj)
-  let gbm_compile = make.compile_lo_task(cc, triple, cflags, [], [], p"laputa-gbm.c", gbm_obj)
+  let egl = make.c_shared_library({
+    cc,
+    triple,
+    cflags,
+    defs: [],
+    includes: [],
+    root: p".",
+    sources: [p"laputa-egl.c"],
+    out_dir: p"obj/egl",
+    out: p"obj/libEGL.so.1.0.0",
+    soname: "libEGL.so.1",
+    ldflags: [],
+    deps: [],
+  })
+  let gles = make.c_shared_library({
+    cc,
+    triple,
+    cflags,
+    defs: [],
+    includes: [],
+    root: p".",
+    sources: [p"laputa-gles2.c"],
+    out_dir: p"obj/gles2",
+    out: p"obj/libGLESv2.so.2.0.0",
+    soname: "libGLESv2.so.2",
+    ldflags: [],
+    deps: [],
+  })
+  let gbm = make.c_shared_library({
+    cc,
+    triple,
+    cflags,
+    defs: [],
+    includes: [],
+    root: p".",
+    sources: [p"laputa-gbm.c"],
+    out_dir: p"obj/gbm",
+    out: p"obj/libgbm.so.1.0.0",
+    soname: "libgbm.so.1",
+    ldflags: [],
+    deps: [],
+  })
 
-  make.run_tasks(
-    [
-      egl_compile,
-      gles_compile,
-      gbm_compile,
-      make.link_shared_task(cc, triple, [egl_obj], "libEGL.so.1", [], egl, [egl_compile.name]),
-      make.link_shared_task(cc, triple, [gles_obj], "libGLESv2.so.2", [], gles, [gles_compile.name]),
-      make.link_shared_task(cc, triple, [gbm_obj], "libgbm.so.1", [], gbm, [gbm_compile.name]),
-    ],
-    make.jobs()?,
-  )?
+  make.run_tasks(egl.tasks.extend(gles.tasks).extend(gbm.tasks), make.jobs()?)?
 
-  fs.install(egl, fp"${dest}/usr/lib/libEGL.so.1.0.0", 0o755, parents: true, overwrite: true)?
-  fs.install(gles, fp"${dest}/usr/lib/libGLESv2.so.2.0.0", 0o755, parents: true, overwrite: true)?
-  fs.install(gbm, fp"${dest}/usr/lib/libgbm.so.1.0.0", 0o755, parents: true, overwrite: true)?
+  fs.install(egl.output, fp"${dest}/usr/lib/libEGL.so.1.0.0", 0o755, parents: true, overwrite: true)?
+  fs.install(gles.output, fp"${dest}/usr/lib/libGLESv2.so.2.0.0", 0o755, parents: true, overwrite: true)?
+  fs.install(gbm.output, fp"${dest}/usr/lib/libgbm.so.1.0.0", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"libEGL.so.1.0.0", fp"${dest}/usr/lib/libEGL.so.1")?
   fs.symlink(p"libEGL.so.1.0.0", fp"${dest}/usr/lib/libEGL.so")?
   fs.symlink(p"libGLESv2.so.2.0.0", fp"${dest}/usr/lib/libGLESv2.so.2")?

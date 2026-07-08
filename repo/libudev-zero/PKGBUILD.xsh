@@ -22,23 +22,24 @@ export proc build(dest: Path) [fs, process, env, error] {
   let cflags = ["-std=c99", "-Wall", "-Wextra", "-Wpedantic", "-Wmissing-prototypes", "-Wstrict-prototypes"]
   let defs = ["-D_XOPEN_SOURCE=700", "-D__user="]
   let includes: List[Str] = []
-  let srcs = ["udev.c", "udev_list.c", "udev_device.c", "udev_monitor.c", "udev_enumerate.c"]
-  var objs: List[Path] = []
-  var tasks: List[make.MakeTask] = []
-  var task_deps: List[Str] = []
+  let srcs = [p"udev.c", p"udev_list.c", p"udev_device.c", p"udev_monitor.c", p"udev_enumerate.c"]
+  let libudev = make.c_shared_library({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: p".",
+    sources: srcs,
+    out_dir: p"obj",
+    out: p"obj/libudev.so.1",
+    soname: "libudev.so.1",
+    ldflags: [],
+    deps: [],
+  })
 
-  for src in srcs {
-    let out = fp"obj/${src.replace(".c", ".lo")}"
-    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, fp"${src}", out)
-    tasks = tasks.push(task)
-    task_deps = task_deps.push(task.name)
-    objs = objs.push(out)
-  }
-
-  let so = p"obj/libudev.so.1"
-  tasks = tasks.push(make.link_shared_task(cc, triple, objs, "libudev.so.1", [], so, task_deps))
-  make.run_tasks(tasks, make.jobs()?)?
-  fs.install(so, fp"${dest}/usr/lib/libudev.so.1", 0o755, parents: true, overwrite: true)?
+  make.run_tasks(libudev.tasks, make.jobs()?)?
+  fs.install(libudev.output, fp"${dest}/usr/lib/libudev.so.1", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"libudev.so.1", fp"${dest}/usr/lib/libudev.so")?
   fs.install(p"udev.h", fp"${dest}/usr/include/libudev.h", 0o644, parents: true, overwrite: true)?
   fs.mkdir(fp"${dest}/usr/lib/pkgconfig")?

@@ -52,30 +52,28 @@ export proc build(dest: Path) [fs, process, env, error] {
   let cflags = ["-O2", "-Wall"]
   let defs = ["-DHAVE_CONFIG_H", "-D__user="]
   let includes = ["-Iinclude", "-Isrc", "-I."]
-  let srcs = ["src/caps.c", "src/core.c", "src/iobuf.c", "src/match.c", "src/match_four.c"]
-  var objs: List[Path] = []
-  var tasks: List[make.MakeTask] = []
-  var task_deps: List[Str] = []
   write_config()?
+  let libmtdev = make.c_shared_library({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: p".",
+    sources: [p"src/caps.c", p"src/core.c", p"src/iobuf.c", p"src/match.c", p"src/match_four.c"],
+    out_dir: p"obj",
+    out: p"obj/libmtdev.so.1.0.0",
+    soname: "libmtdev.so.1",
+    ldflags: [],
+    deps: [],
+  })
 
-  for src in srcs {
-    let out = fp"obj/${src.replace("/", "-").replace(".c", ".lo")}"
-    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, fp"${src}", out)
-    tasks = tasks.push(task)
-    task_deps = task_deps.push(task.name)
-    objs = objs.push(out)
-  }
-
-  let so = p"obj/libmtdev.so.1.0.0"
-  tasks = tasks.push(make.link_shared_task(cc, triple, objs, "libmtdev.so.1", [], so, task_deps))
-  make.run_tasks(tasks, make.jobs()?)?
-  fs.install(so, fp"${dest}/usr/lib/libmtdev.so.1.0.0", 0o755, parents: true, overwrite: true)?
+  make.run_tasks(libmtdev.tasks, make.jobs()?)?
+  fs.install(libmtdev.output, fp"${dest}/usr/lib/libmtdev.so.1.0.0", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"libmtdev.so.1.0.0", fp"${dest}/usr/lib/libmtdev.so.1")?
   fs.symlink(p"libmtdev.so.1.0.0", fp"${dest}/usr/lib/libmtdev.so")?
 
-  for header in ["mtdev-mapping.h", "mtdev-plumbing.h", "mtdev.h"] {
-    fs.install(fp"include/${header}", fp"${dest}/usr/include/${header}", 0o644, parents: true, overwrite: true)?
-  }
+  make.install_header_tree(p"include", fp"${dest}/usr/include")?
 
   fs.mkdir(fp"${dest}/usr/lib/pkgconfig")?
 

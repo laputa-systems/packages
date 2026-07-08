@@ -97,64 +97,38 @@ export proc build(dest: Path) [fs, process, env, error] {
   ]
 
   # Core source files for libnl-3.so
-  let core_sources: List[Str] = [
-    "lib/mpls.c",
-    "lib/addr.c",
-    "lib/attr.c",
-    "lib/cache.c",
-    "lib/cache_mngr.c",
-    "lib/cache_mngt.c",
-    "lib/data.c",
-    "lib/error.c",
-    "lib/handlers.c",
-    "lib/hash.c",
-    "lib/hashtable.c",
-    "lib/msg.c",
-    "lib/nl.c",
-    "lib/object.c",
-    "lib/socket.c",
-    "lib/utils.c",
-    "lib/version.c",
+  let core_sources: List[Path] = [
+    p"lib/mpls.c",
+    p"lib/addr.c",
+    p"lib/attr.c",
+    p"lib/cache.c",
+    p"lib/cache_mngr.c",
+    p"lib/cache_mngt.c",
+    p"lib/data.c",
+    p"lib/error.c",
+    p"lib/handlers.c",
+    p"lib/hash.c",
+    p"lib/hashtable.c",
+    p"lib/msg.c",
+    p"lib/nl.c",
+    p"lib/object.c",
+    p"lib/socket.c",
+    p"lib/utils.c",
+    p"lib/version.c",
   ]
 
   # genl source files for libnl-genl-3.so
-  let genl_sources: List[Str] = ["lib/genl/ctrl.c", "lib/genl/family.c", "lib/genl/genl.c", "lib/genl/mngt.c"]
+  let genl_sources: List[Path] = [p"lib/genl/ctrl.c", p"lib/genl/family.c", p"lib/genl/genl.c", p"lib/genl/mngt.c"]
 
-  # Compile all core objects
-  var core_objs: List[Path] = []
-  var all_tasks: List[Record] = []
-
-  for src_path in core_sources {
-    let full_src = fp"${src}/${src_path}"
-    let obj_name = src_path.replace("/", "_").replace(".c", ".lo")
-    let out = fp"${objs}/${obj_name}"
-    continue unless fs.exists(full_src)?
-    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, full_src, out)
-    all_tasks = all_tasks.push(task)
-    core_objs = core_objs.push(out)
-  }
-
-  # Compile genl objects
-  var genl_objs: List[Path] = []
-
-  for src_path in genl_sources {
-    let full_src = fp"${src}/${src_path}"
-    let obj_name = src_path.replace("/", "_").replace(".c", ".lo")
-    let out = fp"${objs}/${obj_name}"
-    continue unless fs.exists(full_src)?
-    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, full_src, out)
-    all_tasks = all_tasks.push(task)
-    genl_objs = genl_objs.push(out)
-  }
-
-  # Run all compile tasks
-  make.run_tasks(all_tasks, make.jobs()?)?
+  let core = make.compile_lo_tasks(cc, triple, cflags, defs, includes, src, core_sources, objs)
+  let genl = make.compile_lo_tasks(cc, triple, cflags, defs, includes, src, genl_sources, objs)
+  make.run_tasks(core.tasks.extend(genl.tasks), make.jobs()?)?
 
   # Link shared libraries
   let core_so = fp"${dest}/usr/lib/libnl-3.so.200.26.0"
-  make.link_shared(cc, triple, core_objs, "libnl-3.so.200", [], core_so)?
+  make.link_shared(cc, triple, core.objects, "libnl-3.so.200", [], core_so)?
   let genl_so = fp"${dest}/usr/lib/libnl-genl-3.so.200.26.0"
-  make.link_shared(cc, triple, genl_objs, "libnl-genl-3.so.200", [], genl_so)?
+  make.link_shared(cc, triple, genl.objects, "libnl-genl-3.so.200", [], genl_so)?
 
   # Create symlinks
   for lib in [core_so, genl_so] {
@@ -206,17 +180,5 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.mkdir(usr_include)?
   let headers_src = fp"${src}/include/netlink"
   let headers_dest = fp"${dest}/usr/include/netlink"
-  fs.mkdir(headers_dest)?
-
-  for entry in fs.walk(headers_src, gitignore: false)? {
-    let header_rel = entry.path.relative_to(headers_src)
-    continue when header_rel.display() == "version.h.in"
-    let target = fp"${headers_dest}/${header_rel}"
-
-    if entry.kind == "dir" {
-      fs.mkdir(target)?
-    } else {
-      fs.install(entry.path, target, 0o644, parents: true, overwrite: true)?
-    }
-  }
+  make.install_header_tree(headers_src, headers_dest, [p"version.h.in"])?
 }

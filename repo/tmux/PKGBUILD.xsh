@@ -1,4 +1,5 @@
 use pm.make as make
+use pm.util as pm_util
 
 export let name: Str = "tmux"
 
@@ -8,7 +9,7 @@ export let rel: Str = "6"
 
 export let deps: List[Str] = ["musl", "libevent", "utf8proc"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "pkgconf", "samurai"]
+export let mkdeps: List[Str] = ["llvm-toolchain", "pkgconf"]
 
 # Source is a fixed GitHub commit archive (no VERSION substitution needed).
 export let sources: List[Path] = [
@@ -22,10 +23,6 @@ export let checksums: List[Str] = [
   "eb2d780fa143be299bc37db68e745347214d2f8dffe64bab4befc3048573c2dc",
   "838324384f77cd41f0d9de9ba36b980e437efdf54e136b8a1854bee58cf6882f",
 ]
-
-pure obj_for(source: Str) -> Str {
-  f"build/${source.replace("/", "_").replace(".c", ".o")}"
-}
 
 proc write_config_h() [fs, error] {
   fs.write(
@@ -76,12 +73,7 @@ proc write_config_h() [fs, error] {
   )?
 }
 
-proc pkg_config_flags(pkg_config: Path, mode: Str, package: Str) [process, error] -> Result[List[Str]] {
-  let out = run.text $pkg_config $mode $package ?
-  out.words()
-}
-
-proc write_build_ninja(cc: Path, pkg_config: Path) [fs, process, error] {
+proc build_tmux(cc: Path) [fs, process, env, error] -> Result[Path] {
   let core_sources = """
 alerts.c arguments.c attributes.c cfg.c client.c cmd.c colour.c
 control.c control-notify.c environ.c file.c format.c format-draw.c
@@ -124,7 +116,9 @@ compat/utf8proc.c
 """.words()
 
   let generated_sources = ["cmd-parse.c", "osdep-linux.c"]
+  let tmux_sources = [fp"${source}" for source in core_sources.extend(generated_sources).extend(compat_sources)]
 
+  let pc = make.pkg_config_flags(["libevent_core", "libutf8proc"])?
   let cflags = [
     "-std=gnu99",
     "-include",
@@ -133,90 +127,36 @@ compat/utf8proc.c
     "-O2",
     "-Wno-deprecated-declarations",
     "-Wno-macro-redefined",
-    f"-DTMUX_VERSION='\"${ver}\"'",
-    "-DTMUX_CONF='\"/etc/tmux.conf:~/.tmux.conf:~/.config/tmux/tmux.conf\"'",
-    "-DTMUX_LOCK_CMD='\"lock -np\"'",
-    "-DTMUX_TERM='\"tmux-256color\"'",
-  ].extend(pkg_config_flags(pkg_config, "--cflags", "libevent_core")?).extend(
-    pkg_config_flags(pkg_config, "--cflags", "libutf8proc")?,
-  )
+    f"-DTMUX_VERSION=\"${ver}\"",
+    "-DTMUX_CONF=\"/etc/tmux.conf:~/.tmux.conf:~/.config/tmux/tmux.conf\"",
+    "-DTMUX_LOCK_CMD=\"lock -np\"",
+    "-DTMUX_TERM=\"tmux-256color\"",
+  ].extend(pc.cflags)
 
-  let libs = pkg_config_flags(pkg_config, "--libs", "libevent_core")?.extend(
-    pkg_config_flags(pkg_config, "--libs", "libutf8proc")?,
-  ).extend(["-lm"])
+  let arch = pm_util.target_arch()?
+  let tmux = make.c_program({
+    cc,
+    triple: f"${arch}-linux-musl",
+    cflags,
+    defs: [],
+    includes: [],
+    root: p".",
+    sources: tmux_sources,
+    out_dir: p"build",
+    out: p"tmux",
+    libs: [],
+    ldflags: pc.libs.extend(["-lm"]),
+    deps: [],
+  })
 
-  var lines = [
-    "ninja_required_version = 1.3",
-    "",
-    f"cc = ${cc.display()}",
-    f"cflags = ${cflags.join(" ")}",
-    "ldflags =",
-    f"libs = ${libs.join(" ")}",
-    "",
-    "rule cc",
-    "  command = $cc -MMD -MF $out.d $cflags -c $in -o $out",
-    "  depfile = $out.d",
-    "  deps = gcc",
-    "  description = CC $in",
-    "",
-    "rule link",
-    "  command = $cc $ldflags -o $out $in $libs",
-    "  description = LINK $out",
-    "",
-  ]
-
-  var objs: List[Str] = []
-
-  for source in core_sources.extend(generated_sources).extend(compat_sources) {
-    let obj = obj_for(source)
-    objs = objs.push(obj)
-    lines = lines.push(f"build ${obj}: cc ${source}")
-  }
-
-  lines = lines.push("")
-  lines = lines.push(f"build tmux: link ${objs.join(" ")}")
-  lines = lines.push("default tmux")
-
-  fs.write(
-    p"build.ninja",
-    f"""${lines.join("\n")}
-""",
-  )?
+  make.run_tasks(tmux.tasks, make.jobs()?)?
+  return tmux.output
 }
 
 export proc build(dest: Path) [fs, process, env, error] {
-  let samu = process.which("samu")?
   let cc = process.which("cc")?
-  let pkg_config = process.which("pkg-config")?
-  let jobs_flag = f"-j${make.jobs()?}"
-  var pkg_config_path = "/usr/lib/pkgconfig:/usr/share/pkgconfig"
-  var pkg_config_libdir = pkg_config_path
-  var pkg_config_sysroot = ""
-  var ld_library_path = fp"${pkg_config.parent.parent}/lib".display()
+  write_config_h()?
+  let tmux = build_tmux(cc)?
 
-  match env.Str.LAPUTA_ROOT {
-    Ok(root) => {
-      if root != "" and root != "/" {
-        pkg_config_path = f"${root}/usr/lib/pkgconfig:${root}/usr/share/pkgconfig:${pkg_config_path}"
-        pkg_config_libdir = f"${root}/usr/lib/pkgconfig:${root}/usr/share/pkgconfig"
-        pkg_config_sysroot = root
-        ld_library_path = f"${root}/usr/lib:${ld_library_path}"
-      }
-    }
-    Err(_) => {}
-  }
-
-  env {
-    LD_LIBRARY_PATH = ld_library_path
-    PKG_CONFIG = pkg_config.display()
-    PKG_CONFIG_LIBDIR = pkg_config_libdir
-    PKG_CONFIG_PATH = pkg_config_path
-    PKG_CONFIG_SYSROOT_DIR = pkg_config_sysroot
-  } {
-    write_config_h()?
-    write_build_ninja(cc, pkg_config)?
-    run $samu $jobs_flag ?
-  } ?
-
-  fs.install(p"tmux", fp"${dest}/usr/bin/tmux", 0o755, parents: true, overwrite: true)?
+  fs.install(tmux, fp"${dest}/usr/bin/tmux", 0o755, parents: true, overwrite: true)?
 }

@@ -634,6 +634,124 @@ proc test_pm_auth_and_file_repo(ctx: TestContext) [fs, process, env, error] {
   )?
 }
 
+proc test_pm_build_set_stages_local_dependencies(ctx: TestContext) [fs, process, env, error] {
+  let repo = test.temp_dir(ctx, name: "build-set-repo")?
+  let pm_pkg = test.temp_dir(ctx, name: "build-set-laputa-pm")?
+  let lib_pkg = test.temp_dir(ctx, name: "build-set-local-lib")?
+  let app_pkg = test.temp_dir(ctx, name: "build-set-local-app")?
+  let repo_url = f"file://${repo.display()}"
+  let arch = fixture_arch()?
+
+  fs.write(
+    fp"${pm_pkg}/PKGBUILD.xsh",
+    r"""export let name = "laputa-pm"
+export let ver = "1.0.0"
+export let rel = "1"
+export let deps: List[Str] = []
+export let mkdeps: List[Str] = []
+export let sources: List[Path] = []
+export let checksums: List[Str] = []
+
+export proc build(dest: Path) [fs, error] -> Result[Unit] {
+  fs.mkdir(fp"${dest}/usr/share/laputa-pm")?
+  fs.write(fp"${dest}/usr/share/laputa-pm/local.txt", "local pm\n")?
+}
+""",
+  )?
+
+  fs.write(
+    fp"${pm_pkg}/proof.xsh",
+    r"""error ProofError = Failed(kind: Str, message: Str)
+
+proc main(root: Path = /rootfs) [fs, error] {
+  if fp"${root}/usr/share/laputa-pm/local.txt".read_text()? != "local pm\n" {
+    return Err(ProofError.Failed("laputa-pm", "missing local pm marker"))
+  }
+
+  print "laputa-pm ok"
+}
+
+main(@args)?
+""",
+  )?
+
+  fs.write(
+    fp"${lib_pkg}/PKGBUILD.xsh",
+    r"""export let name = "local-lib"
+export let ver = "1.0.0"
+export let rel = "1"
+export let deps: List[Str] = []
+export let mkdeps: List[Str] = []
+export let sources: List[Path] = []
+export let checksums: List[Str] = []
+
+export proc build(dest: Path) [fs, error] -> Result[Unit] {
+  fs.mkdir(fp"${dest}/usr/share/local-lib")?
+  fs.write(fp"${dest}/usr/share/local-lib/payload.txt", "local-lib\n")?
+}
+""",
+  )?
+
+  fs.write(
+    fp"${lib_pkg}/proof.xsh",
+    r"""error ProofError = Failed(kind: Str, message: Str)
+
+proc main(root: Path = /rootfs) [fs, error] {
+  if fp"${root}/usr/share/local-lib/payload.txt".read_text()? != "local-lib\n" {
+    return Err(ProofError.Failed("local-lib", "missing payload"))
+  }
+
+  print "local-lib ok"
+}
+
+main(@args)?
+""",
+  )?
+
+  fs.write(
+    fp"${app_pkg}/PKGBUILD.xsh",
+    r"""export let name = "local-app"
+export let ver = "1.0.0"
+export let rel = "1"
+export let deps: List[Str] = ["local-lib"]
+export let mkdeps: List[Str] = []
+export let sources: List[Path] = []
+export let checksums: List[Str] = []
+
+export proc build(dest: Path) [fs, env, error] -> Result[Unit] {
+  let root = fp"${env.get("LAPUTA_ROOT")?}"
+  let payload = fp"${root}/usr/share/local-lib/payload.txt".read_text()?
+  fs.mkdir(fp"${dest}/usr/share/local-app")?
+  fs.write(fp"${dest}/usr/share/local-app/dep.txt", payload)?
+}
+""",
+  )?
+
+  fs.write(
+    fp"${app_pkg}/proof.xsh",
+    r"""error ProofError = Failed(kind: Str, message: Str)
+
+proc main(root: Path = /rootfs) [fs, error] {
+  if fp"${root}/usr/share/local-app/dep.txt".read_text()? != "local-lib\n" {
+    return Err(ProofError.Failed("local-app", "missing dependency payload"))
+  }
+
+  print "local-app ok"
+}
+
+main(@args)?
+""",
+  )?
+
+  let output = run.text XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- build-set $repo $pm_pkg $lib_pkg $app_pkg ?
+  test.contains(output, "laputa-pm proof: ok")?
+  test.contains(output, "local-lib proof: ok")?
+  test.contains(output, "local-app proof: ok")?
+  test.ok(fp"${repo}/packages/${arch}/laputa-pm/laputa-pm-1.0.0-1.tar.gz".exists()?)?
+  test.ok(fp"${repo}/packages/${arch}/local-lib/local-lib-1.0.0-1.tar.gz".exists()?)?
+  test.ok(fp"${repo}/packages/${arch}/local-app/local-app-1.0.0-1.tar.gz".exists()?)?
+}
+
 proc test_pm_remote_index_rejects_traversal_paths(ctx: TestContext) [fs, process, env, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
@@ -1340,8 +1458,138 @@ proc test_pm_refresh_empty_file_repo_writes_empty_cache(ctx: TestContext) [fs, p
   test.eq(fp"${out}/remote-index.json".read_text()?.trim(), "[]")?
 }
 
+proc test_pm_refresh_index_merges_primary_over_public(ctx: TestContext) [fs, process, env, error] {
+  let root = test.temp_dir(ctx, name: "root")?
+  let work = test.temp_dir(ctx, name: "work")?
+  let out = test.temp_dir(ctx, name: "out")?
+  let primary = test.temp_dir(ctx, name: "primary-repo")?
+  let public = test.temp_dir(ctx, name: "public-repo")?
+  let arch = fixture_arch()?
+  let primary_url = f"file://${primary.display()}"
+  let public_url = f"file://${public.display()}"
+
+  json.write(
+    fp"${public}/index.json",
+    [
+      {
+        arch,
+        name: "laputa-pm",
+        ver: "1.0.0",
+        rel: "1",
+        deps: [],
+        mkdeps: [],
+        target_build_deps: [],
+        sha256: "public",
+        size: 1,
+        tarball: "packages/public/laputa-pm.tar.gz",
+        metadata: "metadata/public/laputa-pm.json",
+        source_sha256: "",
+        source_tarball: "",
+        metapackage: false,
+      },
+      {
+        arch,
+        name: "public-only",
+        ver: "1.0.0",
+        rel: "1",
+        deps: [],
+        mkdeps: [],
+        target_build_deps: [],
+        sha256: "public-only",
+        size: 1,
+        tarball: "packages/public/public-only.tar.gz",
+        metadata: "metadata/public/public-only.json",
+        source_sha256: "",
+        source_tarball: "",
+        metapackage: false,
+      },
+    ],
+  )?
+
+  json.write(
+    fp"${primary}/index.json",
+    [
+      {
+        arch,
+        name: "laputa-pm",
+        ver: "1.0.0",
+        rel: "2",
+        deps: [],
+        mkdeps: [],
+        target_build_deps: [],
+        sha256: "primary",
+        size: 2,
+        tarball: "packages/primary/laputa-pm.tar.gz",
+        metadata: "metadata/primary/laputa-pm.json",
+        source_sha256: "",
+        source_tarball: "",
+        metapackage: false,
+      },
+    ],
+  )?
+
+  let refresh_out = run.text XSH_PM_REPO=$primary_url XSH_PM_PUBLIC_REPO=$public_url xsh_bin() pm.xsh -- refresh-index $root $work $out ?
+  test.contains(refresh_out, "remote-index 2 refreshed")?
+  let cached = fp"${out}/remote-index.json".read_text()?
+  test.contains(cached, "\"name\":\"laputa-pm\"")?
+  test.contains(cached, "\"rel\":\"2\"")?
+  test.contains(cached, "\"sha256\":\"primary\"")?
+  test.contains(cached, "\"name\":\"public-only\"")?
+}
+
 proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error] {
   let helper = test.temp_path(ctx, name: "make-task-helper.xsh")
+  let compiled = make.compile_c_tasks(
+    /bin/cc,
+    "aarch64-linux-musl",
+    ["-O2"],
+    ["-DTEST"],
+    ["-Isrc"],
+    p"srcroot",
+    [p"src/utils/config.c", p"wpa_supplicant/config.c"],
+    p"obj",
+  )
+
+  test.eq(compiled.objects[0].display(), "obj/src_utils_config.o")?
+  test.eq(compiled.objects[1].display(), "obj/wpa_supplicant_config.o")?
+  test.eq(compiled.tasks[0].inputs[0].display(), "srcroot/src/utils/config.c")?
+  test.eq(compiled.deps, [compiled.tasks[0].name, compiled.tasks[1].name])?
+  test.eq(make.task_deps(compiled.tasks, [compiled.objects[1]]), [compiled.tasks[1].name])?
+  let program = make.c_program({
+    cc: /bin/cc,
+    triple: "aarch64-linux-musl",
+    cflags: ["-O2"],
+    defs: [],
+    includes: [],
+    root: p".",
+    sources: [p"main.c", p"util.c"],
+    out_dir: p"obj",
+    out: p"obj/tool",
+    libs: [],
+    ldflags: ["-static"],
+    deps: [],
+  })
+
+  test.eq(program.output.display(), "obj/tool")?
+  test.eq(program.tasks.len(), 3)?
+  test.eq(program.deps[2], "obj/tool")?
+  test.eq(program.tasks[2].deps, [program.tasks[0].name, program.tasks[1].name])?
+  let src_tree = test.temp_dir(ctx, name: "make-src-tree")?
+  fs.mkdir(fp"${src_tree}/sub")?
+  fs.write(fp"${src_tree}/main.c", "int main(void) { return 0; }\n")?
+  fs.write(fp"${src_tree}/skip.c", "int skip(void) { return 0; }\n")?
+  fs.write(fp"${src_tree}/sub/util.c", "int util(void) { return 0; }\n")?
+  fs.write(fp"${src_tree}/sub/readme.txt", "ignore\n")?
+  let discovered = make.discover_sources(src_tree, ["c"], [p"skip.c"])?
+  test.eq([item.display() for item in discovered], ["main.c", "sub/util.c"])?
+  let headers = test.temp_dir(ctx, name: "make-headers")?
+  let header_out = test.temp_dir(ctx, name: "make-header-out")?
+  fs.mkdir(fp"${headers}/sub")?
+  fs.write(fp"${headers}/api.h", "api\n")?
+  fs.write(fp"${headers}/sub/private.h", "private\n")?
+  make.install_header_tree(headers, header_out, [p"sub/private.h"])?
+  test.eq(fp"${header_out}/api.h".read_text()?, "api\n")?
+  test.eq(fp"${header_out}/sub/private.h".exists()?, false)?
 
   helper.write(r"""#!/bin/xsh --
 proc count_value(path: Path) [fs, error] -> Result[Int] {

@@ -92,28 +92,31 @@ export proc build(dest: Path) [fs, process, env, error] {
   # -Isrc: finds both config.h (generated above) and flexdef.h.
   let includes = ["-Isrc"]
   fs.mkdir(p"obj")?
-  var objs: List[Path] = []
-  var tasks: List[make.MakeTask] = []
-  var obj_deps: List[Str] = []
 
   # Compile the flex binary sources from src/.
   # libmain.c and libyywrap.c are part of libfl (scanner support library),
-  # not the flex binary itself — exclude them.
-  for e in fs.ls(p"src")? |> where .ext == "c" and .name != "libmain.c" and .name != "libyywrap.c" {
-    let out = fp"obj/${e.name.replace(".c", ".o")}"
-    let task = make.compile_c_task(cc, triple, cflags, defs, includes, e.path, out)
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
-
+  # not the flex binary itself, so exclude them.
   # lib/ contains only two gnulib wrappers (malloc.c, realloc.c).
   # With HAVE_MALLOC=1 and HAVE_REALLOC=1 musl's implementations are used
   # directly, so no rpl_* symbols are needed; omit lib/ from the link.
-  let bin = p"obj/flex"
-  tasks = tasks.push(make.link_executable_task(cc, triple, objs, [], [], bin, obj_deps))
-  make.run_tasks(tasks, make.jobs()?)?
-  fs.install(bin, fp"${dest}/usr/bin/flex", 0o755, parents: true, overwrite: true)?
+  let flex_sources = make.discover_sources(p"src", ["c"], [p"libmain.c", p"libyywrap.c"])?
+  let flex = make.c_program({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: p"src",
+    sources: flex_sources,
+    out_dir: p"obj",
+    out: p"obj/flex",
+    libs: [],
+    ldflags: [],
+    deps: [],
+  })
+
+  make.run_tasks(flex.tasks, make.jobs()?)?
+  fs.install(flex.output, fp"${dest}/usr/bin/flex", 0o755, parents: true, overwrite: true)?
 
   # POSIX requires a 'lex' command; flex is the canonical implementation.
   fs.symlink(p"flex", fp"${dest}/usr/bin/lex")?

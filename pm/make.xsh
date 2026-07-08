@@ -12,6 +12,70 @@ export type MakeTask = {
   stamp: Path,
 }
 
+export type CompileTasks = {
+  tasks: List[MakeTask],
+  objects: List[Path],
+  deps: List[Str],
+}
+
+export type CTarget = {
+  tasks: List[MakeTask],
+  objects: List[Path],
+  deps: List[Str],
+  output: Path,
+}
+
+export type CProgram = {
+  cc: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  root: Path,
+  sources: List[Path],
+  out_dir: Path,
+  out: Path,
+  libs: List[Path],
+  ldflags: List[Str],
+  deps: List[Str],
+}
+
+export type CSharedLibrary = {
+  cc: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  root: Path,
+  sources: List[Path],
+  out_dir: Path,
+  out: Path,
+  soname: Str,
+  ldflags: List[Str],
+  deps: List[Str],
+}
+
+export type CStaticLibrary = {
+  cc: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  root: Path,
+  sources: List[Path],
+  out_dir: Path,
+  out: Path,
+  deps: List[Str],
+}
+
+export type MakePkgConfigEnv = {
+  pkg_config: Path,
+  pkg_config_path: Str,
+  pkg_config_libdir: Str,
+  pkg_config_sysroot: Str,
+  ld_library_path: Str,
+}
+
 pure empty_records() -> List[Record] {
   []
 }
@@ -30,6 +94,127 @@ pure depfile_path(out: Path) -> Path {
 
 pure path_args(paths: List[Path]) -> List[Str] {
   [path_value.display() for path_value in paths]
+}
+
+pure object_name_for_source(src: Path, ext: Str) -> Str {
+  return src.display().replace("/", "_").replace(".cxx", ext).replace(".cpp", ext).replace(".cc", ext).replace(".c", ext).replace(".S", ext).replace(".s", ext)
+}
+
+pure object_path_for_source(src: Path, out_dir: Path, ext: Str) -> Path {
+  fp"${out_dir}/${object_name_for_source(src, ext)}"
+}
+
+pure source_path(root: Path, src: Path) -> Path {
+  if root.display() == "" or root.display() == "." {
+    return src
+  }
+
+  return fp"${root}/${src}"
+}
+
+export pure task_deps(tasks: List[MakeTask], outputs: List[Path]) -> List[Str] {
+  var wanted: Map[Bool] = {}
+
+  for output in outputs {
+    wanted[output.display()] = true
+  }
+
+  return [task.name for task in tasks if task.outputs.len() > 0 and wanted.get(task.outputs[0].display(), false)]
+}
+
+proc make_pkg_config_env() [process, env, error] -> Result[MakePkgConfigEnv] {
+  let pkg_config = process.which("pkg-config")?
+  var pkg_config_path = "/usr/lib/pkgconfig:/usr/share/pkgconfig"
+  var pkg_config_libdir = pkg_config_path
+  var pkg_config_sysroot = ""
+  var ld_library_path = fp"${pkg_config.parent.parent}/lib".display()
+
+  match env.Str.LAPUTA_ROOT {
+    Ok(root) => {
+      if root != "" and root != "/" {
+        pkg_config_path = f"${root}/usr/lib/pkgconfig:${root}/usr/share/pkgconfig:${pkg_config_path}"
+        pkg_config_libdir = f"${root}/usr/lib/pkgconfig:${root}/usr/share/pkgconfig"
+        pkg_config_sysroot = root
+        ld_library_path = f"${root}/usr/lib:${ld_library_path}"
+      }
+    }
+    Err(_) => {}
+  }
+
+  return {pkg_config, pkg_config_path, pkg_config_libdir, pkg_config_sysroot, ld_library_path}
+}
+
+proc pkg_config_words(pc: MakePkgConfigEnv, mode: Str, packages: List[Str]) [process, env, error] -> Result[List[Str]] {
+  let pkg_config_path = pc.pkg_config_path
+  let pkg_config_libdir = pc.pkg_config_libdir
+  let pkg_config_sysroot = pc.pkg_config_sysroot
+  let ld_library_path = pc.ld_library_path
+  let pkg_config = pc.pkg_config.display()
+
+  let out = run.text LD_LIBRARY_PATH=$ld_library_path PKG_CONFIG=$pkg_config PKG_CONFIG_LIBDIR=$pkg_config_libdir PKG_CONFIG_PATH=$pkg_config_path PKG_CONFIG_SYSROOT_DIR=$pkg_config_sysroot $pc.pkg_config $mode @packages ?
+  return out.words()
+}
+
+export proc pkg_config_flags(packages: List[Str]) [process, env, error] -> Result[Record] {
+  let pc = make_pkg_config_env()?
+
+  return {
+    cflags: pkg_config_words(pc, "--cflags", packages)?,
+    libs: pkg_config_words(pc, "--libs", packages)?,
+  }
+}
+
+pure path_in_list(path_value: Path, paths: List[Path]) -> Bool {
+  let text = path_value.display()
+
+  for candidate in paths {
+    if candidate.display() == text {
+      return true
+    }
+  }
+
+  return false
+}
+
+pure str_in_list(value: Str, values: List[Str]) -> Bool {
+  for candidate in values {
+    if candidate == value {
+      return true
+    }
+  }
+
+  return false
+}
+
+export proc discover_sources(root: Path, extensions: List[Str], exclude: List[Path] = []) [fs, error] -> Result[List[Path]] {
+  let source_root = path.absolute(root)?
+  var sources: List[Path] = []
+
+  for entry in fs.walk(source_root, gitignore: false)? |> sort-by .path {
+    continue unless entry.kind == "file"
+    continue unless str_in_list(entry.ext, extensions)
+    let rel = entry.path.relative_to(source_root)
+    continue when path_in_list(rel, exclude)
+    sources = sources.push(rel)
+  }
+
+  return sources
+}
+
+export proc install_header_tree(src_dir: Path, dest_dir: Path, exclude: List[Path] = []) [fs, error] {
+  fs.mkdir(dest_dir)?
+
+  for entry in fs.walk(src_dir, gitignore: false)? {
+    let rel = entry.path.relative_to(src_dir)
+    continue when path_in_list(rel, exclude)
+    let target = fp"${dest_dir}/${rel}"
+
+    if entry.kind == "dir" {
+      fs.mkdir(target)?
+    } else {
+      fs.install(entry.path, target, 0o644, parents: true, overwrite: true)?
+    }
+  }
 }
 
 pure all_deps_done(deps: List[Str], done: Map[Bool]) -> Bool {
@@ -812,6 +997,30 @@ export proc compile_lo_task(
   }
 }
 
+export proc compile_lo_tasks(
+  toolchain: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  root: Path,
+  sources: List[Path],
+  out_dir: Path,
+  deps: List[Str] = [],
+) [] -> CompileTasks {
+  var tasks: List[MakeTask] = []
+  var objects: List[Path] = []
+
+  for src in sources {
+    let out = object_path_for_source(src, out_dir, ".lo")
+    let task = compile_lo_task(toolchain, triple, cflags, defs, includes, source_path(root, src), out, deps)
+    tasks = tasks.push(task)
+    objects = objects.push(out)
+  }
+
+  return {tasks, objects, deps: [task.name for task in tasks]}
+}
+
 export proc compile_cxx_task(
   toolchain: Path,
   triple: Str,
@@ -841,6 +1050,30 @@ export proc compile_cxx_task(
   }
 }
 
+export proc compile_cxx_tasks(
+  toolchain: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  root: Path,
+  sources: List[Path],
+  out_dir: Path,
+  deps: List[Str] = [],
+) [] -> CompileTasks {
+  var tasks: List[MakeTask] = []
+  var objects: List[Path] = []
+
+  for src in sources {
+    let out = object_path_for_source(src, out_dir, ".o")
+    let task = compile_cxx_task(toolchain, triple, cflags, defs, includes, source_path(root, src), out, deps)
+    tasks = tasks.push(task)
+    objects = objects.push(out)
+  }
+
+  return {tasks, objects, deps: [task.name for task in tasks]}
+}
+
 export proc compile_c_task(
   toolchain: Path,
   triple: Str,
@@ -866,6 +1099,107 @@ export proc compile_c_task(
     env: {},
     depfile: depfile,
     stamp: stamp_path(out),
+  }
+}
+
+export proc compile_c_tasks(
+  toolchain: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  root: Path,
+  sources: List[Path],
+  out_dir: Path,
+  deps: List[Str] = [],
+) [] -> CompileTasks {
+  var tasks: List[MakeTask] = []
+  var objects: List[Path] = []
+
+  for src in sources {
+    let out = object_path_for_source(src, out_dir, ".o")
+    let task = compile_c_task(toolchain, triple, cflags, defs, includes, source_path(root, src), out, deps)
+    tasks = tasks.push(task)
+    objects = objects.push(out)
+  }
+
+  return {tasks, objects, deps: [task.name for task in tasks]}
+}
+
+export proc c_program(spec: CProgram) [] -> CTarget {
+  let compiled = compile_c_tasks(
+    spec.cc,
+    spec.triple,
+    spec.cflags,
+    spec.defs,
+    spec.includes,
+    spec.root,
+    spec.sources,
+    spec.out_dir,
+    spec.deps,
+  )
+
+  let link = link_executable_task(
+    spec.cc,
+    spec.triple,
+    compiled.objects,
+    spec.libs,
+    spec.ldflags,
+    spec.out,
+    compiled.deps,
+  )
+
+  return {
+    tasks: compiled.tasks.push(link),
+    objects: compiled.objects,
+    deps: compiled.deps.push(link.name),
+    output: spec.out,
+  }
+}
+
+export proc c_shared_library(spec: CSharedLibrary) [] -> CTarget {
+  let compiled = compile_lo_tasks(
+    spec.cc,
+    spec.triple,
+    spec.cflags,
+    spec.defs,
+    spec.includes,
+    spec.root,
+    spec.sources,
+    spec.out_dir,
+    spec.deps,
+  )
+
+  let link = link_shared_task(spec.cc, spec.triple, compiled.objects, spec.soname, spec.ldflags, spec.out, compiled.deps)
+
+  return {
+    tasks: compiled.tasks.push(link),
+    objects: compiled.objects,
+    deps: compiled.deps.push(link.name),
+    output: spec.out,
+  }
+}
+
+export proc c_static_library(spec: CStaticLibrary) [] -> CTarget {
+  let compiled = compile_lo_tasks(
+    spec.cc,
+    spec.triple,
+    spec.cflags,
+    spec.defs,
+    spec.includes,
+    spec.root,
+    spec.sources,
+    spec.out_dir,
+    spec.deps,
+  )
+
+  let archive_task = link_archive_task(spec.cc, compiled.objects, spec.out, compiled.deps)
+
+  return {
+    tasks: compiled.tasks.push(archive_task),
+    objects: compiled.objects,
+    deps: compiled.deps.push(archive_task.name),
+    output: spec.out,
   }
 }
 

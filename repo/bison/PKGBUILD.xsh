@@ -638,10 +638,6 @@ getprogname (void)
   # -Ilib for gnulib interface headers and generated passthrough headers.
   # -Isrc for bison's own internal headers.
   let includes = ["-I.", "-Ilib", "-Isrc"]
-  fs.mkdir(p"obj/lib")?
-  var objs: List[Path] = []
-  var tasks: List[make.MakeTask] = []
-  var obj_deps: List[Str] = []
   var lib_sources: List[Path] = []
   var in_sources = false
 
@@ -680,33 +676,24 @@ getprogname (void)
   lib_sources = lib_sources.push(p"lib/path-join.c")
   lib_sources = lib_sources.push(p"lib/xsh-getprogname.c")
 
-  for src in lib_sources {
-    let lib_rel = src.relative_to(p"lib")
-    let objname = lib_rel.display().replace("/", "-").replace(".c", ".o")
-    let out = fp"obj/lib/${objname}"
-    let task = make.compile_c_task(cc, triple, cflags, defs, includes, src, out)
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
-
   # Compile bison's src/*.c (scanners and parsers are pre-generated in tarball)
-  for e in fs.ls(p"src")? |> where .ext == "c" {
-    let skip = e.name == "i18n-strings.c" or e.name == "scan-code.c" or e.name == "scan-gram.c" or e.name == "scan-skel.c"
-
-    if ! skip {
-      let out = fp"obj/${e.name.replace(".c", ".o")}"
-      let task = make.compile_c_task(cc, triple, cflags, defs, includes, e.path, out)
-      tasks = tasks.push(task)
-      obj_deps = obj_deps.push(task.name)
-      objs = objs.push(out)
-    }
-  }
-
-  let bin = p"obj/bison"
-  tasks = tasks.push(make.link_executable_task(cc, triple, objs, [], [], bin, obj_deps))
-  make.run_tasks(tasks, make.jobs()?)?
-  fs.install(bin, fp"${dest}/usr/bin/bison", 0o755, parents: true, overwrite: true)?
+  let src_sources = make.discover_sources(p"src", ["c"], [p"i18n-strings.c", p"scan-code.c", p"scan-gram.c", p"scan-skel.c"])?
+  let bison = make.c_program({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: p".",
+    sources: lib_sources.extend([fp"src/${source}" for source in src_sources]),
+    out_dir: p"obj",
+    out: p"obj/bison",
+    libs: [],
+    ldflags: [],
+    deps: [],
+  })
+  make.run_tasks(bison.tasks, make.jobs()?)?
+  fs.install(bison.output, fp"${dest}/usr/bin/bison", 0o755, parents: true, overwrite: true)?
 
   # POSIX yacc compatibility wrapper
   fs.write(

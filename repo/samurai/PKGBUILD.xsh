@@ -24,36 +24,37 @@ export proc build(dest: Path) [fs, process, env, error] {
   # samurai has a simple hand-written Makefile; compile all .c files directly.
   # Source list from the Makefile's OBJ variable.
   let cflags = ["-std=c99", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-parameter"]
-  var objs: List[Path] = []
-  var tasks: List[make.MakeTask] = []
-  var obj_deps: List[Str] = []
+  let samu = make.c_program({
+    cc,
+    triple,
+    cflags,
+    defs: [],
+    includes: [],
+    root: p".",
+    sources: [
+      p"build.c",
+      p"deps.c",
+      p"env.c",
+      p"graph.c",
+      p"htab.c",
+      p"log.c",
+      p"parse.c",
+      p"samu.c",
+      p"scan.c",
+      p"tool.c",
+      p"tree.c",
+      p"util.c",
+    ],
+    out_dir: p"obj",
+    out: p"obj/samu",
+    libs: [],
+    ldflags: [],
+    deps: [],
+  })
 
-  for s in [
-    "build",
-    "deps",
-    "env",
-    "graph",
-    "htab",
-    "log",
-    "parse",
-    "samu",
-    "scan",
-    "tool",
-    "tree",
-    "util",
-  ] {
-    let out = fp"obj/${s}.o"
-    let task = make.compile_c_task(cc, triple, cflags, [], [], fp"${s}.c", out)
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
-
-  let bin = p"obj/samu"
-  tasks = tasks.push(make.link_executable_task(cc, triple, objs, [], [], bin, obj_deps))
-  make.run_tasks(tasks, make.jobs()?)?
+  make.run_tasks(samu.tasks, make.jobs()?)?
 
   # Install binary and ninja symlink.
-  fs.install(bin, fp"${dest}/usr/bin/samu", 0o755, parents: true, overwrite: true)?
+  fs.install(samu.output, fp"${dest}/usr/bin/samu", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"samu", fp"${dest}/usr/bin/ninja")?
 }

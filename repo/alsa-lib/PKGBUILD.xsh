@@ -66,7 +66,7 @@ int snd_pcm_close(void *pcm)
   )?
 }
 
-proc install_headers(dest: Path) [fs, error] {
+proc install_alsa_headers(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/include/alsa")?
 
   fs.write(
@@ -137,16 +137,25 @@ export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let os = system.uname()?
   let triple = f"${os.machine}-linux-musl"
-  let src = p"laputa-asound.c"
-  let obj = p"obj/laputa-asound.lo"
-  let so = p"obj/libasound.so.2"
-  let compile = make.compile_lo_task(cc, triple, ["-std=c99", "-Wall", "-Wextra"], [], [], src, obj)
-  let link = make.link_shared_task(cc, triple, [obj], "libasound.so.2", [], so, [compile.name])
   write_asound_stub()?
-  make.run_tasks([compile, link], make.jobs()?)?
-  fs.install(so, fp"${dest}/usr/lib/libasound.so.2", 0o755, parents: true, overwrite: true)?
+  let libasound = make.c_shared_library({
+    cc,
+    triple,
+    cflags: ["-std=c99", "-Wall", "-Wextra"],
+    defs: [],
+    includes: [],
+    root: p".",
+    sources: [p"laputa-asound.c"],
+    out_dir: p"obj",
+    out: p"obj/libasound.so.2",
+    soname: "libasound.so.2",
+    ldflags: [],
+    deps: [],
+  })
+  make.run_tasks(libasound.tasks, make.jobs()?)?
+  fs.install(libasound.output, fp"${dest}/usr/lib/libasound.so.2", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"libasound.so.2", fp"${dest}/usr/lib/libasound.so")?
-  install_headers(dest)?
+  install_alsa_headers(dest)?
   install_pkg_config(dest)?
   install_config(dest)?
 }

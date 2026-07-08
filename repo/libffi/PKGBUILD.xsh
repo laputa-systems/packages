@@ -194,32 +194,28 @@ export proc build(dest: Path) [fs, process, env, error] {
     target.sources,
   )
 
-  var objs: List[Path] = []
-  var tasks: List[make.MakeTask] = []
-  var task_deps: List[Str] = []
   write_generated_headers(target)?
   write_version_script()?
+  let libffi = make.c_shared_library({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: p".",
+    sources: [fp"${src}" for src in srcs],
+    out_dir: p"obj",
+    out: p"obj/libffi.so.8.2.0",
+    soname: "libffi.so.8",
+    ldflags: ["-Wl,--version-script,libffi.map"],
+    deps: [],
+  })
 
-  for src in srcs {
-    let out = fp"obj/${src.replace("/", "-").replace(".c", "").replace(".S", "")}.lo"
-    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, fp"${src}", out)
-    tasks = tasks.push(task)
-    task_deps = task_deps.push(task.name)
-    objs = objs.push(out)
-  }
-
-  let so = p"obj/libffi.so.8.2.0"
-
-  tasks = tasks.push(
-    make.link_shared_task(cc, triple, objs, "libffi.so.8", ["-Wl,--version-script,libffi.map"], so, task_deps),
-  )
-
-  make.run_tasks(tasks, make.jobs()?)?
-  fs.install(so, fp"${dest}/usr/lib/libffi.so.8.2.0", 0o755, parents: true, overwrite: true)?
+  make.run_tasks(libffi.tasks, make.jobs()?)?
+  fs.install(libffi.output, fp"${dest}/usr/lib/libffi.so.8.2.0", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"libffi.so.8.2.0", fp"${dest}/usr/lib/libffi.so.8")?
   fs.symlink(p"libffi.so.8.2.0", fp"${dest}/usr/lib/libffi.so")?
-  fs.install(p"include/ffi.h", fp"${dest}/usr/include/ffi.h", 0o644, parents: true, overwrite: true)?
-  fs.install(p"include/ffitarget.h", fp"${dest}/usr/include/ffitarget.h", 0o644, parents: true, overwrite: true)?
+  make.install_header_tree(p"include", fp"${dest}/usr/include")?
   fs.mkdir(fp"${dest}/usr/lib/pkgconfig")?
 
   fs.write(

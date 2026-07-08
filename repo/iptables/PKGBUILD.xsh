@@ -49,15 +49,25 @@ export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let os = system.uname()?
   let triple = f"${os.machine}-linux-musl"
-  let src = p"laputa-iptables.c"
-  let obj = p"obj/laputa-iptables.o"
-  let bin = p"obj/iptables"
-  let compile = make.compile_c_task(cc, triple, ["-std=c99", "-Wall", "-Wextra"], [], [], src, obj)
-  let link = make.link_executable_task(cc, triple, [obj], [], [], bin, [compile.name])
   write_iptables_stub()?
-  make.run_tasks([compile, link], make.jobs()?)?
+  let iptables = make.c_program({
+    cc,
+    triple,
+    cflags: ["-std=c99", "-Wall", "-Wextra"],
+    defs: [],
+    includes: [],
+    root: p".",
+    sources: [p"laputa-iptables.c"],
+    out_dir: p"obj",
+    out: p"obj/iptables",
+    libs: [],
+    ldflags: [],
+    deps: [],
+  })
+
+  make.run_tasks(iptables.tasks, make.jobs()?)?
 
   for tool_name in ["iptables", "ip6tables", "iptables-save", "ip6tables-save", "iptables-restore", "ip6tables-restore"] {
-    fs.install(bin, fp"${dest}/usr/bin/${tool_name}", 0o755, parents: true, overwrite: true)?
+    fs.install(iptables.output, fp"${dest}/usr/bin/${tool_name}", 0o755, parents: true, overwrite: true)?
   }
 }

@@ -76,7 +76,7 @@ export proc load_repo_urls() [fs, env, error] -> Result[RepoUrls] {
   var repo = load_env_or_dotenv(["XSH_PM_REPO", "LAPUTA_REPO"])?
   var public_repo = load_env_or_dotenv(["XSH_PM_PUBLIC_REPO", "R2_PUBLIC_URL"])?
 
-  if repo == "" and (env.get("XSH_PM_OFFLINE") ?? "").trim() != "1" {
+  if repo == "" and public_repo == "" and (env.get("XSH_PM_OFFLINE") ?? "").trim() != "1" {
     repo = default_repo_url()
   }
 
@@ -479,33 +479,42 @@ export proc write_remote_index_to_repo(
   upload_repo_file(repo, p"index.json", remote_index_cache_path(out), token, work)?
 }
 
-export proc refresh_remote_index(out: Path) [fs, net, env, time, error] -> Result[List[RemotePackage]] {
-  let repo_urls = load_repo_urls()?
-  var repo = repo_urls.public_repo
+proc merge_remote_indexes(base: List[RemotePackage], overlay: List[RemotePackage]) [error] -> Result[List[RemotePackage]] {
+  var merged = base
 
-  if repo == "" {
-    repo = repo_urls.repo
+  for entry in overlay {
+    merged = upsert_remote_package(merged, entry)?
   }
 
-  if repo == "" {
+  merged
+}
+
+export proc refresh_remote_index(out: Path) [fs, net, env, time, error] -> Result[List[RemotePackage]] {
+  let repo_urls = load_repo_urls()?
+  var fetched = false
+  var index: List[RemotePackage] = []
+
+  if repo_urls.public_repo != "" {
+    index = merge_remote_indexes(index, load_remote_index_from_repo(repo_urls.public_repo, out)?)?
+    fetched = true
+  }
+
+  if repo_urls.repo != "" and repo_urls.repo != repo_urls.public_repo {
+    index = merge_remote_indexes(index, load_remote_index_from_repo(repo_urls.repo, out)?)?
+    fetched = true
+  }
+
+  if ! fetched {
     if fs.exists(remote_index_cache_path(out))? {
-      let index = load_cached_remote_index(out)?
-      print "remote-index" index.len() "cached"
-      return index
+      let cached = load_cached_remote_index(out)?
+      print "remote-index" cached.len() "cached"
+      return cached
     }
 
     return Err(PmError.RemoteRepo("set XSH_PM_PUBLIC_REPO, R2_PUBLIC_URL, XSH_PM_REPO, or LAPUTA_REPO"))
   }
 
-  if is_file_url(repo) and ! fs.exists(repo_file_path(repo, p"index.json")?)? {
-    let index: List[RemotePackage] = []
-    write_remote_index_cache(out, index)?
-    print "remote-index" 0 refreshed
-    return index
-  }
-
-  fetch_repo_file(repo, p"index.json", remote_index_cache_path(out), true)?
-  let index = load_cached_remote_index(out)?
+  write_remote_index_cache(out, index)?
   print "remote-index" index.len() "refreshed"
   index
 }

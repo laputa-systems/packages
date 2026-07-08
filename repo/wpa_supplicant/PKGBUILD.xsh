@@ -83,167 +83,147 @@ export proc build(dest: Path) [fs, process, env, error] {
   # CONFIG_DRIVER_NL80211, CONFIG_SAE, and CONFIG_CTRL_IFACE bring in.
   # sae_pk.c is excluded (requires CONFIG_SAE_PK).  tdls.c, preauth.c,
   # peerkey.c, wpa_ft.c are excluded (require additional config).
-  let source_files: List[Str] = [
-    "src/utils/os_unix.c",
-    "src/utils/eloop.c",
-    "src/utils/common.c",
-    "src/utils/config.c",
-    "src/utils/wpa_debug.c",
-    "src/utils/wpabuf.c",
-    "src/utils/bitfield.c",
-    "src/utils/ip_addr.c",
-    "src/utils/crc32.c",
-    "src/utils/edit.c",
-    "src/utils/radiotap.c",
-    "src/utils/base64.c",
-    "src/utils/json.c",
-    "src/utils/uuid.c",
-    "src/common/wpa_common.c",
-    "src/common/ctrl_iface_common.c",
-    "src/common/defs.c",
-    "src/common/ptksa_cache.c",
-    "src/common/cli.c",
-    "src/common/wpa_ctrl.c",
-    "src/common/ieee802_11_common.c",
-    "src/common/hw_features_common.c",
-    "src/crypto/aes-wrap.c",
-    "src/crypto/aes-ccm.c",
-    "src/crypto/aes-ctr.c",
-    "src/crypto/aes-gcm.c",
-    "src/crypto/aes-omac1.c",
-    "src/crypto/aes-siv.c",
-    "src/crypto/aes-unwrap.c",
-    "src/crypto/crypto_internal.c",
-    "src/crypto/crypto_internal-cipher.c",
-    "src/crypto/crypto_internal-modexp.c",
-    "src/crypto/crypto_internal-rsa.c",
-    "src/crypto/dh_group5.c",
-    "src/crypto/dh_groups.c",
-    "src/crypto/md5.c",
-    "src/crypto/md5-internal.c",
-    "src/crypto/ms_funcs.c",
-    "src/crypto/sha1.c",
-    "src/crypto/sha1-internal.c",
-    "src/crypto/sha256.c",
-    "src/crypto/sha256-internal.c",
-    "src/crypto/sha384.c",
-    "src/crypto/sha384-internal.c",
-    "src/crypto/sha512.c",
-    "src/crypto/sha512-internal.c",
-    "src/crypto/sha1-prf.c",
-    "src/crypto/sha1-tlsprf.c",
-    "src/crypto/sha256-prf.c",
-    "src/crypto/sha1-pbkdf2.c",
-    "src/crypto/tls_internal.c",
-    "src/crypto/des-internal.c",
-    "src/crypto/md4-internal.c",
-    "src/crypto/random.c",
-    "src/crypto/rc4.c",
-    "src/crypto/aes-internal.c",
-    "src/crypto/aes-internal-enc.c",
-    "src/crypto/aes-internal-dec.c",
-    "src/tls/asn1.c",
-    "src/tls/bignum.c",
-    "src/tls/pkcs1.c",
-    "src/tls/pkcs5.c",
-    "src/tls/pkcs8.c",
-    "src/tls/rsa.c",
-    "src/tls/tls_internal.c",
-    "src/tls/tlsv1_client.c",
-    "src/tls/tlsv1_client_read.c",
-    "src/tls/tlsv1_client_ocsp.c",
-    "src/tls/tlsv1_client_write.c",
-    "src/tls/tlsv1_common.c",
-    "src/tls/tlsv1_cred.c",
-    "src/tls/tlsv1_record.c",
-    "src/tls/tlsv1_server.c",
-    "src/tls/tlsv1_server_read.c",
-    "src/tls/tlsv1_server_write.c",
-    "src/tls/x509v3.c",
-    "src/rsn_supp/wpa.c",
-    "src/rsn_supp/wpa_ie.c",
-    "src/rsn_supp/pmksa_cache.c",
-    "src/drivers/driver_nl80211.c",
-    "src/drivers/driver_nl80211_capa.c",
-    "src/drivers/driver_nl80211_event.c",
-    "src/drivers/driver_nl80211_scan.c",
-    "src/drivers/drivers.c",
-    "src/drivers/netlink.c",
-    "src/drivers/driver_common.c",
-    "src/drivers/driver_nl80211_monitor.c",
-    "src/drivers/linux_ioctl.c",
-    "src/drivers/rfkill.c",
-    "src/l2_packet/l2_packet_linux.c",
-    "wpa_supplicant/config.c",
-    "wpa_supplicant/config_file.c",
-    "wpa_supplicant/bss.c",
-    "wpa_supplicant/blacklist.c",
-    "wpa_supplicant/bssid_ignore.c",
-    "wpa_supplicant/events.c",
-    "wpa_supplicant/notify.c",
-    "wpa_supplicant/wmm_ac.c",
-    "wpa_supplicant/rrm.c",
-    "wpa_supplicant/robust_av.c",
-    "wpa_supplicant/op_classes.c",
-    "wpa_supplicant/wpas_glue.c",
-    "wpa_supplicant/offchannel.c",
-    "wpa_supplicant/wpa_supplicant.c",
-    "wpa_supplicant/main.c",
-    "wpa_supplicant/wpa_cli.c",
-    "wpa_supplicant/wpa_passphrase.c",
-    "wpa_supplicant/eap_register.c",
-    "wpa_supplicant/ctrl_iface.c",
-    "wpa_supplicant/ctrl_iface_unix.c",
-    "wpa_supplicant/scan.c",
+  let shared_sources: List[Path] = [
+    p"src/utils/os_unix.c",
+    p"src/utils/eloop.c",
+    p"src/utils/common.c",
+    p"src/utils/config.c",
+    p"src/utils/wpa_debug.c",
+    p"src/utils/wpabuf.c",
+    p"src/utils/bitfield.c",
+    p"src/utils/ip_addr.c",
+    p"src/utils/crc32.c",
+    p"src/utils/edit.c",
+    p"src/utils/radiotap.c",
+    p"src/utils/base64.c",
+    p"src/utils/json.c",
+    p"src/utils/uuid.c",
+    p"src/common/wpa_common.c",
+    p"src/common/ctrl_iface_common.c",
+    p"src/common/ptksa_cache.c",
+    p"src/common/cli.c",
+    p"src/common/wpa_ctrl.c",
+    p"src/common/ieee802_11_common.c",
+    p"src/common/hw_features_common.c",
+    p"src/crypto/aes-wrap.c",
+    p"src/crypto/aes-ccm.c",
+    p"src/crypto/aes-ctr.c",
+    p"src/crypto/aes-gcm.c",
+    p"src/crypto/aes-omac1.c",
+    p"src/crypto/aes-siv.c",
+    p"src/crypto/aes-unwrap.c",
+    p"src/crypto/crypto_internal.c",
+    p"src/crypto/crypto_internal-cipher.c",
+    p"src/crypto/crypto_internal-modexp.c",
+    p"src/crypto/crypto_internal-rsa.c",
+    p"src/crypto/dh_group5.c",
+    p"src/crypto/dh_groups.c",
+    p"src/crypto/md5.c",
+    p"src/crypto/md5-internal.c",
+    p"src/crypto/ms_funcs.c",
+    p"src/crypto/sha1.c",
+    p"src/crypto/sha1-internal.c",
+    p"src/crypto/sha256.c",
+    p"src/crypto/sha256-internal.c",
+    p"src/crypto/sha384.c",
+    p"src/crypto/sha384-internal.c",
+    p"src/crypto/sha512.c",
+    p"src/crypto/sha512-internal.c",
+    p"src/crypto/sha1-prf.c",
+    p"src/crypto/sha1-tlsprf.c",
+    p"src/crypto/sha256-prf.c",
+    p"src/crypto/sha1-pbkdf2.c",
+    p"src/crypto/tls_internal.c",
+    p"src/crypto/des-internal.c",
+    p"src/crypto/md4-internal.c",
+    p"src/crypto/random.c",
+    p"src/crypto/rc4.c",
+    p"src/crypto/aes-internal.c",
+    p"src/crypto/aes-internal-enc.c",
+    p"src/crypto/aes-internal-dec.c",
+    p"src/tls/asn1.c",
+    p"src/tls/bignum.c",
+    p"src/tls/pkcs1.c",
+    p"src/tls/pkcs5.c",
+    p"src/tls/pkcs8.c",
+    p"src/tls/rsa.c",
+    p"src/tls/tlsv1_client.c",
+    p"src/tls/tlsv1_client_read.c",
+    p"src/tls/tlsv1_client_ocsp.c",
+    p"src/tls/tlsv1_client_write.c",
+    p"src/tls/tlsv1_common.c",
+    p"src/tls/tlsv1_cred.c",
+    p"src/tls/tlsv1_record.c",
+    p"src/tls/tlsv1_server.c",
+    p"src/tls/tlsv1_server_read.c",
+    p"src/tls/tlsv1_server_write.c",
+    p"src/tls/x509v3.c",
+    p"src/rsn_supp/wpa.c",
+    p"src/rsn_supp/wpa_ie.c",
+    p"src/rsn_supp/pmksa_cache.c",
+    p"src/drivers/driver_nl80211.c",
+    p"src/drivers/driver_nl80211_capa.c",
+    p"src/drivers/driver_nl80211_event.c",
+    p"src/drivers/driver_nl80211_scan.c",
+    p"src/drivers/drivers.c",
+    p"src/drivers/netlink.c",
+    p"src/drivers/driver_common.c",
+    p"src/drivers/driver_nl80211_monitor.c",
+    p"src/drivers/linux_ioctl.c",
+    p"src/drivers/rfkill.c",
+    p"src/l2_packet/l2_packet_linux.c",
+    p"wpa_supplicant/config.c",
+    p"wpa_supplicant/config_file.c",
+    p"wpa_supplicant/bss.c",
+    p"wpa_supplicant/bssid_ignore.c",
+    p"wpa_supplicant/events.c",
+    p"wpa_supplicant/notify.c",
+    p"wpa_supplicant/wmm_ac.c",
+    p"wpa_supplicant/rrm.c",
+    p"wpa_supplicant/robust_av.c",
+    p"wpa_supplicant/op_classes.c",
+    p"wpa_supplicant/wpas_glue.c",
+    p"wpa_supplicant/offchannel.c",
+    p"wpa_supplicant/wpa_supplicant.c",
+    p"wpa_supplicant/eap_register.c",
+    p"wpa_supplicant/ctrl_iface.c",
+    p"wpa_supplicant/ctrl_iface_unix.c",
+    p"wpa_supplicant/scan.c",
   ]
 
   # Build .o tasks.  Separate into shared objects (no main), wpa_cli objects,
   # and wpa_passphrase objects.  Each binary gets shared + its own main.
-  var shared_objs: List[Path] = []
-  var supp_main: List[Path] = []
-  var wpa_cli_objs: List[Path] = []
-  var passphrase_objs: List[Path] = []
-  var all_tasks: List[Record] = []
-
-  for src_path in source_files {
-    let full_src = fp"${src}/${src_path}"
-
-    # Use the full source path (with / replaced by _) to avoid name collisions
-    # between e.g. src/utils/config.c and wpa_supplicant/config.c.
-    let obj_name = fp"${src_path}".display().replace("/", "_").replace(".c", ".o")
-    let out = fp"${objs}/${obj_name}"
-    continue unless fs.exists(full_src)?
-    let task = make.compile_c_task(cc, triple, cflags, defs, includes, full_src, out)
-    all_tasks = all_tasks.push(task)
-
-    if src_path.contains("wpa_cli") {
-      wpa_cli_objs = wpa_cli_objs.push(out)
-    } else if src_path.contains("wpa_passphrase") {
-      passphrase_objs = passphrase_objs.push(out)
-    } else if src_path.ends_with("main.c") {
-      supp_main = supp_main.push(out)
-    } else {
-      shared_objs = shared_objs.push(out)
-    }
-  }
+  let shared = make.compile_c_tasks(cc, triple, cflags, defs, includes, src, shared_sources, objs)
+  let supp_main = make.compile_c_tasks(cc, triple, cflags, defs, includes, src, [p"wpa_supplicant/main.c"], fp"${objs}/wpa_supplicant-objs")
+  let wpa_cli = make.compile_c_tasks(cc, triple, cflags, defs, includes, src, [p"wpa_supplicant/wpa_cli.c"], fp"${objs}/wpa_cli-objs")
+  let passphrase = make.compile_c_tasks(
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    src,
+    [p"wpa_supplicant/wpa_passphrase.c"],
+    fp"${objs}/wpa_passphrase-objs",
+  )
 
   # Link each binary with shared objects + its own main.
   let wpa_supplicant_out = fp"${objs}/wpa_supplicant"
   let wpa_cli_out = fp"${objs}/wpa_cli"
   let passphrase_out = fp"${objs}/wpa_passphrase"
-  let wpa_all = shared_objs.extend(supp_main)
-  let cli_all = shared_objs.extend(wpa_cli_objs)
-  let pass_all = shared_objs.extend(passphrase_objs)
-  let compile_names = [task.name for task in all_tasks]
+  let wpa_all = shared.objects.extend(supp_main.objects)
+  let cli_all = shared.objects.extend(wpa_cli.objects)
+  let pass_all = shared.objects.extend(passphrase.objects)
+  var all_tasks = shared.tasks.extend(supp_main.tasks).extend(wpa_cli.tasks).extend(passphrase.tasks)
 
   all_tasks = all_tasks.push(
-    make.link_executable_task(cc, triple, wpa_all, [], ldflags, wpa_supplicant_out, compile_names),
+    make.link_executable_task(cc, triple, wpa_all, [], ldflags, wpa_supplicant_out, shared.deps.extend(supp_main.deps)),
   )
 
-  all_tasks = all_tasks.push(make.link_executable_task(cc, triple, cli_all, [], ldflags, wpa_cli_out, compile_names))
+  all_tasks = all_tasks.push(make.link_executable_task(cc, triple, cli_all, [], ldflags, wpa_cli_out, shared.deps.extend(wpa_cli.deps)))
 
   all_tasks = all_tasks.push(
-    make.link_executable_task(cc, triple, pass_all, [], ldflags, passphrase_out, compile_names),
+    make.link_executable_task(cc, triple, pass_all, [], ldflags, passphrase_out, shared.deps.extend(passphrase.deps)),
   )
 
   make.run_tasks(all_tasks, make.jobs()?)?

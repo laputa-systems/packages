@@ -73,100 +73,100 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   # Step 2: compile libpkgconf (15 source files → PIC .lo objects).
   # File list from Makefile's am_libpkgconf_la_OBJECTS.
-  let lib_srcs = [
-    "libpkgconf/audit.c",
-    "libpkgconf/buffer.c",
-    "libpkgconf/cache.c",
-    "libpkgconf/client.c",
-    "libpkgconf/pkg.c",
-    "libpkgconf/bsdstubs.c",
-    "libpkgconf/fragment.c",
-    "libpkgconf/argvsplit.c",
-    "libpkgconf/fileio.c",
-    "libpkgconf/tuple.c",
-    "libpkgconf/dependency.c",
-    "libpkgconf/queue.c",
-    "libpkgconf/path.c",
-    "libpkgconf/personality.c",
-    "libpkgconf/parser.c",
+  let lib_srcs: List[Path] = [
+    p"libpkgconf/audit.c",
+    p"libpkgconf/buffer.c",
+    p"libpkgconf/cache.c",
+    p"libpkgconf/client.c",
+    p"libpkgconf/pkg.c",
+    p"libpkgconf/bsdstubs.c",
+    p"libpkgconf/fragment.c",
+    p"libpkgconf/argvsplit.c",
+    p"libpkgconf/fileio.c",
+    p"libpkgconf/tuple.c",
+    p"libpkgconf/dependency.c",
+    p"libpkgconf/queue.c",
+    p"libpkgconf/path.c",
+    p"libpkgconf/personality.c",
+    p"libpkgconf/parser.c",
   ]
 
-  var lib_objs: List[Path] = []
   var tasks: List[make.MakeTask] = []
-  var lib_deps: List[Str] = []
-
-  for src in lib_srcs {
-    let out = fp"obj/${src.replace("/", "-").replace(".c", ".lo")}"
-    let task = make.compile_lo_task(cc, triple, cflags, defs, includes, fp"${src}", out)
-    tasks = tasks.push(task)
-    lib_deps = lib_deps.push(task.name)
-    lib_objs = lib_objs.push(out)
-  }
+  let lib = make.c_shared_library({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: p".",
+    sources: lib_srcs,
+    out_dir: p"obj",
+    out: p"obj/libpkgconf.so.7.0.0",
+    soname: "libpkgconf.so.7",
+    ldflags: [],
+    deps: [],
+  })
+  tasks = tasks.extend(lib.tasks)
 
   # Step 3: link libpkgconf.so.7.0.0 and static archive.
-  let sofile = p"obj/libpkgconf.so.7.0.0"
-  let so_task = make.link_shared_task(cc, triple, lib_objs, "libpkgconf.so.7", [], sofile, lib_deps)
-  tasks = tasks.push(so_task)
+  let sofile = lib.output
   let static_lib = p"obj/libpkgconf.a"
-  let static_task = make.link_archive_task(cc, lib_objs, static_lib, lib_deps)
-  tasks = tasks.push(static_task)
+  let static_target = make.c_static_library({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: p".",
+    sources: lib_srcs,
+    out_dir: p"obj/static",
+    out: static_lib,
+    deps: [],
+  })
+  tasks = tasks.extend(static_target.tasks)
 
   # Step 4: compile and link pkgconf binary.
   # Source files from am_pkgconf_OBJECTS. Automake prefixes objects with the
   # binary name (pkgconf-main.o from main.c) but the sources use plain names.
-  let pkgconf_srcs = ["cli/main.c", "cli/getopt_long.c", "cli/renderer-msvc.c"]
-  var pkgconf_objs: List[Path] = []
-  var pkgconf_deps: List[Str] = []
+  let pkgconf_srcs: List[Path] = [p"cli/main.c", p"cli/getopt_long.c", p"cli/renderer-msvc.c"]
+  let pkgconf = make.c_program({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: p".",
+    sources: pkgconf_srcs,
+    out_dir: p"obj/pkgconf-objs",
+    out: p"obj/pkgconf",
+    libs: [static_target.output],
+    ldflags: [],
+    deps: static_target.deps,
+  })
+  tasks = tasks.extend(pkgconf.tasks)
 
-  for src in pkgconf_srcs {
-    let out = fp"obj/pkgconf-${fp"${src}".name.replace(".c", ".o")}"
-    let task = make.compile_c_task(cc, triple, cflags, defs, includes, fp"${src}", out)
-    tasks = tasks.push(task)
-    pkgconf_deps = pkgconf_deps.push(task.name)
-    pkgconf_objs = pkgconf_objs.push(out)
-  }
-
-  let pkgconf_bin = p"obj/pkgconf"
-
-  tasks = tasks.push(
-    make.link_executable_task(
-      cc,
-      triple,
-      pkgconf_objs,
-      [static_lib],
-      [],
-      pkgconf_bin,
-      pkgconf_deps.push(static_task.name),
-    ),
-  )
+  let pkgconf_bin = pkgconf.output
 
   # Step 5: compile and link bomtool binary.
   # cli/getopt_long.c is shared with pkgconf; compile separately to a different obj.
-  let bomtool_srcs = ["cli/bomtool/main.c", "cli/getopt_long.c"]
-  var bomtool_objs: List[Path] = []
-  var bomtool_deps: List[Str] = []
+  let bomtool_srcs: List[Path] = [p"cli/bomtool/main.c", p"cli/getopt_long.c"]
+  let bomtool = make.c_program({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: p".",
+    sources: bomtool_srcs,
+    out_dir: p"obj/bomtool-objs",
+    out: p"obj/bomtool",
+    libs: [static_target.output],
+    ldflags: [],
+    deps: static_target.deps,
+  })
+  tasks = tasks.extend(bomtool.tasks)
 
-  for src in bomtool_srcs {
-    let out = fp"obj/bomtool-${fp"${src}".name.replace(".c", ".o")}"
-    let task = make.compile_c_task(cc, triple, cflags, defs, includes, fp"${src}", out)
-    tasks = tasks.push(task)
-    bomtool_deps = bomtool_deps.push(task.name)
-    bomtool_objs = bomtool_objs.push(out)
-  }
-
-  let bomtool_bin = p"obj/bomtool"
-
-  tasks = tasks.push(
-    make.link_executable_task(
-      cc,
-      triple,
-      bomtool_objs,
-      [static_lib],
-      [],
-      bomtool_bin,
-      bomtool_deps.push(static_task.name),
-    ),
-  )
+  let bomtool_bin = bomtool.output
 
   make.run_tasks(tasks, make.jobs()?)?
 
@@ -174,7 +174,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.install(sofile, fp"${dest}/usr/lib/libpkgconf.so.7.0.0", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"libpkgconf.so.7.0.0", fp"${dest}/usr/lib/libpkgconf.so.7")?
   fs.symlink(p"libpkgconf.so.7.0.0", fp"${dest}/usr/lib/libpkgconf.so")?
-  fs.install(static_lib, fp"${dest}/usr/lib/libpkgconf.a", 0o644, parents: true, overwrite: true)?
+  fs.install(static_target.output, fp"${dest}/usr/lib/libpkgconf.a", 0o644, parents: true, overwrite: true)?
   fs.install(pkgconf_bin, fp"${dest}/usr/bin/pkgconf", 0o755, parents: true, overwrite: true)?
   fs.install(bomtool_bin, fp"${dest}/usr/bin/bomtool", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"pkgconf", fp"${dest}/usr/bin/pkg-config")?

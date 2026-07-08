@@ -244,7 +244,7 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let packages = load_package_dirs(paths_from_args(raw_args)?)?
   let local_names = local_package_names(packages)
   let ordered = packages
-  let built_names: Map[Bool] = {}
+  var built_names: Map[Bool] = {}
 
   for pkg in ordered {
     fs.remove(root, missing_ok: true)?
@@ -275,9 +275,11 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
 
     for item in built {
       index = stage_built_package(repo_dir, upload_ctx, index, item)?
+      built_names[item.pkg.name] = true
     }
 
     json.write(index_path, index)?
+    fs.remove(remote_index_cache_path(out), missing_ok: true)?
   }
 }
 

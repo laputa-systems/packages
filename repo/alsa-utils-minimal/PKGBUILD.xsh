@@ -67,15 +67,24 @@ export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let os = system.uname()?
   let triple = f"${os.machine}-linux-musl"
-  let src = p"laputa-alsa-tool.c"
-  let obj = p"obj/laputa-alsa-tool.o"
-  let bin = p"obj/alsa-tool"
-  let compile = make.compile_c_task(cc, triple, ["-std=c99", "-Wall", "-Wextra"], [], [], src, obj)
-  let link = make.link_executable_task(cc, triple, [obj], [], [], bin, [compile.name])
   write_tool_source()?
-  make.run_tasks([compile, link], make.jobs()?)?
+  let tool = make.c_program({
+    cc,
+    triple,
+    cflags: ["-std=c99", "-Wall", "-Wextra"],
+    defs: [],
+    includes: [],
+    root: p".",
+    sources: [p"laputa-alsa-tool.c"],
+    out_dir: p"obj",
+    out: p"obj/alsa-tool",
+    libs: [],
+    ldflags: [],
+    deps: [],
+  })
+  make.run_tasks(tool.tasks, make.jobs()?)?
 
   for tool_name in ["aplay", "amixer", "alsactl"] {
-    fs.install(bin, fp"${dest}/usr/bin/${tool_name}", 0o755, parents: true, overwrite: true)?
+    fs.install(tool.output, fp"${dest}/usr/bin/${tool_name}", 0o755, parents: true, overwrite: true)?
   }
 }
