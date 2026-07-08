@@ -23,6 +23,11 @@ type WorldPlanOptions = {
   jobs: Int,
 }
 
+type WorldPlanResult = {
+  packages: List[Package],
+  reasons: Map[Str],
+}
+
 proc build_local_packages(
   ctx: PmContext,
   raw: List[Str],
@@ -576,6 +581,55 @@ proc world_local_dependency_names(pkg: Package, local_names: Map[Bool]) [] -> Li
   names
 }
 
+proc world_dependency_kind(pkg: Package, dep: Str) [] -> Str {
+  if pkg.deps.contains(dep) {
+    return "runtime"
+  }
+
+  if pkg.target_build_deps.contains(dep) {
+    return "target-build"
+  }
+
+  if pkg.mkdeps.contains(dep) {
+    return "build"
+  }
+
+  if dep == "laputa-pm" and ! package_exempt_from_implicit_pm(pkg.name) {
+    return "implicit world/tool"
+  }
+
+  "world/tool"
+}
+
+proc summarize_changed_dependencies(changed_deps: List[Str]) [] -> Str {
+  let implicit_pm = "implicit world/tool dependency laputa-pm"
+  var visible: List[Str] = []
+
+  for dep in changed_deps {
+    if dep != implicit_pm or changed_deps.len() == 1 {
+      visible = visible.push(dep)
+    }
+  }
+
+  if visible.len() == 0 {
+    visible = changed_deps
+  }
+
+  if visible.len() <= 4 {
+    return visible.join(", ")
+  }
+
+  var head: List[Str] = []
+  var index = 0
+
+  while index < 4 {
+    head = head.push(visible[index])
+    index += 1
+  }
+
+  f"${head.join(", ")}, +${visible.len() - 4} more"
+}
+
 proc world_plan_levels(ordered: List[Package], local_names: Map[Bool]) [] -> Map[Int] {
   var levels: Map[Int] = {}
 
@@ -678,17 +732,20 @@ proc planned_world_packages(
   local_names: Map[Bool],
   remote_latest: Map[RemotePackage],
   state_planned_rels: Map[Str],
-) [error] -> Result[List[Package]] {
+) [error] -> Result[WorldPlanResult] {
   var planned: List[Package] = []
   var changed: Map[Bool] = {}
+  var reasons: Map[Str] = {}
 
   for pkg in ordered {
     var planned_pkg = pkg
     var changed_dep = false
+    var changed_deps: List[Str] = []
 
     for dep in world_local_dependency_names(pkg, local_names) {
       if changed.get(dep, false) {
         changed_dep = true
+        changed_deps = changed_deps.push(f"${world_dependency_kind(pkg, dep)} dependency ${dep}")
       }
     }
 
@@ -703,11 +760,20 @@ proc planned_world_packages(
 
           if remote_to_planned < 0 or remote_to_planned == 0 and ! changed_dep {
             planned_pkg = package_with_rel(pkg, planned_rel)
+
+            if compare_version_release(planned_pkg.ver, planned_pkg.rel, pkg.ver, pkg.rel) != 0 {
+              reasons[pkg.name] = f"carried world-state rel ${state_rel}"
+            }
           } else {
             let rel_cmp = compare_version_text(planned_pkg.rel, remote_pkg.rel)
 
             if rel_cmp < 0 or changed_dep and rel_cmp <= 0 {
               planned_pkg = package_with_rel(pkg, next_world_rel(remote_pkg.rel))
+              reasons[pkg.name] = if changed_dep {
+                f"changed ${summarize_changed_dependencies(changed_deps)}"
+              } else {
+                f"local rel below remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
+              }
             }
           }
         } else {
@@ -715,8 +781,17 @@ proc planned_world_packages(
 
           if rel_cmp < 0 or changed_dep and rel_cmp <= 0 {
             planned_pkg = package_with_rel(pkg, next_world_rel(remote_pkg.rel))
+            reasons[pkg.name] = if changed_dep {
+              f"changed ${summarize_changed_dependencies(changed_deps)}"
+            } else {
+              f"local rel below remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
+            }
+          } else if rel_cmp > 0 {
+            reasons[pkg.name] = f"local rel above remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
           }
         }
+      } else {
+        reasons[pkg.name] = f"version differs from remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
       }
 
       changed[pkg.name] = compare_version_release(planned_pkg.ver, planned_pkg.rel, remote_pkg.ver, remote_pkg.rel) != 0
@@ -726,16 +801,23 @@ proc planned_world_packages(
 
         if compare_version_text(pkg.rel, state_rel) <= 0 {
           planned_pkg = package_with_rel(pkg, state_rel)
+          reasons[pkg.name] = f"new package carried world-state rel ${state_rel}"
         }
+      } else {
+        reasons[pkg.name] = "new package"
       }
 
       changed[pkg.name] = true
     }
 
+    if ! reasons.has(pkg.name) and changed_dep and compare_version_release(planned_pkg.ver, planned_pkg.rel, pkg.ver, pkg.rel) != 0 {
+      reasons[pkg.name] = f"changed ${summarize_changed_dependencies(changed_deps)}"
+    }
+
     planned = planned.push(planned_pkg)
   }
 
-  planned
+  {packages: planned, reasons}
 }
 
 proc planned_world_package_map(planned: List[Package]) [] -> Map[Package] {
@@ -861,6 +943,7 @@ proc sync_world_rels(
 proc print_world_plan(
   ordered: List[Package],
   planned: List[Package],
+  reasons: Map[Str],
   local_names: Map[Bool],
   world_jobs: Int,
   remote_latest: Map[RemotePackage],
@@ -886,7 +969,13 @@ proc print_world_plan(
     for pkg in tranche {
       let planned_pkg: Package = planned_by_name.get(pkg.name)?
       let annotation = world_plan_remote_annotation(pkg, planned_pkg, remote_latest)?
-      let suffix = if annotation == "" { "" } else { f" ${ansi(colors, "1;31", annotation)}" }
+      var suffix = if annotation == "" { "" } else { f" ${ansi(colors, "1;31", annotation)}" }
+      let reason = reasons.get(pkg.name, "")
+
+      if reason != "" {
+        suffix = f"${suffix} ${ansi(colors, "2", f"because ${reason}")}"
+      }
+
       print --flush f"  ${ansi(colors, "1;32", pkg.name)} ${world_plan_version_text(pkg, planned_pkg, remote_latest, colors)?}${suffix}"
     }
 
@@ -1952,9 +2041,10 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let local_names = local_package_names(packages)
   let ordered = order_world_build_packages(build_root, packages, index, target_arch, ! cross_build)?
   let state_planned_rels = world_state_planned_rels(repo_dir, packages)?
-  let planned = planned_world_packages(ordered, local_names, remote_latest, state_planned_rels)?
+  let plan = planned_world_packages(ordered, local_names, remote_latest, state_planned_rels)?
+  let planned = plan.packages
   let planned_by_name = planned_world_package_map(planned)
-  print_world_plan(ordered, planned, local_names, world_jobs, remote_latest, target_arch)?
+  print_world_plan(ordered, planned, plan.reasons, local_names, world_jobs, remote_latest, target_arch)?
 
   if build_requested {
     let state = ensure_world_state_compatible(repo_dir, fingerprint, planned)?
