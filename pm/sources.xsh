@@ -543,7 +543,7 @@ export proc write_checksum_field(pkg: Package, field: Str, values: List[Str]) [f
 
       output = output.push("]")
 
-      if ! ("]" in line) {
+      if "]" not in line {
         in_block = true
       }
     } else if in_block {

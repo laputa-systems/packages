@@ -184,7 +184,7 @@ pure world_package_always_newer_than_remote(name: Str, ver: Str) -> Bool {
 }
 
 proc add_implicit_pm_dependency(pkg: Package, deps: List[Str]) [] -> List[Str] {
-  if ! package_exempt_from_implicit_pm(pkg.name) and ! deps.contains("laputa-pm") {
+  if ! package_exempt_from_implicit_pm(pkg.name) and "laputa-pm" not in deps {
     return deps.push("laputa-pm")
   }
 
@@ -215,7 +215,7 @@ proc effective_world_build_dependencies(pkg: Package, cross_build: Bool) [] -> L
   if cross_build {
     var deps = pkg.mkdeps
 
-    if pkg.name == "llvm-toolchain" and ! deps.contains("llvm-toolchain") {
+    if pkg.name == "llvm-toolchain" and "llvm-toolchain" not in deps {
       deps = deps.push("llvm-toolchain")
     }
 
@@ -497,15 +497,15 @@ proc world_local_dependency_names(pkg: Package, local_names: Map[Bool]) [] -> Li
 }
 
 proc world_dependency_kind(pkg: Package, dep: Str) [] -> Str {
-  if pkg.deps.contains(dep) {
+  if dep in pkg.deps {
     return "runtime"
   }
 
-  if pkg.target_build_deps.contains(dep) {
+  if dep in pkg.target_build_deps {
     return "target-build"
   }
 
-  if pkg.mkdeps.contains(dep) {
+  if dep in pkg.mkdeps {
     return "build"
   }
 
@@ -1489,10 +1489,10 @@ proc ensure_world_state_compatible(
     for pkg in packages {
       let id = world_package_id(pkg)
 
-      if old_unchanged.contains(id) {
+      if id in old_unchanged {
         built_names[pkg.name] = true
         unchanged_names[pkg.name] = true
-      } else if old_built.contains(id) and old_proofed.contains(id) {
+      } else if id in old_built and id in old_proofed {
         built_names[pkg.name] = true
       }
     }
@@ -1621,11 +1621,11 @@ proc verify_world_stage(repo_dir: Path, packages: List[Package], fingerprint: St
   for pkg in packages {
     let id = world_package_id(pkg)
 
-    if ! built.contains(id) and ! unchanged.contains(id) {
+    if id not in built and id not in unchanged {
       return Err(PmError.PackageTarball(f"${id} has not been built in the world stage"))
     }
 
-    if ! proofed.contains(id) and ! unchanged.contains(id) {
+    if id not in proofed and id not in unchanged {
       return Err(PmError.PackageTarball(f"${id} has not been proved in the world stage"))
     }
   }
@@ -1660,7 +1660,7 @@ export pure missing_elf_runtime_dependencies(
 ) -> List[ElfDependencyFailure] {
   var failures: List[ElfDependencyFailure] = []
 
-  if elf_info_mentions_musl(needed, interpreter) and pkg_name != "musl" and ! ("musl" in deps) {
+  if elf_info_mentions_musl(needed, interpreter) and pkg_name != "musl" and "musl" not in deps {
     failures = failures.push({pkg: pkg_name, file: fp"", soname: "libc.so", provider: "musl"})
   }
 
@@ -1669,7 +1669,7 @@ export pure missing_elf_runtime_dependencies(
 
     let provider: Str = providers.get(soname, "")
 
-    if provider != pkg_name and ! (provider in deps) {
+    if provider != pkg_name and provider not in deps {
       failures = failures.push({pkg: pkg_name, file: fp"", soname, provider})
     }
   }
@@ -1926,7 +1926,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
         let build_pkg: Package = planned_by_name.get(pkg.name)?
         let id = world_package_id(build_pkg)
 
-        if recorded_unchanged.contains(id) and world_stage_package_present_in_roots(
+        if id in recorded_unchanged and world_stage_package_present_in_roots(
           root,
           build_root,
           pkg.name,
@@ -1935,7 +1935,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
           built_names[pkg.name] = true
           unchanged_names[pkg.name] = true
           print --flush ${pkg.name} $id "stage:" "unchanged"
-        } else if recorded_built.contains(id) and recorded_proofed.contains(id) and world_stage_package_present_in_roots(
+        } else if id in recorded_built and id in recorded_proofed and world_stage_package_present_in_roots(
           root,
           build_root,
           pkg.name,
@@ -1946,7 +1946,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
         } else {
           var build_dependency_names = effective_world_build_dependencies(pkg, cross_build)
 
-          if world_dependency_is_seeded(pkg, "zlib", cross_build) and ! build_dependency_names.contains("zlib") {
+          if world_dependency_is_seeded(pkg, "zlib", cross_build) and "zlib" not in build_dependency_names {
             build_dependency_names = build_dependency_names.push("zlib")
           }
 

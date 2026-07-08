@@ -35,13 +35,7 @@ pure bool_literal(value: Bool) -> Str {
 pure xsh_wrapper_source(real: Path, clang: Bool, cxx: Bool) -> Str {
   let template = """#!/bin/xsh
 proc has_arg(argv: List[Str], needle: Str) [] -> Bool {
-  for arg in argv {
-    if arg == needle {
-      return true
-    }
-  }
-
-  return false
+  return needle in argv
 }
 
 proc has_option_prefix(argv: List[Str], prefix: Str) [] -> Bool {
@@ -128,7 +122,7 @@ proc needs_frontend_flags(argv: List[Str]) [] -> Bool {
     }
 
     if arg.starts_with("-") {
-      if ["-o", "-MF", "-MT", "-MQ", "-include", "-isystem"].contains(arg) and index + 1 < argv.len() {
+      if arg in ["-o", "-MF", "-MT", "-MQ", "-include", "-isystem"] and index + 1 < argv.len() {
         index += 2
       } else {
         index += 1

@@ -215,12 +215,12 @@ export proc ensure_no_dependents(root: Path, names: List[Str]) [fs, error] {
   let installed_names = collect_installed_names(root)?
 
   for installed in installed_names {
-    if ! names.contains(installed) {
+    if installed not in names {
       let metadata = load_metadata(package_db_path(root, installed))?
       let deps: List[Str] = metadata.get("deps")?
 
       for target in names {
-        if deps.contains(target) {
+        if target in deps {
           return Err(PmError.DependentPackage(f"${installed} depends on ${target}"))
         }
       }
@@ -388,7 +388,7 @@ export proc collect_installed_tree_roots(root: Path) [fs, error] -> Result[List[
     let deps = installed_package_deps(root, name)?
 
     for dep in deps {
-      if installed_names.contains(dep) {
+      if dep in installed_names {
         depended[dep] = true
       } else {
         return Err(PmError.MissingDependency(f"${name} depends on missing ${dep}"))

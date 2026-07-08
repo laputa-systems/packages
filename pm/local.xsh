@@ -82,7 +82,7 @@ export proc collect_old_manifest_extra(
   old_manifest: List[Path],
   new_manifest: List[Path],
 ) [error] -> Result[List[Path]] {
-  var extra = [rel_path for rel_path in old_manifest if ! new_manifest.contains(rel_path)]
+  var extra = [rel_path for rel_path in old_manifest if rel_path not in new_manifest]
   extra
 }
 
@@ -534,7 +534,7 @@ export proc order_packages(
 }
 
 export proc filter_packages_by_names(packages: List[Package], names: List[Str]) [error] -> Result[List[Package]] {
-  var selected = [pkg for pkg in packages if names.contains(pkg.name)]
+  var selected = [pkg for pkg in packages if pkg.name in names]
   selected
 }
 
@@ -555,7 +555,7 @@ export proc collect_upgrade_names(root: Path, packages: List[Package]) [fs, erro
     }
   }
 
-  if names.contains("pm") {
+  if "pm" in names {
     return ["pm"]
   }
 

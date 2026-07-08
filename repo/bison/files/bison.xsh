@@ -138,7 +138,7 @@ proc parse_token_names(decls: Str) [error] -> Result[List[Str]] {
         continue when word == "%token" or word == "%left" or word == "%right" or word == "%nonassoc"
         continue when word.starts_with("<") or word.starts_with("'")
 
-        if ! names.contains(word) {
+        if word not in names {
           names = names.push(word)
         }
       }
@@ -248,7 +248,7 @@ proc nonterminals(rules: List[GrammarRule]) [error] -> Result[List[Str]] {
   var names = []
 
   for rule in rules {
-    if ! names.contains(rule.lhs) {
+    if rule.lhs not in names {
       names = names.push(rule.lhs)
     }
   }

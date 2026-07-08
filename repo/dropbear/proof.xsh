@@ -27,7 +27,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   run $dynlinker $dropbearkey "-t" "rsa" "-s" "2048" "-f" $rsa_key ?
   let rsa_out = run.text $dynlinker $dropbearkey "-y" "-f" $rsa_key ?
 
-  if ! ("ssh-rsa" in rsa_out) {
+  if "ssh-rsa" not in rsa_out {
     Err(ScriptError.Failed("dropbear-proof", f"rsa: unexpected output: ${rsa_out.trim()}"))?
   }
 
@@ -38,7 +38,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   run $dynlinker $dropbearkey "-t" "ed25519" "-f" $ed_key ?
   let ed_out = run.text $dynlinker $dropbearkey "-y" "-f" $ed_key ?
 
-  if ! ("ssh-ed25519" in ed_out) {
+  if "ssh-ed25519" not in ed_out {
     Err(ScriptError.Failed("dropbear-proof", f"ed25519: unexpected output: ${ed_out.trim()}"))?
   }
 
@@ -49,7 +49,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   run $dynlinker $dropbearkey "-t" "ecdsa" "-s" "256" "-f" $ec_key ?
   let ec_out = run.text $dynlinker $dropbearkey "-y" "-f" $ec_key ?
 
-  if ! ("ecdsa-sha2-nistp256" in ec_out) {
+  if "ecdsa-sha2-nistp256" not in ec_out {
     Err(ScriptError.Failed("dropbear-proof", f"ecdsa: unexpected output: ${ec_out.trim()}"))?
   }
 

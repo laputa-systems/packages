@@ -303,7 +303,7 @@ proc build_prepared_package_command(argv: List[Str]) [fs, process, env, error] {
 }
 
 pure supports_repo_default_context(command: Str) -> Bool {
-  [
+  command in [
     "install",
     "remove",
     "list",
@@ -320,11 +320,11 @@ pure supports_repo_default_context(command: Str) -> Bool {
     "auth",
     "upload",
     "help-ext",
-  ].contains(command)
+  ]
 }
 
 pure command_requires_package_dirs(command: Str) -> Bool {
-  ["outdated", "update", "upgrade", "checksum", "update-checksums", "download", "upload"].contains(command)
+  command in ["outdated", "update", "upgrade", "checksum", "update-checksums", "download", "upload"]
 }
 
 pure arg_looks_like_path(value: Str) -> Bool {

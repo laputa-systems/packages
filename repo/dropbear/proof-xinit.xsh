@@ -239,7 +239,7 @@ proc main(rootfs: Path = /rootfs, port: Int = 22222) [fs, process, env, time, er
   let running = run.text $chroot $rootfs "/usr/bin/xinit" status dropbear ?
 
   ensure(
-    ! ("pid=0" in running) and "log=append" in running,
+    "pid=0" not in running and "log=append" in running,
     "dropbear-start",
     f"xinit status did not report append logging for a running service: ${running}",
   )?

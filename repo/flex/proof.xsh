@@ -20,7 +20,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   if pm_util.build_arch()? == pm_util.target_arch()? {
     let out = run.text $flex "--version" ?
 
-    if ! ("flex " in out) {
+    if "flex " not in out {
       return Err(ScriptError.Failed("proof-flex", f"flex --version: ${out.trim()}"))?
     }
 

@@ -41,7 +41,7 @@ export proc requested_stop_after() [env, error] -> Result[Str] {
     return ""
   }
 
-  if ! ["prepare", "discover", "plan", "compile", "link"].contains(requested) {
+  if requested not in ["prepare", "discover", "plan", "compile", "link"] {
     return Err(
       ScriptError.Failed(
         "linux-kbuild-stop-after",

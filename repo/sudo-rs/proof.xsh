@@ -35,7 +35,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
 
   let pam_sudo = fp"${rootfs}/etc/pam.d/sudo".read_text()?
 
-  if ! ("/usr/lib/security/pam_permit.so" in pam_sudo) {
+  if "/usr/lib/security/pam_permit.so" not in pam_sudo {
     return Err(
       SudoRsProofError.Failed("proof-sudo-rs", "sudo PAM service does not permit passwordless account/session"),
     )

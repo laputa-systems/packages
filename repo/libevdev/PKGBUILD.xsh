@@ -156,7 +156,7 @@ proc collect_event_defs(path_value: Path) [fs, error] -> Result[Record] {
               max_codes[event_name] = value
             }
 
-            if ! (event_name in duplicate_defines()) {
+            if event_name not in duplicate_defines() {
               defs = defs.push({attr: attr_name(prefix), value, name: event_name})
             }
           }

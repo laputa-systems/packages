@@ -14,7 +14,7 @@ proc main(dest: Path = /etc/ssl/certs/ca-certificates.crt) [fs, net, error] {
 
   let body = tmp.read_text()?
 
-  if ! ("-----BEGIN CERTIFICATE-----" in body) {
+  if "-----BEGIN CERTIFICATE-----" not in body {
     return Err(UpdateCertdataError.Failed("downloaded CA bundle does not contain a PEM certificate"))
   }
 

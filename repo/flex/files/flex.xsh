@@ -145,7 +145,7 @@ proc parse_start_conditions(text: Str) [error] -> Result[List[Str]] {
       var i = 1
 
       while i < words.len() {
-        if ! states.contains(words[i]) {
+        if words[i] not in states {
           states = states.push(words[i])
         }
 
@@ -167,7 +167,7 @@ proc parse_exclusive_start_conditions(text: Str) [error] -> Result[List[Str]] {
       var i = 1
 
       while i < words.len() {
-        if ! states.contains(words[i]) {
+        if words[i] not in states {
           states = states.push(words[i])
         }
 
@@ -511,7 +511,7 @@ proc generate_exclusive_table(states: List[Str], exclusive: List[Str]) [error] -
   var values = ["0"]
 
   for state in states {
-    values = values.push(if exclusive.contains(state) { "1" } else { "0" })
+    values = values.push(if state in exclusive { "1" } else { "0" })
   }
 
   return values.join(", ")

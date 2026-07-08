@@ -377,13 +377,7 @@ pure has_option_prefix_argv(argv: List[Str], prefix: Str) -> Bool {
 }
 
 pure has_exact_argv(argv: List[Str], value: Str) -> Bool {
-  for arg in argv {
-    if arg == value {
-      return true
-    }
-  }
-
-  return false
+  return value in argv
 }
 
 pure musl_ldso_name(arch: Str) -> Str {
@@ -1337,13 +1331,13 @@ export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget]
 
     tasks = tasks.extend(compiled.tasks)
     groups[source_group.name] = compiled
-    cxx_groups[source_group.name] = [source_is_cxx(src) for src in source_group.sources].contains(true)
+    cxx_groups[source_group.name] = true in [source_is_cxx(src) for src in source_group.sources]
   }
 
   for target in spec.targets {
     var objects = []
     var target_deps: List[Str] = target.deps
-    var needs_cxx_link = [source_is_cxx(src) for src in target.sources].contains(true)
+    var needs_cxx_link = true in [source_is_cxx(src) for src in target.sources]
 
     for group_name in target.groups {
       if ! groups.has(group_name) {

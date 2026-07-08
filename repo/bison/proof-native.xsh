@@ -24,7 +24,7 @@ proc ensure_status_ok(status: Status, label: Str, err_path: Path, artifacts: Pat
 proc ensure_output_contains(file_path: Path, needle: Str, label: Str, artifacts: Path) [fs, error] {
   let body = read_if_exists(file_path)?
 
-  if ! (needle in body) {
+  if needle not in body {
     Err(ScriptError.Failed(label, f"missing '${needle}'; artifacts=${artifacts.display()} output=${body.trim()}"))?
   }
 }

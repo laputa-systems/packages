@@ -28,7 +28,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   # version. Scanner generation also depends on a fuller GNU m4 surface.
   let flex_out = run.text $flex_bin "--version" ?
 
-  if ! ("flex " in flex_out) {
+  if "flex " not in flex_out {
     return Err(ScriptError.Failed("proof-flex", f"flex --version: ${flex_out.trim()}"))?
   }
 
@@ -40,7 +40,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   # rootfs path; that integration is verified when bison is used in practice.
   let bison_out = run.text $bison_bin "--version" ?
 
-  if ! ("GNU Bison" in bison_out) {
+  if "GNU Bison" not in bison_out {
     return Err(ScriptError.Failed("proof-bison", f"bison --version: ${bison_out.trim()}"))?
   }
 
