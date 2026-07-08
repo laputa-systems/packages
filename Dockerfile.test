@@ -1,0 +1,28 @@
+FROM alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d AS xsh-unpack
+
+ARG XSH_RELEASE=release-dbeacac33697faa06b47633108d144297f54f798
+ARG XSH_RELEASE_ARCH=aarch64
+ARG XSH_RELEASE_SHA256=f7afb27dc8cb340b8dedf332f649fd58cc2f15c7617cd4a67b19677b1fdedaa7
+
+ADD --checksum=sha256:${XSH_RELEASE_SHA256} https://github.com/laputa-systems/xsh/releases/download/${XSH_RELEASE}/xsh-multicall-${XSH_RELEASE}-${XSH_RELEASE_ARCH}-linux-musl.xz /tmp/xsh-multicall.xz
+
+RUN mkdir -p /image/usr/local/bin /image/usr/bin /image/bin /image/tmp /image/var/tmp && \
+    apk add --no-cache xz && \
+    xz -dc /tmp/xsh-multicall.xz > /image/usr/local/bin/xsh-multicall && \
+    chmod 0755 /image/usr/local/bin/xsh-multicall && \
+    for command_name in xsh xshi xsht; do ln -s xsh-multicall /image/usr/local/bin/"${command_name}"; done && \
+    printf '#!/usr/local/bin/xsh\nrun /usr/local/bin/xshi @args ?\n' > /image/usr/bin/sh && \
+    cp /image/usr/bin/sh /image/bin/sh && \
+    chmod 0755 /image/usr/bin/sh /image/bin/sh && \
+    chmod 1777 /image/tmp /image/var/tmp && \
+    rm /tmp/xsh-multicall.xz
+
+FROM scratch
+
+COPY --from=xsh-unpack /image/ /
+
+ENV PATH=/usr/local/bin:/usr/bin:/bin
+
+WORKDIR /src/packages
+
+CMD ["xsht", "test", "tests/xsh/pm.xsh"]

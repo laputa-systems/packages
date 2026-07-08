@@ -49,6 +49,16 @@ load/type checks, then integration checks from `~/d/laputa-systems/laputa` with
 make package-test PKGNAME=<name> LAPUTA_PACKAGES_ROOT=$HOME/d/laputa-systems/packages
 ```
 
+Most PM tests need Linux filesystem/process behavior. From this repo, run:
+
+```sh
+make test
+```
+
+`make test` builds a scratch-runtime test image from the published XSH
+multicall, then runs `xsht test tests/xsh/pm.xsh` against the checkout mounted
+at `/src/packages`.
+
 For world changes, use:
 
 ```sh
