@@ -68,6 +68,46 @@ export type CStaticLibrary = {
   deps: List[Str],
 }
 
+export type CSourceGroup = {
+  name: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  root: Path,
+  sources: List[Path],
+  out_dir: Path,
+  deps: List[Str],
+}
+
+export type CExecutableTarget = {
+  name: Str,
+  groups: List[Str],
+  sources: List[Path],
+  libs: List[Path],
+  ldflags: List[Str],
+  out: Path,
+  deps: List[Str],
+}
+
+export type CMultiProgram = {
+  cc: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  root: Path,
+  out_dir: Path,
+  groups: List[CSourceGroup],
+  targets: List[CExecutableTarget],
+}
+
+export type CMultiTarget = {
+  tasks: List[MakeTask],
+  groups: Map[CompileTasks],
+  outputs: Map[Path],
+  deps: List[Str],
+}
+
 export type MakePkgConfigEnv = {
   pkg_config: Path,
   pkg_config_path: Str,
@@ -1201,6 +1241,86 @@ export proc c_static_library(spec: CStaticLibrary) [] -> CTarget {
     deps: compiled.deps.push(archive_task.name),
     output: spec.out,
   }
+}
+
+export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget] {
+  var tasks: List[MakeTask] = []
+  var groups: Map[CompileTasks] = {}
+  var outputs: Map[Path] = {}
+  var deps: List[Str] = []
+
+  for source_group in spec.groups {
+    if groups.has(source_group.name) {
+      return Err(MakeError.DuplicateTask(message: f"duplicate source group '${source_group.name}'"))
+    }
+
+    let cflags = spec.cflags.extend(source_group.cflags)
+    let defs = spec.defs.extend(source_group.defs)
+    let includes = spec.includes.extend(source_group.includes)
+    let root = if source_group.root.display() == "" {
+      spec.root
+    } else {
+      source_group.root
+    }
+    let out_dir = if source_group.out_dir.display() == "" {
+      fp"${spec.out_dir}/${source_group.name}"
+    } else {
+      source_group.out_dir
+    }
+    let compiled = compile_c_tasks(
+      spec.cc,
+      spec.triple,
+      cflags,
+      defs,
+      includes,
+      root,
+      source_group.sources,
+      out_dir,
+      source_group.deps,
+    )
+
+    tasks = tasks.extend(compiled.tasks)
+    groups[source_group.name] = compiled
+  }
+
+  for target in spec.targets {
+    var objects: List[Path] = []
+    var target_deps: List[Str] = target.deps
+
+    for group_name in target.groups {
+      if ! groups.has(group_name) {
+        return Err(MakeError.MissingDependency(message: f"target '${target.name}' references missing source group '${group_name}'"))
+      }
+
+      let compiled: CompileTasks = groups.get(group_name)?
+      objects = objects.extend(compiled.objects)
+      target_deps = target_deps.extend(compiled.deps)
+    }
+
+    if target.sources.len() > 0 {
+      let target_compile = compile_c_tasks(
+        spec.cc,
+        spec.triple,
+        spec.cflags,
+        spec.defs,
+        spec.includes,
+        spec.root,
+        target.sources,
+        fp"${spec.out_dir}/${target.name}",
+      )
+
+      tasks = tasks.extend(target_compile.tasks)
+      objects = objects.extend(target_compile.objects)
+      target_deps = target_deps.extend(target_compile.deps)
+    }
+
+    let link = link_executable_task(spec.cc, spec.triple, objects, target.libs, target.ldflags, target.out, target_deps)
+    tasks = tasks.push(link)
+    outputs[target.name] = target.out
+    deps = deps.push(link.name)
+  }
+
+  return {tasks, groups, outputs, deps}
 }
 
 export proc link_shared_task(

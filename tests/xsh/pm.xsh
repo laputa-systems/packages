@@ -1574,6 +1574,50 @@ proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error
   test.eq(program.tasks.len(), 3)?
   test.eq(program.deps[2], "obj/tool")?
   test.eq(program.tasks[2].deps, [program.tasks[0].name, program.tasks[1].name])?
+  let multi = make.c_multi_program({
+    cc: /bin/cc,
+    triple: "aarch64-linux-musl",
+    cflags: ["-O2"],
+    defs: [],
+    includes: [],
+    root: p"src",
+    out_dir: p"obj",
+    groups: [
+      {name: "shared", cflags: [], defs: [], includes: [], root: p"", sources: [p"common.c", p"util.c"], out_dir: p"", deps: []},
+      {name: "feature", cflags: ["-fPIC"], defs: ["-DFEATURE"], includes: [], root: p"", sources: [p"feature.c"], out_dir: p"", deps: []},
+    ],
+    targets: [
+      {name: "tool-a", groups: ["shared"], sources: [p"main-a.c"], libs: [], ldflags: ["-static"], out: p"bin/tool-a", deps: []},
+      {name: "tool-b", groups: ["shared", "feature"], sources: [p"main-b.c"], libs: [], ldflags: [], out: p"bin/tool-b", deps: []},
+    ],
+  })?
+
+  test.eq(multi.outputs.get("tool-a")?.display(), "bin/tool-a")?
+  test.eq(multi.outputs.get("tool-b")?.display(), "bin/tool-b")?
+  test.eq(multi.tasks.len(), 7)?
+  test.eq(multi.tasks[0].outputs[0].display(), "obj/shared/common.o")?
+  test.eq(multi.tasks[2].argv.contains("-DFEATURE"), true)?
+  test.eq(multi.tasks[3].outputs[0].display(), "obj/tool-a/main-a.o")?
+  test.eq(multi.tasks[4].deps, [multi.tasks[0].name, multi.tasks[1].name, multi.tasks[3].name])?
+  test.eq(
+    multi.tasks[6].deps,
+    [multi.tasks[0].name, multi.tasks[1].name, multi.tasks[2].name, multi.tasks[5].name],
+  )?
+  match make.c_multi_program({
+    cc: /bin/cc,
+    triple: "aarch64-linux-musl",
+    cflags: [],
+    defs: [],
+    includes: [],
+    root: p".",
+    out_dir: p"obj",
+    groups: [],
+    targets: [{name: "bad", groups: ["missing"], sources: [], libs: [], ldflags: [], out: p"bad", deps: []}],
+  }) {
+    Ok(_) => test.eq("missing group accepted", "missing group rejected")?
+    Err(_) => {}
+  }
+
   let src_tree = test.temp_dir(ctx, name: "make-src-tree")?
   fs.mkdir(fp"${src_tree}/sub")?
   fs.write(fp"${src_tree}/main.c", "int main(void) { return 0; }\n")?

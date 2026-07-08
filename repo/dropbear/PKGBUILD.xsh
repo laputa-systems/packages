@@ -22,14 +22,6 @@ pure task_names(paths: List[Path]) -> List[Str] {
   return [path_value.display() for path_value in paths]
 }
 
-pure dropbear_src(stem: Str) -> Path {
-  return fp"src/${stem}.c"
-}
-
-pure dropbear_obj(stem: Str) -> Path {
-  return fp"obj/dropbear/${stem}.o"
-}
-
 pure source_obj(root: Path, prefix: Str, source: Path) -> Path {
   let source_rel = source.relative_to(root).display()
   return fp"obj/${prefix}/${source_rel.replace("/", "_").replace(".c", ".o")}"
@@ -288,43 +280,7 @@ ${default_options_guard}
   let ltc_cflags = ["-W", "-Wall", "-Wno-pointer-sign", "-Os", "-DLTC_SOURCE", "-fPIC"]
   let ltm_cflags = ["-O3", "-funroll-loops", "-fomit-frame-pointer", "-fPIC"]
   var tasks: List[make.MakeTask] = []
-  var dropbear_objs: List[Path] = []
-  var common_objs: List[Path] = []
-  var clisvr_objs: List[Path] = []
-  var svr_objs: List[Path] = []
-  var cli_objs: List[Path] = []
-  var key_objs: List[Path] = []
-  var convert_objs: List[Path] = []
-
-  for stem in all_dropbear_stems {
-    let out = dropbear_obj(stem)
-    dropbear_objs = dropbear_objs.push(out)
-    tasks = tasks.push(make.compile_c_task(cc, triple, dropbear_cflags, defs, includes, dropbear_src(stem), out))
-  }
-
-  for stem in common_stems {
-    common_objs = common_objs.push(dropbear_obj(stem))
-  }
-
-  for stem in clisvr_stems {
-    clisvr_objs = clisvr_objs.push(dropbear_obj(stem))
-  }
-
-  for stem in svr_stems {
-    svr_objs = svr_objs.push(dropbear_obj(stem))
-  }
-
-  for stem in cli_stems {
-    cli_objs = cli_objs.push(dropbear_obj(stem))
-  }
-
-  for stem in key_stems {
-    key_objs = key_objs.push(dropbear_obj(stem))
-  }
-
-  for stem in convert_stems {
-    convert_objs = convert_objs.push(dropbear_obj(stem))
-  }
+  let _ = all_dropbear_stems
 
   var ltc_objs: List[Path] = []
   let ltc_root = fp"${src}/libtomcrypt/src"
@@ -352,58 +308,38 @@ ${default_options_guard}
   let lib_deps = [ltc_a.display(), ltm_a.display()]
   let libs = [ltc_a, ltm_a]
   let link_flags = [ldflags, "-pie", "-lz"]
-  let dropbear_bin_objs = common_objs.extend(clisvr_objs).extend(svr_objs)
-  let dbclient_bin_objs = common_objs.extend(clisvr_objs).extend(cli_objs)
-  let dropbearkey_bin_objs = common_objs.extend(key_objs)
-  let dropbearconvert_bin_objs = common_objs.extend(convert_objs)
-
-  tasks = tasks.push(
-    make.link_executable_task(
-      cc,
-      triple,
-      dropbear_bin_objs,
-      libs,
-      link_flags,
-      p"dropbear",
-      task_names(dropbear_bin_objs).extend(lib_deps),
-    ),
-  )
-
-  tasks = tasks.push(
-    make.link_executable_task(
-      cc,
-      triple,
-      dbclient_bin_objs,
-      libs,
-      link_flags,
-      p"dbclient",
-      task_names(dbclient_bin_objs).extend(lib_deps),
-    ),
-  )
-
-  tasks = tasks.push(
-    make.link_executable_task(
-      cc,
-      triple,
-      dropbearkey_bin_objs,
-      libs,
-      link_flags,
-      p"dropbearkey",
-      task_names(dropbearkey_bin_objs).extend(lib_deps),
-    ),
-  )
-
-  tasks = tasks.push(
-    make.link_executable_task(
-      cc,
-      triple,
-      dropbearconvert_bin_objs,
-      libs,
-      link_flags,
-      p"dropbearconvert",
-      task_names(dropbearconvert_bin_objs).extend(lib_deps),
-    ),
-  )
+  let multi = make.c_multi_program({
+    cc,
+    triple,
+    cflags: dropbear_cflags,
+    defs,
+    includes,
+    root: p"src",
+    out_dir: p"obj/dropbear",
+    groups: [
+      {name: "common", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in common_stems], out_dir: p"", deps: []},
+      {name: "clisvr", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in clisvr_stems], out_dir: p"", deps: []},
+      {name: "server", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in svr_stems], out_dir: p"", deps: []},
+      {name: "client", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in cli_stems], out_dir: p"", deps: []},
+      {name: "key", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in key_stems], out_dir: p"", deps: []},
+      {name: "convert", cflags: [], defs: [], includes: [], root: p"", sources: [fp"${stem}.c" for stem in convert_stems], out_dir: p"", deps: []},
+    ],
+    targets: [
+      {name: "dropbear", groups: ["common", "clisvr", "server"], sources: [], libs, ldflags: link_flags, out: p"dropbear", deps: lib_deps},
+      {name: "dbclient", groups: ["common", "clisvr", "client"], sources: [], libs, ldflags: link_flags, out: p"dbclient", deps: lib_deps},
+      {name: "dropbearkey", groups: ["common", "key"], sources: [], libs, ldflags: link_flags, out: p"dropbearkey", deps: lib_deps},
+      {
+        name: "dropbearconvert",
+        groups: ["common", "convert"],
+        sources: [],
+        libs,
+        ldflags: link_flags,
+        out: p"dropbearconvert",
+        deps: lib_deps,
+      },
+    ],
+  })?
+  tasks = tasks.extend(multi.tasks)
 
   make.run_tasks(tasks, make.jobs()?)?
   fs.install(p"dropbear", fp"${dest}/usr/bin/dropbear", 0o755, parents: true, overwrite: true)?

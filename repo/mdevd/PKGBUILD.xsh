@@ -466,61 +466,52 @@ struct sockaddr_nl {
 
   let includes = ["-iquote", "src/include-local", "-Ilaputa-headers", "-Isrc/include", "-Iskalibs/src/include"]
 
-  let srcs = [
-    "src/mdevd/mdevd_netlink_init.c",
-    "src/mdevd/mdevd_uevent_read.c",
-    "src/mdevd/mdevd_uevent_getvar.c",
-    "src/mdevd/mdevd.c",
-    "src/mdevd/mdevd-coldplug.c",
-  ]
-
-  var objs: Map[Path] = {}
-  var tasks: List[make.MakeTask] = []
-  var task_deps: List[Str] = []
   write_mdevd_config()?
+  let multi = make.c_multi_program({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: p"src/mdevd",
+    out_dir: p"obj/objs",
+    groups: [
+      {
+        name: "helpers",
+        cflags: [],
+        defs: [],
+        includes: [],
+        root: p"",
+        sources: [p"mdevd_netlink_init.c", p"mdevd_uevent_read.c", p"mdevd_uevent_getvar.c"],
+        out_dir: p"",
+        deps: [],
+      },
+    ],
+    targets: [
+      {
+        name: "mdevd",
+        groups: ["helpers"],
+        sources: [p"mdevd.c"],
+        libs: [skarnet],
+        ldflags: ["-Wl,--gc-sections"],
+        out: p"obj/mdevd",
+        deps: [],
+      },
+      {
+        name: "mdevd-coldplug",
+        groups: ["helpers"],
+        sources: [p"mdevd-coldplug.c"],
+        libs: [skarnet],
+        ldflags: ["-Wl,--gc-sections"],
+        out: p"obj/mdevd-coldplug",
+        deps: [],
+      },
+    ],
+  })?
 
-  for src in srcs {
-    let out = fp"obj/${src.replace("/", "-").replace(".c", ".o")}"
-    let task = make.compile_c_task(cc, triple, cflags, defs, includes, fp"${src}", out)
-    tasks = tasks.push(task)
-    task_deps = task_deps.push(task.name)
-    objs[src] = out
-  }
-
-  let helper_objs = [
-    objs.get("src/mdevd/mdevd_netlink_init.c")?,
-    objs.get("src/mdevd/mdevd_uevent_read.c")?,
-    objs.get("src/mdevd/mdevd_uevent_getvar.c")?,
-  ]
-
-  let mdevd_bin = p"obj/mdevd"
-  let coldplug_bin = p"obj/mdevd-coldplug"
-
-  tasks = tasks.push(
-    make.link_executable_task(
-      cc,
-      triple,
-      [objs.get("src/mdevd/mdevd.c")?].extend(helper_objs),
-      [skarnet],
-      ["-Wl,--gc-sections"],
-      mdevd_bin,
-      task_deps,
-    ),
-  )
-
-  tasks = tasks.push(
-    make.link_executable_task(
-      cc,
-      triple,
-      [objs.get("src/mdevd/mdevd-coldplug.c")?].extend(helper_objs),
-      [skarnet],
-      ["-Wl,--gc-sections"],
-      coldplug_bin,
-      task_deps,
-    ),
-  )
-
-  make.run_tasks(tasks, make.jobs()?)?
+  make.run_tasks(multi.tasks, make.jobs()?)?
+  let mdevd_bin = multi.outputs.get("mdevd")?
+  let coldplug_bin = multi.outputs.get("mdevd-coldplug")?
   fs.install(mdevd_bin, fp"${dest}/usr/bin/mdevd", 0o755, parents: true, overwrite: true)?
   fs.install(coldplug_bin, fp"${dest}/usr/bin/mdevd-coldplug", 0o755, parents: true, overwrite: true)?
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/mdevd.xsh", 0o644, parents: true, overwrite: true)?

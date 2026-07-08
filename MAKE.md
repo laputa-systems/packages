@@ -19,8 +19,9 @@ make's implicit rule machinery.
 The weak part is recipe ergonomics. Package recipes should not have to manually
 recreate Makefile boilerplate: walking sources, inventing object names,
 accumulating task lists, mapping objects back to task names, extracting
-pkg-config flags, and grouping objects for link steps. That makes `pm.make`
-useful but still burdensome for larger handwritten ports.
+pkg-config flags, and grouping objects for link steps. The current helper layer
+now covers those common cases, but future helpers should keep pushing in that
+same direction: less repeated recipe plumbing, still explicit build graphs.
 
 ## Direction
 
@@ -54,9 +55,10 @@ return `tasks`, `objects`, and `deps`. `task_deps` derives link dependencies
 from selected task outputs. These helpers should stay transparent and
 composable.
 
-The target-oriented layer now exists: `c_program`, `c_shared_library`, and
-`c_static_library` look like direct translations of simple Makefile targets
-while still returning explicit `tasks`, `objects`, `deps`, and `output`.
+The target-oriented layer now exists: `c_program`, `c_shared_library`,
+`c_static_library`, and `c_multi_program` look like direct translations of
+simple Makefile targets while still returning explicit `tasks`, `objects`,
+`deps`, and `output` data.
 `discover_sources`, `pkg_config_flags`, and `install_header_tree` cover common
 Makefile porting boilerplate without changing that explicit graph shape.
 
@@ -64,10 +66,10 @@ Makefile porting boilerplate without changing that explicit graph shape.
 
 The first architectural test is whether packages with existing GNU Makefiles
 become straightforward ports. `samurai`, `pkgconf`, `libnl3`, `wpa_supplicant`,
-`tmux`, `flex`, and one larger awkward package should become shorter and
-clearer without becoming magical. If a helper only moves complexity out of
-sight, it is not an improvement. If it returns explicit `tasks`, `objects`,
-`deps`, and `output` that the recipe can inspect and compose, it is likely the
-right shape.
+`tmux`, `flex`, `dropbear`, and `mdevd` should become shorter and clearer
+without becoming magical. If a helper only moves complexity out of sight, it is
+not an improvement. If it returns explicit `tasks`, `objects`, `deps`, and
+`output` data that the recipe can inspect and compose, it is likely the right
+shape.
 
 See `PM-MAKE-TODO.md` for the concrete follow-up work.

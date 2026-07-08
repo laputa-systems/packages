@@ -191,42 +191,44 @@ export proc build(dest: Path) [fs, process, env, error] {
     p"wpa_supplicant/scan.c",
   ]
 
-  # Build .o tasks.  Separate into shared objects (no main), wpa_cli objects,
-  # and wpa_passphrase objects.  Each binary gets shared + its own main.
-  let shared = make.compile_c_tasks(cc, triple, cflags, defs, includes, src, shared_sources, objs)
-  let supp_main = make.compile_c_tasks(cc, triple, cflags, defs, includes, src, [p"wpa_supplicant/main.c"], fp"${objs}/wpa_supplicant-objs")
-  let wpa_cli = make.compile_c_tasks(cc, triple, cflags, defs, includes, src, [p"wpa_supplicant/wpa_cli.c"], fp"${objs}/wpa_cli-objs")
-  let passphrase = make.compile_c_tasks(
+  let multi = make.c_multi_program({
     cc,
     triple,
     cflags,
     defs,
     includes,
-    src,
-    [p"wpa_supplicant/wpa_passphrase.c"],
-    fp"${objs}/wpa_passphrase-objs",
-  )
+    root: src,
+    out_dir: fp"${objs}/compile",
+    groups: [
+      {name: "shared", cflags: [], defs: [], includes: [], root: p"", sources: shared_sources, out_dir: fp"${objs}/shared-objs", deps: []},
+    ],
+    targets: [
+      {
+        name: "wpa_supplicant",
+        groups: ["shared"],
+        sources: [p"wpa_supplicant/main.c"],
+        libs: [],
+        ldflags,
+        out: fp"${objs}/wpa_supplicant",
+        deps: [],
+      },
+      {name: "wpa_cli", groups: ["shared"], sources: [p"wpa_supplicant/wpa_cli.c"], libs: [], ldflags, out: fp"${objs}/wpa_cli", deps: []},
+      {
+        name: "wpa_passphrase",
+        groups: ["shared"],
+        sources: [p"wpa_supplicant/wpa_passphrase.c"],
+        libs: [],
+        ldflags,
+        out: fp"${objs}/wpa_passphrase",
+        deps: [],
+      },
+    ],
+  })?
 
-  # Link each binary with shared objects + its own main.
-  let wpa_supplicant_out = fp"${objs}/wpa_supplicant"
-  let wpa_cli_out = fp"${objs}/wpa_cli"
-  let passphrase_out = fp"${objs}/wpa_passphrase"
-  let wpa_all = shared.objects.extend(supp_main.objects)
-  let cli_all = shared.objects.extend(wpa_cli.objects)
-  let pass_all = shared.objects.extend(passphrase.objects)
-  var all_tasks = shared.tasks.extend(supp_main.tasks).extend(wpa_cli.tasks).extend(passphrase.tasks)
-
-  all_tasks = all_tasks.push(
-    make.link_executable_task(cc, triple, wpa_all, [], ldflags, wpa_supplicant_out, shared.deps.extend(supp_main.deps)),
-  )
-
-  all_tasks = all_tasks.push(make.link_executable_task(cc, triple, cli_all, [], ldflags, wpa_cli_out, shared.deps.extend(wpa_cli.deps)))
-
-  all_tasks = all_tasks.push(
-    make.link_executable_task(cc, triple, pass_all, [], ldflags, passphrase_out, shared.deps.extend(passphrase.deps)),
-  )
-
-  make.run_tasks(all_tasks, make.jobs()?)?
+  make.run_tasks(multi.tasks, make.jobs()?)?
+  let wpa_supplicant_out = multi.outputs.get("wpa_supplicant")?
+  let wpa_cli_out = multi.outputs.get("wpa_cli")?
+  let passphrase_out = multi.outputs.get("wpa_passphrase")?
 
   # Install under /usr/bin: baselayout symlinks /usr/sbin -> bin so
   # installing to /usr/sbin would fail proof extraction with "symlink escape".
