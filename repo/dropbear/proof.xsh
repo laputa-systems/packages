@@ -19,7 +19,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   let arch = os.machine
   let dynlinker = fp"${rootfs}/usr/lib/ld-musl-${arch}.so.1"
   let dropbearkey = fp"${rootfs}/usr/bin/dropbearkey"
-  let tmp = p"/tmp/dropbear-proof"
+  let tmp = /tmp/dropbear-proof
   fs.mkdir(tmp)?
 
   # RSA: exercises libtommath (big-integer arithmetic) + libtomcrypt (RSA ops).

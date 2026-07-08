@@ -59,13 +59,7 @@ pure regex_matches(text: Str, pattern: Str) -> Result[Bool] {
 }
 
 pure empty_plan() -> KbuildPlan {
-  return {
-    dirs: [],
-    objects: [],
-    lib_objects: [],
-    composites: [],
-    unsupported: [],
-  }
+  return {dirs: [], objects: [], lib_objects: [], composites: [], unsupported: []}
 }
 
 pure default_discover_options() -> DiscoverOptions {
@@ -1814,11 +1808,7 @@ proc apply_item(plan: KbuildPlan, dir: Path, item: Str, vars: Map[Str], as_lib: 
   }
 
   if item.contains("$(") {
-    return {
-      plan: add_unsupported(plan, f"${path_key(dir)}: unresolved token ${item}"),
-      dirs: [],
-      entries: [],
-    }
+    return {plan: add_unsupported(plan, f"${path_key(dir)}: unresolved token ${item}"), dirs: [], entries: []}
   }
 
   if item.ends_with("/") {
@@ -1839,11 +1829,7 @@ proc apply_item(plan: KbuildPlan, dir: Path, item: Str, vars: Map[Str], as_lib: 
     return {plan: next, dirs: [], entries: [obj]}
   }
 
-  return {
-    plan: add_unsupported(plan, f"${path_key(dir)}: unsupported token ${item}"),
-    dirs: [],
-    entries: [],
-  }
+  return {plan: add_unsupported(plan, f"${path_key(dir)}: unsupported token ${item}"), dirs: [], entries: []}
 }
 
 proc apply_words(plan: KbuildPlan, dir: Path, words: List[Str], vars: Map[Str], as_lib: Bool = false) [] -> ItemResult {

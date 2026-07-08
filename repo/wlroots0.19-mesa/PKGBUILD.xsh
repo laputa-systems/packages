@@ -21,7 +21,6 @@ export let deps: List[Str] = [
   "libdisplay-info",
 ]
 
-
 export let mkdeps: List[Str] = [
   "llvm-toolchain",
   "linux",
@@ -146,7 +145,8 @@ proc patch_build(root: Str) [fs, error] {
   write_shader_headers()?
   let meson = p"meson.build"
 
-  fs.write(meson, 
+  fs.write(
+    meson,
     meson.read_text()?.replace(
       """math = cc.find_library('m')
 rt = cc.find_library('rt')""",
@@ -158,7 +158,8 @@ rt = declare_dependency()""",
 
   let drm_meson = p"backend/drm/meson.build"
 
-  fs.write(drm_meson, 
+  fs.write(
+    drm_meson,
     drm_meson.read_text()?.replace(
       """pnpids_c = custom_target(
 	'pnpids.c',
@@ -176,7 +177,8 @@ rt = declare_dependency()""",
 
   let protocol_meson = p"protocol/meson.build"
 
-  fs.write(protocol_meson, 
+  fs.write(
+    protocol_meson,
     protocol_meson.read_text()?.replace(
       """	'xwayland-shell-v1': wl_protocol_dir / 'staging/xwayland-shell/xwayland-shell-v1.xml',
 """,
@@ -186,7 +188,8 @@ rt = declare_dependency()""",
 
   let renderer = p"render/gles2/renderer.c"
 
-  fs.write(renderer, 
+  fs.write(
+    renderer,
     renderer.read_text()?.replace(
       """#include "common_vert_src.h"
 #include "quad_frag_src.h"
@@ -205,7 +208,8 @@ rt = declare_dependency()""",
 
   let shader_meson = p"render/gles2/shaders/meson.build"
 
-  fs.write(shader_meson, 
+  fs.write(
+    shader_meson,
     shader_meson.read_text()?.replace(
       """embed = find_program('./embed.sh', native: true)
 

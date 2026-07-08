@@ -273,7 +273,8 @@ ft_alias_headers = files('fcftalias.h', 'fcftaliastail.h')
   fs.write(meson, text)?
   let src_meson = p"src/meson.build"
 
-  fs.write(src_meson, 
+  fs.write(
+    src_meson,
     src_meson.read_text()?.replace(
       """fcobjshash_h = cc.preprocess('fcobjshash.gperf.h', include_directories: incbase)
 fcobjshash_gperf = custom_target(
@@ -296,7 +297,8 @@ fcobjshash_h = custom_target('fcobjshash.h',
 
   let fc_case_meson = p"fc-case/meson.build"
 
-  fs.write(fc_case_meson, 
+  fs.write(
+    fc_case_meson,
     fc_case_meson.read_text()?.replace(
       """fccase_h = custom_target('fccase.h',
   output: 'fccase.h',
@@ -310,7 +312,8 @@ fcobjshash_h = custom_target('fcobjshash.h',
 
   let fc_lang_meson = p"fc-lang/meson.build"
 
-  fs.write(fc_lang_meson, 
+  fs.write(
+    fc_lang_meson,
     fc_lang_meson.read_text()?.replace(
       """fclang_h = custom_target('fclang.h',
   output: ['fclang.h'],

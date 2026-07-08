@@ -7,12 +7,7 @@ export let service = {
   kind: "longrun",
   command: process.command_argv(
     /usr/bin/wpa_supplicant,
-    [
-      "/usr/bin/wpa_supplicant",
-      "-B",
-      "-c",
-      "/etc/wpa_supplicant/wpa_supplicant.conf",
-    ],
+    ["/usr/bin/wpa_supplicant", "-B", "-c", "/etc/wpa_supplicant/wpa_supplicant.conf"],
     env: {PATH: "/usr/local/bin:/usr/bin:/bin:/sbin"},
   ),
   targets: ["boot"],

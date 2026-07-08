@@ -32,7 +32,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, time, error] {
     Err(_) => {}
   }
 
-  let tmp = p"/tmp/tmux-proof"
+  let tmp = /tmp/tmux-proof
   fs.mkdir(tmp)?
   let label = "laputa-proof"
   let config = fp"${tmp}/tmux.conf"
@@ -65,13 +65,7 @@ set -g focus-events on
     let sessions = run.text $dynlinker $tmux "-L" $label "list-sessions" ?
     check("proof:" in sessions, "tmux-session", f"tmux did not report proof session: ${sessions.trim()}")?
     let default_terminal = run.text $dynlinker $tmux "-L" $label "show-options" "-gqv" "default-terminal" ?
-
-    check(
-      default_terminal.trim() == "tmux-256color",
-      "tmux-config",
-      f"default-terminal was ${default_terminal.trim()}",
-    )?
-
+    check(default_terminal.trim() == "tmux-256color", "tmux-config", f"default-terminal was ${default_terminal.trim()}")?
     let terminal_features = run.text $dynlinker $tmux "-L" $label "show-options" "-gqv" "terminal-features" ?
 
     check(
@@ -97,13 +91,7 @@ set -g focus-events on
     time.sleep(1000ms)?
     let pane = run.text $dynlinker $tmux "-L" $label "capture-pane" "-pt" "proof:0.0" ?
     check("tmux-proof-alpha" in pane, "tmux-pane", f"tmux pane did not capture alpha output: ${pane.trim()}")?
-
-    check(
-      "tmux-proof-edit:ok" in pane,
-      "tmux-pane",
-      f"tmux pane did not capture edited command output: ${pane.trim()}",
-    )?
-
+    check("tmux-proof-edit:ok" in pane, "tmux-pane", f"tmux pane did not capture edited command output: ${pane.trim()}")?
     run $dynlinker $tmux "-L" $label "new-window" "-d" "-n" "check" $shell "--no-config" ?
     let windows = run.text $dynlinker $tmux "-L" $label "list-windows" ?
     check("check" in windows, "tmux-window", f"tmux did not report created window: ${windows.trim()}")?

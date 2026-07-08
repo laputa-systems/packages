@@ -9,7 +9,16 @@ export let rel: Str = "2"
 
 export let deps: List[Str] = ["musl", "fontconfig", "freetype", "pixman"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "samurai", "pkgconf", "fontconfig", "freetype", "pixman-dev", "tllist"]
+export let mkdeps: List[Str] = [
+  "llvm-toolchain",
+  "muon",
+  "samurai",
+  "pkgconf",
+  "fontconfig",
+  "freetype",
+  "pixman-dev",
+  "tllist",
+]
 
 export let target_build_deps: List[Str] = ["pixman-dev", "tllist"]
 

@@ -156,10 +156,8 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   # Link shared libraries
   let core_so = fp"${dest}/usr/lib/libnl-3.so.200.26.0"
-  let core_deps = [task.name for task in all_tasks if task.outputs[0] in core_objs]
   make.link_shared(cc, triple, core_objs, "libnl-3.so.200", [], core_so)?
   let genl_so = fp"${dest}/usr/lib/libnl-genl-3.so.200.26.0"
-  let genl_deps = [task.name for task in all_tasks if task.outputs[0] in genl_objs]
   make.link_shared(cc, triple, genl_objs, "libnl-genl-3.so.200", [], genl_so)?
 
   # Create symlinks
@@ -215,9 +213,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.mkdir(headers_dest)?
 
   for entry in fs.walk(headers_src, gitignore: false)? {
-    let rel = entry.path.relative_to(headers_src)
-    continue when rel.display() == "version.h.in"
-    let target = fp"${headers_dest}/${rel}"
+    let header_rel = entry.path.relative_to(headers_src)
+    continue when header_rel.display() == "version.h.in"
+    let target = fp"${headers_dest}/${header_rel}"
 
     if entry.kind == "dir" {
       fs.mkdir(target)?

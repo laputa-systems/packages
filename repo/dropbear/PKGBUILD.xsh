@@ -410,6 +410,7 @@ ${default_options_guard}
   fs.install(p"dbclient", fp"${dest}/usr/bin/dbclient", 0o755, parents: true, overwrite: true)?
   fs.install(p"dropbearkey", fp"${dest}/usr/bin/dropbearkey", 0o755, parents: true, overwrite: true)?
   fs.install(p"dropbearconvert", fp"${dest}/usr/bin/dropbearconvert", 0o755, parents: true, overwrite: true)?
+
   # Runtime configuration and xinit service module.
   fs.mkdir(fp"${dest}/etc/dropbear")?
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/dropbear.xsh", 0o644, parents: true, overwrite: true)?

@@ -54,6 +54,7 @@ export proc build(dest: Path) [fs, error] {
   }
 
   fs.mkdir(fp"${dest}/usr/bin")?
+
   for entry in fs.children(p"xsh-core")? |> where .kind == "file" and .name != "su" {
     fs.symlink(fp"../lib/xsh/core/${entry.name}", fp"${dest}/usr/bin/${entry.name}")?
   }

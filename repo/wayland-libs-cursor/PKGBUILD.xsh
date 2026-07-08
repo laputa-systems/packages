@@ -65,7 +65,8 @@ proc patch_python_generator() [fs, error] {
   fs.write(meson_path, patched)?
   let root_meson = p"meson.build"
 
-  fs.write(root_meson, 
+  fs.write(
+    root_meson,
     root_meson.read_text()?.replace(
       """	rt_dep = []
 	if not cc.has_function('clock_gettime', prefix: '#include <time.h>')
@@ -81,7 +82,8 @@ proc patch_python_generator() [fs, error] {
     ),
   )?
 
-  fs.write(meson_path, 
+  fs.write(
+    meson_path,
     meson_path.read_text()?.replace(
       "\tmathlib_dep = cc.find_library('m', required: false)",
       "\tmathlib_dep = declare_dependency(link_args: ['-lm'])",

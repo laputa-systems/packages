@@ -22,6 +22,7 @@ export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/etc/network/if-down.d")?
   fs.mkdir(fp"${dest}/etc/network/if-pre-down.d")?
   fs.mkdir(fp"${dest}/etc/network/if-post-down.d")?
+
   for hook_dir in ["if-pre-up.d", "if-up.d", "if-down.d", "if-pre-down.d", "if-post-down.d"] {
     fs.write(fp"${dest}/etc/network/${hook_dir}/keep", "")?
   }

@@ -203,6 +203,4 @@ Cflags: -I\${includedir}/pkgconf
 
   fs.mkdir(fp"${dest}/usr/lib/pkgconfig")?
   fs.write(fp"${dest}/usr/lib/pkgconfig/libpkgconf.pc", pc_template.replace("PKG_VER", ver))?
-
-
 }

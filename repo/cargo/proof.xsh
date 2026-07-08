@@ -20,7 +20,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   let gcc_s = fp"${rootfs}/usr/lib/libgcc_s.so.1"
 
   if ! fs.exists(gcc_s)? {
-    print "cargo ok: (runtime test skipped — libgcc_s.so.1 not in root)"
+    print "cargo ok: (runtime test skipped \u{2014} libgcc_s.so.1 not in root)"
     return
   }
 

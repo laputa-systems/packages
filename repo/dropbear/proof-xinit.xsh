@@ -209,15 +209,9 @@ proc main(rootfs: Path = /rootfs, port: Int = 22222) [fs, process, env, time, er
   let log_dir = fp"${rootfs}/var/log/dropbear"
   let chroot = process.which("chroot")?
   let timeout_bin = process.which("timeout")?
-  let tmp = p"/tmp/dropbear-proof-xinit"
+  let tmp = /tmp/dropbear-proof-xinit
   fs.mkdir(tmp)?
-
-  ensure(
-    fs.exists(fp"${rootfs}/bin/xsh")?,
-    "xinit-control",
-    "rootfs is missing /bin/xsh for service scripts",
-  )?
-
+  ensure(fs.exists(fp"${rootfs}/bin/xsh")?, "xinit-control", "rootfs is missing /bin/xsh for service scripts")?
   ensure(fs.exists(fp"${rootfs}/usr/bin/xinit")?, "xinit-control", "rootfs is missing /usr/bin/xinit")?
   ensure_device(rootfs, "null", "1", "3")?
   ensure_device(rootfs, "random", "1", "8")?

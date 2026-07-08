@@ -1,11 +1,17 @@
 use pm.util as pm_util
 
 export let name: Str = "pixman"
+
 export let ver: Str = "0.46.4"
+
 export let rel: Str = "4"
+
 export let deps: List[Str] = ["musl"]
+
 export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "pkgconf", "samurai"]
+
 export let sources: List[Path] = [p"https://xorg.freedesktop.org/releases/individual/lib/pixman-VERSION.tar.xz"]
+
 export let checksums: List[Str] = ["a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239"]
 
 export proc build(dest: Path) [fs, process, env, error] {
@@ -19,7 +25,12 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   run "muon" "-C" "build" samu $jobs_flag ?
-  env { DESTDIR = dest.display() } { run "muon" "-C" "build" install ? } ?
+
+  env {
+    DESTDIR = dest.display()
+  } {
+    run "muon" "-C" "build" install ?
+  } ?
 
   fs.remove(fp"${dest}/usr/include", missing_ok: true)?
   fs.remove(fp"${dest}/usr/lib/pkgconfig", missing_ok: true)?

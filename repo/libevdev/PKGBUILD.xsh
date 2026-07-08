@@ -10,7 +10,9 @@ export let deps: List[Str] = ["musl", "linux"]
 
 export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf"]
 
-export let sources: List[Path] = [p"https://gitlab.freedesktop.org/libevdev/libevdev/-/archive/libevdev-VERSION/libevdev-libevdev-VERSION.tar.gz"]
+export let sources: List[Path] = [
+  p"https://gitlab.freedesktop.org/libevdev/libevdev/-/archive/libevdev-VERSION/libevdev-libevdev-VERSION.tar.gz",
+]
 
 export let checksums: List[Str] = ["54748fded25633399a8418d7c4c123fe365037c901b4389e0bf3dd7688fb1c7e"]
 
