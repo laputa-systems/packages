@@ -37,9 +37,14 @@ export proc build(dest: Path) [fs, process, env, error] {
   let pc = pm_env.pkg_config_context()?
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
   let native_scanner = pm_util.build_arch()? != pm_util.target_arch()? and build_root != ""
+  let native_tools_ld = if native_scanner {
+    f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib:${pc.ld_library_path}"
+  } else {
+    pc.ld_library_path
+  }
 
   env {
-    LD_LIBRARY_PATH = pc.ld_library_path
+    LD_LIBRARY_PATH = native_tools_ld
     PKG_CONFIG = pc.pkg_config
     PKG_CONFIG_LIBDIR = pc.pkg_config_libdir
     PKG_CONFIG_PATH = pc.pkg_config_path
@@ -48,20 +53,8 @@ export proc build(dest: Path) [fs, process, env, error] {
     run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "-Dbuildtype=release" "-Ddriverdir=/usr/lib/dri" "-Ddisable_drm=false" "-Dwith_x11=no" "-Dwith_glx=no" "-Dwith_wayland=yes" "-Dwith_win32=no" "-Denable_docs=false" "build" ?
 
     if native_scanner {
-      let native_scanner_wrapper = fp"${fs.cwd()?}/build/wayland-scanner-native-wrapper"
-
-      fs.write(
-        native_scanner_wrapper,
-        f"""#!/bin/sh
-LD_LIBRARY_PATH="${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
-export LD_LIBRARY_PATH
-exec "${build_root}/usr/bin/wayland-scanner" "$@"
-""",
-      )?
-
-      fs.chmod(native_scanner_wrapper, 0o755)?
       let ninja = p"build/build.ninja"
-      let scanner_text = native_scanner_wrapper.display()
+      let scanner_text = fp"${build_root}/usr/bin/wayland-scanner".display()
       fs.write(ninja, ninja.read_text()?.replace("../../../../root/usr/bin/wayland-scanner", scanner_text))?
     }
 

@@ -698,8 +698,12 @@ getprogname (void)
   # POSIX yacc compatibility wrapper
   fs.write(
     fp"${dest}/usr/bin/yacc",
-    """#!/bin/sh
-exec bison -y "$@"
+    """#!/bin/xsh --
+proc main(...argv: List[Str]) [process, error] {
+  unix.exec(process.command_argv("bison", ["bison", "-y"].extend(argv)))?
+}
+
+main(@args)?
 """,
   )?
 

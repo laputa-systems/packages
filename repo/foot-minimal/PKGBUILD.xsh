@@ -214,20 +214,8 @@ export proc build(dest: Path) [fs, process, env, error] {
     run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() pm_env.meson_sysconfdir_arg() "-Ddefault_library=shared" "-Dwerror=false" "-Ddocs=disabled" "-Dthemes=false" "-Dtests=false" "-Dime=false" "-Dgrapheme-clustering=disabled" "-Dterminfo=disabled" "-Dutmp-backend=none" "build" ?
 
     if cross_build {
-      let native_scanner_wrapper = fp"${fs.cwd()?}/build/wayland-scanner-native-wrapper"
-
-      fs.write(
-        native_scanner_wrapper,
-        f"""#!/bin/sh
-LD_LIBRARY_PATH="${native_tools_ld}"
-export LD_LIBRARY_PATH
-exec "${build_root}/usr/bin/wayland-scanner" "$@"
-""",
-      )?
-
-      fs.chmod(native_scanner_wrapper, 0o755)?
       let ninja = p"build/build.ninja"
-      let scanner_text = native_scanner_wrapper.display()
+      let scanner_text = fp"${build_root}/usr/bin/wayland-scanner".display()
       var ninja_text = ninja.read_text()?
       ninja_text = ninja_text.replace("../../../../root/usr/bin/wayland-scanner", scanner_text)
       ninja_text = ninja_text.replace("../../../../build-root/usr/bin/wayland-scanner", scanner_text)

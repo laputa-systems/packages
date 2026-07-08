@@ -1195,53 +1195,94 @@ pure native_cross_ldso_name(arch: Str) -> Str {
   return f"ld-musl-${arch}.so.1"
 }
 
-pure native_cross_compiler_script(real: Path, build_root: Path, target_root: Path, target_arch: Str) -> Str {
-  return f"""#!/bin/sh
-real='${real.display()}'
-build_root='${build_root.display()}'
-target_root='${target_root.display()}'
-target='${target_arch}-linux-musl'
-ldso='/usr/lib/${native_cross_ldso_name(target_arch)}'
-builtins="$target_root/usr/lib/libclang_rt.builtins-${target_arch}.a"
-builtins_arg=""
-if [ -f "$builtins" ]; then
-  builtins_arg="$builtins"
-fi
-export LD_LIBRARY_PATH="$build_root/usr/lib:$build_root/usr/lib/llvm22/lib:$LD_LIBRARY_PATH"
-cxx_args=""
-cxx_libs=""
-case "$real" in
-  *clang++*)
-    if [ -d "$target_root/usr/lib/llvm22/include/c++/v1" ]; then
-      cxx_args="-isystem $target_root/usr/lib/llvm22/include/c++/v1"
-    elif [ -d "$build_root/usr/lib/llvm22/include/c++/v1" ]; then
-      cxx_args="-isystem $build_root/usr/lib/llvm22/include/c++/v1"
-    fi
-    if [ -d "$target_root/usr/lib/llvm22/include/${target_arch}-linux-musl/c++/v1" ]; then
-      cxx_args="$cxx_args -isystem $target_root/usr/lib/llvm22/include/${target_arch}-linux-musl/c++/v1"
-    fi
-    cxx_libs="-L$target_root/usr/lib/llvm22/lib -lc++ -lc++abi"
-    if [ -f "$target_root/usr/lib/llvm22/lib/libunwind.a" ]; then
-      cxx_libs="$cxx_libs $target_root/usr/lib/llvm22/lib/libunwind.a"
-    fi
-    cxx_libs="$cxx_libs -lm"
-    ;;
-esac
-compile_only=0
-shared=0
-for arg in "$@"; do
-  case "$arg" in
-    -c|-S|-E) compile_only=1 ;;
-    -shared) shared=1 ;;
-  esac
-done
-if [ "$compile_only" = 1 ]; then
-  exec "$real" --target="$target" --sysroot="$target_root" -resource-dir "$build_root/usr/lib/llvm22/lib/clang/22" $cxx_args "$@"
-fi
-if [ "$shared" = 1 ]; then
-  exec "$real" --target="$target" --sysroot="$target_root" -resource-dir "$build_root/usr/lib/llvm22/lib/clang/22" -fuse-ld=lld -nostdlib "$@" -L"$target_root/usr/lib" $cxx_libs $builtins_arg -lc
-fi
-exec "$real" --target="$target" --sysroot="$target_root" -resource-dir "$build_root/usr/lib/llvm22/lib/clang/22" -fuse-ld=lld -nostdlib "$target_root/usr/lib/Scrt1.o" "$target_root/usr/lib/crti.o" "$@" -L"$target_root/usr/lib" $cxx_libs $builtins_arg -lc "$target_root/usr/lib/crtn.o" -Wl,-dynamic-linker,$ldso
+pure native_cross_compiler_script(real: Path, build_root: Path, target_root: Path, target_arch: Str, cxx: Bool) -> Str {
+  let cxx_text = if cxx { "true" } else { "false" }
+  return f"""#!/bin/xsh --
+error NativeCrossCompilerError = Failed(message: Str)
+
+pure has_arg(argv: List[Str], name: Str) -> Bool {{
+  return argv |> any . == name
+}}
+
+proc run_compiler(argv: List[Str]) [process, error] {{
+  let status = process.run(
+    process.command_argv(
+      fp"${real.display()}",
+      argv,
+      env: {{LD_LIBRARY_PATH: "${build_root.display()}/usr/lib:${build_root.display()}/usr/lib/llvm22/lib"}},
+    ),
+  )?
+
+  if ! status.ok {{
+    return Err(NativeCrossCompilerError.Failed(message: "compiler exited nonzero"))
+  }}
+}}
+
+proc main(...argv: List[Str]) [fs, process, error] {{
+  var cxx_args: List[Str] = []
+  var cxx_libs: List[Str] = []
+  var builtins_arg: List[Str] = []
+  let builtins = fp"${target_root.display()}/usr/lib/libclang_rt.builtins-${target_arch}.a"
+
+  if fs.exists(builtins)? {{
+    builtins_arg = [builtins.display()]
+  }}
+
+  if ${cxx_text} {{
+    let target_cxx = fp"${target_root.display()}/usr/lib/llvm22/include/c++/v1"
+    let build_cxx = fp"${build_root.display()}/usr/lib/llvm22/include/c++/v1"
+    let target_cxx_arch = fp"${target_root.display()}/usr/lib/llvm22/include/${target_arch}-linux-musl/c++/v1"
+    let unwind = fp"${target_root.display()}/usr/lib/llvm22/lib/libunwind.a"
+
+    if fs.exists(target_cxx)? {{
+      cxx_args = ["-isystem", target_cxx.display()]
+    }} else if fs.exists(build_cxx)? {{
+      cxx_args = ["-isystem", build_cxx.display()]
+    }}
+
+    if fs.exists(target_cxx_arch)? {{
+      cxx_args = cxx_args.extend(["-isystem", target_cxx_arch.display()])
+    }}
+
+    cxx_libs = ["-L${target_root.display()}/usr/lib/llvm22/lib", "-lc++", "-lc++abi"]
+
+    if fs.exists(unwind)? {{
+      cxx_libs = cxx_libs.push(unwind.display())
+    }}
+
+    cxx_libs = cxx_libs.push("-lm")
+  }}
+
+  let base = [
+    fp"${real.display()}".display(),
+    "--target=${target_arch}-linux-musl",
+    "--sysroot=${target_root.display()}",
+    "-resource-dir",
+    "${build_root.display()}/usr/lib/llvm22/lib/clang/22",
+  ]
+
+  if has_arg(argv, "-c") or has_arg(argv, "-S") or has_arg(argv, "-E") {{
+    run_compiler(base.extend(cxx_args).extend(argv))?
+    return
+  }}
+
+  if has_arg(argv, "-shared") {{
+    run_compiler(base.extend(["-fuse-ld=lld", "-nostdlib"]).extend(argv).push("-L${target_root.display()}/usr/lib").extend(cxx_libs).extend(builtins_arg).push("-lc"))?
+    return
+  }}
+
+  run_compiler(
+    base
+      .extend(["-fuse-ld=lld", "-nostdlib", "${target_root.display()}/usr/lib/Scrt1.o", "${target_root.display()}/usr/lib/crti.o"])
+      .extend(argv)
+      .push("-L${target_root.display()}/usr/lib")
+      .extend(cxx_libs)
+      .extend(builtins_arg)
+      .extend(["-lc", "${target_root.display()}/usr/lib/crtn.o", "-Wl,-dynamic-linker,/usr/lib/${native_cross_ldso_name(target_arch)}"]),
+  )?
+}}
+
+main(@args)?
 """
 }
 
@@ -1253,13 +1294,13 @@ proc write_native_cross_tool_shims(build_root: Path, target_root: Path, target_a
 
   for name in ["cc", "clang", "clang-22"] {
     let path_value = fp"${bin}/${name}"
-    fs.write(path_value, native_cross_compiler_script(clang, build_root, target_root, target_arch))?
+    fs.write(path_value, native_cross_compiler_script(clang, build_root, target_root, target_arch, false))?
     fs.chmod(path_value, 0o755)?
   }
 
   for name in ["c++", "clang++"] {
     let path_value = fp"${bin}/${name}"
-    fs.write(path_value, native_cross_compiler_script(clangxx, build_root, target_root, target_arch))?
+    fs.write(path_value, native_cross_compiler_script(clangxx, build_root, target_root, target_arch, true))?
     fs.chmod(path_value, 0o755)?
   }
 }

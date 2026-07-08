@@ -142,20 +142,8 @@ proc build_wayland(dest: Path) [fs, process, env, error] {
         run $clang "-o" $native_scanner_path "src/scanner.c" "src/wayland-util.c" "-Ibuild" "-Ibuild/src" "-Isrc" f"-I${build_root}/usr/include" f"-L${build_root}/usr/lib" f"-Wl,-rpath,${build_root}/usr/lib" "-lexpat" ?
       } ?
 
-      let native_scanner_wrapper = fp"${fs.cwd()?}/build/wayland-scanner-native-wrapper"
-
-      fs.write(
-        native_scanner_wrapper,
-        f"""#!/bin/sh
-LD_LIBRARY_PATH="${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
-export LD_LIBRARY_PATH
-exec "${native_scanner_path.display()}" "$@"
-""",
-      )?
-
-      fs.chmod(native_scanner_wrapper, 0o755)?
       let ninja = p"build/build.ninja"
-      let scanner_text = native_scanner_wrapper.display()
+      let scanner_text = native_scanner_path.display()
       let ninja_text = ninja.read_text()?
 
       let ninja_text_build_root = ninja_text.replace(

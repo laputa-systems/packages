@@ -1340,28 +1340,28 @@ proc test_pm_extension_help_discovers_executables_in_path_order(ctx: TestContext
 
   fs.write(
     ignored,
-    """#!/bin/sh
+    """#!/bin/xsh --
 # ignored summary
 """,
   )?
 
   fs.write(
     shadow_first,
-    """#!/bin/sh
+    """#!/bin/xsh --
 # first summary
 """,
   )?
 
   fs.write(
     shadow_second,
-    """#!/bin/sh
+    """#!/bin/xsh --
 # second summary
 """,
   )?
 
   fs.write(
     plain,
-    """#!/bin/sh
+    """#!/bin/xsh --
 not a comment summary
 """,
   )?

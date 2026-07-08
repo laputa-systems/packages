@@ -375,8 +375,12 @@ export proc build(dest: Path) [fs, process, env, error] {
 
     fs.write(
       fp"${dest}/usr/bin/ldd",
-      f"""#!/usr/bin/sh
-exec /usr/lib/${ldso} --list "$@"
+      f"""#!/bin/xsh --
+proc main(...argv: List[Str]) [process, error] {{
+  unix.exec(process.command_argv("/usr/lib/${ldso}", ["/usr/lib/${ldso}", "--list"].extend(argv)))?
+}}
+
+main(@args)?
 """,
     )?
 
