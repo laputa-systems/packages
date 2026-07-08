@@ -1271,6 +1271,7 @@ proc build_world_package(
   cross_build: Bool,
 ) [fs, net, process, env, time, error] -> Result[List[BuiltPackage]] {
   var built: List[BuiltPackage] = []
+  print ${pkg.name} world_package_id(pkg) "build:" "starting"
   let package_root = fp"${build_ctx.work}/world-build/${world_package_id(pkg)}/root"
   let package_build_root = fp"${build_ctx.work}/world-build/${world_package_id(pkg)}/build-root"
   let package_work = fp"${build_ctx.work}/world-build/${world_package_id(pkg)}/work"
@@ -1363,7 +1364,7 @@ proc install_world_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs
     if world_should_install_built_package(ctx.root, item)? {
       installable = installable.push(item)
     } else {
-      print ${item.pkg.name} world_package_id(item.pkg) "staged-by" "wlroots0.19-mesa"
+      print ${item.pkg.name} world_package_id(item.pkg) "stage:" "skip" "wlroots0.19-mesa"
     }
   }
 
@@ -1680,7 +1681,7 @@ proc stage_built_package(
 
   let updated = upsert_remote_package(index, entry)?
   run_lifecycle_hooks("post-upload", item.pkg.name, upload_ctx, "")?
-  print ${item.pkg.name} version_id(item.pkg.ver, item.pkg.rel) "staged"
+  print ${item.pkg.name} version_id(item.pkg.ver, item.pkg.rel) "stage:" "done"
   updated
 }
 
@@ -1920,6 +1921,10 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     index = load_remote_index_from(index_path)?
   }
 
+  let colors = color_enabled()
+  print f"${ansi(colors, "1;36", "world-repo")} ${ansi(colors, "2", repo_dir.display())}"
+  print ${ansi(colors, "1;34", "world-plan fetching")} ${ansi(colors, "2", "remote index")}
+
   let repo_urls = load_repo_urls()?
   var remote_index: List[RemotePackage] = []
   var remote_latest: Map[RemotePackage] = {}
@@ -1940,8 +1945,6 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let state_planned_rels = world_state_planned_rels(repo_dir, packages)?
   let planned = planned_world_packages(ordered, local_names, remote_latest, state_planned_rels)?
   let planned_by_name = planned_world_package_map(planned)
-  let colors = color_enabled()
-  print f"${ansi(colors, "1;36", "world-repo")} ${ansi(colors, "2", repo_dir.display())}"
   print_world_plan(ordered, planned, local_names, world_jobs, remote_latest, target_arch)?
 
   if build_requested {
@@ -1963,6 +1966,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     let max_level = world_plan_max_level(ordered, levels)
     let build_max_level = if to_tranche >= 0 and to_tranche < max_level { to_tranche } else { max_level }
     let build_local_names: Map[Bool] = if cross_build { map.empty() } else { local_names }
+    print ${ansi(colors, "1;34", "world-build preparing")} ${ansi(colors, "2", "chroot base")}
     install_chroot_base_for_arch(root_ctx, local_names, true, target_arch)?
     install_chroot_base_for_arch(build_ctx, build_local_names, true, world_build_arch)?
     var level = 0
@@ -1984,7 +1988,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
         )? {
           built_names[pkg.name] = true
           unchanged_names[pkg.name] = true
-          print ${pkg.name} $id unchanged
+          print ${pkg.name} $id "stage:" "unchanged"
         } else if recorded_built.contains(id) and recorded_proofed.contains(id) and world_stage_package_present_in_roots(
           root,
           build_root,
@@ -1992,7 +1996,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
           cross_build,
         )? {
           built_names[pkg.name] = true
-          print ${pkg.name} $id staged
+          print ${pkg.name} $id "stage:" "cached"
         } else {
           var build_dependency_names = effective_world_build_dependencies(pkg, cross_build)
 
@@ -2105,7 +2109,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
                   built_names[original_pkg.name] = true
                   unchanged_names[original_pkg.name] = true
                   unchanged = true
-                  print ${original_pkg.name} world_package_id(original_pkg) "metadata" "unchanged"
+                  print ${original_pkg.name} world_package_id(original_pkg) "stage:" "unchanged" "metadata"
                 }
               }
             }

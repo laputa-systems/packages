@@ -767,12 +767,6 @@ proc chroot_build_enabled(ctx: PmContext) [env] -> Bool {
 }
 
 proc pm_source_root() [fs, env, error] -> Result[Path] {
-  for candidate in [p"laputa", p"."] {
-    if fs.exists(fp"${candidate}/pm.xsh")? and fs.exists(fp"${candidate}/pm")? {
-      return path.absolute(candidate)?
-    }
-  }
-
   let module_path = env.get("XSH_MODULE_PATH") ?? "/usr/lib/pm"
 
   for entry in module_path.split(":") {
@@ -780,6 +774,12 @@ proc pm_source_root() [fs, env, error] -> Result[Path] {
 
     if fs.exists(fp"${root}/pm.xsh")? and fs.exists(fp"${root}/pm")? {
       return root
+    }
+  }
+
+  for candidate in [p"laputa", p"."] {
+    if fs.exists(fp"${candidate}/pm.xsh")? and fs.exists(fp"${candidate}/pm")? {
+      return path.absolute(candidate)?
     }
   }
 
@@ -1099,7 +1099,7 @@ proc build_packages_in_chroot(
     run_package_proof(ctx, pkg, id, tarball, item.manifest, built)?
     run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     built = built.push(item)
-    print ${pkg.name} ${id} item.manifest.len() "built"
+    print ${pkg.name} ${id} "build:" item.manifest.len() "files"
   }
 
   built
@@ -1214,7 +1214,7 @@ export proc build_packages(
       },
     )
 
-    print ${pkg.name} ${id} manifest.len() "built"
+    print ${pkg.name} ${id} "build:" manifest.len() "files"
   }
 
   built
@@ -1534,7 +1534,7 @@ proc run_package_proof(
     } ?
   }
 
-  print ${pkg.name} "proof" "ok"
+  print ${pkg.name} "proof:" "ok"
 }
 
 export proc install_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs, process, env, error] {

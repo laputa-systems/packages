@@ -5,7 +5,6 @@ proc main(root: Path, package_name: Str, ...argv: List[Str]) [fs, process, env, 
     return Err(ChrootRunError.Failed("missing command"))?
   }
 
-  print f"building ${package_name}"
   linux.chroot(root)?
   let root_dir = /
   let _ = root_dir
