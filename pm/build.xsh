@@ -193,20 +193,45 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
     SHELL = "/bin/xshi"
   } {
     let exports = pkg.exports
-
-    if exports.has("prepare") {
-      let prepare_fn: Proc = exports.get("prepare")?
-      prepare_fn.call(src)?
+    let runner = fp"${pkg_dir}/run-package-build.xsh"
+    let prepare_call = if exports.has("prepare") { "  prepare(src)?\n" } else { "" }
+    let build_call = if exports.has("build") {
+      "  cd src {\n    build(dest)?\n  } ?\n"
+    } else {
+      ""
     }
 
-    fs.remove(dest, missing_ok: true)?
-    fs.mkdir(dest)?
+    let runner_text = [
+      """use PKGBUILD
 
-    if exports.has("build") {
-      cd src {
-        let build_fn: Proc = exports.get("build")?
-        build_fn.call(dest)?
-      } ?
+proc main(src: Path, dest: Path) [fs, process, env, error] {
+""",
+      prepare_call,
+      """  fs.remove(dest, missing_ok: true)?
+  fs.mkdir(dest)?
+""",
+      build_call,
+      """}
+main(@args)?
+""",
+    ].join("")
+
+    fs.write(runner, runner_text)?
+
+    let trace_path = fp"${pkg_dir.parent}/run-package-build.trace"
+    let status = process.run(
+      process.command_argv(
+        "/bin/xsht",
+        ["/bin/xsht", "trace", "--trace-file", trace_path.display(), runner.display(), "--", src.display(), dest.display()],
+      ),
+    )?
+
+    if ! status.ok {
+      if status.exited() {
+        abort(status.exit_code()?)
+      }
+
+      return Err(PmError.ExtensionFailed(f"package build for ${pkg.name} was signaled"))
     }
   } ?
 
@@ -438,6 +463,7 @@ proc build_packages_in_chroot(
       XSH_LINUX_KBUILD_USE_PLAN = env.get("XSH_LINUX_KBUILD_USE_PLAN") ?? ""
       XSH_LINUX_KBUILD_USE_PLAN_TEXT = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT") ?? ""
       XSH_MAKE_PROGRESS = env.get("XSH_MAKE_PROGRESS") ?? ""
+      XSH_DISABLE_COMPACT_RUNNER = env.get("XSH_DISABLE_COMPACT_RUNNER") ?? "1"
       XSH_PM_ARCH = target_arch
       XSH_PM_BUILD_ARCH = build_arch
       XSH_PM_BUILD_ROOT = "/"
@@ -496,12 +522,8 @@ export proc build_packages(
   var built = []
   var owners: Map[Str] = {}
 
-  if packages.len() > 0 {
-    let _ = packages
-      |> par-map --jobs=packages.len() { |pkg|
-        prepare_build_package_source(ctx, pkg)?
-        pkg.name
-      }
+  for pkg in packages {
+    prepare_build_package_source(ctx, pkg)?
   }
 
   for pkg in packages {

@@ -1104,6 +1104,27 @@ proc test_pm_world_plan_stable_cache_invalidates_on_pkgbuild_edit(ctx: TestConte
   test.contains(fp"${stage}/.world/state.json".read_text()?, "\"complete\":true")?
 }
 
+proc test_pm_world_plan_parallel_package_setup_error_goes_to_build_log(ctx: TestContext) [fs, process, env, error] {
+  let home = test.temp_dir(ctx, name: "home")?
+  let err = test.temp_path(ctx, name: "pm.err")
+  let pkg = test.temp_dir(ctx, name: "bad-source-world-pkg")?
+  let _ = fs.copy_tree(source_pkg_dir(), pkg, parents: true, overwrite: true)?
+  fs.write(
+    fp"${pkg}/PKGBUILD.xsh",
+    fp"${pkg}/PKGBUILD.xsh".read_text()?.replace("source-pkg", "laputa-pm"),
+  )?
+
+  let status = run.status HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_OFFLINE=1 xsh_bin() pm.xsh -- world-plan $pkg --build --jobs 2 2> $err
+  test.eq(status.ok, false)?
+  let stderr = err.read_text()?
+  test.ok(! stderr.contains("par-map error"))?
+  test.contains(stderr, "tranche 0: 1/1 failed")?
+  let stage = single_world_cache(home)?
+  let arch = fixture_arch()?
+  let log = fp"${stage}/packages/${arch}/laputa-pm/build.log".read_text()?
+  test.contains(log, "world-build error: sha256 digest mismatch")?
+}
+
 proc test_pm_world_plan_upload_requires_complete_stage(ctx: TestContext) [fs, process, env, error] {
   let home = test.temp_dir(ctx, name: "home")?
   let remote = test.temp_dir(ctx, name: "world-remote")?

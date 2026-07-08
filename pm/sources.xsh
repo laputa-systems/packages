@@ -340,11 +340,12 @@ export proc stage_package_sources(
     return
   }
 
-  let resolved_sources = entries
-    |> par-map --jobs=entries.len() { |entry|
-      let resolved = resolve_source(work, pkg, entry.line, arch, force_download)?
-      {index: entry.index, line: entry.line, path: resolved.path, kind: resolved.kind}
-    }
+  var resolved_sources = []
+
+  for entry in entries {
+    let resolved = resolve_source(work, pkg, entry.line, arch, force_download)?
+    resolved_sources = resolved_sources.push({index: entry.index, line: entry.line, path: resolved.path, kind: resolved.kind})
+  }
 
   for resolved in resolved_sources {
     stage_resolved_source(pkg, resolved.line, resolved.path, resolved.kind, pkg.checksums[resolved.index], src)?

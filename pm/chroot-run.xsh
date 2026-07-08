@@ -33,6 +33,7 @@ proc main(root: Path, package_name: Str, ...argv: List[Str]) [fs, process, env, 
       XSH_LINUX_KBUILD_USE_PLAN = env.get("XSH_LINUX_KBUILD_USE_PLAN") ?? ""
       XSH_LINUX_KBUILD_USE_PLAN_TEXT = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT") ?? ""
       XSH_LINUX_KBUILD_USE_PLAN_TEXT_INLINE = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT_INLINE") ?? ""
+      XSH_DISABLE_COMPACT_RUNNER = env.get("XSH_DISABLE_COMPACT_RUNNER") ?? ""
       XSH_PM_ARCH = env.get("XSH_PM_ARCH") ?? ""
       XSH_PM_BUILD_ARCH = env.get("XSH_PM_BUILD_ARCH") ?? ""
       XSH_PM_BUILD_ROOT = env.get("XSH_PM_BUILD_ROOT") ?? ""

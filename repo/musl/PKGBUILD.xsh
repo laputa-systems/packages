@@ -285,7 +285,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # PIE:     Scrt1, rcrt1 (compile_lo adds -fPIC/-DPIC for PIE executables).
   let crt_cflags = cflags.push("-DCRT")
   var crt_tasks = []
-  var crt_outs = []
+  var crt_outs: List[Path] = []
 
   for src_name in ["crt1", "crti", "crtn"] {
     let src = fp"crt/${src_name}.c"

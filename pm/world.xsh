@@ -1197,6 +1197,11 @@ pure native_cross_ldso_name(arch: Str) -> Str {
   return f"ld-musl-${arch}.so.1"
 }
 
+type WorldBuildBatch = {
+  built: List[BuiltPackage],
+  failed: Bool,
+}
+
 pure native_cross_compiler_script(real: Path, build_root: Path, target_root: Path, target_arch: Str, cxx: Bool) -> Str {
   let cxx_text = if cxx { "true" } else { "false" }
   return f"""#!/bin/xsh --
@@ -1356,7 +1361,10 @@ proc build_world_package(
     XSH_PM_BUILD_ROOT = package_path_root.display()
     XSH_PM_BUILD_CHROOT = build_chroot
   } {
-    built = pm_build.build_packages(package_ctx, [pkg])?
+    match pm_build.build_packages(package_ctx, [pkg]) {
+      Ok(items) => built = items
+      Err(err) => return Err(err)
+    }
   } ?
 
   print --flush ${pkg.name} world_package_id(pkg) "build:" "finished" time.duration_compact(
@@ -1364,6 +1372,44 @@ proc build_world_package(
   ) "log:" $log_path
 
   built
+}
+
+proc append_world_package_log(log_path: Path, line: Str) [fs, error] {
+  let existing = if fs.exists(log_path)? { log_path.read_text()? } else { "" }
+  fs.mkdir(log_path.parent.parent.parent)?
+  fs.mkdir(log_path.parent.parent)?
+  fs.mkdir(log_path.parent)?
+
+  fs.write(
+    log_path,
+    f"""${existing}${line}
+""",
+  )?
+}
+
+proc build_world_package_or_empty(
+  repo_dir: Path,
+  build_ctx: PmContext,
+  target_staged_root: Path,
+  build_staged_root: Path,
+  pkg: Package,
+  target_arch: Str,
+  build_arch: Str,
+  cross_build: Bool,
+) [fs, net, process, env, time, error] -> Result[WorldBuildBatch] {
+  let started_at = time.now()
+  let log_path = fp"${repo_dir}/packages/${target_arch}/${pkg.name}/build.log"
+
+  match build_world_package(repo_dir, build_ctx, target_staged_root, build_staged_root, pkg, target_arch, build_arch, cross_build) {
+    Ok(built) => return {built, failed: false}
+    Err(err) => {
+      append_world_package_log(log_path, f"world-build error: ${err.message}")?
+      eprint --flush ${pkg.name} world_package_id(pkg) "build:" "failed" time.duration_compact(
+        (time.now() - started_at) / 1000,
+      ) "log:" $log_path
+      return {built: [], failed: true}
+    }
+  }
 }
 
 proc remove_world_unowned_install_conflicts(root: Path, built: List[BuiltPackage]) [fs, error] {
@@ -1992,12 +2038,12 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
           f"jobs ${world_jobs}",
         )}"
 
-        var built_batches: List[List[BuiltPackage]] = []
+        var built_batches: List[WorldBuildBatch] = []
 
         if world_jobs == 1 {
           for pkg in pending {
             built_batches = built_batches.push(
-              build_world_package(
+              build_world_package_or_empty(
                 repo_dir,
                 build_ctx,
                 root,
@@ -2012,7 +2058,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
         } else {
           built_batches = pending
             |> par-map --jobs=world_jobs { |pkg|
-              build_world_package(
+              build_world_package_or_empty(
                 repo_dir,
                 build_ctx,
                 root,
@@ -2036,14 +2082,15 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
         var pending_index = 0
         var tranche_errors = []
 
-        for built in built_batches {
+        for batch in built_batches {
           let original_pkg = pending_originals[pending_index]
           let build_pkg = pending[pending_index]
+          let built = batch.built
 
-          if built.len() == 0 {
+          if batch.failed or built.len() == 0 {
             let pkg_id = world_package_id(build_pkg)
             let msg = f"${original_pkg.name} ${pkg_id}"
-            tranche_errors.push(msg)
+            tranche_errors = tranche_errors.push(msg)
             eprint f"world-build: ${msg} failed"
           } else {
             var unchanged = false
@@ -2104,9 +2151,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
             eprint f"  ${error}"
           }
 
-          return Err(
-            PmError.Usage(f"tranche ${level} had ${tranche_errors.len()} failure(s); state saved for successes"),
-          )
+          abort(3)
         }
       }
 

@@ -12,7 +12,7 @@ export let sources = [p"files/cacert.pem", p"files/update-certdata.xsh"]
 
 export let checksums = [
   "b6e66569cc3d438dd5abe514d0df50005d570bfc96c14dca8f768d020cb96171",
-  "903bc0e759182b1837fb075fc6cfc3d0667c94e51ec7934f1cb66c1049608fa7",
+  "176ed1182db55c90455a55bf883a1985a741840b405717bd32409d7b7bb23c30",
 ]
 
 export proc build(dest: Path) [fs, error] {
