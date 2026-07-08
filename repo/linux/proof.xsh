@@ -1,20 +1,20 @@
-use kbuild
+error ProofError = Failed(kind: Str, message: Str)
 
 proc ensure_file(path_value: Path, label: Str) [fs, error] {
   if ! fs.exists(path_value)? {
-    return Err(ScriptError.Failed("proof-linux", f"missing ${label}: ${path_value.display()}"))?
+    return Err(ProofError.Failed("proof-linux", f"missing ${label}: ${path_value.display()}"))?
   }
 
   let meta = fs.metadata(path_value)?
 
   if meta.size <= 0 {
-    return Err(ScriptError.Failed("proof-linux", f"empty ${label}: ${path_value.display()}"))?
+    return Err(ProofError.Failed("proof-linux", f"empty ${label}: ${path_value.display()}"))?
   }
 }
 
 proc ensure_config(config_path: Path, key: Str, label: Str) [fs, error] {
   if ! config_path.exists()? {
-    return Err(ScriptError.Failed("proof-linux", f"missing config for ${label} check: ${config_path.display()}"))?
+    return Err(ProofError.Failed("proof-linux", f"missing config for ${label} check: ${config_path.display()}"))?
   }
 
   for raw in config_path.read_text()?.split("\n") {
@@ -25,14 +25,14 @@ proc ensure_config(config_path: Path, key: Str, label: Str) [fs, error] {
     }
   }
 
-  return Err(ScriptError.Failed("proof-linux", f"${label}: expected ${key}=y not found in ${config_path.display()}"))?
+  return Err(ProofError.Failed("proof-linux", f"${label}: expected ${key}=y not found in ${config_path.display()}"))?
 }
 
 proc ensure_x86_bzimage(image_path: Path) [fs, error] {
   let meta = fs.metadata(image_path)?
 
   if meta.size < 518 {
-    return Err(ScriptError.Failed("proof-linux", f"x86_64 boot image is too small: ${image_path.display()}"))?
+    return Err(ProofError.Failed("proof-linux", f"x86_64 boot image is too small: ${image_path.display()}"))?
   }
 
   let image = image_path.read_bytes()?
@@ -41,7 +41,7 @@ proc ensure_x86_bzimage(image_path: Path) [fs, error] {
 
   if image.slice(offset: 0, length: 2) != mz {
     return Err(
-      ScriptError.Failed(
+      ProofError.Failed(
         "proof-linux",
         f"x86_64 boot image is not a bzImage: missing MZ header in ${image_path.display()}",
       ),
@@ -50,7 +50,7 @@ proc ensure_x86_bzimage(image_path: Path) [fs, error] {
 
   if image.slice(offset: 514, length: 4) != hdrs {
     return Err(
-      ScriptError.Failed(
+      ProofError.Failed(
         "proof-linux",
         f"x86_64 boot image is not a bzImage: missing HdrS setup header in ${image_path.display()}",
       ),
@@ -95,7 +95,7 @@ proc main(rootfs: Path = /rootfs) [fs, env, error] {
   } else if proof_arch == "aarch64" or proof_arch == "arm64" {
     ensure_config(config_path, "CONFIG_ARM64", "arm64 arch check")?
   } else {
-    return Err(ScriptError.Failed("proof-linux", f"unsupported proof arch: ${proof_arch}"))?
+    return Err(ProofError.Failed("proof-linux", f"unsupported proof arch: ${proof_arch}"))?
   }
 
   print "linux ok: vmlinuz and uapi headers"

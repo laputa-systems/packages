@@ -2,6 +2,7 @@ use pm.buildroot
 use pm.configure
 use pm.local as pm_local
 use pm.make
+use pm.world as pm_world
 
 pure xsh_bin() -> Path {
   return p"xsh"
@@ -937,6 +938,34 @@ proc test_pm_help(ctx: TestContext) [process, error] {
   test.contains(world_help, "--arch ARCH")?
   test.contains(world_help, "--sync-rels")?
   test.contains(world_help, "--to-tranche N")?
+}
+
+proc test_pm_world_musl_elf_dependency_audit_detects_elf_metadata(ctx: TestContext) [error] {
+  let _ = ctx
+  test.ok(pm_world.elf_info_mentions_musl(["libc.so"], ""))?
+  test.ok(pm_world.elf_info_mentions_musl([], "/lib/ld-musl-aarch64.so.1"))?
+  test.eq(pm_world.elf_info_mentions_musl(["libz.so.1"], ""), false)?
+}
+
+proc test_pm_world_elf_dependency_audit_detects_missing_provider_deps(ctx: TestContext) [error] {
+  let _ = ctx
+  var providers: Map[Str] = {}
+  providers["libz.so.1"] = "zlib"
+  providers["libssl.so.3"] = "openssl"
+
+  let missing = pm_world.missing_elf_runtime_dependencies("app", ["zlib"], ["libz.so.1", "libssl.so.3"], "", providers)
+  test.eq(missing.len(), 1)?
+  test.eq(missing[0].soname, "libssl.so.3")?
+  test.eq(missing[0].provider, "openssl")?
+
+  test.eq(
+    pm_world.missing_elf_runtime_dependencies("zlib", [], ["libz.so.1"], "", providers).len(),
+    0,
+  )?
+  test.eq(
+    pm_world.missing_elf_runtime_dependencies("app", ["zlib", "openssl"], ["libz.so.1", "libssl.so.3"], "", providers).len(),
+    0,
+  )?
 }
 
 proc test_pm_requires_package_proof(ctx: TestContext) [fs, process, error] {

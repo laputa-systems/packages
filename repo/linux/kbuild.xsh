@@ -2218,6 +2218,10 @@ pure path_strings(paths: List[Path]) -> List[Str] {
   return [path_key(path_value) for path_value in paths]
 }
 
+pure argv_strings(argv: List[Any]) -> List[Str] {
+  return [f"${arg}" for arg in argv]
+}
+
 proc paths_from_strings(items: List[Str]) [error] -> Result[List[Path]] {
   [path_from_string(item)? for item in items]
 }
@@ -2450,7 +2454,7 @@ pure task_record(task: Record) -> Record {
     outputs: path_strings(task.outputs),
     inputs: path_strings(task.inputs),
     deps: task.deps,
-    argv: task.argv,
+    argv: argv_strings(task.argv),
     env: task.env,
     cwd: task.cwd.display(),
     depfile: task.depfile.display(),
