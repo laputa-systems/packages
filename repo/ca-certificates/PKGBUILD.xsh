@@ -12,7 +12,7 @@ export let sources: List[Path] = [p"files/cacert.pem", p"files/update-certdata.x
 
 export let checksums: List[Str] = [
   "b6e66569cc3d438dd5abe514d0df50005d570bfc96c14dca8f768d020cb96171",
-  "bdcf5134df098da4bc5102c503c3ba6c2c75489d2b3a6d240936088438c8af92",
+  "903bc0e759182b1837fb075fc6cfc3d0667c94e51ec7934f1cb66c1049608fa7",
 ]
 
 export proc build(dest: Path) [fs, error] {
