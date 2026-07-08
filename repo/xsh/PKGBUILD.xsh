@@ -9,20 +9,20 @@ export let deps = []
 export let mkdeps = []
 
 export let sources = [
-  p"https://github.com/laputa-systems/xsh/releases/download/release-e12de8c8ce6388bcbf80df96bf57ebd8afc2d0df/xsh-multicall-release-e12de8c8ce6388bcbf80df96bf57ebd8afc2d0df-ARCH-linux-musl => xsh-multicall",
-  p"https://github.com/laputa-systems/xsh/releases/download/release-e12de8c8ce6388bcbf80df96bf57ebd8afc2d0df/core-release-e12de8c8ce6388bcbf80df96bf57ebd8afc2d0df.tar.xz => xsh-core",
+  p"https://github.com/laputa-systems/xsh/releases/download/release-181ec3af0a80b8b67c7f8e9607885b2ce621b9b1/xsh-multicall-release-181ec3af0a80b8b67c7f8e9607885b2ce621b9b1-ARCH-linux-musl => xsh-multicall",
+  p"https://github.com/laputa-systems/xsh/releases/download/release-181ec3af0a80b8b67c7f8e9607885b2ce621b9b1/core-release-181ec3af0a80b8b67c7f8e9607885b2ce621b9b1.tar.xz => xsh-core",
 ]
 
 export let checksums = ["SKIP", "0bae60ddb8e15a2f03f81ccf4e5ad69e6ed2215d656ea6a6395a24d1e86dcdeb"]
 
 export let checksums_aarch64 = [
-  "0874226398877b375ce2a8453f7b587d75ec6a40a601fddcf33fd80dbdf08a27",
-  "0bae60ddb8e15a2f03f81ccf4e5ad69e6ed2215d656ea6a6395a24d1e86dcdeb",
+  "717191f245a589f894a5ccb14548b7e38bd4c51e15c879db2b203a09997c10ce",
+  "1e5b81d715f56df3c3d98ab5eaaa372e37e8ef8af3308b57a547b2b9f24a4636",
 ]
 
 export let checksums_x86_64 = [
-  "a000d143c13ecd83041e2e7c91690a09a4bc1d2405d859195082f07f85ac21ea",
-  "0bae60ddb8e15a2f03f81ccf4e5ad69e6ed2215d656ea6a6395a24d1e86dcdeb",
+  "b250c7ae0d9ecafb20fa28936b09588186d6458d7d97bcbe001f493d5836846d",
+  "1e5b81d715f56df3c3d98ab5eaaa372e37e8ef8af3308b57a547b2b9f24a4636",
 ]
 
 export let nostrip = true
