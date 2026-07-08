@@ -1202,10 +1202,6 @@ pure native_cross_compiler_script(real: Path, build_root: Path, target_root: Pat
   return f"""#!/bin/xsh --
 error NativeCrossCompilerError = Failed(message: Str)
 
-pure has_arg(argv: List[Str], name: Str) -> Bool {{
-  return argv |> any . == name
-}}
-
 proc run_compiler(argv: List[Any]) [process, error] {{
   let status = process.run(
     process.command_argv(
@@ -1263,12 +1259,12 @@ proc main(...argv: List[Str]) [fs, process, error] {{
     "${build_root}/usr/lib/llvm22/lib/clang/22",
   ]
 
-  if has_arg(argv, "-c") or has_arg(argv, "-S") or has_arg(argv, "-E") {{
+  if "-c" in argv or "-S" in argv or "-E" in argv {{
     run_compiler(base.extend(cxx_args).extend(argv))?
     return
   }}
 
-  if has_arg(argv, "-shared") {{
+  if "-shared" in argv {{
     run_compiler(base.extend(["-fuse-ld=lld", "-nostdlib"]).extend(argv).push("-L${target_root}/usr/lib").extend(cxx_libs).extend(builtins_arg).push("-lc"))?
     return
   }}

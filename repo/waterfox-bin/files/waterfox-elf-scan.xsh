@@ -29,16 +29,6 @@ pure clean_lines(text: Str) -> List[Str] {
     |> sort-by .
 }
 
-pure list_contains(xs: List[Str], value: Str) -> Bool {
-  for x in xs {
-    if x == value {
-      return true
-    }
-  }
-
-  false
-}
-
 pure sorted_keys(values: Map[Bool]) -> List[Str] {
   values.keys() |> sort-by .
 }
@@ -94,7 +84,7 @@ export proc scan_waterfox_elf(
             return Err(WaterfoxScanError.RejectedSoname(f"${entry.path.display()} needs rejected ${soname}"))
           }
 
-          if ! private.get(soname, false) and ! list_contains(allowed, soname) {
+          if ! private.get(soname, false) and soname not in allowed {
             external[soname] = true
           }
         }

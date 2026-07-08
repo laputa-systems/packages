@@ -22,16 +22,6 @@ pure clean_lines(text: Str) -> List[Str] {
     |> sort-by .
 }
 
-pure list_contains(xs: List[Str], value: Str) -> Bool {
-  for x in xs {
-    if x == value {
-      return true
-    }
-  }
-
-  false
-}
-
 pure sorted_keys(values: Map[Path]) -> List[Str] {
   values.keys() |> sort-by .
 }
@@ -73,7 +63,7 @@ export proc verify_private_needed(
         var needed = []
 
         for soname in info.needed {
-          if ! list_contains(allowed, soname) {
+          if soname not in allowed {
             if ! private.has(soname) {
               return Err(
                 PrivateNeededError.MissingPrivate(

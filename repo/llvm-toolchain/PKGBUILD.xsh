@@ -34,10 +34,6 @@ pure bool_literal(value: Bool) -> Str {
 
 pure xsh_wrapper_source(real: Path, clang: Bool, cxx: Bool) -> Str {
   let template = """#!/bin/xsh
-proc has_arg(argv: List[Str], needle: Str) [] -> Bool {
-  return needle in argv
-}
-
 proc has_option_prefix(argv: List[Str], prefix: Str) [] -> Bool {
   for arg in argv {
     if arg.starts_with(prefix) {
@@ -49,27 +45,27 @@ proc has_option_prefix(argv: List[Str], prefix: Str) [] -> Bool {
 }
 
 proc compile_only(argv: List[Str]) [] -> Bool {
-  return has_arg(argv, "-c") or has_arg(argv, "-S") or has_arg(argv, "-E")
+  return "-c" in argv or "-S" in argv or "-E" in argv
 }
 
 proc shared_link(argv: List[Str]) [] -> Bool {
-  return has_arg(argv, "-shared")
+  return "-shared" in argv
 }
 
 proc static_link(argv: List[Str]) [] -> Bool {
-  return has_arg(argv, "-static")
+  return "-static" in argv
 }
 
 proc default_runtime(argv: List[Str]) [] -> Bool {
-  return ! has_arg(argv, "-nostdlib") and ! has_arg(argv, "-nodefaultlibs")
+  return "-nostdlib" not in argv and "-nodefaultlibs" not in argv
 }
 
 proc default_startfiles(argv: List[Str]) [] -> Bool {
-  return default_runtime(argv) and ! has_arg(argv, "-nostartfiles")
+  return default_runtime(argv) and "-nostartfiles" not in argv
 }
 
 proc include_controlled(argv: List[Str]) [] -> Bool {
-  return has_arg(argv, "-nostdinc") or has_arg(argv, "-nostdlibinc") or has_arg(argv, "-nostdsysteminc")
+  return "-nostdinc" in argv or "-nostdlibinc" in argv or "-nostdsysteminc" in argv
 }
 
 proc sysroot_arg(argv: List[Str]) [error] -> Result[Path] {
@@ -105,7 +101,7 @@ proc source_like(arg: Str) [] -> Bool {
 }
 
 proc needs_frontend_flags(argv: List[Str]) [] -> Bool {
-  if has_arg(argv, "-E") {
+  if "-E" in argv {
     return true
   }
 

@@ -192,23 +192,13 @@ pure path_in_list(path_value: Path, paths: List[Path]) -> Bool {
   return false
 }
 
-pure str_in_list(value: Str, values: List[Str]) -> Bool {
-  for candidate in values {
-    if candidate == value {
-      return true
-    }
-  }
-
-  return false
-}
-
 export proc discover_sources(root: Path, extensions: List[Str], exclude: List[Path] = []) [fs, error] -> Result[List[Path]] {
   let source_root = path.absolute(root)?
   var sources = []
 
   for entry in fs.walk(source_root, gitignore: false)? |> sort-by .path {
     continue unless entry.kind == "file"
-    continue unless str_in_list(entry.ext, extensions)
+    continue unless entry.ext in extensions
     let rel = entry.path.relative_to(source_root)
     continue when path_in_list(rel, exclude)
     sources = sources.push(rel)
@@ -376,10 +366,6 @@ pure has_option_prefix_argv(argv: List[Str], prefix: Str) -> Bool {
   return false
 }
 
-pure has_exact_argv(argv: List[Str], value: Str) -> Bool {
-  return value in argv
-}
-
 pure musl_ldso_name(arch: Str) -> Str {
   if arch == "aarch64" {
     return "ld-musl-aarch64.so.1"
@@ -474,7 +460,7 @@ export proc effective_task_argv(raw_argv: List[Any], task_env: Record) [fs, env,
     return out.extend(stripped)
   }
 
-  if ! has_exact_argv(argv, "-nostdlib") {
+  if "-nostdlib" not in argv {
     out = out.push("-nostdlib")
   }
 
@@ -500,11 +486,11 @@ export proc effective_task_argv(raw_argv: List[Any], task_env: Record) [fs, env,
     cxx_lib_args = cxx_lib_args.push("-lm")
   }
 
-  if has_exact_argv(argv, "-nostdlib") {
+  if "-nostdlib" in argv {
     return out.extend(link_args)
   }
 
-  if has_exact_argv(argv, "-shared") {
+  if "-shared" in argv {
     return out.extend(link_args).extend(cxx_lib_args).push("-lc")
   }
 
