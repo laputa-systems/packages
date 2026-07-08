@@ -1,4 +1,6 @@
+use pm.buildroot
 use pm.configure
+use pm.local as pm_local
 use pm.make
 
 pure xsh_bin() -> Path {
@@ -15,7 +17,7 @@ pure make_helper_task(
   mode: Str,
   args: List[Str],
   stamp: Path,
-  depfile: Path = Path(""),
+  depfile: Path = p"",
 ) -> make.MakeTask {
   return {
     name: name,
@@ -314,6 +316,7 @@ literal=@UNKNOWN@
   var defines: Map[Str] = {}
   defines["ENABLE_CONFIGURED"] = "1"
   configure.config_h(fp"${pkg}/files/config.h.in", fp"${pkg}/generated/config.h", defines)?
+
   configure.substitute(
     fp"${pkg}/files/message.in",
     fp"${pkg}/generated/message.txt",
@@ -339,11 +342,11 @@ export proc build(dest: Path) [fs, error] -> Result[Unit] {
 
   fs.write(
     fp"${pkg}/proof.xsh",
-    r"""error ProofError = Failed(kind: Str, message: Str)
+    """error ProofError = Failed(kind: Str, message: Str)
 
 proc main(root: Path = /rootfs) [fs, error] {
-  let header = fp"${root}/usr/share/configured-pkg/config.h"
-  let message = fp"${root}/usr/share/configured-pkg/message.txt"
+  let header = fp"\${root}/usr/share/configured-pkg/config.h"
+  let message = fp"\${root}/usr/share/configured-pkg/message.txt"
 
   if ! header.exists()? or ! message.exists()? {
     return Err(ProofError.Failed("proof-configured-pkg", "missing configured outputs"))
@@ -375,11 +378,13 @@ proc test_pm_package_build_extracts_tar_source(ctx: TestContext) [fs, process, e
   let tar_root = test.temp_dir(ctx, name: "tar-root")?
   fs.mkdir(fp"${pkg}/files")?
   fs.mkdir(fp"${tar_root}/upstream-1.0")?
+
   fs.write(
     fp"${tar_root}/upstream-1.0/data.txt",
     """tar-source
 """,
   )?
+
   archive.tar_create(fp"${pkg}/files/upstream.tar.gz", tar_root, [p"upstream-1.0"], compression: "gz")?
 
   fs.write(
@@ -400,10 +405,10 @@ export proc build(dest: Path) [fs, error] -> Result[Unit] {
 
   fs.write(
     fp"${pkg}/proof.xsh",
-    r"""error ProofError = Failed(kind: Str, message: Str)
+    """error ProofError = Failed(kind: Str, message: Str)
 
 proc main(root: Path = /rootfs) [fs, error] {
-  let payload = fp"${root}/usr/share/tar-source-pkg/data.txt"
+  let payload = fp"\${root}/usr/share/tar-source-pkg/data.txt"
 
   if ! payload.exists()? {
     return Err(ProofError.Failed("proof-tar-source-pkg", "missing extracted payload"))
@@ -418,11 +423,60 @@ main(@args)?
 
   let install_out = run.text xsh_bin() pm.xsh -- install $root $work $out $pkg ?
   test.contains(install_out, "tar-source-pkg tar-source-pkg-1.0.0-1 build: 1 files")?
+
   test.eq(
     fp"${root}/usr/share/tar-source-pkg/data.txt".read_text()?,
     """tar-source
 """,
   )?
+}
+
+proc test_pm_build_prepared_package_command_writes_manifest_and_tarball(ctx: TestContext) [fs, process, error] {
+  let pkg = test.temp_dir(ctx, name: "prepared-pkg")?
+  let src = test.temp_dir(ctx, name: "prepared-src")?
+  let dest = test.temp_dir(ctx, name: "prepared-dest")?
+  let out = test.temp_dir(ctx, name: "prepared-out")?
+  let tarball = fp"${out}/prepared-pkg-1.0.0-1.tar.gz"
+
+  fs.write(
+    fp"${src}/payload.txt",
+    """prepared
+""",
+  )?
+
+  fs.write(
+    fp"${pkg}/PKGBUILD.xsh",
+    """export let name = "prepared-pkg"
+export let ver = "1.0.0"
+export let rel = "1"
+export let deps: List[Str] = []
+export let mkdeps: List[Str] = []
+export let sources: List[Path] = []
+export let checksums: List[Str] = []
+
+export proc build(dest: Path) [fs, error] -> Result[Unit] {
+  fs.install(p"payload.txt", fp"\${dest}/usr/share/prepared-pkg/payload.txt", 0o644, parents: true)?
+}
+""",
+  )?
+
+  run.text xsh_bin() pm.xsh -- build-prepared-package $pkg $src $dest $tarball ?
+  test.ok(tarball.exists()?)?
+
+  test.eq(
+    fp"${dest}/usr/share/prepared-pkg/payload.txt".read_text()?,
+    """prepared
+""",
+  )?
+
+  test.contains(
+    fp"${dest}/var/lib/xsh-pm/packages/prepared-pkg/manifest.json".read_text()?,
+    "usr/share/prepared-pkg/payload.txt",
+  )?
+
+  let tar_records: List[Record] = archive.tar_list(tarball)?
+  let tar_entries = [entry.path.display() for entry in tar_records]
+  test.contains(tar_entries.join("\n"), "usr/share/prepared-pkg/payload.txt")?
 }
 
 proc test_pm_missing_dependency(ctx: TestContext) [process, error] {
@@ -440,6 +494,42 @@ proc test_pm_blocked_remove(ctx: TestContext) [process, error] {
   run.text xsh_bin() pm.xsh -- install $root $work $out dep_dir() app_dir() ?
   let status = run.status xsh_bin() pm.xsh -- remove $root $work $out dep 2> /dev/null
   test.eq(status.ok, false)?
+}
+
+proc test_pm_buildroot_missing_dependency_selection(ctx: TestContext) [fs, env, error] {
+  let root = test.temp_dir(ctx, name: "root")?
+  let dep_pkg = pm_local.load_package_dirs([dep_dir()])?[0]
+  let app_pkg = pm_local.load_package_dirs([app_dir()])?[0]
+  let no_local: Map[Bool] = {}
+  let dep_is_local = buildroot.local_package_names([dep_pkg, app_pkg])
+  let missing_remote_dep = buildroot.missing_dependency_names(root, [app_pkg], false, no_local)?
+  test.eq(missing_remote_dep.len(), 1)?
+  test.eq(missing_remote_dep[0], "dep")?
+  test.eq(buildroot.missing_dependency_names(root, [app_pkg], false, dep_is_local)?.len(), 0)?
+  let missing_build_dep = buildroot.missing_dependency_names(root, [app_pkg], true, dep_is_local)?
+  test.eq(missing_build_dep.len(), 1)?
+  test.eq(missing_build_dep[0], "llvm-toolchain")?
+  let db = fp"${root}/var/lib/xsh-pm/packages/dep"
+  fs.mkdir(db)?
+
+  json.write(
+    fp"${db}/metadata.json",
+    {
+      name: "dep",
+      ver: "1.0.0",
+      rel: "1",
+      deps: [],
+      mkdeps: [],
+      target_build_deps: [],
+      nostrip: false,
+      extract_install: false,
+      dir: "tests/xsh/fixtures/dep",
+    },
+  )?
+
+  json.write(fp"${db}/manifest.json", ["usr/share/dep.txt"])?
+  json.write(fp"${db}/etcsums.json", [])?
+  test.eq(buildroot.missing_dependency_names(root, [app_pkg], false, no_local)?.len(), 0)?
 }
 
 proc test_pm_search(ctx: TestContext) [process, error] {
@@ -578,7 +668,6 @@ proc test_pm_remote_install_rejects_invalid_metadata_sidecar(ctx: TestContext) [
   let err = test.temp_path(ctx, name: "pm.err")
   let repo_url = f"file://${repo.display()}"
   let arch = fixture_arch()?
-
   run.text xsh_bin() pm.xsh -- auth $root $work $out my-secret-token ?
   run.text xsh_bin() pm.xsh -- install $root $work $out remote_app_dir() ?
   run.text XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- upload $root $work $out remote_app_dir() ?
@@ -604,6 +693,38 @@ proc test_pm_remote_install_rejects_invalid_metadata_sidecar(ctx: TestContext) [
   test.eq(fp"${install_root}/usr/share/remote-app/payload.txt".exists()?, false)?
 }
 
+proc test_pm_remote_install_refetches_corrupt_cached_tarball(ctx: TestContext) [fs, process, env, error] {
+  let root = test.temp_dir(ctx, name: "root")?
+  let work = test.temp_dir(ctx, name: "work")?
+  let out = test.temp_dir(ctx, name: "out")?
+  let repo = test.temp_dir(ctx, name: "repo")?
+  let install_root = test.temp_dir(ctx, name: "install-root")?
+  let install_work = test.temp_dir(ctx, name: "install-work")?
+  let install_out = test.temp_dir(ctx, name: "install-out")?
+  let repo_url = f"file://${repo.display()}"
+  let arch = fixture_arch()?
+  let cached_tarball = fp"${install_out}/remote-cache/packages/${arch}/remote-app/remote-app-1.0.0-1.tar.gz"
+  run.text xsh_bin() pm.xsh -- auth $root $work $out my-secret-token ?
+  run.text xsh_bin() pm.xsh -- install $root $work $out remote_app_dir() ?
+  run.text XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- upload $root $work $out remote_app_dir() ?
+  run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- refresh-index $install_root $install_work $install_out ?
+  fs.mkdir(cached_tarball.parent)?
+  fs.write(cached_tarball, "corrupt")?
+  let install_out_text = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- install $install_root $install_work $install_out remote-app ?
+  test.contains(install_out_text, "remote-app 1 remote-installed")?
+
+  test.eq(
+    fp"${install_root}/usr/share/remote-app/payload.txt".read_text()?,
+    """remote-app
+""",
+  )?
+
+  test.eq(
+    hash.sha256(cached_tarball)?.hex(),
+    hash.sha256(fp"${repo}/packages/${arch}/remote-app/remote-app-1.0.0-1.tar.gz")?.hex(),
+  )?
+}
+
 proc test_pm_lifecycle_hooks(ctx: TestContext) [fs, process, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
@@ -613,17 +734,17 @@ proc test_pm_lifecycle_hooks(ctx: TestContext) [fs, process, error] {
 
   fs.write(
     hook,
-    r"""#!/bin/xsh --
+    """#!/bin/xsh --
 proc main(...argv: List[Str]) [fs, env, error] {
   let _ = argv
-  let log = fp"${env.get("HOOK_LOG")?}"
+  let log = fp"\${env.get("HOOK_LOG")?}"
   var current = ""
 
   if log.exists()? {
     current = log.read_text()?
   }
 
-  fs.write(log, f"${current}${env.get("XSH_PM_HOOK")?}|${env.get("XSH_PM_PACKAGE")?}|${env.get("XSH_PM_ACTION")?}\\n")?
+  fs.write(log, f"\${current}\${env.get("XSH_PM_HOOK")?}|\${env.get("XSH_PM_PACKAGE")?}|\${env.get("XSH_PM_ACTION")?}\\\\n")?
 }
 
 main(@args)?
@@ -660,16 +781,19 @@ proc test_pm_upload_repo_export_includes_source_mirror(ctx: TestContext) [fs, pr
   let build_out = run.text xsh_bin() pm.xsh -- build $repo remote_app_dir() ?
   test.contains(build_out, "remote-app 1.0.0-1 stage: done")?
   test.ok(fp"${repo}/.out/source-mirrors/remote-app-1.0.0-1-${arch}.tar.gz".exists()?)?
-
   let export_out = run.text XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- upload-repo-export $repo ?
   test.contains(export_out, f"${arch} remote-app 1.0.0-1 exported")?
   test.contains(export_out, "repo export uploaded")?
-
   let source_rel = fp"sources/remote-app/remote-app-1.0.0-1-${arch}-src.tar.gz"
   test.ok(fp"${remote}/${source_rel}".exists()?)?
   let index_text = fp"${remote}/index.json".read_text()?
   test.contains(index_text, f"\"source_tarball\":\"${source_rel.display()}\"")?
   test.contains(index_text, "\"source_sha256\":\"")?
+  let err = test.temp_path(ctx, name: "export-missing.err")
+  fs.remove(fp"${repo}/packages/${arch}/remote-app/remote-app-1.0.0-1.tar.gz")?
+  let missing_status = run.status XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- upload-repo-export $repo 2> $err
+  test.eq(missing_status.ok, false)?
+  test.contains(err.read_text()?, "remote-app-1.0.0-1.tar.gz is missing")?
 }
 
 proc test_pm_build_repo_requires_package_dirs(ctx: TestContext) [fs, process, error] {
@@ -1145,12 +1269,12 @@ proc test_pm_extension_invocation_environment(ctx: TestContext) [fs, process, en
 
   fs.write(
     extension,
-    r"""#!/bin/xsh --
+    """#!/bin/xsh --
 proc main(...argv: List[Str]) [fs, env, error] {
   let _ = argv
   fs.write(
-    fp"${env.get("EXT_LOG")?}",
-    f"root=${env.get("XSH_PM_ROOT")?}\\nwork=${env.get("XSH_PM_WORK")?}\\nout=${env.get("XSH_PM_OUT")?}\\naction=${env.get("XSH_PM_ACTION")?}\\nargs=<${env.get("XSH_PM_ARGS")?}>\\n",
+    fp"\${env.get("EXT_LOG")?}",
+    f"root=\${env.get("XSH_PM_ROOT")?}\\\\nwork=\${env.get("XSH_PM_WORK")?}\\\\nout=\${env.get("XSH_PM_OUT")?}\\\\naction=\${env.get("XSH_PM_ACTION")?}\\\\nargs=<\${env.get("XSH_PM_ARGS")?}>\\\\n",
   )?
 }
 
@@ -1216,11 +1340,10 @@ proc test_pm_refresh_empty_file_repo_writes_empty_cache(ctx: TestContext) [fs, p
   test.eq(fp"${out}/remote-index.json".read_text()?.trim(), "[]")?
 }
 
-proc test_make_runner_behaviors(ctx: TestContext) [fs, process, time, env, error] {
+proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error] {
   let helper = test.temp_path(ctx, name: "make-task-helper.xsh")
 
-  helper.write(
-    r"""#!/bin/xsh --
+  helper.write("""#!/bin/xsh --
 proc count_value(path: Path) [fs, error] -> Result[Int] {
   if path.exists()? {
     return path.read_text()?.parse_int()?
@@ -1232,66 +1355,109 @@ proc count_value(path: Path) [fs, error] -> Result[Int] {
 proc main(mode: Str, ...argv: List[Str]) [fs, time, error] {
   match mode {
     "write" => {
-      fs.write(fp"${argv[0]}", argv[1])?
+      fs.write(fp"\${argv[0]}", argv[1])?
     }
     "copy-append" => {
-      fs.write(fp"${argv[1]}", fp"${argv[0]}".read_text()? + argv[2])?
+      fs.write(fp"\${argv[1]}", fp"\${argv[0]}".read_text()? + argv[2])?
     }
     "sleep-write" => {
       time.sleep(250ms)?
-      fs.write(fp"${argv[0]}", argv[1])?
+      fs.write(fp"\${argv[0]}", argv[1])?
     }
     "compile" => {
-      let count_path = fp"${argv[0]}"
+      let count_path = fp"\${argv[0]}"
       let next = count_value(count_path)? + 1
-      fs.write(count_path, f"${next}")?
-      fs.write(fp"${argv[1]}", f"object ${next}")?
-      fs.write(fp"${argv[2]}", f"${argv[1]}: ${argv[3]} ${argv[4]}\n")?
+      fs.write(count_path, f"\${next}")?
+      fs.write(fp"\${argv[1]}", f"object \${next}")?
+      fs.write(fp"\${argv[2]}", f"\${argv[1]}: \${argv[3]} \${argv[4]}\\n")?
     }
     "stamp" => {
-      let count_path = fp"${argv[0]}"
+      let count_path = fp"\${argv[0]}"
       let next = count_value(count_path)? + 1
-      fs.write(count_path, f"${next}")?
-      fs.write(fp"${argv[1]}", argv[2])?
+      fs.write(count_path, f"\${next}")?
+      fs.write(fp"\${argv[1]}", argv[2])?
     }
     _ => abort(2)
   }
 }
 
 main(@args)?
-""",
-  )?
+""")?
+
   helper.chmod(0o755)?
 
   env {
     MAKEFLAGS = "-j2"
   } {
     test.eq(make.jobs()?, 2)?
-
     let order_root_handle = fs.tempdir()?
     defer fs.close_root(order_root_handle)?
     let order_root = fs.root_path(order_root_handle)?
     let first = fp"${order_root}/first.txt"
     let second = fp"${order_root}/second.txt"
-    let first_task = make_helper_task("first", order_root, [first], [], [], helper, "write", [first.display(), "first"], fp"${order_root}/first.cmd")
-    let second_task = make_helper_task("second", order_root, [second], [first], ["first"], helper, "copy-append", [first.display(), second.display(), "second"], fp"${order_root}/second.cmd")
+
+    let first_task = make_helper_task(
+      "first",
+      order_root,
+      [first],
+      [],
+      [],
+      helper,
+      "write",
+      [first.display(), "first"],
+      fp"${order_root}/first.cmd",
+    )
+
+    let second_task = make_helper_task(
+      "second",
+      order_root,
+      [second],
+      [first],
+      ["first"],
+      helper,
+      "copy-append",
+      [first.display(), second.display(), "second"],
+      fp"${order_root}/second.cmd",
+    )
+
     make.run_tasks([second_task, first_task], 2)?
     test.eq(second.read_text()?, "firstsecond")?
-
     let parallel_root_handle = fs.tempdir()?
     defer fs.close_root(parallel_root_handle)?
     let parallel_root = fs.root_path(parallel_root_handle)?
     let one = fp"${parallel_root}/one.txt"
     let two = fp"${parallel_root}/two.txt"
-    let one_task = make_helper_task("one", parallel_root, [one], [], [], helper, "sleep-write", [one.display(), "one"], fp"${parallel_root}/one.cmd")
-    let two_task = make_helper_task("two", parallel_root, [two], [], [], helper, "sleep-write", [two.display(), "two"], fp"${parallel_root}/two.cmd")
+
+    let one_task = make_helper_task(
+      "one",
+      parallel_root,
+      [one],
+      [],
+      [],
+      helper,
+      "sleep-write",
+      [one.display(), "one"],
+      fp"${parallel_root}/one.cmd",
+    )
+
+    let two_task = make_helper_task(
+      "two",
+      parallel_root,
+      [two],
+      [],
+      [],
+      helper,
+      "sleep-write",
+      [two.display(), "two"],
+      fp"${parallel_root}/two.cmd",
+    )
+
     let start = time.now()
     make.run_tasks([one_task, two_task], 2)?
     let elapsed = time.now() - start
     test.ok(elapsed < 800, f"parallel make tasks took ${elapsed}ms")?
     test.eq(one.read_text()?, "one")?
     test.eq(two.read_text()?, "two")?
-
     let dep_root_handle = fs.tempdir()?
     defer fs.close_root(dep_root_handle)?
     let dep_root = fs.root_path(dep_root_handle)?
@@ -1301,25 +1467,67 @@ main(@args)?
     let depfile = fp"${dep_root}/main.o.d"
     let dep_stamp = fp"${dep_root}/main.o.cmd"
     let dep_count = fp"${dep_root}/count.txt"
-    src.write("source\n")?
-    header.write("header one\n")?
-    let dep_task = make_helper_task("compile", dep_root, [dep_out], [src], [], helper, "compile", [dep_count.display(), dep_out.display(), depfile.display(), src.display(), header.display()], dep_stamp, depfile)
+
+    src.write("""source
+""")?
+
+    header.write("""header one
+""")?
+
+    let dep_task = make_helper_task(
+      "compile",
+      dep_root,
+      [dep_out],
+      [src],
+      [],
+      helper,
+      "compile",
+      [dep_count.display(), dep_out.display(), depfile.display(), src.display(), header.display()],
+      dep_stamp,
+      depfile,
+    )
+
     make.run_tasks([dep_task], 1)?
     make.run_tasks([dep_task], 1)?
     test.eq(dep_count.read_text()?, "1")?
-    header.write("header two\n")?
+
+    header.write("""header two
+""")?
+
     dep_out.touch_from(fp"${dep_dir()}/PKGBUILD.xsh")?
     make.run_tasks([dep_task], 1)?
     test.eq(dep_count.read_text()?, "2")?
-
     let stamp_root_handle = fs.tempdir()?
     defer fs.close_root(stamp_root_handle)?
     let stamp_root = fs.root_path(stamp_root_handle)?
     let artifact = fp"${stamp_root}/artifact.txt"
     let stamp_count = fp"${stamp_root}/count.txt"
     let stamp = fp"${stamp_root}/artifact.cmd"
-    let stamp_first = make_helper_task("artifact", stamp_root, [artifact], [], [], helper, "stamp", [stamp_count.display(), artifact.display(), "one"], stamp)
-    let stamp_second = make_helper_task("artifact", stamp_root, [artifact], [], [], helper, "stamp", [stamp_count.display(), artifact.display(), "two"], stamp)
+
+    let stamp_first = make_helper_task(
+      "artifact",
+      stamp_root,
+      [artifact],
+      [],
+      [],
+      helper,
+      "stamp",
+      [stamp_count.display(), artifact.display(), "one"],
+      stamp,
+    )
+
+    let stamp_second = make_helper_task(
+      "artifact",
+      stamp_root,
+      [artifact],
+      [],
+      [],
+      helper,
+      "stamp",
+      [stamp_count.display(), artifact.display(), "two"],
+      stamp,
+    )
+
     make.run_tasks([stamp_first], 1)?
     make.run_tasks([stamp_first], 1)?
     test.eq(stamp_count.read_text()?, "1")?
@@ -1331,9 +1539,7 @@ main(@args)?
 
 proc expect_make_error(result: Result[Unit]) [error] {
   match result {
-    Ok(_) => {
-      test.ok(false, "expected make error")?
-    }
+    Ok(_) => test.ok(false, "expected make error")?
     Err(_) => {}
   }
 }
@@ -1342,15 +1548,59 @@ proc test_make_runner_rejects_invalid_graphs(ctx: TestContext) [fs, process, env
   let root = test.temp_dir(ctx, name: "make-invalid-root")?
   let out_a = fp"${root}/a.txt"
   let out_b = fp"${root}/b.txt"
-  let base = make_helper_task("base", root, [out_a], [], [], p"/bin/true", "unused", [], fp"${root}/base.cmd")
+  let base = make_helper_task("base", root, [out_a], [], [], /bin/true, "unused", [], fp"${root}/base.cmd")
 
-  let missing_dep = make_helper_task("missing", root, [out_b], [], ["absent"], p"/bin/true", "unused", [], fp"${root}/missing.cmd")
+  let missing_dep = make_helper_task(
+    "missing",
+    root,
+    [out_b],
+    [],
+    ["absent"],
+    /bin/true,
+    "unused",
+    [],
+    fp"${root}/missing.cmd",
+  )
+
   expect_make_error(make.run_tasks([base, missing_dep], 1))?
 
-  let duplicate_output = make_helper_task("duplicate", root, [out_a], [], [], p"/bin/true", "unused", [], fp"${root}/duplicate.cmd")
+  let duplicate_output = make_helper_task(
+    "duplicate",
+    root,
+    [out_a],
+    [],
+    [],
+    /bin/true,
+    "unused",
+    [],
+    fp"${root}/duplicate.cmd",
+  )
+
   expect_make_error(make.run_tasks([base, duplicate_output], 1))?
 
-  let cycle_a = make_helper_task("cycle-a", root, [out_a], [], ["cycle-b"], p"/bin/true", "unused", [], fp"${root}/cycle-a.cmd")
-  let cycle_b = make_helper_task("cycle-b", root, [out_b], [], ["cycle-a"], p"/bin/true", "unused", [], fp"${root}/cycle-b.cmd")
+  let cycle_a = make_helper_task(
+    "cycle-a",
+    root,
+    [out_a],
+    [],
+    ["cycle-b"],
+    /bin/true,
+    "unused",
+    [],
+    fp"${root}/cycle-a.cmd",
+  )
+
+  let cycle_b = make_helper_task(
+    "cycle-b",
+    root,
+    [out_b],
+    [],
+    ["cycle-a"],
+    /bin/true,
+    "unused",
+    [],
+    fp"${root}/cycle-b.cmd",
+  )
+
   expect_make_error(make.run_tasks([cycle_a, cycle_b], 1))?
 }

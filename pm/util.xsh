@@ -258,51 +258,6 @@ export pure checksum_field_line(line: Str, field: Str) -> Bool {
   ) or line.starts_with(f"let ${field} ") or line.starts_with(f"let ${field}:") or line.starts_with(f"let ${field}=")
 }
 
-export proc parse_pm_cli(argv: List[Str]) [error] -> Result[Cli] {
-  let path_types = {root: "Path", work: "Path", out: "Path"}
-
-  let commands = {
-    smoke: {positionals: ["root", "work", "out"], types: path_types, rest: "raw", min_rest: 1},
-    install: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    remove: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    list: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    info: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    search: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    tree: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    outdated: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    upgrade: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    update: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    checksum: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    update_checksums: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    download: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    refresh_index: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    auth: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    upload: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-    help_ext: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
-  }
-
-  let parsed: Cli = cli.commands(
-    argv,
-    rootless_default: "smoke",
-    commands: commands,
-    fallback_command: {
-      positionals: ["action", "root", "work", "out"],
-      types: path_types,
-      rest: "raw",
-      command_like: true,
-    },
-  )?
-
-  {
-    command: parsed.command.replace("_", "-"),
-    action: parsed.action,
-    root: parsed.root,
-    work: parsed.work,
-    out: parsed.out,
-    raw: parsed.raw,
-  }
-}
-
 export proc paths_from_args(raw: List[Str]) [error] -> Result[List[Path]] {
   let paths = [fp"${item}" for item in raw]
   paths

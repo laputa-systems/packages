@@ -1,3 +1,5 @@
+use build as pm_build
+use buildroot
 use extensions
 use local
 use remote
@@ -36,6 +38,199 @@ export proc stage_built_package(
   run_lifecycle_hooks("post-upload", item.pkg.name, upload_ctx, "")?
   print --flush ${item.pkg.name} version_id(item.pkg.ver, item.pkg.rel) "stage:" "done"
   updated
+}
+
+proc order_repo_build_packages(
+  root: Path,
+  packages: List[Package],
+  index: List[RemotePackage],
+) [fs, env, error] -> Result[List[Package]] {
+  var ordered: List[Package] = []
+  var by_name: Map[Int] = {}
+  var pkg_index = 0
+
+  for pkg in packages {
+    by_name[pkg.name] = pkg_index
+    pkg_index += 1
+  }
+
+  var repo_names: Map[Bool] = {}
+  let arch = machine_arch()?
+
+  for item in index {
+    if item.arch == arch {
+      repo_names[item.name] = true
+    }
+  }
+
+  var added: Map[Bool] = {}
+
+  while ordered.len() < packages.len() {
+    var progressed = false
+
+    for pkg in packages {
+      if ! added.get(pkg.name, false) {
+        var ready = true
+
+        for dep in pkg.deps {
+          if ! by_name.has(dep) {
+            if ! repo_names.get(dep, false) and ! fs.exists(package_db_path(root, dep))? {
+              return Err(PmError.MissingDependency(f"${pkg.name} depends on missing ${dep}"))
+            }
+          } else if ! added.get(dep, false) {
+            ready = false
+          }
+        }
+
+        if ready {
+          ordered = ordered.push(pkg)
+          added[pkg.name] = true
+          progressed = true
+        }
+      }
+    }
+
+    if ! progressed {
+      return Err(PmError.DependencyCycle("package dependency graph did not make progress"))
+    }
+  }
+
+  ordered
+}
+
+export proc upload_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
+  if argv.len() < 3 {
+    return Err(PmError.Usage("usage: pm upload-set REPO_DIR PKGDIR..."))
+  }
+
+  let repo_dir = path.absolute(fp"${argv[1]}")?
+  let build_root = fp"${repo_dir}/.set-build-root"
+  let work = fp"${repo_dir}/.work"
+  let out = fp"${repo_dir}/.out"
+  let upload_ctx: PmContext = {command: "upload", root: build_root, work, out}
+  var raw_args: List[Str] = []
+  var build_i = 2
+
+  while build_i < argv.len() {
+    raw_args = raw_args.push(argv[build_i])
+    build_i += 1
+  }
+
+  fs.mkdir(work)?
+  fs.mkdir(out)?
+  let lock = fs.lock(fp"${work}/pm.lock")?
+  defer fs.unlock(lock)?
+  let packages = load_package_dirs(paths_from_args(raw_args)?)?
+
+  for pkg in packages {
+    upload_package(upload_ctx, pkg)?
+  }
+}
+
+export proc build_repo(argv: List[Str]) [fs, net, process, env, time, error] {
+  if argv.len() < 3 {
+    return Err(PmError.Usage("usage: pm build REPO_DIR PKGDIR..."))
+  }
+
+  let repo_dir = path.absolute(fp"${argv[1]}")?
+  let build_work = fp"${repo_dir}/.work"
+  let build_out = fp"${repo_dir}/.out"
+  let build_root = fp"${repo_dir}/.root"
+  let ctx: PmContext = {command: "build", root: build_root, work: build_work, out: build_out}
+  let upload_ctx: PmContext = {...ctx, command: "upload"}
+  fs.mkdir(repo_dir)?
+  var raw_args: List[Str] = []
+  var build_i = 2
+
+  while build_i < argv.len() {
+    raw_args = raw_args.push(argv[build_i])
+    build_i += 1
+  }
+
+  let index_path = fp"${repo_dir}/index.json"
+  var index: List[RemotePackage] = []
+
+  if fs.exists(index_path)? {
+    index = load_remote_index_from(index_path)?
+  }
+
+  let packages = load_package_dirs(paths_from_args(raw_args)?)?
+  let local_names = local_package_names(packages)
+  install_remote_dependency_set(ctx, missing_dependency_names(build_root, packages, true, local_names)?)?
+  let ordered = order_repo_build_packages(build_root, packages, index)?
+  let built = pm_build.build_packages(ctx, ordered)?
+
+  for item in built {
+    index = stage_built_package(repo_dir, upload_ctx, index, item)?
+  }
+
+  json.write(index_path, index)?
+}
+
+export proc upload_package(ctx: PmContext, pkg: Package) [fs, net, process, env, time, error] {
+  let repo_urls = require_repo_url()?
+  let token = require_auth_token(ctx.root)?
+  run_lifecycle_hooks("pre-upload", pkg.name, ctx, "")?
+  let repo = repo_urls.repo
+  let arch = machine_arch()?
+  var index = load_remote_index_from_repo(repo, ctx.out)?
+
+  if pkg.sources.len() == 0 {
+    let entry = remote_entry_for(arch, pkg, "", "", 0, "", "", "", true)
+    index = upsert_remote_package(index, entry)?
+    write_remote_index_to_repo(repo, ctx.work, ctx.out, index, token)?
+    run_lifecycle_hooks("post-upload", pkg.name, ctx, "metapackage")?
+    print ${pkg.name} version_id(pkg.ver, pkg.rel) "staged"
+    return
+  }
+
+  let tarball = fp"${ctx.out}/${remote_tarball_name(pkg.name, pkg.ver, pkg.rel)}"
+
+  if ! fs.exists(tarball)? {
+    return Err(PmError.PackageTarball(f"${tarball.display()} is missing; build before upload"))
+  }
+
+  let tarball_rel = remote_binary_rel(arch, pkg.name, pkg.ver, pkg.rel)
+  let tarball_metadata = fs.metadata(tarball)?
+
+  if tarball_metadata.size > 52428800 {
+    upload_large_repo_file(repo, tarball_rel, tarball, token, ctx.work)?
+  } else {
+    upload_repo_file(repo, tarball_rel, tarball, token, ctx.work)?
+  }
+
+  let id = package_id(pkg.name, pkg.ver, pkg.rel)
+  let metadata_stage = fp"${ctx.work}/${id}-metadata"
+  fs.remove(metadata_stage, missing_ok: true)?
+  fs.mkdir(metadata_stage)?
+  archive.tar_extract(tarball, metadata_stage, 0, "auto", true)?
+  let built = load_built_package_from_dest(pkg, id, tarball, metadata_stage)?
+  let metadata_rel = remote_metadata_rel(arch, pkg.name, pkg.ver, pkg.rel)
+  let metadata_path = fp"${ctx.out}/${metadata_rel}"
+  write_package_metadata(metadata_path, arch, built)?
+  upload_repo_file(repo, metadata_rel, metadata_path, token, ctx.work)?
+  let uploaded_source = upload_package_source(repo, ctx.work, ctx.out, pkg, token)?
+
+  let entry = remote_entry_for(
+    arch,
+    pkg,
+    tarball_rel.display(),
+    hash.sha256(tarball)?.hex(),
+    tarball_metadata.size,
+    metadata_rel.display(),
+    uploaded_source.rel,
+    uploaded_source.sha256,
+    false,
+  )
+
+  index = upsert_remote_package(index, entry)?
+  write_remote_index_to_repo(repo, ctx.work, ctx.out, index, token)?
+  run_lifecycle_hooks("post-upload", pkg.name, ctx, "")?
+  print ${pkg.name} version_id(pkg.ver, pkg.rel) "uploaded"
+
+  if uploaded_source.rel != "" {
+    print ${pkg.name} source uploaded
+  }
 }
 
 export proc upload_repo_export_file(repo: Str, rel: Path, source: Path, token: Str, work: Path) [fs, net, time, error] {

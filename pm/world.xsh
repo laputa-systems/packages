@@ -1,4 +1,6 @@
+use build as pm_build
 use buildroot
+use install
 use local
 use remote
 use repo
@@ -15,10 +17,7 @@ type WorldPlanOptions = {
   jobs: Int,
 }
 
-type WorldPlanResult = {
-  packages: List[Package],
-  reasons: Map[Str],
-}
+type WorldPlanResult = {packages: List[Package], reasons: Map[Str]}
 
 pure world_dependency_is_seeded(pkg: Package, dep: Str, cross_build: Bool) -> Bool {
   ! cross_build and (pkg.name == "musl" and (dep == "llvm-toolchain" or dep == "zlib") or pkg.name == "gnu-stubs" and dep == "llvm-toolchain")
@@ -517,13 +516,7 @@ proc world_dependency_kind(pkg: Package, dep: Str) [] -> Str {
 
 proc summarize_changed_dependencies(changed_deps: List[Str]) [] -> Str {
   let implicit_pm = "implicit world/tool dependency laputa-pm"
-  var visible: List[Str] = []
-
-  for dep in changed_deps {
-    if dep != implicit_pm or changed_deps.len() == 1 {
-      visible = visible.push(dep)
-    }
-  }
+  var visible = [dep for dep in changed_deps if dep != implicit_pm or changed_deps.len() == 1]
 
   if visible.len() == 0 {
     visible = changed_deps
@@ -683,11 +676,11 @@ proc planned_world_packages(
 
             if rel_cmp < 0 or changed_dep and rel_cmp <= 0 {
               planned_pkg = package_with_rel(pkg, next_world_rel(remote_pkg.rel))
-              reasons[pkg.name] = if changed_dep {
-                f"changed ${summarize_changed_dependencies(changed_deps)}"
-              } else {
-                f"local rel below remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
-              }
+
+              reasons[pkg.name] = if changed_dep { f"changed ${summarize_changed_dependencies(changed_deps)}" } else { f"local rel below remote ${version_id(
+                remote_pkg.ver,
+                remote_pkg.rel,
+              )}" }
             }
           }
         } else {
@@ -695,11 +688,11 @@ proc planned_world_packages(
 
           if rel_cmp < 0 or changed_dep and rel_cmp <= 0 {
             planned_pkg = package_with_rel(pkg, next_world_rel(remote_pkg.rel))
-            reasons[pkg.name] = if changed_dep {
-              f"changed ${summarize_changed_dependencies(changed_deps)}"
-            } else {
-              f"local rel below remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
-            }
+
+            reasons[pkg.name] = if changed_dep { f"changed ${summarize_changed_dependencies(changed_deps)}" } else { f"local rel below remote ${version_id(
+              remote_pkg.ver,
+              remote_pkg.rel,
+            )}" }
           } else if rel_cmp > 0 {
             reasons[pkg.name] = f"local rel above remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
           }
@@ -724,7 +717,12 @@ proc planned_world_packages(
       changed[pkg.name] = true
     }
 
-    if ! reasons.has(pkg.name) and changed_dep and compare_version_release(planned_pkg.ver, planned_pkg.rel, pkg.ver, pkg.rel) != 0 {
+    if ! reasons.has(pkg.name) and changed_dep and compare_version_release(
+      planned_pkg.ver,
+      planned_pkg.rel,
+      pkg.ver,
+      pkg.rel,
+    ) != 0 {
       reasons[pkg.name] = f"changed ${summarize_changed_dependencies(changed_deps)}"
     }
 
@@ -824,10 +822,7 @@ proc verify_planned_rels_published(
     if compare_version_release(rpkg.ver, rpkg.rel, planned.ver, planned.rel) != 0 {
       return Err(
         PmError.RemotePackage(
-          f"${pkg.name} planned ${version_id(planned.ver, planned.rel)} but remote has ${version_id(
-            rpkg.ver,
-            rpkg.rel,
-          )}",
+          f"${pkg.name} planned ${version_id(planned.ver, planned.rel)} but remote has ${version_id(rpkg.ver, rpkg.rel)}",
         ),
       )
     }
@@ -890,7 +885,12 @@ proc print_world_plan(
         suffix = f"${suffix} ${ansi(colors, "2", f"because ${reason}")}"
       }
 
-      print --flush f"  ${ansi(colors, "1;32", pkg.name)} ${world_plan_version_text(pkg, planned_pkg, remote_latest, colors)?}${suffix}"
+      print --flush f"  ${ansi(colors, "1;32", pkg.name)} ${world_plan_version_text(
+        pkg,
+        planned_pkg,
+        remote_latest,
+        colors,
+      )?}${suffix}"
     }
 
     level += 1
@@ -1319,10 +1319,13 @@ proc build_world_package(
     XSH_PM_BUILD_ROOT = package_path_root.display()
     XSH_PM_BUILD_CHROOT = build_chroot
   } {
-    built = build_packages(package_ctx, [pkg])?
+    built = pm_build.build_packages(package_ctx, [pkg])?
   } ?
 
-  print --flush ${pkg.name} world_package_id(pkg) "build:" "finished" time.duration_compact((time.now() - started_at) / 1000) "log:" log_path.display()
+  print --flush ${pkg.name} world_package_id(pkg) "build:" "finished" time.duration_compact(
+    (time.now() - started_at) / 1000,
+  ) "log:" $log_path
+
   built
 }
 
@@ -1361,23 +1364,9 @@ proc world_stage_package_present_in_roots(
   world_stage_package_present(build_root, name)?
 }
 
-proc world_should_install_built_package(root: Path, item: BuiltPackage) [fs, error] -> Result[Bool] {
-  true
-}
-
 proc install_world_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs, process, env, error] {
-  var installable: List[BuiltPackage] = []
-
-  for item in built {
-    if world_should_install_built_package(ctx.root, item)? {
-      installable = installable.push(item)
-    } else {
-      print --flush ${item.pkg.name} world_package_id(item.pkg) "stage:" "skip" "wlroots0.19-mesa"
-    }
-  }
-
-  if installable.len() > 0 {
-    install_built_packages(ctx, installable)?
+  if built.len() > 0 {
+    install_built_packages(ctx, built)?
   }
 }
 
@@ -1650,8 +1639,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   }
 
   let colors = color_enabled()
-  print --flush ${ansi(colors, "1;34", "world-plan loading")} ${ansi(colors, "2", f"packages for ${target_arch}")}
-
+  print --flush ansi(colors, "1;34", "world-plan loading") ansi(colors, "2", f"packages for ${target_arch}")
   let package_dirs = expand_world_package_dirs(raw_args)?
   let pm_module_root = pm_module_root_path()?
   var packages: List[Package] = []
@@ -1677,9 +1665,11 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   let upload_ctx: PmContext = {...build_ctx, command: "upload"}
   fs.mkdir(repo_dir)?
   fs.mkdir(root)?
+
   if build_root.display() != root.display() {
     fs.mkdir(build_root)?
   }
+
   fs.mkdir(work)?
   fs.mkdir(out)?
   let lock = fs.lock(fp"${work}/pm.lock")?
@@ -1692,8 +1682,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   }
 
   print --flush f"${ansi(colors, "1;36", "world-repo")} ${ansi(colors, "2", repo_dir.display())}"
-  print --flush ${ansi(colors, "1;34", "world-plan fetching")} ${ansi(colors, "2", "remote index")}
-
+  print --flush ansi(colors, "1;34", "world-plan fetching") ansi(colors, "2", "remote index")
   let repo_urls = load_repo_urls()?
   var remote_index: List[RemotePackage] = []
   var remote_latest: Map[RemotePackage] = {}
@@ -1725,10 +1714,13 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
 
     if recorded_built.len() == 0 and recorded_unchanged.len() == 0 {
       fs.remove(root, missing_ok: true)?
+
       if build_root.display() != root.display() {
         fs.remove(build_root, missing_ok: true)?
       }
+
       fs.mkdir(root)?
+
       if build_root.display() != root.display() {
         fs.mkdir(build_root)?
       }
@@ -1740,11 +1732,13 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     let max_level = world_plan_max_level(ordered, levels)
     let build_max_level = if to_tranche >= 0 and to_tranche < max_level { to_tranche } else { max_level }
     let build_local_names: Map[Bool] = if cross_build { map.empty() } else { local_names }
-    print --flush ${ansi(colors, "1;34", "world-build preparing")} ${ansi(colors, "2", "chroot base")}
+    print --flush ansi(colors, "1;34", "world-build preparing") ansi(colors, "2", "chroot base")
     install_chroot_base_for_arch(root_ctx, local_names, false, target_arch)?
+
     if build_root.display() != root.display() {
       install_chroot_base_for_arch(build_ctx, build_local_names, false, world_build_arch)?
     }
+
     var level = 0
 
     while level <= build_max_level {
@@ -1831,13 +1825,31 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
         if world_jobs == 1 {
           for pkg in pending {
             built_batches = built_batches.push(
-              build_world_package(repo_dir, build_ctx, root, build_root, pkg, target_arch, world_build_arch, cross_build)?,
+              build_world_package(
+                repo_dir,
+                build_ctx,
+                root,
+                build_root,
+                pkg,
+                target_arch,
+                world_build_arch,
+                cross_build,
+              )?,
             )
           }
         } else {
           built_batches = pending
             |> par-map --jobs=world_jobs { |pkg|
-              build_world_package(repo_dir, build_ctx, root, build_root, pkg, target_arch, world_build_arch, cross_build)
+              build_world_package(
+                repo_dir,
+                build_ctx,
+                root,
+                build_root,
+                pkg,
+                target_arch,
+                world_build_arch,
+                cross_build,
+              )
             }
         }
 
