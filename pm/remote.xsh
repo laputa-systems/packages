@@ -723,6 +723,57 @@ export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env
   return Err(PmError.RemoteFetch(f"failed to fetch ${pkg.name} ${version_id(pkg.ver, pkg.rel)}: ${detail}"))
 }
 
+export proc fetch_remote_metadata_sidecar(out: Path, pkg: RemotePackage) [fs, net, env, time, error] -> Result[Record] {
+  let metadata = remote_cache_metadata_path(out, pkg)?
+
+  if pkg.metadata == "" {
+    return {found: false, path: metadata, from_cache: false}
+  }
+
+  if fs.exists(metadata)? {
+    return {found: true, path: metadata, from_cache: true}
+  }
+
+  let rel = ensure_relative_path(fp"${pkg.metadata}", "remote metadata")?
+  let repo_urls = load_repo_urls()?
+  var fetched = false
+  var failures: List[Str] = []
+
+  if repo_urls.public_repo != "" {
+    let failure = fetch_repo_file_with_retry(repo_urls.public_repo, rel, metadata, timeout: 60s)?
+
+    if failure != "" {
+      failures = failures.push(failure)
+    }
+
+    fetched = fs.exists(metadata)?
+  }
+
+  if ! fetched and repo_urls.repo != "" {
+    let failure = fetch_repo_file_with_retry(repo_urls.repo, rel, metadata, timeout: 60s)?
+
+    if failure != "" {
+      failures = failures.push(failure)
+    }
+
+    fetched = fs.exists(metadata)?
+  }
+
+  if fetched {
+    return {found: true, path: metadata, from_cache: false}
+  }
+
+  if failures.len() > 0 {
+    return Err(
+      PmError.RemoteFetch(
+        f"failed to fetch metadata for ${pkg.name} ${version_id(pkg.ver, pkg.rel)}: ${failures.join("; ")}",
+      ),
+    )
+  }
+
+  return {found: false, path: metadata, from_cache: false}
+}
+
 export pure package_from_remote(pkg: RemotePackage) -> Result[Package] {
   let pkg_sources: List[Path] = []
   let checksums: List[Str] = []

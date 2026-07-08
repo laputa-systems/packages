@@ -82,6 +82,15 @@ export pure remote_cache_tarball_path(out: Path, pkg: RemotePackage) -> Result[P
   fp"${out}/remote-cache/${pkg.arch}/${pkg.name}/${remote_tarball_name(pkg.name, pkg.ver, pkg.rel)}"
 }
 
+export pure remote_cache_metadata_path(out: Path, pkg: RemotePackage) -> Result[Path] {
+  if pkg.metadata != "" {
+    let rel = ensure_relative_path(fp"${pkg.metadata}", "remote metadata")?
+    return fp"${out}/remote-cache/${rel}"
+  }
+
+  fp"${out}/remote-cache/${pkg.arch}/${pkg.name}/${remote_metadata_name(pkg.name, pkg.ver, pkg.rel)}"
+}
+
 export pure is_file_url(url: Str) -> Bool {
   url.starts_with("file://")
 }

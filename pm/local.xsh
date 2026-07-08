@@ -13,6 +13,48 @@ export proc install_remote_metapackage(ctx: PmContext, pkg: RemotePackage) [fs, 
   print ${pkg.name} version_id(pkg.ver, pkg.rel) "registered"
 }
 
+proc metadata_manifest_paths(metadata: Record) [error] -> Result[List[Path]] {
+  let manifest_text: List[Str] = metadata.get("manifest")?
+  var manifest: List[Path] = []
+
+  for rel_text in manifest_text {
+    manifest = manifest.push(fp"${rel_text}")
+  }
+
+  manifest
+}
+
+proc metadata_etcsums(metadata: Record) [error] -> Result[List[EtcSum]] {
+  let files: List[Record] = metadata.get("files")?
+  var sums: List[EtcSum] = []
+
+  for file in files {
+    let path_text: Str = file.get("path")?
+    let kind: Str = file.get("kind")?
+    let sha256: Str = file.get("sha256")?
+
+    if kind == "file" and is_etc_file(fp"${path_text}") {
+      sums = sums.push({path: path_text, sha256})
+    }
+  }
+
+  sums
+}
+
+proc load_remote_metadata_sidecar(path_value: Path, pkg: RemotePackage) [fs, error] -> Result[Record] {
+  let metadata: Record = json.read(path_value)?
+  let arch: Str = metadata.get("arch")?
+  let name: Str = metadata.get("name")?
+  let ver: Str = metadata.get("ver")?
+  let rel: Str = metadata.get("rel")?
+
+  if arch != pkg.arch or name != pkg.name or ver != pkg.ver or rel != pkg.rel {
+    return Err(PmError.PackageContract(f"${path_value.display()} does not match ${pkg.name} ${version_id(pkg.ver, pkg.rel)}"))
+  }
+
+  metadata
+}
+
 export proc install_remote_tarball(
   ctx: PmContext,
   pkg: RemotePackage,
@@ -23,18 +65,40 @@ export proc install_remote_tarball(
   let install_stage = fp"${ctx.work}/${id}-remote-install"
   let label = if from_cache { "cache-installed" } else { "remote-installed" }
   print --flush ${pkg.name} version_id(pkg.ver, pkg.rel) "install:" "starting" $label
-  fs.remove(install_stage, missing_ok: true)?
-  fs.mkdir(install_stage)?
-  archive.tar_extract(tarball, install_stage, 0, "auto", true)?
-  let stage_db = package_db_path(install_stage, pkg.name)
-  let manifest = load_manifest(stage_db)?
-  let etcsums: List[EtcSum] = json.read(fp"${stage_db}/etcsums.json")?
-  let local_pkg = package_with_extract_install(package_from_remote(pkg)?, load_extract_install(stage_db)?)
   let db = package_db_path(ctx.root, pkg.name)
+  var manifest: List[Path] = []
+  var etcsums: List[EtcSum] = []
+  var local_pkg = package_from_remote(pkg)?
+  let sidecar = fetch_remote_metadata_sidecar(ctx.out, pkg)?
+  var have_sidecar = false
+
+  if sidecar.found {
+    let metadata = load_remote_metadata_sidecar(sidecar.path, pkg)?
+    manifest = metadata_manifest_paths(metadata)?
+    etcsums = metadata_etcsums(metadata)?
+    have_sidecar = true
+  } else {
+    fs.remove(install_stage, missing_ok: true)?
+    fs.mkdir(install_stage)?
+    archive.tar_extract(tarball, install_stage, 0, "auto", true)?
+    let stage_db = package_db_path(install_stage, pkg.name)
+    manifest = load_manifest(stage_db)?
+    etcsums = json.read(fp"${stage_db}/etcsums.json")?
+    local_pkg = package_with_extract_install(local_pkg, load_extract_install(stage_db)?)
+  }
+
   let old_manifest = load_manifest(db)?
   let old_sums = load_etcsums(db)?
   let new_sums = map_etcsums(etcsums)?
   let installed_owners = load_installed_owners(ctx.root)?
+
+  if have_sidecar and ! fs.exists(db)? {
+    run_lifecycle_hooks("pre-install", pkg.name, ctx, "remote-tarball")?
+    direct_extract_package(ctx, local_pkg, tarball, manifest, etcsums, installed_owners)?
+    run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-tarball")?
+    print ${pkg.name} manifest.len() $label
+    return
+  }
 
   if local_pkg.extract_install and ! fs.exists(db)? {
     run_lifecycle_hooks("pre-install", pkg.name, ctx, "remote-tarball")?
@@ -42,6 +106,12 @@ export proc install_remote_tarball(
     run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-tarball")?
     print ${pkg.name} manifest.len() $label
     return
+  }
+
+  if have_sidecar {
+    fs.remove(install_stage, missing_ok: true)?
+    fs.mkdir(install_stage)?
+    archive.tar_extract(tarball, install_stage, 0, "auto", true)?
   }
 
   ensure_installable(ctx.root, local_pkg, manifest, installed_owners)?
