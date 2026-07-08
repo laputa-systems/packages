@@ -739,7 +739,7 @@ set (CMAKE_INSTALL_RPATH "$ORIGIN/../lib" CACHE STRING "Runtime library search p
       run $samu $jobs_flag ?
 
       env {
-        DESTDIR = dest.display()
+        DESTDIR = dest
       } {
         run $bc "-P" "cmake_install.cmake" ?
       } ?

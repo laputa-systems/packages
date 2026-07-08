@@ -1,4 +1,4 @@
-use pm.meson as pm_meson
+use pm.env as pm_env
 
 export let name: Str = "libdrm"
 
@@ -99,7 +99,7 @@ format_mod_static_table = custom_target(
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"
-  let pc = pm_meson.pkg_config_env()?
+  let pc = pm_env.pkg_config_context()?
   patch_python_generator()?
 
   env {
@@ -109,11 +109,11 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_PATH = pc.pkg_config_path
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
-    run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Ddefault_library=shared" "-Dudev=true" "-Dtests=false" "-Dinstall-test-programs=false" "-Dman-pages=disabled" "-Dvalgrind=disabled" "-Dcairo-tests=disabled" "-Dintel=disabled" "-Dradeon=disabled" "-Damdgpu=disabled" "-Dnouveau=disabled" "-Dvmwgfx=disabled" "-Domap=disabled" "-Dexynos=disabled" "-Dfreedreno=disabled" "-Dtegra=disabled" "-Dvc4=disabled" "-Detnaviv=disabled" "build" ?
+    run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "-Dudev=true" "-Dtests=false" "-Dinstall-test-programs=false" "-Dman-pages=disabled" "-Dvalgrind=disabled" "-Dcairo-tests=disabled" "-Dintel=disabled" "-Dradeon=disabled" "-Damdgpu=disabled" "-Dnouveau=disabled" "-Dvmwgfx=disabled" "-Domap=disabled" "-Dexynos=disabled" "-Dfreedreno=disabled" "-Dtegra=disabled" "-Dvc4=disabled" "-Detnaviv=disabled" "build" ?
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {
-      DESTDIR = dest.display()
+      DESTDIR = dest
     } {
       run $muon "-C" "build" install ?
     } ?

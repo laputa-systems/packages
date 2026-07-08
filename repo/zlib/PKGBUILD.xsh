@@ -1,3 +1,4 @@
+use pm.env as pm_env
 use pm.make as make
 
 export let name: Str = "zlib"
@@ -28,16 +29,18 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-DCMAKE_BUILD_TYPE=Release",
     "-DBUILD_SHARED_LIBS=ON",
     "-DZLIB_BUILD_TESTING=OFF",
-    "-DCMAKE_INSTALL_PREFIX=/usr",
-    "-DCMAKE_INSTALL_LIBDIR=lib",
+    pm_env.cmake_install_prefix_arg(),
+    pm_env.cmake_install_libdir_arg(),
   ]
 
   run $cmake ${cmake_args} ?
   run $samu "-C" "build" $jobs_flag ?
 
   env {
-    DESTDIR = dest.display()
+    DESTDIR = dest
   } {
-    run $samu "-C" "build" "install" ?
+    cd build {
+      run $cmake "-P" "cmake_install.cmake" ?
+    }
   } ?
 }

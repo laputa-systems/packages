@@ -1,4 +1,4 @@
-use pm.meson as pm_meson
+use pm.env as pm_env
 use pm.util as pm_util
 
 export let name: Str = "wlroots0.19-mesa"
@@ -242,7 +242,7 @@ proc prune_xwayland_headers(root: Path) [fs, error] {
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"
-  let pc = pm_meson.pkg_config_env()?
+  let pc = pm_env.pkg_config_context()?
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
   let native_scanner = pm_util.build_arch()? != pm_util.target_arch()? and build_root != ""
   let root = env.get("LAPUTA_ROOT") ?? "/"
@@ -256,7 +256,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_PATH = pc.pkg_config_path
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
-    run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Ddefault_library=shared" "-Dauto_features=disabled" "-Dwerror=false" "-Dbackends=drm,libinput" "-Drenderers=gles2" "-Dallocators=gbm" "-Dsession=enabled" "-Dxwayland=disabled" "-Dcolor-management=disabled" "-Dlibliftoff=disabled" "-Dxcb-errors=disabled" "-Dexamples=false" "build" ?
+    run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "-Dauto_features=disabled" "-Dwerror=false" "-Dbackends=drm,libinput" "-Drenderers=gles2" "-Dallocators=gbm" "-Dsession=enabled" "-Dxwayland=disabled" "-Dcolor-management=disabled" "-Dlibliftoff=disabled" "-Dxcb-errors=disabled" "-Dexamples=false" "build" ?
 
     if native_scanner {
       let native_scanner_wrapper = fp"${fs.cwd()?}/build/wayland-scanner-native-wrapper"
@@ -283,7 +283,7 @@ exec "${build_root}/usr/bin/wayland-scanner" "$@"
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {
-      DESTDIR = dest.display()
+      DESTDIR = dest
     } {
       run $muon "-C" "build" install ?
     } ?

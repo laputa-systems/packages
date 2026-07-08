@@ -1,4 +1,4 @@
-use pm.meson as pm_meson
+use pm.env as pm_env
 
 export let name: Str = "seatd"
 
@@ -109,7 +109,7 @@ realtime = declare_dependency()""",
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"
-  let pc = pm_meson.pkg_config_env()?
+  let pc = pm_env.pkg_config_context()?
   patch_linux_headers()?
   patch_realtime_dependency()?
 
@@ -121,11 +121,11 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_PATH = pc.pkg_config_path
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
-    run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Ddefault_library=shared" "-Dwerror=false" "-Dlibseat-logind=disabled" "-Dlibseat-seatd=enabled" "-Dlibseat-builtin=disabled" "-Dserver=enabled" "-Dexamples=disabled" "-Dman-pages=disabled" "build" ?
+    run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "-Dwerror=false" "-Dlibseat-logind=disabled" "-Dlibseat-seatd=enabled" "-Dlibseat-builtin=disabled" "-Dserver=enabled" "-Dexamples=disabled" "-Dman-pages=disabled" "build" ?
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {
-      DESTDIR = dest.display()
+      DESTDIR = dest
     } {
       run $muon "-C" "build" install ?
     } ?

@@ -26,6 +26,8 @@ needs them for real capability, not incidental build glue.
 - Build dependencies are tools needed to produce those files.
 - Generated data is source-adjacent and reproducible or intentionally pinned.
 - No ambient `/bin/sh` execution substrate for package policy.
+- Build recipes must not assume a POSIX shell exists at `/bin/sh`,
+  `/usr/bin/sh`, or through `SHELL`.
 - Proofs exercise behavior rather than inheriting distro convention.
 
 ## Packages
@@ -44,6 +46,15 @@ Package recipes should prefer:
 - package-local proofs that validate the installed artifact.
 
 See `PM.md` for the current PM contract.
+
+Package recipes must avoid hidden shell handoffs as well as obvious shell
+scripts. Build tools often encode install or generator commands as `cd ... &&
+...` and run them through `/bin/sh -c`; those paths are not acceptable package
+interfaces. Prefer direct structured entrypoints such as `cmake -P
+cmake_install.cmake` inside an XSH `cd` block, direct compiler/tool invocations,
+or small `#!/bin/xsh --` wrapper scripts. A package may install an actual shell
+when the shell is the package capability being proved, but other packages must
+not depend on an ambient POSIX shell as build glue.
 
 ### Packaging Guidelines
 

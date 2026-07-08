@@ -1,5 +1,6 @@
 use extensions
 use local
+use pm.env as pm_env
 use sources
 use types
 use util
@@ -176,6 +177,14 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
   env {
     DESTDIR = dest
     LAPUTA_ROOT = "/"
+    XSH_PM_PREFIX = pm_env.prefix
+    XSH_PM_SYSCONFDIR = pm_env.sysconfdir
+    XSH_PM_LOCALSTATEDIR = pm_env.localstatedir
+    XSH_PM_LIBDIR = pm_env.libdir
+    XSH_PM_LIBDIR_NAME = pm_env.libdir_name
+    XSH_PM_BINDIR = pm_env.bindir
+    XSH_PM_INCLUDEDIR = pm_env.includedir
+    XSH_PM_MANDIR = pm_env.mandir
     XSH_PM_NAME = pkg.name
     XSH_PM_VERSION = pkg.ver
     XSH_PM_RELEASE = pkg.rel
@@ -404,7 +413,15 @@ proc build_packages_in_chroot(
     env {
       LAPUTA_ROOT = "/"
       MAKEFLAGS = makeflags
-      PATH = "/bin:/usr/bin"
+      PATH = pm_env.build_path(/, "/bin:/usr/bin")
+      XSH_PM_PREFIX = pm_env.prefix
+      XSH_PM_SYSCONFDIR = pm_env.sysconfdir
+      XSH_PM_LOCALSTATEDIR = pm_env.localstatedir
+      XSH_PM_LIBDIR = pm_env.libdir
+      XSH_PM_LIBDIR_NAME = pm_env.libdir_name
+      XSH_PM_BINDIR = pm_env.bindir
+      XSH_PM_INCLUDEDIR = pm_env.includedir
+      XSH_PM_MANDIR = pm_env.mandir
       XSH_MODULE_PATH = "/usr/lib/pm"
       XSH_LINUX_REAL = "1"
       XSH_LINUX_KBUILD_DISCOVER_JOBS = env.get("XSH_LINUX_KBUILD_DISCOVER_JOBS") ?? ""
@@ -498,6 +515,14 @@ export proc build_packages(
 
     env {
       DESTDIR = dest
+      XSH_PM_PREFIX = pm_env.prefix
+      XSH_PM_SYSCONFDIR = pm_env.sysconfdir
+      XSH_PM_LOCALSTATEDIR = pm_env.localstatedir
+      XSH_PM_LIBDIR = pm_env.libdir
+      XSH_PM_LIBDIR_NAME = pm_env.libdir_name
+      XSH_PM_BINDIR = pm_env.bindir
+      XSH_PM_INCLUDEDIR = pm_env.includedir
+      XSH_PM_MANDIR = pm_env.mandir
       XSH_PM_NAME = pkg.name
       XSH_PM_VERSION = pkg.ver
       XSH_PM_RELEASE = pkg.rel
@@ -863,7 +888,7 @@ proc run_package_proof(
 
     env {
       LAPUTA_ROOT = "/"
-      PATH = "/bin:/usr/bin"
+      PATH = pm_env.build_path(/, "/bin:/usr/bin")
       XSH_MODULE_PATH = "/usr/lib/pm"
       XSH_LINUX_REAL = "1"
       XSH_PM_ARCH = target_arch
@@ -897,7 +922,7 @@ proc run_package_proof(
       XSH_MODULE_PATH = env.get("XSH_MODULE_PATH") ?? "/usr/lib/pm"
       XSH_PM_PROOF_ROOT = proof_root.display()
       XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
-      SHELL = fp"${proof_root}/bin/xshi".display()
+      SHELL = fp"${proof_root}/bin/xshi"
     } {
       run_logged_proof_command(
         xsh,

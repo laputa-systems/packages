@@ -1,37 +1,12 @@
+use pm.env as pm_env
 use pm.make as make
 
-export type PkgConfigEnv = {
-  pkg_config: Str,
-  pkg_config_path: Str,
-  pkg_config_libdir: Str,
-  pkg_config_sysroot: Str,
-  ld_library_path: Str,
-}
-
-export proc pkg_config_env() [process, env, error] -> Result[PkgConfigEnv] {
-  let pkg_config = process.which("pkg-config")?
-  var pkg_config_path = "/usr/lib/pkgconfig:/usr/share/pkgconfig"
-  var pkg_config_libdir = pkg_config_path
-  var pkg_config_sysroot = ""
-  var ld_library_path = fp"${pkg_config.parent.parent}/lib".display()
-
-  match env.Str.LAPUTA_ROOT {
-    Ok(root) => {
-      if root != "" and root != "/" {
-        pkg_config_path = f"${root}/usr/lib/pkgconfig:${root}/usr/share/pkgconfig:${pkg_config_path}"
-        pkg_config_libdir = f"${root}/usr/lib/pkgconfig:${root}/usr/share/pkgconfig"
-        pkg_config_sysroot = root
-        ld_library_path = f"${root}/usr/lib:${ld_library_path}"
-      }
-    }
-    Err(_) => {}
-  }
-
-  return {pkg_config: pkg_config.display(), pkg_config_path, pkg_config_libdir, pkg_config_sysroot, ld_library_path}
+export proc pkg_config_env() [process, env, error] -> Result[pm_env.PkgConfigContext] {
+  return pm_env.pkg_config_context()?
 }
 
 export pure setup_args(options: List[Str]) -> List[Str] {
-  return ["setup", "-Dprefix=/usr", "-Dlibdir=lib"].extend(options).push("build")
+  return ["setup", pm_env.meson_prefix_arg(), pm_env.meson_libdir_arg()].extend(options).push("build")
 }
 
 proc muon_build(dest: Path, options: List[Str], jobs_count: Int = 0) [process, env, error] {
@@ -52,7 +27,7 @@ proc muon_build(dest: Path, options: List[Str], jobs_count: Int = 0) [process, e
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {
-      DESTDIR = dest.display()
+      DESTDIR = dest
     } {
       run $muon "-C" "build" install ?
     } ?

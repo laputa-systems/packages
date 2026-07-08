@@ -1,4 +1,4 @@
-use pm.meson as pm_meson
+use pm.env as pm_env
 
 export let name: Str = "wayland-protocols"
 
@@ -59,7 +59,7 @@ proc prune_x_compat_protocols(root: Path) [fs, error] {
 
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
-  let pc = pm_meson.pkg_config_env()?
+  let pc = pm_env.pkg_config_context()?
   patch_generated_header_install()?
 
   env {
@@ -69,10 +69,10 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_PATH = pc.pkg_config_path
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
-    run $muon "setup" "-Dprefix=/usr" "-Dtests=false" "build" ?
+    run $muon "setup" pm_env.meson_prefix_arg() "-Dtests=false" "build" ?
 
     env {
-      DESTDIR = dest.display()
+      DESTDIR = dest
     } {
       run $muon "-C" "build" install ?
     } ?

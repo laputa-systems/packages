@@ -1,5 +1,5 @@
+use pm.env as pm_env
 use pm.make as make
-use pm.meson as pm_meson
 use pm.util as pm_util
 
 export let name: Str = "foot-minimal"
@@ -192,7 +192,7 @@ term=xterm-256color
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${make.jobs()?}"
-  let pc = pm_meson.pkg_config_env()?
+  let pc = pm_env.pkg_config_context()?
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
   let cross_build = pm_util.build_arch()? != pm_util.target_arch()? and build_root != ""
 
@@ -211,7 +211,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_PATH = pc.pkg_config_path
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
-    run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Dsysconfdir=/etc" "-Ddefault_library=shared" "-Dwerror=false" "-Ddocs=disabled" "-Dthemes=false" "-Dtests=false" "-Dime=false" "-Dgrapheme-clustering=disabled" "-Dterminfo=disabled" "-Dutmp-backend=none" "build" ?
+    run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() pm_env.meson_sysconfdir_arg() "-Ddefault_library=shared" "-Dwerror=false" "-Ddocs=disabled" "-Dthemes=false" "-Dtests=false" "-Dime=false" "-Dgrapheme-clustering=disabled" "-Dterminfo=disabled" "-Dutmp-backend=none" "build" ?
 
     if cross_build {
       let native_scanner_wrapper = fp"${fs.cwd()?}/build/wayland-scanner-native-wrapper"
@@ -238,7 +238,7 @@ exec "${build_root}/usr/bin/wayland-scanner" "$@"
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {
-      DESTDIR = dest.display()
+      DESTDIR = dest
     } {
       run $muon "-C" "build" install ?
     } ?

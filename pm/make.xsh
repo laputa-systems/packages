@@ -1,3 +1,5 @@
+use pm.env as pm_env
+
 export error MakeError = InvalidJobs(message: Str) : InvalidData | InvalidTask(message: Str) : InvalidData | DuplicateTask(message: Str) : Conflict | DuplicateOutput(message: Str) : Conflict | MissingDependency(message: Str) : Dependency | DependencyCycle(message: Str) : Dependency | CommandFailed(message: Str) : ProcessFailure
 
 export type MakeTask = {
@@ -108,14 +110,6 @@ export type CMultiTarget = {
   deps: List[Str],
 }
 
-export type MakePkgConfigEnv = {
-  pkg_config: Path,
-  pkg_config_path: Str,
-  pkg_config_libdir: Str,
-  pkg_config_sysroot: Str,
-  ld_library_path: Str,
-}
-
 pure empty_records() -> List[Record] {
   []
 }
@@ -166,29 +160,7 @@ export pure task_deps(tasks: List[MakeTask], outputs: List[Path]) -> List[Str] {
   return [task.name for task in tasks if task.outputs.len() > 0 and wanted.get(task.outputs[0].display(), false)]
 }
 
-proc make_pkg_config_env() [process, env, error] -> Result[MakePkgConfigEnv] {
-  let pkg_config = process.which("pkg-config")?
-  var pkg_config_path = "/usr/lib/pkgconfig:/usr/share/pkgconfig"
-  var pkg_config_libdir = pkg_config_path
-  var pkg_config_sysroot = ""
-  var ld_library_path = fp"${pkg_config.parent.parent}/lib".display()
-
-  match env.Str.LAPUTA_ROOT {
-    Ok(root) => {
-      if root != "" and root != "/" {
-        pkg_config_path = f"${root}/usr/lib/pkgconfig:${root}/usr/share/pkgconfig:${pkg_config_path}"
-        pkg_config_libdir = f"${root}/usr/lib/pkgconfig:${root}/usr/share/pkgconfig"
-        pkg_config_sysroot = root
-        ld_library_path = f"${root}/usr/lib:${ld_library_path}"
-      }
-    }
-    Err(_) => {}
-  }
-
-  return {pkg_config, pkg_config_path, pkg_config_libdir, pkg_config_sysroot, ld_library_path}
-}
-
-proc pkg_config_words(pc: MakePkgConfigEnv, mode: Str, packages: List[Str]) [process, env, error] -> Result[List[Str]] {
+proc pkg_config_words(pc: pm_env.PkgConfigContext, mode: Str, packages: List[Str]) [process, env, error] -> Result[List[Str]] {
   let pkg_config_path = pc.pkg_config_path
   let pkg_config_libdir = pc.pkg_config_libdir
   let pkg_config_sysroot = pc.pkg_config_sysroot
@@ -200,7 +172,7 @@ proc pkg_config_words(pc: MakePkgConfigEnv, mode: Str, packages: List[Str]) [pro
 }
 
 export proc pkg_config_flags(packages: List[Str]) [process, env, error] -> Result[Record] {
-  let pc = make_pkg_config_env()?
+  let pc = pm_env.pkg_config_context()?
 
   return {
     cflags: pkg_config_words(pc, "--cflags", packages)?,

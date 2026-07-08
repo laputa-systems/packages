@@ -1,4 +1,4 @@
-use pm.meson as pm_meson
+use pm.env as pm_env
 
 export let name: Str = "libxkbcommon"
 
@@ -55,7 +55,7 @@ yacc = 'vendored parser'
 
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
-  let pc = pm_meson.pkg_config_env()?
+  let pc = pm_env.pkg_config_context()?
   patch_vendored_parser()?
 
   env {
@@ -65,11 +65,11 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_PATH = pc.pkg_config_path
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
-    run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Ddefault_library=shared" "-Dxkb-config-root=/usr/share/X11/xkb" "-Denable-docs=false" "-Denable-tools=false" "-Denable-x11=false" "-Denable-wayland=false" "-Denable-xkbregistry=false" "-Denable-bash-completion=false" "build" ?
+    run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "-Dxkb-config-root=/usr/share/X11/xkb" "-Denable-docs=false" "-Denable-tools=false" "-Denable-x11=false" "-Denable-wayland=false" "-Denable-xkbregistry=false" "-Denable-bash-completion=false" "build" ?
     run $muon "-C" "build" samu "-j1" "libxkbcommon.so.0.11.0" ?
 
     env {
-      DESTDIR = dest.display()
+      DESTDIR = dest
     } {
       run $muon "-C" "build" install ?
     } ?

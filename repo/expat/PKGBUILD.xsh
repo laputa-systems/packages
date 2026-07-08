@@ -1,3 +1,4 @@
+use pm.env as pm_env
 export let name: Str = "expat"
 
 export let ver: Str = "2.7.3"
@@ -27,8 +28,8 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-G",
     "Ninja",
     "-DCMAKE_BUILD_TYPE=Release",
-    "-DCMAKE_INSTALL_PREFIX=/usr",
-    "-DCMAKE_INSTALL_LIBDIR=lib",
+    pm_env.cmake_install_prefix_arg(),
+    pm_env.cmake_install_libdir_arg(),
     "-DEXPAT_BUILD_DOCS=OFF",
     "-DEXPAT_BUILD_EXAMPLES=OFF",
     "-DEXPAT_BUILD_FUZZERS=OFF",
@@ -42,9 +43,11 @@ export proc build(dest: Path) [fs, process, env, error] {
   run $samu "-C" "build" $jobs_flag ?
 
   env {
-    DESTDIR = dest.display()
+    DESTDIR = dest
   } {
-    run $samu "-C" "build" "install" ?
+    cd build {
+      run $cmake "-P" "cmake_install.cmake" ?
+    }
   } ?
 
   fs.remove(fp"${dest}/usr/lib/libexpat.a", missing_ok: true)?

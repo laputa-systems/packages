@@ -1,3 +1,4 @@
+use pm.env as pm_env
 export let name: Str = "linux-pam"
 
 export let ver: Str = "1.7.2"
@@ -53,9 +54,9 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   let setup_args = [
     "setup",
-    "-Dprefix=/usr",
-    "-Dlibdir=lib",
-    "-Dsysconfdir=/etc",
+    pm_env.meson_prefix_arg(),
+    pm_env.meson_libdir_arg(),
+    pm_env.meson_sysconfdir_arg(),
     "-Dsbindir=/usr/bin",
     "-Di18n=disabled",
     "-Ddocs=disabled",
@@ -80,7 +81,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   run $muon "-C" "build" samu $jobs_flag ?
 
   env {
-    DESTDIR = dest.display()
+    DESTDIR = dest
   } {
     run $muon "-C" "build" install ?
   } ?

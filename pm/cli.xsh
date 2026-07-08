@@ -3,6 +3,7 @@ use buildroot
 use extensions
 use install
 use local
+use pm.env as pm_env
 use remote
 use repo
 use types
@@ -190,7 +191,7 @@ proc build_install_packages(argv: List[Str]) [fs, net, process, env, time, error
 
     env {
       LAPUTA_ROOT = build_root.display()
-      PATH = f"${build_root}/usr/bin:${env.get("PATH") ?? ""}"
+      PATH = pm_env.build_path(build_root, env.get("PATH") ?? "")
     } {
       built = pm_build.build_packages(build_ctx, [pkg])?
     } ?
@@ -268,7 +269,7 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
 
     env {
       LAPUTA_ROOT = build_root.display()
-      PATH = f"${build_root}/usr/bin:${env.get("PATH") ?? ""}"
+      PATH = pm_env.build_path(build_root, env.get("PATH") ?? "")
     } {
       built = pm_build.build_packages(build_ctx, [pkg])?
     } ?

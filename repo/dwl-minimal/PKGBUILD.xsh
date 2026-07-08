@@ -1,4 +1,4 @@
-use pm.meson as pm_meson
+use pm.env as pm_env
 use pm.util as pm_util
 
 export let name: Str = "dwl-minimal"
@@ -193,8 +193,8 @@ static const char *browsercmd[] = { "/usr/bin/waterfox", NULL };
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
-  let pc = pm_meson.pkg_config_env()?
-  let pkg_config = fp"${pc.pkg_config}"
+  let pc = pm_env.pkg_config_context()?
+  let pkg_config = pc.pkg_config
   let root = env.get("LAPUTA_ROOT") ?? "/"
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
   let cross_build = pm_util.build_arch()? != pm_util.target_arch()? and build_root != ""

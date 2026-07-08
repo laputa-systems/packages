@@ -185,6 +185,9 @@ Hooks run for build, install, remove, update, and upload phases with
 
 - Source verification uses hash APIs and traversal-safe archive extraction.
 - Process execution uses structured argv, not shell strings.
+- Package builds must not depend on an ambient POSIX `/bin/sh`; recipes should
+  call tools directly through structured argv, including install phases that
+  build systems may otherwise route through shell commands.
 - Network transfers use `net.download` and `net.request`.
 - Tokens are never logged or serialized into traces.
 - Mutating sibling Laputa repositories is out of scope.
