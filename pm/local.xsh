@@ -6,6 +6,7 @@ use util
 
 export proc install_remote_metapackage(ctx: PmContext, pkg: RemotePackage) [fs, process, env, error] {
   let local_pkg = package_from_remote(pkg)?
+  print --flush ${pkg.name} version_id(pkg.ver, pkg.rel) "install:" "starting"
   run_lifecycle_hooks("pre-install", pkg.name, ctx, "remote-metapackage")?
   write_package_db(ctx.root, local_pkg, [], [])?
   run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-metapackage")?
@@ -21,6 +22,7 @@ export proc install_remote_tarball(
   let id = package_id(pkg.name, pkg.ver, pkg.rel)
   let install_stage = fp"${ctx.work}/${id}-remote-install"
   let label = if from_cache { "cache-installed" } else { "remote-installed" }
+  print --flush ${pkg.name} version_id(pkg.ver, pkg.rel) "install:" "starting" $label
   fs.remove(install_stage, missing_ok: true)?
   fs.mkdir(install_stage)?
   archive.tar_extract(tarball, install_stage, 0, "auto", true)?

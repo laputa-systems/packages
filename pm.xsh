@@ -1904,7 +1904,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let cache_key = world_plan_cache_key(packages, target_arch)
   let repo_dir = world_cache_repo_dir(cache_key)?
   let root = fp"${repo_dir}/.world/root"
-  let build_root = fp"${repo_dir}/.world/build-root"
+  let build_root = if cross_build { fp"${repo_dir}/.world/build-root" } else { root }
   let work = fp"${repo_dir}/.work"
   let out = fp"${repo_dir}/.out"
   let root_ctx: PmContext = {command: "world-plan", root, work, out}
@@ -1912,7 +1912,9 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let upload_ctx: PmContext = {...build_ctx, command: "upload"}
   fs.mkdir(repo_dir)?
   fs.mkdir(root)?
-  fs.mkdir(build_root)?
+  if build_root.display() != root.display() {
+    fs.mkdir(build_root)?
+  }
   fs.mkdir(work)?
   fs.mkdir(out)?
   let lock = fs.lock(fp"${work}/pm.lock")?
@@ -1957,9 +1959,13 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
 
     if recorded_built.len() == 0 and recorded_unchanged.len() == 0 {
       fs.remove(root, missing_ok: true)?
-      fs.remove(build_root, missing_ok: true)?
+      if build_root.display() != root.display() {
+        fs.remove(build_root, missing_ok: true)?
+      }
       fs.mkdir(root)?
-      fs.mkdir(build_root)?
+      if build_root.display() != root.display() {
+        fs.mkdir(build_root)?
+      }
     }
 
     var built_names: Map[Bool] = {}
@@ -1969,8 +1975,10 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     let build_max_level = if to_tranche >= 0 and to_tranche < max_level { to_tranche } else { max_level }
     let build_local_names: Map[Bool] = if cross_build { map.empty() } else { local_names }
     print --flush ${ansi(colors, "1;34", "world-build preparing")} ${ansi(colors, "2", "chroot base")}
-    install_chroot_base_for_arch(root_ctx, local_names, true, target_arch)?
-    install_chroot_base_for_arch(build_ctx, build_local_names, true, world_build_arch)?
+    install_chroot_base_for_arch(root_ctx, local_names, false, target_arch)?
+    if build_root.display() != root.display() {
+      install_chroot_base_for_arch(build_ctx, build_local_names, false, world_build_arch)?
+    }
     var level = 0
 
     while level <= build_max_level {
@@ -2104,7 +2112,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
                 if remote_hash != "" and remote_hash == built[0].metadata_sha256 {
                   install_remote_dependency_set_for_arch(root_ctx, [original_pkg.name], target_arch)?
 
-                  if ! cross_build {
+                  if ! cross_build and root.display() != build_root.display() {
                     install_remote_dependency_set_for_arch(build_ctx, [original_pkg.name], world_build_arch)?
                   }
 
