@@ -394,25 +394,31 @@ proc compile_skalibs(cc: Path, triple: Str, target: Str) [fs, process, env, erro
   ]
 
   let includes = ["-Iskalibs/src/include"]
-  var objs: List[Path] = []
-  var tasks: List[make.MakeTask] = []
-  var task_deps: List[Str] = []
+  var skalibs_sources: List[Path] = []
 
   for entry in fs.walk(p"skalibs/src", gitignore: false)? |> where .kind == "file" and .ext == "c" {
     let src_display = entry.path.display()
 
     if src_display.starts_with("skalibs/src/lib") or "/skalibs/src/lib" in src_display {
-      let out = fp"obj/${src_display.replace("/", "-").replace(".c", ".lo")}"
-      let task = make.compile_lo_task(cc, triple, cflags, defs, includes, entry.path, out)
-      tasks = tasks.push(task)
-      task_deps = task_deps.push(task.name)
-      objs = objs.push(out)
+      skalibs_sources = skalibs_sources.push(entry.path)
     }
   }
 
   let skarnet_archive = p"obj/libskarnet.a"
-  tasks = tasks.push(make.link_archive_task(cc, objs, skarnet_archive, task_deps))
-  make.run_tasks(tasks, make.jobs()?)?
+  let skarnet = make.c_static_library({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: p"",
+    sources: skalibs_sources,
+    out_dir: p"obj/skalibs",
+    out: skarnet_archive,
+    deps: [],
+  })
+
+  make.run_tasks(skarnet.tasks, make.jobs()?)?
   return skarnet_archive
 }
 

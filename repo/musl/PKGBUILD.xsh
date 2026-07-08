@@ -215,26 +215,15 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.mkdir(p"obj")?
 
   # Compile all src/ sources → LOBJS (PIC; go into both libc.a and libc.so).
-  var lobjs: List[Path] = []
   var tasks: List[make.MakeTask] = []
-  var lobj_deps: List[Str] = []
-
-  for src in libc_srcs {
-    let out = fp"obj/${src.display()}".with_ext(".lo")
-    let task = make.compile_lo_task(cc, triple, cflags, [], includes, src, out)
-    tasks = tasks.push(task)
-    lobj_deps = lobj_deps.push(task.name)
-    lobjs = lobjs.push(out)
-  }
+  let libc = make.compile_lo_tasks(cc, triple, cflags, [], includes, p"", libc_srcs, p"obj/libc")
+  tasks = tasks.extend(libc.tasks)
 
   # Compile arch/ C overrides → LOBJS.
-  for src in arch_c_files {
-    let out = fp"obj/${src.display()}".with_ext(".lo")
-    let task = make.compile_lo_task(cc, triple, cflags, [], includes, src, out)
-    tasks = tasks.push(task)
-    lobj_deps = lobj_deps.push(task.name)
-    lobjs = lobjs.push(out)
-  }
+  let arch_c = make.compile_lo_tasks(cc, triple, cflags, [], includes, p"", arch_c_files, p"obj/arch")
+  tasks = tasks.extend(arch_c.tasks)
+  var lobjs: List[Path] = libc.objects.extend(arch_c.objects)
+  var lobj_deps: List[Str] = libc.deps.extend(arch_c.deps)
 
   # Compile arch/ assembly overrides → LOBJS (skip C-specific flags; include
   # paths still passed for any .S files that use the C preprocessor).
@@ -253,15 +242,11 @@ export proc build(dest: Path) [fs, process, env, error] {
   var ldso_objs: List[Path] = []
   var ldso_deps: List[Str] = []
   fs.mkdir(p"obj/ldso")?
-
-  for src_name in ["dlstart", "dynlink"] {
-    let src = fp"ldso/${src_name}.c"
-    let out = fp"obj/ldso/${src_name}.lo"
-    let task = make.compile_lo_task(cc, triple, cflags, [], includes, src, out)
-    tasks = tasks.push(task)
-    ldso_deps = ldso_deps.push(task.name)
-    ldso_objs = ldso_objs.push(out)
-  }
+  let ldso_sources = [fp"ldso/${src_name}.c" for src_name in ["dlstart", "dynlink"]]
+  let ldso_compile = make.compile_lo_tasks(cc, triple, cflags, [], includes, p"", ldso_sources, p"obj/ldso")
+  tasks = tasks.extend(ldso_compile.tasks)
+  ldso_objs = ldso_compile.objects
+  ldso_deps = ldso_compile.deps
 
   # libc.a — static archive from LOBJS only (ldso not needed for static linking).
   let libc_a = p"obj/libc.a"

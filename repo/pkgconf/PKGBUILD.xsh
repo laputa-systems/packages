@@ -91,7 +91,6 @@ export proc build(dest: Path) [fs, process, env, error] {
     p"libpkgconf/parser.c",
   ]
 
-  var tasks: List[make.MakeTask] = []
   let lib = make.c_shared_library({
     cc,
     triple,
@@ -106,7 +105,6 @@ export proc build(dest: Path) [fs, process, env, error] {
     ldflags: [],
     deps: [],
   })
-  tasks = tasks.extend(lib.tasks)
 
   # Step 3: link libpkgconf.so.7.0.0 and static archive.
   let sofile = lib.output
@@ -123,7 +121,6 @@ export proc build(dest: Path) [fs, process, env, error] {
     out: static_lib,
     deps: [],
   })
-  tasks = tasks.extend(static_target.tasks)
 
   # Step 4: compile and link pkgconf binary.
   # Source files from am_pkgconf_OBJECTS. Automake prefixes objects with the
@@ -143,7 +140,6 @@ export proc build(dest: Path) [fs, process, env, error] {
     ldflags: [],
     deps: static_target.deps,
   })
-  tasks = tasks.extend(pkgconf.tasks)
 
   let pkgconf_bin = pkgconf.output
 
@@ -164,11 +160,10 @@ export proc build(dest: Path) [fs, process, env, error] {
     ldflags: [],
     deps: static_target.deps,
   })
-  tasks = tasks.extend(bomtool.tasks)
 
   let bomtool_bin = bomtool.output
 
-  make.run_tasks(tasks, make.jobs()?)?
+  make.run_tasks(lib.tasks.extend(static_target.tasks).extend(pkgconf.tasks).extend(bomtool.tasks), make.jobs()?)?
 
   # Step 6: install into dest.
   fs.install(sofile, fp"${dest}/usr/lib/libpkgconf.so.7.0.0", 0o755, parents: true, overwrite: true)?

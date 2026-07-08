@@ -120,15 +120,39 @@ export proc build(dest: Path) [fs, process, env, error] {
   # genl source files for libnl-genl-3.so
   let genl_sources: List[Path] = [p"lib/genl/ctrl.c", p"lib/genl/family.c", p"lib/genl/genl.c", p"lib/genl/mngt.c"]
 
-  let core = make.compile_lo_tasks(cc, triple, cflags, defs, includes, src, core_sources, objs)
-  let genl = make.compile_lo_tasks(cc, triple, cflags, defs, includes, src, genl_sources, objs)
-  make.run_tasks(core.tasks.extend(genl.tasks), make.jobs()?)?
-
-  # Link shared libraries
   let core_so = fp"${dest}/usr/lib/libnl-3.so.200.26.0"
-  make.link_shared(cc, triple, core.objects, "libnl-3.so.200", [], core_so)?
   let genl_so = fp"${dest}/usr/lib/libnl-genl-3.so.200.26.0"
-  make.link_shared(cc, triple, genl.objects, "libnl-genl-3.so.200", [], genl_so)?
+  let core = make.c_shared_library({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: src,
+    sources: core_sources,
+    out_dir: objs,
+    out: core_so,
+    soname: "libnl-3.so.200",
+    ldflags: [],
+    deps: [],
+  })
+
+  let genl = make.c_shared_library({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: src,
+    sources: genl_sources,
+    out_dir: objs,
+    out: genl_so,
+    soname: "libnl-genl-3.so.200",
+    ldflags: [],
+    deps: [],
+  })
+
+  make.run_tasks(core.tasks.extend(genl.tasks), make.jobs()?)?
 
   # Create symlinks
   for lib in [core_so, genl_so] {

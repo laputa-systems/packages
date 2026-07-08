@@ -18,15 +18,6 @@ export let sources: List[Path] = [
 
 export let checksums: List[Str] = ["ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c", "SKIP"]
 
-pure task_names(paths: List[Path]) -> List[Str] {
-  return [path_value.display() for path_value in paths]
-}
-
-pure source_obj(root: Path, prefix: Str, source: Path) -> Path {
-  let source_rel = source.relative_to(root).display()
-  return fp"obj/${prefix}/${source_rel.replace("/", "_").replace(".c", ".o")}"
-}
-
 proc install_manpage(source: Path, dest: Path) [fs, error] {
   if source.exists()? {
     fs.install(source, dest, 0o644, parents: true, overwrite: true)?
@@ -279,32 +270,38 @@ ${default_options_guard}
   let dropbear_cflags = ["-W", "-Wall", "-Wno-pointer-sign", "-Os", "-fPIC"]
   let ltc_cflags = ["-W", "-Wall", "-Wno-pointer-sign", "-Os", "-DLTC_SOURCE", "-fPIC"]
   let ltm_cflags = ["-O3", "-funroll-loops", "-fomit-frame-pointer", "-fPIC"]
-  var tasks: List[make.MakeTask] = []
   let _ = all_dropbear_stems
 
-  var ltc_objs: List[Path] = []
   let ltc_root = fp"${src}/libtomcrypt/src"
-
-  for entry in fs.files(p"libtomcrypt/src")?
-    |> where .ext == "c" and .name != "aes_tab.c" and .name != "safer_tab.c" and .name != "twofish_tab.c" and .name != "whirltab.c" and .name != "sober128tab.c" {
-    let out = source_obj(ltc_root, "libtomcrypt", entry.path)
-    ltc_objs = ltc_objs.push(out)
-    tasks = tasks.push(make.compile_c_task(cc, triple, ltc_cflags, defs, includes, entry.path, out))
-  }
-
-  var ltm_objs: List[Path] = []
   let ltm_root = fp"${src}/libtommath"
-
-  for entry in fs.ls(p"libtommath")? |> where .kind == "file" and .ext == "c" {
-    let out = source_obj(ltm_root, "libtommath", entry.path)
-    ltm_objs = ltm_objs.push(out)
-    tasks = tasks.push(make.compile_c_task(cc, triple, ltm_cflags, defs, includes, entry.path, out))
-  }
-
+  let ltc_sources = [entry.path.relative_to(ltc_root) for entry in fs.files(p"libtomcrypt/src")? |> where .ext == "c" and .name != "aes_tab.c" and .name != "safer_tab.c" and .name != "twofish_tab.c" and .name != "whirltab.c" and .name != "sober128tab.c"]
+  let ltm_sources = [entry.path.relative_to(ltm_root) for entry in fs.ls(p"libtommath")? if entry.kind == "file" and entry.ext == "c"]
   let ltc_a = p"obj/libtomcrypt.a"
   let ltm_a = p"obj/libtommath.a"
-  tasks = tasks.push(make.link_archive_task(cc, ltc_objs, ltc_a, task_names(ltc_objs)))
-  tasks = tasks.push(make.link_archive_task(cc, ltm_objs, ltm_a, task_names(ltm_objs)))
+  let ltc = make.c_static_library({
+    cc,
+    triple,
+    cflags: ltc_cflags,
+    defs,
+    includes,
+    root: ltc_root,
+    sources: ltc_sources,
+    out_dir: p"obj/libtomcrypt",
+    out: ltc_a,
+    deps: [],
+  })
+  let ltm = make.c_static_library({
+    cc,
+    triple,
+    cflags: ltm_cflags,
+    defs,
+    includes,
+    root: ltm_root,
+    sources: ltm_sources,
+    out_dir: p"obj/libtommath",
+    out: ltm_a,
+    deps: [],
+  })
   let lib_deps = [ltc_a.display(), ltm_a.display()]
   let libs = [ltc_a, ltm_a]
   let link_flags = [ldflags, "-pie", "-lz"]
@@ -339,9 +336,7 @@ ${default_options_guard}
       },
     ],
   })?
-  tasks = tasks.extend(multi.tasks)
-
-  make.run_tasks(tasks, make.jobs()?)?
+  make.run_tasks(ltc.tasks.extend(ltm.tasks).extend(multi.tasks), make.jobs()?)?
   fs.install(p"dropbear", fp"${dest}/usr/bin/dropbear", 0o755, parents: true, overwrite: true)?
   fs.install(p"dbclient", fp"${dest}/usr/bin/dbclient", 0o755, parents: true, overwrite: true)?
   fs.install(p"dropbearkey", fp"${dest}/usr/bin/dropbearkey", 0o755, parents: true, overwrite: true)?

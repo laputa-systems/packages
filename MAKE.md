@@ -73,5 +73,3 @@ shorter and clearer without becoming magical. If a helper only moves complexity
 out of sight, it is not an improvement. If it returns explicit `tasks`,
 `objects`, `deps`, and `output` data that the recipe can inspect and compose,
 it is likely the right shape.
-
-See `PM-MAKE-TODO.md` for the concrete follow-up work.
