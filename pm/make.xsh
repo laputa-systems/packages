@@ -144,6 +144,10 @@ pure object_path_for_source(src: Path, out_dir: Path, ext: Str) -> Path {
   fp"${out_dir}/${object_name_for_source(src, ext)}"
 }
 
+pure source_is_cxx(src: Path) -> Bool {
+  return src.ext == "cxx" or src.ext == "cpp" or src.ext == "cc"
+}
+
 pure source_path(root: Path, src: Path) -> Path {
   if root.display() == "" or root.display() == "." {
     return src
@@ -1166,6 +1170,35 @@ export proc compile_c_tasks(
   return {tasks, objects, deps: [task.name for task in tasks]}
 }
 
+export proc compile_mixed_tasks(
+  toolchain: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  root: Path,
+  sources: List[Path],
+  out_dir: Path,
+  deps: List[Str] = [],
+) [] -> CompileTasks {
+  var tasks: List[MakeTask] = []
+  var objects: List[Path] = []
+
+  for src in sources {
+    let out = object_path_for_source(src, out_dir, ".o")
+    let task = if source_is_cxx(src) {
+      compile_cxx_task(toolchain, triple, cflags, defs, includes, source_path(root, src), out, deps)
+    } else {
+      compile_c_task(toolchain, triple, cflags, defs, includes, source_path(root, src), out, deps)
+    }
+
+    tasks = tasks.push(task)
+    objects = objects.push(out)
+  }
+
+  return {tasks, objects, deps: [task.name for task in tasks]}
+}
+
 export proc c_program(spec: CProgram) [] -> CTarget {
   let compiled = compile_c_tasks(
     spec.cc,
@@ -1246,6 +1279,7 @@ export proc c_static_library(spec: CStaticLibrary) [] -> CTarget {
 export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget] {
   var tasks: List[MakeTask] = []
   var groups: Map[CompileTasks] = {}
+  var cxx_groups: Map[Bool] = {}
   var outputs: Map[Path] = {}
   var deps: List[Str] = []
 
@@ -1267,7 +1301,7 @@ export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget]
     } else {
       source_group.out_dir
     }
-    let compiled = compile_c_tasks(
+    let compiled = compile_mixed_tasks(
       spec.cc,
       spec.triple,
       cflags,
@@ -1281,11 +1315,13 @@ export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget]
 
     tasks = tasks.extend(compiled.tasks)
     groups[source_group.name] = compiled
+    cxx_groups[source_group.name] = [source_is_cxx(src) for src in source_group.sources].contains(true)
   }
 
   for target in spec.targets {
     var objects: List[Path] = []
     var target_deps: List[Str] = target.deps
+    var needs_cxx_link = [source_is_cxx(src) for src in target.sources].contains(true)
 
     for group_name in target.groups {
       if ! groups.has(group_name) {
@@ -1295,10 +1331,11 @@ export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget]
       let compiled: CompileTasks = groups.get(group_name)?
       objects = objects.extend(compiled.objects)
       target_deps = target_deps.extend(compiled.deps)
+      needs_cxx_link = needs_cxx_link or cxx_groups.get(group_name, false)
     }
 
     if target.sources.len() > 0 {
-      let target_compile = compile_c_tasks(
+      let target_compile = compile_mixed_tasks(
         spec.cc,
         spec.triple,
         spec.cflags,
@@ -1314,7 +1351,11 @@ export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget]
       target_deps = target_deps.extend(target_compile.deps)
     }
 
-    let link = link_executable_task(spec.cc, spec.triple, objects, target.libs, target.ldflags, target.out, target_deps)
+    let link = if needs_cxx_link {
+      link_executable_cxx_task(spec.cc, spec.triple, objects, target.libs, target.ldflags, target.out, target_deps)
+    } else {
+      link_executable_task(spec.cc, spec.triple, objects, target.libs, target.ldflags, target.out, target_deps)
+    }
     tasks = tasks.push(link)
     outputs[target.name] = target.out
     deps = deps.push(link.name)

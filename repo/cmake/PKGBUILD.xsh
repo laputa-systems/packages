@@ -232,12 +232,8 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-IUtilities",
   ]
 
-  var objs: List[Path] = []
-  var tasks: List[make.MakeTask] = []
-  var obj_deps: List[Str] = []
-
   # cmake CXX sources: Source/cm*.cxx (list from CMAKE_CXX_SOURCES in bootstrap)
-  for s in [
+  let cmake_cxx_sources = [fp"Source/${s}.cxx" for s in [
     "cmAddCompileDefinitionsCommand",
     "cmAddCustomCommandCommand",
     "cmAddCustomTargetCommand",
@@ -487,16 +483,10 @@ export proc build(dest: Path) [fs, process, env, error] {
     "cmakemain",
     "cmcmd",
     "cm_fileno",
-  ] {
-    let out = fp"${bsdir}/obj/${s}.o"
-    let task = make.compile_cxx_task(bootstrap_cc, bootstrap_triple, cxx_all, [], [], fp"Source/${s}.cxx", out)
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
+  ]]
 
   # Ninja generator sources (bootstrap uses Ninja so samu can drive the full build).
-  for s in [
+  let ninja_cxx_sources = [fp"Source/${s}.cxx" for s in [
     "cmFortranParserImpl",
     "cmGlobalNinjaGenerator",
     "cmLocalNinjaGenerator",
@@ -505,94 +495,16 @@ export proc build(dest: Path) [fs, process, env, error] {
     "cmNinjaNormalTargetGenerator",
     "cmNinjaTargetGenerator",
     "cmNinjaUtilityTargetGenerator",
-  ] {
-    let out = fp"${bsdir}/obj/${s}.o"
-    let task = make.compile_cxx_task(bootstrap_cc, bootstrap_triple, cxx_all, [], [], fp"Source/${s}.cxx", out)
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
+  ]]
 
   # Fortran LexerParser sources needed by the Ninja generator.
-  for s in ["cmFortranLexer", "cmFortranParser"] {
-    let out = fp"${bsdir}/obj/${s}.o"
-
-    let task = make.compile_cxx_task(
-      bootstrap_cc,
-      bootstrap_triple,
-      cxx_all,
-      [],
-      [],
-      fp"Source/LexerParser/${s}.cxx",
-      out,
-    )
-
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
-
-  # cmake C source: Source/cm_utf8.c
-  let utf8_out = fp"${bsdir}/obj/cm_utf8.o"
-  let utf8_task = make.compile_c_task(bootstrap_cc, bootstrap_triple, c_all, [], [], p"Source/cm_utf8.c", utf8_out)
-  tasks = tasks.push(utf8_task)
-  obj_deps = obj_deps.push(utf8_task.name)
-  objs = objs.push(utf8_out)
+  let fortran_lexer_sources = [fp"Source/LexerParser/${s}.cxx" for s in ["cmFortranLexer", "cmFortranParser"]]
 
   # Utilities/std: fs_path.cxx, string_view.cxx
-  for s in ["fs_path", "string_view"] {
-    let out = fp"${bsdir}/obj/${s}.o"
-
-    let task = make.compile_cxx_task(
-      bootstrap_cc,
-      bootstrap_triple,
-      cxx_all,
-      [],
-      [],
-      fp"Utilities/std/cm/bits/${s}.cxx",
-      out,
-    )
-
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
+  let std_cxx_sources = [fp"Utilities/std/cm/bits/${s}.cxx" for s in ["fs_path", "string_view"]]
 
   # LexerParser CXX
-  for s in ["cmExprLexer", "cmExprParser", "cmGccDepfileLexer"] {
-    let out = fp"${bsdir}/obj/${s}.o"
-
-    let task = make.compile_cxx_task(
-      bootstrap_cc,
-      bootstrap_triple,
-      cxx_all,
-      [],
-      [],
-      fp"Source/LexerParser/${s}.cxx",
-      out,
-    )
-
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
-
-  # LexerParser C
-  let lfl_out = fp"${bsdir}/obj/cmListFileLexer.o"
-
-  let lfl_task = make.compile_c_task(
-    bootstrap_cc,
-    bootstrap_triple,
-    c_all,
-    [],
-    [],
-    p"Source/LexerParser/cmListFileLexer.c",
-    lfl_out,
-  )
-
-  tasks = tasks.push(lfl_task)
-  obj_deps = obj_deps.push(lfl_task.name)
-  objs = objs.push(lfl_out)
+  let lexer_parser_cxx_sources = [fp"Source/LexerParser/${s}.cxx" for s in ["cmExprLexer", "cmExprParser", "cmGccDepfileLexer"]]
 
   # kwsys C sources (KWSYS_C_SOURCES from bootstrap — unix branch).
   # Per-source flags: String.c requires -DKWSYS_STRING_C to activate its body.
@@ -606,13 +518,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-ISource/kwsys",
   ]
 
-  for s in ["EncodingC", "ProcessUNIX", "System"] {
-    let out = fp"${bsdir}/obj/kwsys-c-${s}.o"
-    let task = make.compile_c_task(bootstrap_cc, bootstrap_triple, kwsys_c_base, [], [], fp"Source/kwsys/${s}.c", out)
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
+  let kwsys_c_sources = [fp"Source/kwsys/${s}.c" for s in ["EncodingC", "ProcessUNIX", "System"]]
 
   let string_flags = [
     "-D_FILE_OFFSET_BITS=64",
@@ -625,49 +531,13 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-ISource/kwsys",
   ]
 
-  let string_out = fp"${bsdir}/obj/kwsys-c-String.o"
-
-  let string_task = make.compile_c_task(
-    bootstrap_cc,
-    bootstrap_triple,
-    string_flags,
-    [],
-    [],
-    p"Source/kwsys/String.c",
-    string_out,
-  )
-
-  tasks = tasks.push(string_task)
-  obj_deps = obj_deps.push(string_task.name)
-  objs = objs.push(string_out)
-
   # kwsys CXX (KWSYS_CXX_SOURCES from bootstrap)
-  for s in ["Directory", "EncodingCXX", "FStream", "Glob", "RegularExpression", "Status"] {
-    let out = fp"${bsdir}/obj/kwsys-${s}.o"
-    let task = make.compile_cxx_task(bootstrap_cc, bootstrap_triple, kwsys_all, [], [], fp"Source/kwsys/${s}.cxx", out)
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
-
-  let st_out = fp"${bsdir}/obj/kwsys-SystemTools.o"
-
-  let st_task = make.compile_cxx_task(
-    bootstrap_cc,
-    bootstrap_triple,
-    kwsys_st,
-    [],
-    [],
-    p"Source/kwsys/SystemTools.cxx",
-    st_out,
-  )
-
-  tasks = tasks.push(st_task)
-  obj_deps = obj_deps.push(st_task.name)
-  objs = objs.push(st_out)
+  let kwsys_cxx_sources = [
+    fp"Source/kwsys/${s}.cxx" for s in ["Directory", "EncodingCXX", "FStream", "Glob", "RegularExpression", "Status"]
+  ]
 
   # libuv C sources (unix branch, bundled)
-  for s in [
+  let uv_sources = [fp"Utilities/cmlibuv/${s}" for s in [
     "src/strscpy.c",
     "src/strtok.c",
     "src/timer.c",
@@ -687,17 +557,10 @@ export proc build(dest: Path) [fs, process, env, error] {
     "src/unix/stream.c",
     "src/unix/tcp.c",
     "src/unix/tty.c",
-  ] {
-    let out_name = s.replace("/", "-").replace(".c", ".o")
-    let out = fp"${bsdir}/obj/uv-${out_name}"
-    let task = make.compile_c_task(bootstrap_cc, bootstrap_triple, uv_all, [], [], fp"Utilities/cmlibuv/${s}", out)
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
+  ]]
 
   # librhash C sources (bundled)
-  for s in [
+  let rhash_sources = [fp"Utilities/cmlibrhash/${s}" for s in [
     "librhash/algorithms.c",
     "librhash/byte_order.c",
     "librhash/hex.c",
@@ -708,59 +571,94 @@ export proc build(dest: Path) [fs, process, env, error] {
     "librhash/sha3.c",
     "librhash/sha512.c",
     "librhash/util.c",
-  ] {
-    let out_name = s.replace("/", "-").replace(".c", ".o")
-    let out = fp"${bsdir}/obj/rhash-${out_name}"
-
-    let task = make.compile_c_task(
-      bootstrap_cc,
-      bootstrap_triple,
-      rhash_all,
-      [],
-      [],
-      fp"Utilities/cmlibrhash/${s}",
-      out,
-    )
-
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
+  ]]
 
   # jsoncpp CXX sources (bundled)
-  for s in ["src/lib_json/json_reader.cpp", "src/lib_json/json_value.cpp", "src/lib_json/json_writer.cpp"] {
-    let out_name = s.replace("/", "-").replace(".cpp", ".o")
-    let out = fp"${bsdir}/obj/jsoncpp-${out_name}"
-
-    let task = make.compile_cxx_task(
-      bootstrap_cc,
-      bootstrap_triple,
-      jsoncpp_all,
-      [],
-      [],
-      fp"Utilities/cmjsoncpp/${s}",
-      out,
-    )
-
-    tasks = tasks.push(task)
-    obj_deps = obj_deps.push(task.name)
-    objs = objs.push(out)
-  }
+  let jsoncpp_sources = [
+    fp"Utilities/cmjsoncpp/${s}" for s in ["src/lib_json/json_reader.cpp", "src/lib_json/json_value.cpp", "src/lib_json/json_writer.cpp"]
+  ]
 
   # Step 4: link the bootstrap cmake binary (C++ program needs C++ compiler driver).
   let bootstrap_cmake = fp"${bsdir}/cmake"
-
-  tasks = tasks.push(
-    make.link_executable_cxx_task(
-      bootstrap_cc,
-      bootstrap_triple,
-      objs,
-      [],
-      ["-ldl", "-lrt", "-Wl,--unresolved-symbols=ignore-all"],
-      bootstrap_cmake,
-      obj_deps,
-    ),
-  )
+  let bootstrap_target = make.c_multi_program({
+    cc: bootstrap_cc,
+    triple: bootstrap_triple,
+    cflags: [],
+    defs: [],
+    includes: [],
+    root: p".",
+    out_dir: fp"${bsdir}/obj",
+    groups: [
+      {name: "cmake-cxx", cflags: cxx_all, defs: [], includes: [], root: p".", sources: cmake_cxx_sources, out_dir: p"", deps: []},
+      {name: "ninja-cxx", cflags: cxx_all, defs: [], includes: [], root: p".", sources: ninja_cxx_sources, out_dir: p"", deps: []},
+      {
+        name: "fortran-lexer",
+        cflags: cxx_all,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: fortran_lexer_sources,
+        out_dir: p"",
+        deps: [],
+      },
+      {name: "cmake-c", cflags: c_all, defs: [], includes: [], root: p".", sources: [p"Source/cm_utf8.c"], out_dir: p"", deps: []},
+      {name: "std-cxx", cflags: cxx_all, defs: [], includes: [], root: p".", sources: std_cxx_sources, out_dir: p"", deps: []},
+      {
+        name: "lexer-parser-cxx",
+        cflags: cxx_all,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: lexer_parser_cxx_sources,
+        out_dir: p"",
+        deps: [],
+      },
+      {
+        name: "lexer-parser-c",
+        cflags: c_all,
+        defs: [],
+        includes: [],
+        root: p".",
+        sources: [p"Source/LexerParser/cmListFileLexer.c"],
+        out_dir: p"",
+        deps: [],
+      },
+      {name: "kwsys-c", cflags: kwsys_c_base, defs: [], includes: [], root: p".", sources: kwsys_c_sources, out_dir: p"", deps: []},
+      {name: "kwsys-string", cflags: string_flags, defs: [], includes: [], root: p".", sources: [p"Source/kwsys/String.c"], out_dir: p"", deps: []},
+      {name: "kwsys-cxx", cflags: kwsys_all, defs: [], includes: [], root: p".", sources: kwsys_cxx_sources, out_dir: p"", deps: []},
+      {name: "kwsys-system-tools", cflags: kwsys_st, defs: [], includes: [], root: p".", sources: [p"Source/kwsys/SystemTools.cxx"], out_dir: p"", deps: []},
+      {name: "uv", cflags: uv_all, defs: [], includes: [], root: p".", sources: uv_sources, out_dir: p"", deps: []},
+      {name: "rhash", cflags: rhash_all, defs: [], includes: [], root: p".", sources: rhash_sources, out_dir: p"", deps: []},
+      {name: "jsoncpp", cflags: jsoncpp_all, defs: [], includes: [], root: p".", sources: jsoncpp_sources, out_dir: p"", deps: []},
+    ],
+    targets: [
+      {
+        name: "cmake",
+        groups: [
+          "cmake-cxx",
+          "ninja-cxx",
+          "fortran-lexer",
+          "cmake-c",
+          "std-cxx",
+          "lexer-parser-cxx",
+          "lexer-parser-c",
+          "kwsys-c",
+          "kwsys-string",
+          "kwsys-cxx",
+          "kwsys-system-tools",
+          "uv",
+          "rhash",
+          "jsoncpp",
+        ],
+        sources: [],
+        libs: [],
+        ldflags: ["-ldl", "-lrt", "-Wl,--unresolved-symbols=ignore-all"],
+        out: bootstrap_cmake,
+        deps: [],
+      },
+    ],
+  })?
+  var tasks = bootstrap_target.tasks
 
   if cross_build {
     tasks = [{...task, env: bootstrap_task_env} for task in tasks]

@@ -64,6 +64,52 @@ proc pm_source_root() [fs, env, error] -> Result[Path] {
   return /usr/lib/pm
 }
 
+pure seeded_shell_script() -> Str {
+  return r"""#!/bin/xsh --
+error ShError = Failed(message: Str)
+
+proc run_argv(argv: List[Str]) [process, error] {
+  if argv.len() == 0 {
+    return
+  }
+
+  let status = process.run(process.command_argv(argv[0], argv))?
+
+  if ! status.ok {
+    let rendered = argv.join(" ")
+    Err(ShError.Failed(message: f"command failed: ${rendered}"))?
+  }
+}
+
+proc run_command_list(script: Str) [process, error] {
+  for part in script.split("&&") {
+    let command = part.trim()
+    continue when command == "" or command == ":"
+    run_argv(process.argv_words(command)?)?
+  }
+}
+
+proc run_xshi(argv: List[Str]) [process, error] {
+  let xshi_argv = ["/bin/xshi"].extend(argv)
+  let status = process.run(process.command_argv("/bin/xshi", xshi_argv))?
+
+  if ! status.ok {
+    Err(ShError.Failed(message: "xshi failed"))?
+  }
+}
+
+proc main(...argv: List[Str]) [process, error] {
+  if argv.len() >= 2 and argv[0] == "-c" {
+    run_command_list(argv[1])?
+  } else {
+    run_xshi(argv)?
+  }
+}
+
+main(@args)?
+"""
+}
+
 proc seed_chroot_runner(root: Path) [fs, process, env, error] {
   let xsh = xsh_runner()?
   seed_xsh_multicall(root, xsh)?
@@ -81,12 +127,7 @@ proc seed_chroot_runner(root: Path) [fs, process, env, error] {
     fs.mkdir(sh.parent)?
     fs.remove(sh, missing_ok: true)?
 
-    fs.write(
-      sh,
-      """#!/bin/xsh
-run /bin/xshi @args ?
-""",
-    )?
+    fs.write(sh, seeded_shell_script())?
 
     fs.chmod(sh, 0o755)?
   }
@@ -600,12 +641,7 @@ proc seed_package_proof_shell(proof_root: Path, xsh: Path) [fs, process, env, er
     fs.mkdir(proof_sh.parent)?
     fs.remove(proof_sh, missing_ok: true)?
 
-    fs.write(
-      proof_sh,
-      """#!/bin/xsh
-run /bin/xshi @args ?
-""",
-    )?
+    fs.write(proof_sh, seeded_shell_script())?
 
     fs.chmod(proof_sh, 0o755)?
   }

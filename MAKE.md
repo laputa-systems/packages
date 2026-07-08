@@ -58,7 +58,9 @@ composable.
 The target-oriented layer now exists: `c_program`, `c_shared_library`,
 `c_static_library`, and `c_multi_program` look like direct translations of
 simple Makefile targets while still returning explicit `tasks`, `objects`,
-`deps`, and `output` data.
+`deps`, and `output` data. `c_multi_program` supports grouped mixed C/C++
+source lists and chooses a C++ link step when any linked source group requires
+it, which keeps larger ports from dropping back to manual object plumbing.
 `discover_sources`, `pkg_config_flags`, and `install_header_tree` cover common
 Makefile porting boilerplate without changing that explicit graph shape.
 
@@ -66,10 +68,10 @@ Makefile porting boilerplate without changing that explicit graph shape.
 
 The first architectural test is whether packages with existing GNU Makefiles
 become straightforward ports. `samurai`, `pkgconf`, `libnl3`, `wpa_supplicant`,
-`tmux`, `flex`, `dropbear`, and `mdevd` should become shorter and clearer
-without becoming magical. If a helper only moves complexity out of sight, it is
-not an improvement. If it returns explicit `tasks`, `objects`, `deps`, and
-`output` data that the recipe can inspect and compose, it is likely the right
-shape.
+`tmux`, `flex`, `dropbear`, `mdevd`, and the CMake bootstrap should become
+shorter and clearer without becoming magical. If a helper only moves complexity
+out of sight, it is not an improvement. If it returns explicit `tasks`,
+`objects`, `deps`, and `output` data that the recipe can inspect and compose,
+it is likely the right shape.
 
 See `PM-MAKE-TODO.md` for the concrete follow-up work.

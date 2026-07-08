@@ -1584,7 +1584,7 @@ proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error
     out_dir: p"obj",
     groups: [
       {name: "shared", cflags: [], defs: [], includes: [], root: p"", sources: [p"common.c", p"util.c"], out_dir: p"", deps: []},
-      {name: "feature", cflags: ["-fPIC"], defs: ["-DFEATURE"], includes: [], root: p"", sources: [p"feature.c"], out_dir: p"", deps: []},
+      {name: "feature", cflags: ["-fPIC"], defs: ["-DFEATURE"], includes: [], root: p"", sources: [p"feature.cxx"], out_dir: p"", deps: []},
     ],
     targets: [
       {name: "tool-a", groups: ["shared"], sources: [p"main-a.c"], libs: [], ldflags: ["-static"], out: p"bin/tool-a", deps: []},
@@ -1596,9 +1596,11 @@ proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error
   test.eq(multi.outputs.get("tool-b")?.display(), "bin/tool-b")?
   test.eq(multi.tasks.len(), 7)?
   test.eq(multi.tasks[0].outputs[0].display(), "obj/shared/common.o")?
+  test.eq(multi.tasks[2].argv[0], "c++")?
   test.eq(multi.tasks[2].argv.contains("-DFEATURE"), true)?
   test.eq(multi.tasks[3].outputs[0].display(), "obj/tool-a/main-a.o")?
   test.eq(multi.tasks[4].deps, [multi.tasks[0].name, multi.tasks[1].name, multi.tasks[3].name])?
+  test.eq(multi.tasks[6].argv[0], "c++")?
   test.eq(
     multi.tasks[6].deps,
     [multi.tasks[0].name, multi.tasks[1].name, multi.tasks[2].name, multi.tasks[5].name],
