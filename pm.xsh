@@ -871,7 +871,7 @@ proc print_world_plan(
   let colors = color_enabled()
   let planned_by_name = planned_world_package_map(planned)
 
-  print f"${ansi(colors, "1;36", "world-plan")} ${arch} ${package_count_text(ordered.len())} ${ansi(
+  print --flush f"${ansi(colors, "1;36", "world-plan")} ${arch} ${package_count_text(ordered.len())} ${ansi(
     colors,
     "2",
     f"jobs ${world_jobs}",
@@ -881,13 +881,13 @@ proc print_world_plan(
 
   while level <= max_level {
     let tranche = world_packages_at_level(ordered, levels, level)
-    print f"${ansi(colors, "1;35", f"tranche ${level}")} ${ansi(colors, "2", package_count_text(tranche.len()))}"
+    print --flush f"${ansi(colors, "1;35", f"tranche ${level}")} ${ansi(colors, "2", package_count_text(tranche.len()))}"
 
     for pkg in tranche {
       let planned_pkg: Package = planned_by_name.get(pkg.name)?
       let annotation = world_plan_remote_annotation(pkg, planned_pkg, remote_latest)?
       let suffix = if annotation == "" { "" } else { f" ${ansi(colors, "1;31", annotation)}" }
-      print f"  ${ansi(colors, "1;32", pkg.name)} ${world_plan_version_text(pkg, planned_pkg, remote_latest, colors)?}${suffix}"
+      print --flush f"  ${ansi(colors, "1;32", pkg.name)} ${world_plan_version_text(pkg, planned_pkg, remote_latest, colors)?}${suffix}"
     }
 
     level += 1
@@ -1271,7 +1271,7 @@ proc build_world_package(
   cross_build: Bool,
 ) [fs, net, process, env, time, error] -> Result[List[BuiltPackage]] {
   var built: List[BuiltPackage] = []
-  print ${pkg.name} world_package_id(pkg) "build:" "starting"
+  print --flush ${pkg.name} world_package_id(pkg) "build:" "starting"
   let package_root = fp"${build_ctx.work}/world-build/${world_package_id(pkg)}/root"
   let package_build_root = fp"${build_ctx.work}/world-build/${world_package_id(pkg)}/build-root"
   let package_work = fp"${build_ctx.work}/world-build/${world_package_id(pkg)}/work"
@@ -1364,7 +1364,7 @@ proc install_world_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs
     if world_should_install_built_package(ctx.root, item)? {
       installable = installable.push(item)
     } else {
-      print ${item.pkg.name} world_package_id(item.pkg) "stage:" "skip" "wlroots0.19-mesa"
+      print --flush ${item.pkg.name} world_package_id(item.pkg) "stage:" "skip" "wlroots0.19-mesa"
     }
   }
 
@@ -1681,7 +1681,7 @@ proc stage_built_package(
 
   let updated = upsert_remote_package(index, entry)?
   run_lifecycle_hooks("post-upload", item.pkg.name, upload_ctx, "")?
-  print ${item.pkg.name} version_id(item.pkg.ver, item.pkg.rel) "stage:" "done"
+  print --flush ${item.pkg.name} version_id(item.pkg.ver, item.pkg.rel) "stage:" "done"
   updated
 }
 
@@ -1884,6 +1884,9 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     return Err(PmError.Usage(f"world-plan build arch ${world_build_arch} must match host ${host_arch}"))
   }
 
+  let colors = color_enabled()
+  print --flush ${ansi(colors, "1;34", "world-plan loading")} ${ansi(colors, "2", f"packages for ${target_arch}")}
+
   let package_dirs = expand_world_package_dirs(raw_args)?
   let pm_module_root = pm_module_root_path()?
   var packages: List[Package] = []
@@ -1921,9 +1924,8 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     index = load_remote_index_from(index_path)?
   }
 
-  let colors = color_enabled()
-  print f"${ansi(colors, "1;36", "world-repo")} ${ansi(colors, "2", repo_dir.display())}"
-  print ${ansi(colors, "1;34", "world-plan fetching")} ${ansi(colors, "2", "remote index")}
+  print --flush f"${ansi(colors, "1;36", "world-repo")} ${ansi(colors, "2", repo_dir.display())}"
+  print --flush ${ansi(colors, "1;34", "world-plan fetching")} ${ansi(colors, "2", "remote index")}
 
   let repo_urls = load_repo_urls()?
   var remote_index: List[RemotePackage] = []
@@ -1966,7 +1968,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     let max_level = world_plan_max_level(ordered, levels)
     let build_max_level = if to_tranche >= 0 and to_tranche < max_level { to_tranche } else { max_level }
     let build_local_names: Map[Bool] = if cross_build { map.empty() } else { local_names }
-    print ${ansi(colors, "1;34", "world-build preparing")} ${ansi(colors, "2", "chroot base")}
+    print --flush ${ansi(colors, "1;34", "world-build preparing")} ${ansi(colors, "2", "chroot base")}
     install_chroot_base_for_arch(root_ctx, local_names, true, target_arch)?
     install_chroot_base_for_arch(build_ctx, build_local_names, true, world_build_arch)?
     var level = 0
@@ -1988,7 +1990,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
         )? {
           built_names[pkg.name] = true
           unchanged_names[pkg.name] = true
-          print ${pkg.name} $id "stage:" "unchanged"
+          print --flush ${pkg.name} $id "stage:" "unchanged"
         } else if recorded_built.contains(id) and recorded_proofed.contains(id) and world_stage_package_present_in_roots(
           root,
           build_root,
@@ -1996,7 +1998,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
           cross_build,
         )? {
           built_names[pkg.name] = true
-          print ${pkg.name} $id "stage:" "cached"
+          print --flush ${pkg.name} $id "stage:" "cached"
         } else {
           var build_dependency_names = effective_world_build_dependencies(pkg, cross_build)
 
@@ -2044,7 +2046,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
       }
 
       if pending.len() > 0 {
-        print f"${ansi(colors, "1;34", f"world-build tranche ${level}")} ${package_count_text(pending.len())} ${ansi(
+        print --flush f"${ansi(colors, "1;34", f"world-build tranche ${level}")} ${package_count_text(pending.len())} ${ansi(
           colors,
           "2",
           f"jobs ${world_jobs}",
@@ -2109,7 +2111,7 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
                   built_names[original_pkg.name] = true
                   unchanged_names[original_pkg.name] = true
                   unchanged = true
-                  print ${original_pkg.name} world_package_id(original_pkg) "stage:" "unchanged" "metadata"
+                  print --flush ${original_pkg.name} world_package_id(original_pkg) "stage:" "unchanged" "metadata"
                 }
               }
             }
@@ -2155,10 +2157,10 @@ proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
 
     if build_max_level >= max_level {
       write_world_state(repo_dir, fingerprint, planned, built_names, unchanged_names, true)?
-      print "world-plan" build complete
+      print --flush "world-plan" build complete
     } else {
       write_world_state(repo_dir, fingerprint, planned, built_names, unchanged_names, false)?
-      print f"world-plan build paused at tranche ${build_max_level}"
+      print --flush f"world-plan build paused at tranche ${build_max_level}"
     }
   }
 

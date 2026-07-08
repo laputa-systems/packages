@@ -788,13 +788,7 @@ proc pm_source_root() [fs, env, error] -> Result[Path] {
 
 proc seed_chroot_runner(root: Path) [fs, process, env, error] {
   let xsh = xsh_runner()?
-  fs.remove(fp"${root}/usr/local/bin/xsh-multicall", missing_ok: true)?
-
-  for name in ["xsh", "xshi", "xsht"] {
-    let dest = fp"${root}/usr/local/bin/${name}"
-    fs.remove(dest, missing_ok: true)?
-    fs.install(xsh_command_source(xsh, name)?, dest, 0o755, parents: true, overwrite: true)?
-  }
+  seed_xsh_multicall(root, xsh)?
 
   if fs.exists(/usr/lib/xsh)? {
     let _ = fs.copy_tree(/usr/lib/xsh, fp"${root}/usr/lib/xsh", parents: true, overwrite: true)?
@@ -1099,7 +1093,7 @@ proc build_packages_in_chroot(
     run_package_proof(ctx, pkg, id, tarball, item.manifest, built)?
     run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     built = built.push(item)
-    print ${pkg.name} ${id} "build:" item.manifest.len() "files"
+    print --flush ${pkg.name} ${id} "build:" item.manifest.len() "files"
   }
 
   built
@@ -1214,7 +1208,7 @@ export proc build_packages(
       },
     )
 
-    print ${pkg.name} ${id} "build:" manifest.len() "files"
+    print --flush ${pkg.name} ${id} "build:" manifest.len() "files"
   }
 
   built
@@ -1239,46 +1233,44 @@ proc xsh_runner() [fs, process, env, error] -> Result[Path] {
 }
 
 proc regular_xsh_source(xsh: Path) [fs, error] -> Result[Path] {
-  let metadata = fs.metadata(xsh)?
+  var source = xsh
+  var depth = 0
 
-  if metadata.kind != "symlink" {
-    return xsh
+  while depth < 16 {
+    let metadata = fs.metadata(source)?
+
+    if metadata.kind != "symlink" {
+      return source
+    }
+
+    let target = source.readlink()?
+    source = if target.display().starts_with("/") {
+      target
+    } else {
+      fp"${source.parent}/${target}"
+    }
+    depth += 1
   }
 
-  let target = xsh.readlink()?
-
-  if target.display().starts_with("/") {
-    return target
-  }
-
-  fp"${xsh.parent}/${target}"
+  return Err(PmError.PackageContract(f"${xsh.display()} has too many symlink levels"))
 }
 
-proc xsh_command_source(xsh: Path, name: Str) [fs, process, error] -> Result[Path] {
-  let sibling = fp"${xsh.parent}/${name}"
+proc seed_xsh_multicall(root: Path, xsh: Path) [fs, error] {
+  let bin = fp"${root}/usr/local/bin"
+  let multicall = fp"${bin}/xsh-multicall"
+  fs.mkdir(bin)?
+  fs.remove(multicall, missing_ok: true)?
+  fs.install(regular_xsh_source(xsh)?, multicall, 0o755, parents: true, overwrite: true)?
 
-  if fs.exists(sibling)? {
-    return regular_xsh_source(sibling)?
+  for name in ["xsh", "xshi", "xsht"] {
+    let dest = fp"${bin}/${name}"
+    fs.remove(dest, missing_ok: true)?
+    fs.symlink(p"xsh-multicall", dest)?
   }
-
-  var source = regular_xsh_source(xsh)?
-
-  match process.which(name) {
-    Ok(found) => source = regular_xsh_source(found)?
-    Err(_) => {}
-  }
-
-  source
 }
 
 proc seed_package_proof_shell(proof_root: Path, xsh: Path) [fs, process, env, error] {
-  fs.remove(fp"${proof_root}/usr/local/bin/xsh-multicall", missing_ok: true)?
-
-  for name in ["xsh", "xshi", "xsht"] {
-    let dest = fp"${proof_root}/usr/local/bin/${name}"
-    fs.remove(dest, missing_ok: true)?
-    fs.install(xsh_command_source(xsh, name)?, dest, 0o755, parents: true, overwrite: true)?
-  }
+  seed_xsh_multicall(proof_root, xsh)?
 
   for proof_sh in [fp"${proof_root}/usr/bin/sh", fp"${proof_root}/bin/sh"] {
     fs.mkdir(proof_sh.parent)?
@@ -1534,7 +1526,7 @@ proc run_package_proof(
     } ?
   }
 
-  print ${pkg.name} "proof:" "ok"
+  print --flush ${pkg.name} "proof:" "ok"
 }
 
 export proc install_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs, process, env, error] {
