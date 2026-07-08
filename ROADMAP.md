@@ -2,120 +2,104 @@
 
 ## Goal
 
-Make `pm.xsh` and `pm/` easier to refactor without losing confidence in package
-manager behavior. The next major cleanup should wait until tests can show which
-PM paths are actually exercised.
+Make `pm.xsh` and `pm/` cleaner, less duplicated, and more idiomatic without
+losing confidence in package manager behavior.
 
-## Current Coverage State
+With the current PM suite in place, split the PM implementation around stable
+behavior boundaries. The goal is cleaner, less duplicated, more idiomatic XSH
+code, not line movement for its own sake. Small CLI output cleanups are allowed
+when they make the behavior clearer, but output changes should be intentional
+and covered by test updates.
 
-`xsht test --cov` now reports XSH source line/proc coverage from execution
-traces, alongside the existing standard API coverage. That is the right
-foundation for PM refactoring, but the baseline is still young and the PM suite
-needs cleanup before it can drive a broad split safely.
+Do not require coverage to increase during this refactor. The existing coverage
+is a safety net, not a metric target.
 
-Open coverage questions:
+### Target Shape
 
-- Which procs in `pm.xsh` and `pm/*.xsh` were executed?
-- Which files and line ranges are untouched by the package test suite?
-- Which CLI flows cover world planning, install/upgrade, source mirroring,
-  metadata sidecars, proof execution, and upload staging?
-- Which tests are responsible for covering a risky PM behavior?
+`pm.xsh` should become a thin entrypoint and command router. It may keep
+top-level help and coarse command dispatch, but world-build and world-plan logic
+should move out of it.
 
-Current Linux baseline with local `xsht`:
+Use a unified `pm/world.xsh` module rather than separate `world_plan.xsh` and
+`world_build.xsh`. World planning and world execution share enough state,
+fingerprinting, package rel decisions, cache paths, and output vocabulary that a
+single module is likely easier to keep coherent.
 
-- Full `tests/xsh/pm.xsh`: 849/4173 lines (20.3%), 121/257 procs (47.0%).
+Likely ownership after the refactor:
 
-The lowest-covered PM source files are currently `pm/types.xsh`, `pm/make.xsh`,
-`pm/sources.xsh`, `pm/remote.xsh`, `pm/util.xsh`, `pm/local.xsh`, and
-`pm/extensions.xsh`.
+- `pm/world.xsh`: world package expansion, dependency/tranche planning, rebuild
+  reasons, rel propagation, world cache naming, world state, staged artifact
+  verification, tranche build execution, world upload/sync orchestration, and
+  world output formatting.
+- `pm/cli.xsh`: command parsing, default-context expansion, command usage
+  strings, and dispatch helpers that do not belong to a domain module.
+- `pm/repo.xsh`: repository build/upload/export flows, staged index mutation,
+  source mirror export, and repo artifact verification.
+- `pm/install.xsh`: install/remove/update/upgrade flows, package DB mutation,
+  manifest ownership, dirty filesystem checks, lifecycle hook integration, and
+  remote tarball/metapackage install.
+- `pm/build.xsh`: local package build, chroot build, proof execution, build log
+  handling, and build cache preservation.
+- Existing support modules stay focused: `pm/remote.xsh` for remote transport
+  and remote index decoding, `pm/sources.xsh` for source resolution/mirroring,
+  `pm/util.xsh` for small shared pure helpers, and `pm/types.xsh` for stable
+  shared types.
 
-## Phase 1: XSH Source Coverage In `xsht` (Done)
+This target shape is directional. If extraction shows that a boundary creates
+awkward APIs or cycles, prefer a cleaner local shape over matching the list
+exactly.
 
-`xsht test --cov` reports source coverage for XSH scripts, not only standard API
-coverage.
+### Refactor Sequence
 
-Implemented behavior:
+1. Extract world logic into `pm/world.xsh`.
 
-- `xsht test --cov` runs tests with trace collection enabled automatically.
-- The final report includes per-file coverage for loaded `.xsh` files.
-- The report includes proc/pure coverage.
-- The report includes executable source line coverage where trace spans are
-  available.
-- The report is scoped to project files and excludes tests, examples, and
-  packaged repo fixtures by default.
-- `--cov-json FILE` writes structured source/API coverage data for later trend
-  tracking and CI gates.
+   Start with the low-risk planning helpers currently in `pm.xsh`: dependency
+   classification, tranche levels, version/rel comparison, rel planning, rebuild
+   reasons, plan printing, world cache key calculation, and world state helpers.
+   Keep the public entrypoint shape close to the current `world_plan_repo`
+   behavior so existing tests can keep driving the CLI.
 
-## Phase 2: Package Test Coverage Baseline
+2. Move world execution into the same module.
 
-Once source coverage exists, establish a baseline for this repo.
+   Move staged root handling, chroot base installation, package staging, world
+   state read/write/compatibility, build tranche execution, staged artifact
+   verification, and upload/sync behavior. This is where duplicated output
+   formatting and elapsed-time reporting should be cleaned up.
 
-Targets:
+3. Extract CLI plumbing.
 
-- [x] `make test` runs `xsht test --cov --cov-json target/coverage/pm.json`.
-- [x] Document how to inspect uncovered PM paths locally.
-- [x] Capture a baseline coverage report before refactoring.
-- [x] Identify the largest uncovered PM areas by behavior, not just by file.
+   Move command usage, default context handling, package-dir detection, and
+   dispatch helpers into `pm/cli.xsh`. After this step, `pm.xsh` should mostly
+   parse argv, call domain commands, and handle extension fallback.
 
-Inspect coverage locally with:
+4. Extract repo workflows.
 
-```sh
-make test
-```
+   Move `build`, `upload`, `build-upload`, and `upload-repo-export` flows into
+   `pm/repo.xsh`. Keep source mirror export and staged index mutation together
+   so repository artifact shape remains easy to reason about.
 
-Then open `target/coverage/pm.json`. The `source_coverage` array reports
-covered lines and procs per loaded PM source file; sort it by line or proc
-coverage to find the next broad behavior gap.
+5. Split install/build responsibilities.
 
-Important PM behaviors to measure:
+   Split the current broad `pm/local.xsh` surface only after the world and repo
+   flows have moved. Separate package DB/install/remove behavior from build and
+   proof execution. The important cleanup here is reducing cross-cutting state
+   and duplicated manifest handling, not forcing a perfect taxonomy.
 
-- Package loading and dependency ordering.
-- Local build and proof execution.
-- Remote install from tarball and metadata sidecar.
-- Source download, checksum update, and mirror staging.
-- World planning, rel propagation, and rebuild explanations.
-- World build staging, unchanged-metadata reuse, and resumable state.
-- Upload and index mutation paths, using fake/local remotes where possible.
+6. Tighten APIs after movement.
 
-## Phase 3: Increase PM Coverage
+   Once behavior is in the right modules, narrow exported APIs, make helper
+   names domain-specific, collapse duplicate helpers, and move generic helpers
+   out of `pm/util.xsh` unless they are truly shared.
 
-Add focused tests before moving code around.
+### Guardrails
 
-Priorities:
-
-- [x] Planning behavior coverage through `world-plan` fixtures: dependency
-  tranches, rel bump decisions, carried planned rels, and rebuild reason output.
-- [x] Fixture-based tests for remote metadata sidecar consumption.
-- [x] Fixture-based tests for world state resume and carried planned rels.
-- [x] Failure-path tests for dirty filesystem detection, checksum mismatch,
-  missing deps, invalid sidecars, missing proofs, missing service definitions,
-  incomplete world stages, and staged artifact verification.
-- [x] Minimal integration coverage for build/proof output through local package
-  builds and world-plan build fixtures.
-
-The scratch `make test` path is wired to coverage and prefers the local sibling
-XSH Linux build, falling back to the published XSH release only when the local
-build is unavailable.
-
-Keep tests behavior-oriented. Do not add tests only to raise a percentage if the
-behavior is not important.
-
-## Phase 4: PM Refactor
-
-After coverage improves, split the PM implementation around stable behavior
-boundaries.
-
-Likely extraction seams:
-
-- World planning and explanation formatting.
-- World build state and staging.
-- Remote install/index/sidecar handling.
-- Local build/proof execution.
-- Source fetching and mirroring.
-- CLI parsing and command dispatch.
-
-Refactor rule:
-
-- Move behavior behind existing tests first.
-- Keep CLI output changes intentional and covered.
-- Avoid broad rewrites that combine behavior changes with file movement.
+- Run `make test` after each meaningful extraction step.
+- Prefer moving behavior behind existing CLI tests before changing semantics.
+- Keep output changes intentional; update tests when improved output is the
+  point.
+- Do not mix large mechanical moves with behavioral rewrites in the same step.
+- Avoid new abstractions unless they remove real duplication or make effectful
+  boundaries clearer.
+- Keep package-facing helper modules (`pm/make.xsh`, `pm/meson.xsh`,
+  `pm/proof.xsh`, `pm/configure.xsh`) stable unless the refactor reveals a real
+  package API issue.

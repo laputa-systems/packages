@@ -62,6 +62,17 @@ falling back to the published XSH release when no local build exists. It runs
 the checkout mounted at `/src/packages`. Inspect the coverage JSON after the run
 for PM source line/proc coverage by file.
 
+Current PM coverage baseline from `make test`: `tests/xsh/pm.xsh` covers
+1302/5943 PM source lines (21.9%) and 194/349 procs (55.5%). Treat coverage as
+a refactor aid, not a metric target. Do not add trivial tests just to raise the
+percentage.
+
+The PM suite is expected to protect broad behavior, including package loading
+and dependency ordering, local build/proof execution, remote install from
+tarballs and metadata sidecars, source checksum/update/mirror flows, world-plan
+rel propagation and rebuild explanations, resumable world-build state, dirty
+filesystem detection, and upload/index mutation paths.
+
 For world changes, use:
 
 ```sh
