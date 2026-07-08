@@ -1,8 +1,15 @@
-.PHONY: test
+.PHONY: test update-checksums
 
 LAPUTA_DOCKER_PLATFORM ?= linux/arm64
 XSH_RELEASE ?= release-e12de8c8ce6388bcbf80df96bf57ebd8afc2d0df
 XSH_TEST_IMAGE ?= laputa-packages-test
+XSH ?= xsh
+PM_XSH_MODULE_PATH ?= .:/usr/lib/pm
+PKGDIRS ?= $(sort $(patsubst %/PKGBUILD.xsh,%,$(wildcard repo/*/PKGBUILD.xsh)))
+UPDATE_CHECKSUM_JOBS ?= 8
+CHECKSUM_ROOT ?= .work/update-checksums/root
+CHECKSUM_WORK ?= .work/update-checksums/work
+CHECKSUM_OUT ?= .work/update-checksums/out
 
 ifeq ($(LAPUTA_DOCKER_PLATFORM),linux/amd64)
 XSH_RELEASE_ARCH ?= x86_64
@@ -39,3 +46,7 @@ endif
 	    --platform $(LAPUTA_DOCKER_PLATFORM) \
 	    -v "$(CURDIR)":/src/packages \
 	    $(XSH_TEST_IMAGE)
+
+update-checksums:
+	@mkdir -p $(CHECKSUM_ROOT) $(CHECKSUM_WORK) $(CHECKSUM_OUT)
+	@printf '%s\n' $(PKGDIRS) | xargs -n 1 -P $(UPDATE_CHECKSUM_JOBS) sh -c 'pkg="$$1"; name="$${pkg#repo/}"; XSH_MODULE_PATH="$(PM_XSH_MODULE_PATH)" $(XSH) pm.xsh -- update-checksums "$(CHECKSUM_ROOT)/$$name" "$(CHECKSUM_WORK)/$$name" "$(CHECKSUM_OUT)/$$name" "$$pkg"' sh

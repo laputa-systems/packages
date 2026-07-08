@@ -576,12 +576,40 @@ proc test_pm_source_checksum(ctx: TestContext) [fs, process, error] {
   let out = test.temp_dir(ctx, name: "out")?
   let pkg = test.temp_dir(ctx, name: "pkg")?
   let _ = fs.copy_tree(source_pkg_dir(), pkg, parents: true, overwrite: true)?
+  let pkgbuild_path = fp"${pkg}/PKGBUILD.xsh"
+  fs.write(
+    pkgbuild_path,
+    pkgbuild_path.read_text()?.replace("export let checksums = [", "export let checksums: List[Str] = ["),
+  )?
   let checksum_out = run.text xsh_bin() pm.xsh -- checksum $root $work $out $pkg ?
   test.contains(checksum_out, "source-pkg 6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
   let update_out = run.text xsh_bin() pm.xsh -- update-checksums $root $work $out $pkg ?
   test.contains(update_out, "source-pkg checksums updated")?
-  let pkgbuild = fp"${pkg}/PKGBUILD.xsh".read_text()?
-  test.contains(pkgbuild, "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
+  test.eq(
+    pkgbuild_path.read_text()?,
+    r"""export let name = "source-pkg"
+
+export let ver = "1.0.0"
+
+export let rel = "1"
+
+export let deps = []
+
+export let mkdeps = []
+
+export let sources = [p"files/data.txt"]
+
+export let checksums = [
+  "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f",
+]
+
+export proc build(dest: Path) [fs, error] -> Result[Unit] {
+  let target = fp"${dest}/usr/share/source-pkg/data.txt"
+  fs.mkdir(target.parent)?
+  fs.install(p"data.txt", target, 0o644)?
+}
+""",
+  )?
   let shorthand_pkg = test.temp_dir(ctx, name: "shorthand-pkg")?
   let shorthand_copy = fs.copy_tree(source_pkg_dir(), shorthand_pkg, parents: true, overwrite: true)?
   test.ok(shorthand_copy.files > 0)?

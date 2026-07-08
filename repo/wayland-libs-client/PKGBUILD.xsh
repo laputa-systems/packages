@@ -15,7 +15,9 @@ export let sources = [
   p"https://gitlab.freedesktop.org/wayland/wayland/-/releases/VERSION/downloads/wayland-VERSION.tar.xz",
 ]
 
-export let checksums = ["82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536"]
+export let checksums = [
+  "82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536",
+]
 
 proc write_embedded_dtd() [fs, error] {
   let dump = p"protocol/wayland.dtd".read_bytes()?.dump("hex-u8")

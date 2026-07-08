@@ -87,6 +87,10 @@ pm update-checksums ROOT WORK OUT PKGDIR...
 pm upload ROOT WORK OUT PKGDIR...
 ```
 
+Use `make update-checksums` from the package repo to refresh checksums for all
+`repo/*` packages in parallel. Set `PKGDIRS="repo/bison repo/flex"` for a
+targeted run, or `UPDATE_CHECKSUM_JOBS=4` to adjust parallelism.
+
 `pm.xsh` is normally invoked through XSH's script separator:
 
 ```sh

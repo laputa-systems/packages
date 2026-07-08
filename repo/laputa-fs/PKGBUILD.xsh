@@ -15,7 +15,12 @@ export let sources = [
   p"files/fat-put.xsh",
 ]
 
-export let checksums = ["SKIP", "SKIP", "SKIP", "SKIP"]
+export let checksums = [
+  "SKIP",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+]
 
 export proc build(dest: Path) [fs, error] {
   fs.install(p"mkfs.vfat.xsh", fp"${dest}/usr/bin/mkfs.vfat", 0o755, parents: true, overwrite: true)?

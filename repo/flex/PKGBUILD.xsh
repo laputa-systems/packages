@@ -19,7 +19,7 @@ export let sources = [
 
 export let checksums = [
   "e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995",
-  "7b82e1303c127dc7b81eb5ac2138500b6e02e081c74ccf5939e90c4d027bd72d",
+  "59c3f53c27996188ce1ccea653d1f01de4210992e8cf6f69368e920f95ebb682",
 ]
 
 export proc build(dest: Path) [fs, process, env, error] {

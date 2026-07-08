@@ -14,7 +14,9 @@ export let sources = [
   p"https://github.com/eudev-project/eudev/releases/download/vVERSION/eudev-VERSION.tar.gz",
 ]
 
-export let checksums = ["8da4319102f24abbf7fff5ce9c416af848df163b29590e666d334cc1927f006f"]
+export let checksums = [
+  "8da4319102f24abbf7fff5ce9c416af848df163b29590e666d334cc1927f006f",
+]
 
 proc write_udev_stub() [fs, error] {
   fs.write(

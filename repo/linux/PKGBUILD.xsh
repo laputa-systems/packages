@@ -34,7 +34,7 @@ export let sources: List[Path] = [
   p"files/x86-jump-label-patch.c",
 ]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "965fb0a1c1675399fc60c6063b227c0523041b5f9a662b66462f1212c438ac3c",
   "4ae5a43efcd369d8e457053c2279362df70e6d39820a4f5a2a5988e6d2bc15ba",
   "d7db8438d9840892bc6e491df49d580c5e7ec74d287087c51bdcdeb6017cc4cc",

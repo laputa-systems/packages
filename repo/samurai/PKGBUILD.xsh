@@ -14,7 +14,9 @@ export let sources = [
   p"https://github.com/michaelforney/samurai/releases/download/VERSION/samurai-VERSION.tar.gz",
 ]
 
-export let checksums = ["3b8cf51548dfc49b7efe035e191ff5e1963ebc4fe8f6064a5eefc5343eaf78a5"]
+export let checksums = [
+  "3b8cf51548dfc49b7efe035e191ff5e1963ebc4fe8f6064a5eefc5343eaf78a5",
+]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?

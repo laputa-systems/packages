@@ -524,6 +524,16 @@ export proc collect_checksum_updates(
   updates
 }
 
+pure checksum_field_closes_on_line(line: Str) -> Bool {
+  let parts = line.split("=")
+
+  if parts.len() < 2 {
+    return false
+  }
+
+  return "]" in parts.get(1, "")
+}
+
 export proc write_checksum_field(pkg: Package, field: Str, values: List[Str]) [fs, error] {
   let pkgbuild = fp"${pkg.dir}/PKGBUILD.xsh"
   let lines = fs.read_text(pkgbuild)?.split("\n")
@@ -544,7 +554,7 @@ export proc write_checksum_field(pkg: Package, field: Str, values: List[Str]) [f
 
       output = output.push("]")
 
-      if "]" not in line {
+      if ! checksum_field_closes_on_line(line) {
         in_block = true
       }
     } else if in_block {

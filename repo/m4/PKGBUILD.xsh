@@ -11,7 +11,9 @@ export let mkdeps = []
 # m4 is implemented in pure XSH — no tarball, no compilation.
 export let sources = [p"files/m4.xsh"]
 
-export let checksums = ["SKIP"]
+export let checksums = [
+  "SKIP",
+]
 
 export proc build(dest: Path) [fs, error] {
   fs.install(p"m4.xsh", fp"${dest}/usr/bin/m4", 0o755, parents: true, overwrite: true)?

@@ -24,7 +24,9 @@ export let target_build_deps = ["wayland-dev", "wayland-protocols"]
 
 export let sources = [p"https://github.com/bugaevc/wl-clipboard/archive/refs/tags/vVERSION.tar.gz"]
 
-export let checksums = ["b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402"]
+export let checksums = [
+  "b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402",
+]
 
 proc patch_optional_installs() [fs, error] {
   fs.write(p"data/meson.build", "")?

@@ -18,7 +18,8 @@ export let mkdeps = []
 
 export let sources = []
 
-export let checksums = []
+export let checksums = [
+]
 
 proc install_session(dest: Path) [fs, error] {
   fs.write(

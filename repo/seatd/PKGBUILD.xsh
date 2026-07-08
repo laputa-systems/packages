@@ -15,7 +15,10 @@ export let sources = [
   p"service.xsh",
 ]
 
-export let checksums = ["302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96", "SKIP"]
+export let checksums = [
+  "302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96",
+  "SKIP",
+]
 
 proc patch_linux_headers() [fs, error] {
   fs.mkdir(p"linux")?

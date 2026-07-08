@@ -17,7 +17,7 @@ export let sources = [p"https://mirrors.kernel.org/gnu/bison/bison-VERSION.tar.x
 
 export let checksums = [
   "9bba0214ccf7f1079c5d59210045227bcf619519840ebfa80cd3849cff5a5bf2",
-  "8d5a90d09af0d60aa203e197840fb3e4e2d95863de1f102d399793c1a47e7eb4",
+  "a2b642fd6152f3a8fa242228527fdd2e3f36cb1809ecff9c182d0df038a17c35",
 ]
 
 proc install_data_tree(src: Path, dest: Path) [fs, error] {

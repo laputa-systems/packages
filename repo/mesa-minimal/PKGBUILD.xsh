@@ -12,7 +12,9 @@ export let mkdeps = ["llvm-toolchain", "linux", "pkgconf", "libdrm", "wayland-de
 
 export let sources = [p"files/source-marker.txt => ."]
 
-export let checksums = ["2f848716fcc0bb55ee07c37ab374d8b8824dd38debcc0be4711b4930f1c67381"]
+export let checksums = [
+  "2f848716fcc0bb55ee07c37ab374d8b8824dd38debcc0be4711b4930f1c67381",
+]
 
 proc write_sources() [fs, error] {
   fs.write(
