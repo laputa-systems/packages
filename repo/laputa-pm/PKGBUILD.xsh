@@ -19,7 +19,7 @@ export proc build(dest: Path) [fs, env, error] {
 
   fs.write(
     fp"${dest}/usr/bin/pm",
-    """#!/usr/local/bin/xsh --
+    """#!/bin/xsh --
 error WrapperError = Failed(message: Str)
 
 proc usage() {
@@ -50,7 +50,7 @@ proc main(...argv: List[Str]) [fs, process, env, error] {
 
   let status = process.run(
     process.command_argv(
-      /usr/local/bin/xsh,
+      /bin/xsh,
       forwarded,
       /,
       {XSH_MODULE_PATH: "/usr/lib/pm", XSH_PM_REPO: repo, XSH_PM_PUBLIC_REPO: repo},

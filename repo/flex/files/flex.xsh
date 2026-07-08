@@ -1,4 +1,4 @@
-#!/usr/local/bin/xsh --
+#!/bin/xsh --
 error ToolError = Failed(kind: Str, message: Str)
 
 type TextRest = {content: Str, rest: Str}

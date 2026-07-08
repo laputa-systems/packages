@@ -1,4 +1,4 @@
-#!/usr/local/bin/xsh
+#!/bin/xsh
 for dir in [/proc, /sys, /run, /dev] {
   dir.mkdir()?
 }

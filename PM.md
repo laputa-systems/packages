@@ -37,7 +37,7 @@ Optional exports:
 pkg-config files, protocol XML, and other files needed while compiling but not
 needed by installed runtime files. The PM base runtime includes `laputa-pm`, so
 package definitions should not list it just to get `/usr/bin/pm`,
-`/usr/local/bin/xsh`, or XSH core command links.
+`/bin/xsh`, or XSH core command links.
 
 Source URLs may use `VERSION` and `ARCH`. Arch-specific checksums override the
 base `checksums` list for the matching package arch.

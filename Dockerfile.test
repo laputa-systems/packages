@@ -6,11 +6,11 @@ ARG XSH_RELEASE_SHA256=0874226398877b375ce2a8453f7b587d75ec6a40a601fddcf33fd80db
 
 ADD --checksum=sha256:${XSH_RELEASE_SHA256} https://github.com/laputa-systems/xsh/releases/download/${XSH_RELEASE}/xsh-multicall-${XSH_RELEASE}-${XSH_RELEASE_ARCH}-linux-musl /tmp/xsh-multicall
 
-RUN mkdir -p /image/usr/local/bin /image/usr/bin /image/bin /image/tmp /image/var/tmp && \
-    cp /tmp/xsh-multicall /image/usr/local/bin/xsh-multicall && \
-    chmod 0755 /image/usr/local/bin/xsh-multicall && \
-    for command_name in xsh xshi xsht; do ln -s xsh-multicall /image/usr/local/bin/"${command_name}"; done && \
-    printf '#!/usr/local/bin/xsh\nrun /usr/local/bin/xshi @args ?\n' > /image/usr/bin/sh && \
+RUN mkdir -p /image/usr/bin /image/bin /image/tmp /image/var/tmp && \
+    cp /tmp/xsh-multicall /image/bin/xsh-multicall && \
+    chmod 0755 /image/bin/xsh-multicall && \
+    for command_name in xsh xshi xsht; do ln -s xsh-multicall /image/bin/"${command_name}"; done && \
+    printf '#!/bin/xsh\nrun /bin/xshi @args ?\n' > /image/usr/bin/sh && \
     cp /image/usr/bin/sh /image/bin/sh && \
     chmod 0755 /image/usr/bin/sh /image/bin/sh && \
     chmod 1777 /image/tmp /image/var/tmp
@@ -19,7 +19,7 @@ FROM scratch
 
 COPY --from=xsh-unpack /image/ /
 
-ENV PATH=/usr/local/bin:/usr/bin:/bin
+ENV PATH=/bin:/usr/bin
 
 WORKDIR /src/packages
 

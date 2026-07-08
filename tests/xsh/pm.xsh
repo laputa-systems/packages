@@ -415,7 +415,7 @@ proc test_pm_lifecycle_hooks(ctx: TestContext) [fs, process, error] {
 
   fs.write(
     hook,
-    r"""#!/usr/local/bin/xsh --
+    r"""#!/bin/xsh --
 proc main(...argv: List[Str]) [fs, env, error] {
   let _ = argv
   let log = fp"${env.get("HOOK_LOG")?}"
@@ -927,7 +927,7 @@ proc test_pm_extension_invocation_environment(ctx: TestContext) [fs, process, en
 
   fs.write(
     extension,
-    r"""#!/usr/local/bin/xsh --
+    r"""#!/bin/xsh --
 proc main(...argv: List[Str]) [fs, env, error] {
   let _ = argv
   fs.write(
@@ -1002,7 +1002,7 @@ proc test_make_runner_behaviors(ctx: TestContext) [fs, process, time, env, error
   let helper = test.temp_path(ctx, name: "make-task-helper.xsh")
 
   helper.write(
-    r"""#!/usr/local/bin/xsh --
+    r"""#!/bin/xsh --
 proc count_value(path: Path) [fs, error] -> Result[Int] {
   if path.exists()? {
     return path.read_text()?.parse_int()?

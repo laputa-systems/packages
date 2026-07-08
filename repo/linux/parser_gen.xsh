@@ -89,8 +89,8 @@ export proc remove_outputs(spec: ParserGen) [fs, error] {
 
 export proc run_generator(spec: ParserGen) [fs, process, error] {
   let command = process.command_argv(
-    /usr/local/bin/xsh,
-    ["/usr/local/bin/xsh", spec.tool.display(), "--"].extend(spec.argv),
+    /bin/xsh,
+    ["/bin/xsh", spec.tool.display(), "--"].extend(spec.argv),
     cwd: fs.cwd()?,
     env: {XSH_BISON_NO_UPSTREAM: "1", XSH_FLEX_NO_UPSTREAM: "1"},
   )

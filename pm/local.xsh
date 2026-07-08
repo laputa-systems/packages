@@ -877,8 +877,8 @@ proc seed_chroot_runner(root: Path) [fs, process, env, error] {
 
     fs.write(
       sh,
-      """#!/usr/local/bin/xsh
-run /usr/local/bin/xshi @args ?
+      """#!/bin/xsh
+run /bin/xshi @args ?
 """,
     )?
 
@@ -957,7 +957,7 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
     XSH_PM_RELEASE = pkg.rel
     XSH_PM_QUIET = "1"
     MAKEFLAGS = makeflags
-    SHELL = "/usr/local/bin/xshi"
+    SHELL = "/bin/xshi"
   } {
     let exports = pkg.exports
 
@@ -1099,7 +1099,7 @@ proc build_packages_in_chroot(
       "--",
       chroot_root.display(),
       pkg.name,
-      "/usr/local/bin/xsh",
+      "/bin/xsh",
       "/usr/lib/pm/pm.xsh",
       "--",
       "build-prepared-package",
@@ -1112,7 +1112,7 @@ proc build_packages_in_chroot(
     env {
       LAPUTA_ROOT = "/"
       MAKEFLAGS = makeflags
-      PATH = "/usr/local/bin:/usr/bin:/usr/lib/xsh/core:/bin"
+      PATH = "/bin:/usr/bin"
       XSH_MODULE_PATH = "/usr/lib/pm"
       XSH_LINUX_REAL = "1"
       XSH_LINUX_KBUILD_DISCOVER_JOBS = env.get("XSH_LINUX_KBUILD_DISCOVER_JOBS") ?? ""
@@ -1134,7 +1134,7 @@ proc build_packages_in_chroot(
       XSH_PM_BUILD_ROOT = "/"
       XSH_PM_TARGET_ARCH = target_arch
       XSH_PM_IN_CHROOT = "1"
-      SHELL = "/usr/local/bin/xshi"
+      SHELL = "/bin/xshi"
     } {
       let status = process.run(process.command_argv(host_xsh, chroot_argv))?
       preserve_chroot_build_cache(ctx, pkg, src)?
@@ -1297,8 +1297,8 @@ proc xsh_runner() [fs, process, env, error] -> Result[Path] {
     }
   }
 
-  if fs.exists(/usr/local/bin/xsh)? {
-    return /usr/local/bin/xsh
+  if fs.exists(/bin/xsh)? {
+    return /bin/xsh
   }
 
   process.which("xsh")?
@@ -1328,7 +1328,7 @@ proc regular_xsh_source(xsh: Path) [fs, error] -> Result[Path] {
 }
 
 proc seed_xsh_multicall(root: Path, xsh: Path) [fs, error] {
-  let bin = fp"${root}/usr/local/bin"
+  let bin = fp"${root}/bin"
   let multicall = fp"${bin}/xsh-multicall"
   fs.mkdir(bin)?
   fs.remove(multicall, missing_ok: true)?
@@ -1350,8 +1350,8 @@ proc seed_package_proof_shell(proof_root: Path, xsh: Path) [fs, process, env, er
 
     fs.write(
       proof_sh,
-      """#!/usr/local/bin/xsh
-run /usr/local/bin/xshi @args ?
+      """#!/bin/xsh
+run /bin/xshi @args ?
 """,
     )?
 
@@ -1573,7 +1573,7 @@ proc run_package_proof(
 
     env {
       LAPUTA_ROOT = "/"
-      PATH = "/usr/local/bin:/usr/bin:/usr/lib/xsh/core:/bin"
+      PATH = "/bin:/usr/bin"
       XSH_MODULE_PATH = "/usr/lib/pm"
       XSH_LINUX_REAL = "1"
       XSH_PM_ARCH = target_arch
@@ -1582,17 +1582,17 @@ proc run_package_proof(
       XSH_PM_PROOF_ROOT = "/"
       XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
       XSH_PM_TARGET_ARCH = target_arch
-      SHELL = "/usr/local/bin/xshi"
+      SHELL = "/bin/xshi"
     } {
-      run $xsh $host_chroot_runner "--" $proof_root $pkg.name "/usr/local/bin/xsh" fp"/var/tmp/pm-proof/${pkg.name}/proof.xsh" "--" "/" ?
+      run $xsh $host_chroot_runner "--" $proof_root $pkg.name "/bin/xsh" fp"/var/tmp/pm-proof/${pkg.name}/proof.xsh" "--" "/" ?
     } ?
   } else {
     env {
-      PATH = f"${proof_root}/usr/local/bin:${proof_root}/usr/bin:${env.get("PATH") ?? ""}"
+      PATH = f"${proof_root}/bin:${proof_root}/usr/bin:${env.get("PATH") ?? ""}"
       XSH_MODULE_PATH = env.get("XSH_MODULE_PATH") ?? "/usr/lib/pm"
       XSH_PM_PROOF_ROOT = proof_root.display()
       XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
-      SHELL = fp"${proof_root}/usr/local/bin/xshi".display()
+      SHELL = fp"${proof_root}/bin/xshi".display()
     } {
       run $xsh $proof "--" $proof_root ?
     } ?

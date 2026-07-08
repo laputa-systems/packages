@@ -213,9 +213,9 @@ proc main(rootfs: Path = /rootfs, port: Int = 22222) [fs, process, env, time, er
   fs.mkdir(tmp)?
 
   ensure(
-    fs.exists(fp"${rootfs}/usr/local/bin/xsh")?,
+    fs.exists(fp"${rootfs}/bin/xsh")?,
     "xinit-control",
-    "rootfs is missing /usr/local/bin/xsh for service scripts",
+    "rootfs is missing /bin/xsh for service scripts",
   )?
 
   ensure(fs.exists(fp"${rootfs}/usr/bin/xinit")?, "xinit-control", "rootfs is missing /usr/bin/xinit")?

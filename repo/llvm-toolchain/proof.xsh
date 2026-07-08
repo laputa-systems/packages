@@ -55,7 +55,7 @@ proc ensure_executable(path_value: Path, label: Str) [fs, error] {
 proc ensure_xsh_wrapper(path_value: Path, label: Str) [fs, error] {
   ensure_file(path_value, label)?
   let text = fs.read_text(path_value)?
-  ensure(text.starts_with("#!/usr/local/bin/xsh"), "proof-llvm-toolchain", f"${label} is not an XSH wrapper")?
+  ensure(text.starts_with("#!/bin/xsh"), "proof-llvm-toolchain", f"${label} is not an XSH wrapper")?
   ensure(! text.contains("libgcc"), "proof-llvm-toolchain", f"${label} mentions libgcc")?
   ensure(! text.contains("libstdc++"), "proof-llvm-toolchain", f"${label} mentions libstdc++")?
 }
@@ -268,7 +268,7 @@ proc prove_target_tools(root: Path, arch: Str) [fs, process, env, error] {
   let clang_header = run.text $readelf "-h" $clang ?
   ensure(clang_header.contains(machine), "proof-llvm-toolchain", f"clang is not ${arch}")?
   let cc_text = fs.read_text(cc)?
-  ensure(cc_text.starts_with("#!/usr/local/bin/xsh"), "proof-llvm-toolchain", "cc wrapper is not an XSH script")?
+  ensure(cc_text.starts_with("#!/bin/xsh"), "proof-llvm-toolchain", "cc wrapper is not an XSH script")?
   let tmp = fp"${root}/var/tmp/proof-llvm-toolchain-wrapper"
   fs.remove(tmp, missing_ok: true)?
   fs.mkdir(tmp)?

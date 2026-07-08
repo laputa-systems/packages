@@ -2,4 +2,4 @@
 # See shells(5) for details.
 
 /bin/sh
-/usr/local/bin/xshi
+/bin/xshi

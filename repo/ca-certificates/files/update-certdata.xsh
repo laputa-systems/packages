@@ -1,4 +1,4 @@
-#!/usr/local/bin/xsh
+#!/bin/xsh
 # Update CA certificate bundle from curl.se (Mozilla-derived).
 error UpdateCertdataError = Failed(message: Str)
 

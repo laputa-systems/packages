@@ -1,4 +1,4 @@
-#!/usr/local/bin/xsh --
+#!/bin/xsh --
 error Ext4FsckError = Failed(kind: Str, message: Str)
 
 let BLOCK_SIZE: Int = 4096

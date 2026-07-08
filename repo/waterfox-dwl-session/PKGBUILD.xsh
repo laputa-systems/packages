@@ -23,7 +23,7 @@ export let checksums: List[Str] = []
 proc install_session(dest: Path) [fs, error] {
   fs.write(
     fp"${dest}/usr/bin/waterfox-dwl-session",
-    """#!/usr/local/bin/xsh --
+    """#!/bin/xsh --
 error SessionError = Failed(kind: Str, message: Str)
 
 proc marker(line: Str) [fs] {
@@ -90,7 +90,7 @@ proc start_mdevd() [fs, process, error] {
   let _mdevd = spawn process.command_argv(
     /usr/bin/mdevd,
     ["mdevd", "-O", "4", "-f", "/etc/mdev.conf", "-C"],
-    env: {PATH: "/usr/local/bin:/usr/bin:/bin"},
+    env: {PATH: "/bin:/usr/bin"},
   )?
 
   marker("waterfox-session mdevd ok")
@@ -117,7 +117,7 @@ pure startup_command(mode: Str) -> Str {
   }
 
   if mode == "clipboard" {
-    return "/usr/local/bin/xsh /usr/bin/waterfox-session-clipboard-proof"
+    return "/bin/xsh /usr/bin/waterfox-session-clipboard-proof"
   }
 
   return "/usr/bin/waterfox about:blank"
@@ -134,7 +134,7 @@ proc run_user_session(mode: Str) [fs, process, time, error] {
     MOZ_DISABLE_AUTO_SAFE_MODE = "1"
     MOZ_ENABLE_WAYLAND = "1"
     NO_AT_BRIDGE = "1"
-    PATH = "/usr/local/bin:/usr/bin:/bin"
+    PATH = "/bin:/usr/bin"
     SEATD_SOCK = "/run/seatd.sock"
     SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt"
     WAYLAND_DISPLAY = "wayland-0"
@@ -156,7 +156,7 @@ proc run_user_session(mode: Str) [fs, process, time, error] {
       )?
 
       wait_for_path(/run/user/1000/wayland-0, "wayland", "dwl did not create wayland-0")?
-      run /usr/local/bin/xsh /usr/bin/waterfox-session-clipboard-proof ?
+      run /bin/xsh /usr/bin/waterfox-session-clipboard-proof ?
       wait_for_path(done, "clipboard", "clipboard proof did not complete")?
       terminate_if_live(compositor.pid)
 
@@ -188,7 +188,7 @@ proc run_root_session(mode: Str) [fs, process, time, error] {
   let _seatd = spawn process.command_argv(
     /usr/bin/seatd,
     ["seatd", "-g", "seat", "-l", "info"],
-    env: {PATH: "/usr/local/bin:/usr/bin:/bin", SEATD_VTBOUND: "0"},
+    env: {PATH: "/bin:/usr/bin", SEATD_VTBOUND: "0"},
   )?
   wait_for_socket(socket)?
   marker("waterfox-session seatd ok")
@@ -207,7 +207,7 @@ proc run_root_session(mode: Str) [fs, process, time, error] {
     MOZ_DISABLE_AUTO_SAFE_MODE = "1"
     MOZ_ENABLE_WAYLAND = "1"
     NO_AT_BRIDGE = "1"
-    PATH = "/usr/local/bin:/usr/bin:/bin"
+    PATH = "/bin:/usr/bin"
     SEATD_SOCK = "/run/seatd.sock"
     SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt"
     WAYLAND_DISPLAY = "wayland-0"
@@ -250,7 +250,7 @@ main(@args)?
 proc install_clipboard_proof(dest: Path) [fs, error] {
   fs.write(
     fp"${dest}/usr/bin/waterfox-session-clipboard-proof",
-    """#!/usr/local/bin/xsh --
+    """#!/bin/xsh --
 error ClipboardProofError = Failed(message: Str)
 
 proc marker(line: Str) [fs] {
@@ -325,7 +325,7 @@ ctl.!default {
 proc install_boot_hook(dest: Path) [fs, error] {
   fs.write(
     fp"${dest}/usr/lib/init/rc.d/waterfox-dwl-session.boot",
-    """#!/usr/local/bin/xsh
+    """#!/bin/xsh
 if fs.exists(/usr/bin/waterfox-dwl-session)? {
   let _session = process.spawn(
     process.command_argv(

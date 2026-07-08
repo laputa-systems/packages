@@ -1,2 +1,2 @@
-#!/usr/local/bin/xsh
+#!/bin/xsh
 print extract-tree

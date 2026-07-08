@@ -2,7 +2,7 @@ export let name: Str = "laputa-net"
 
 export let ver: Str = "1"
 
-export let rel: Str = "4"
+export let rel: Str = "8"
 
 # ifup/ifdown are xsh core applets; the net service drives them.
 # wpa_supplicant provides Wi-Fi association for wireless interfaces.
@@ -22,9 +22,7 @@ export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/etc/network/if-down.d")?
   fs.mkdir(fp"${dest}/etc/network/if-pre-down.d")?
   fs.mkdir(fp"${dest}/etc/network/if-post-down.d")?
-
-  # Expose the ifup/ifdown core applets as commands for the net service and operators.
-  fs.mkdir(fp"${dest}/usr/bin")?
-  fs.symlink(../lib/xsh/core/ifup.xsh, fp"${dest}/usr/bin/ifup")?
-  fs.symlink(../lib/xsh/core/ifdown.xsh, fp"${dest}/usr/bin/ifdown")?
+  for hook_dir in ["if-pre-up.d", "if-up.d", "if-down.d", "if-pre-down.d", "if-post-down.d"] {
+    fs.write(fp"${dest}/etc/network/${hook_dir}/keep", "")?
+  }
 }

@@ -6,8 +6,8 @@ proc main(root: Path = /rootfs) [fs, error] {
   proof.ensure(fs.exists(fp"${root}/etc/network/interfaces")?, "laputa-net", "missing /etc/network/interfaces")?
   proof.ensure(fs.exists(fp"${root}/usr/bin/ifup")?, "laputa-net", "missing /usr/bin/ifup")?
   proof.ensure(fs.exists(fp"${root}/usr/bin/ifdown")?, "laputa-net", "missing /usr/bin/ifdown")?
-  proof.ensure(fs.exists(fp"${root}/etc/network/if-pre-down.d")?, "laputa-net", "missing if-pre-down.d")?
-  proof.ensure(fs.exists(fp"${root}/etc/network/if-post-down.d")?, "laputa-net", "missing if-post-down.d")?
+  proof.ensure(fs.exists(fp"${root}/etc/network/if-pre-down.d/keep")?, "laputa-net", "missing if-pre-down.d")?
+  proof.ensure(fs.exists(fp"${root}/etc/network/if-post-down.d/keep")?, "laputa-net", "missing if-post-down.d")?
   print "laputa-net ok"
 }
 

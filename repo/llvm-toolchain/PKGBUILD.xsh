@@ -33,7 +33,7 @@ pure bool_literal(value: Bool) -> Str {
 }
 
 pure xsh_wrapper_source(real: Path, clang: Bool, cxx: Bool) -> Str {
-  let template = """#!/usr/local/bin/xsh
+  let template = """#!/bin/xsh
 proc has_arg(argv: List[Str], needle: Str) [] -> Bool {
   for arg in argv {
     if arg == needle {

@@ -1,4 +1,4 @@
-#!/usr/local/bin/xsh
+#!/bin/xsh
 pure entry_matches(database: Str, line: Str, key: Str) -> Bool {
   if key == "" {
     return true
