@@ -4,7 +4,7 @@ export let name: Str = "muon"
 
 export let ver: Str = "0.5.0"
 
-export let rel: Str = "4"
+export let rel: Str = "5"
 
 export let deps: List[Str] = ["musl"]
 
@@ -76,11 +76,11 @@ export proc build(dest: Path) [fs, process, env, error] {
       )
 
       fs.write(build_ninja, patched_ninja)?
-      run "build/muon-bootstrap" "-C" "build" samu ?
+      run "build/muon-bootstrap" "-C" "build" "samu" ?
     } ?
   } else {
     run "build/muon-bootstrap" ${setup_args} ?
-    run "build/muon-bootstrap" "-C" "build" samu ?
+    run "build/muon-bootstrap" "-C" "build" "samu" ?
   }
 
   fs.install(p"build/muon", fp"${dest}/usr/bin/muon", 0o755, parents: true, overwrite: true)?

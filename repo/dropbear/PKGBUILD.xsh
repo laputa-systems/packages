@@ -4,7 +4,7 @@ export let name: Str = "dropbear"
 
 export let ver: Str = "2025.89"
 
-export let rel: Str = "12"
+export let rel: Str = "13"
 
 export let deps: List[Str] = ["musl", "zlib"]
 
@@ -410,11 +410,6 @@ ${default_options_guard}
   fs.install(p"dbclient", fp"${dest}/usr/bin/dbclient", 0o755, parents: true, overwrite: true)?
   fs.install(p"dropbearkey", fp"${dest}/usr/bin/dropbearkey", 0o755, parents: true, overwrite: true)?
   fs.install(p"dropbearconvert", fp"${dest}/usr/bin/dropbearconvert", 0o755, parents: true, overwrite: true)?
-  install_manpage(p"manpages/dropbear.8", fp"${dest}/usr/share/man/man8/dropbear.8")?
-  install_manpage(p"manpages/dbclient.1", fp"${dest}/usr/share/man/man1/dbclient.1")?
-  install_manpage(p"manpages/dropbearkey.1", fp"${dest}/usr/share/man/man1/dropbearkey.1")?
-  install_manpage(p"manpages/dropbearconvert.1", fp"${dest}/usr/share/man/man1/dropbearconvert.1")?
-
   # Runtime configuration and xinit service module.
   fs.mkdir(fp"${dest}/etc/dropbear")?
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/dropbear.xsh", 0o644, parents: true, overwrite: true)?

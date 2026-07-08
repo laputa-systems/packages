@@ -8,7 +8,7 @@ export let name: Str = "cmake"
 
 export let ver: Str = "4.3.1"
 
-export let rel: Str = "12"
+export let rel: Str = "13"
 
 export let deps: List[Str] = ["musl", "llvm-toolchain"]
 
@@ -786,6 +786,8 @@ set (CMAKE_XDGDATA_DIR "share" CACHE PATH "XDG data dir." FORCE)
 set (CMAKE_USE_OPENSSL OFF CACHE BOOL "Use OpenSSL." FORCE)
 set (CMAKE_USE_SYSTEM_LIBRARIES OFF CACHE BOOL "Use system libs." FORCE)
 set (BUILD_TESTING OFF CACHE BOOL "Build tests." FORCE)
+set (BUILD_DOCS OFF CACHE BOOL "Build documentation." FORCE)
+set (BUILD_MAN_PAGES OFF CACHE BOOL "Build man pages." FORCE)
 set (CMAKE_BUILD_WITH_INSTALL_RPATH ON CACHE BOOL "Use install rpath in the build tree." FORCE)
 set (CMAKE_INSTALL_RPATH "$ORIGIN/../lib" CACHE STRING "Runtime library search path." FORCE)
 """,
@@ -817,6 +819,8 @@ set (CMAKE_INSTALL_RPATH "$ORIGIN/../lib" CACHE STRING "Runtime library search p
         "-DCMAKE_USE_SYSTEM_LIBRARIES=OFF",
         "-DBUILD_TESTING=OFF",
         "-DBUILD_CursesDialog=OFF",
+        "-DBUILD_DOCS=OFF",
+        "-DBUILD_MAN_PAGES=OFF",
         "-DCMAKE_DISABLE_FIND_PACKAGE_Curses=ON",
         "-DCMAKE_Fortran_COMPILER=NOTFOUND",
       ]

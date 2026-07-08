@@ -5,7 +5,7 @@ export let name: Str = "less"
 
 export let ver: Str = "701"
 
-export let rel: Str = "3"
+export let rel: Str = "4"
 
 export let deps: List[Str] = ["musl"]
 
@@ -126,9 +126,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   let bin = p"obj/less"
   tasks = tasks.push(make.link_executable_task(cc, triple, objs, [], [], bin, task_names(objs)))
   make.run_tasks(tasks, make.jobs()?)?
-  let less_nro = p"less.nro.VER".read_text()?.replace("@@VERSION@@", ver).replace("@@DATE@@", "14 May 2026")
-  fs.write(p"less.nro", less_nro)?
   fs.install(bin, fp"${dest}/usr/bin/less", 0o755, parents: true, overwrite: true)?
   fs.install(p"less-osc8-open.sh", fp"${dest}/usr/libexec/less-osc8-open", 0o755, parents: true, overwrite: true)?
-  fs.install(p"less.nro", fp"${dest}/usr/share/man/man1/less.1", 0o644, parents: true, overwrite: true)?
 }

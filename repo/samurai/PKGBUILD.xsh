@@ -4,7 +4,7 @@ export let name: Str = "samurai"
 
 export let ver: Str = "1.2"
 
-export let rel: Str = "3"
+export let rel: Str = "4"
 
 export let deps: List[Str] = ["musl"]
 
@@ -53,8 +53,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   tasks = tasks.push(make.link_executable_task(cc, triple, objs, [], [], bin, obj_deps))
   make.run_tasks(tasks, make.jobs()?)?
 
-  # Install binary, man page, and ninja symlink.
+  # Install binary and ninja symlink.
   fs.install(bin, fp"${dest}/usr/bin/samu", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"samu", fp"${dest}/usr/bin/ninja")?
-  fs.install(p"samu.1", fp"${dest}/usr/share/man/man1/samu.1", 0o644, parents: true, overwrite: true)?
 }

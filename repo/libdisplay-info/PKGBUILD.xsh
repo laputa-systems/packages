@@ -4,7 +4,7 @@ export let name: Str = "libdisplay-info"
 
 export let ver: Str = "0.3.0"
 
-export let rel: Str = "4"
+export let rel: Str = "5"
 
 export let deps: List[Str] = ["musl", "hwdata"]
 
@@ -104,7 +104,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_PATH = pc.pkg_config_path
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
-    run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Ddefault_library=shared" "build" ?
+    run $muon "setup" "-Dprefix=/usr" "-Dlibdir=lib" "-Ddefault_library=shared" "-Dtest=false" "build" ?
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {

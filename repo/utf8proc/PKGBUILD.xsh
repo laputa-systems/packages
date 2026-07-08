@@ -4,7 +4,7 @@ export let name: Str = "utf8proc"
 
 export let ver: Str = "2.10.0"
 
-export let rel: Str = "2"
+export let rel: Str = "3"
 
 export let deps: List[Str] = ["musl"]
 
@@ -29,6 +29,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-DUTF8PROC_INSTALL=ON",
     "-DCMAKE_INSTALL_PREFIX=/usr",
     "-DCMAKE_INSTALL_LIBDIR=lib",
+    "-DBUILD_TESTING=OFF",
   ]
 
   run $cmake ${cmake_args} ?

@@ -6,7 +6,7 @@ export let name: Str = "pkgconf"
 
 export let ver: Str = "2.5.1"
 
-export let rel: Str = "6"
+export let rel: Str = "7"
 
 export let deps: List[Str] = ["musl"]
 
@@ -204,23 +204,5 @@ Cflags: -I\${includedir}/pkgconf
   fs.mkdir(fp"${dest}/usr/lib/pkgconfig")?
   fs.write(fp"${dest}/usr/lib/pkgconfig/libpkgconf.pc", pc_template.replace("PKG_VER", ver))?
 
-  # Man pages (man/bomtool.1, man/pkgconf.1, man/pc.5, man/pkgconf-personality.5, man/pkg.m4.7)
-  let man_entries = fs.files(p"man")?
 
-  for entry in man_entries {
-    let ext = entry.ext
-    var section = ""
-
-    if ext == "1" {
-      section = "man1"
-    } else if ext == "5" {
-      section = "man5"
-    } else if ext == "7" {
-      section = "man7"
-    }
-
-    if section != "" {
-      fs.install(entry.path, fp"${dest}/usr/share/man/${section}/${entry.name}", 0o644, parents: true, overwrite: true)?
-    }
-  }
 }
