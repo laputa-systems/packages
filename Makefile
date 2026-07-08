@@ -1,8 +1,9 @@
-.PHONY: test update-checksums
+.PHONY: test xsh-local-bins xsh-builder-image update-checksums
 
 LAPUTA_DOCKER_PLATFORM ?= linux/arm64
-XSH_RELEASE ?= release-e12de8c8ce6388bcbf80df96bf57ebd8afc2d0df
 XSH_TEST_IMAGE ?= laputa-packages-test
+XSH_BUILD_IMAGE ?= xsh-test
+XSH_ROOT ?= ../xsh
 XSH ?= xsh
 PM_XSH_MODULE_PATH ?= .:/usr/lib/pm
 PKGDIRS ?= $(sort $(patsubst %/PKGBUILD.xsh,%,$(wildcard repo/*/PKGBUILD.xsh)))
@@ -12,40 +13,39 @@ CHECKSUM_WORK ?= .work/update-checksums/work
 CHECKSUM_OUT ?= .work/update-checksums/out
 
 ifeq ($(LAPUTA_DOCKER_PLATFORM),linux/amd64)
-XSH_RELEASE_ARCH ?= x86_64
 XSH_LOCAL_TRIPLE ?= x86_64-unknown-linux-musl
-XSH_RELEASE_SHA256 ?= a000d143c13ecd83041e2e7c91690a09a4bc1d2405d859195082f07f85ac21ea
 else
-XSH_RELEASE_ARCH ?= aarch64
 XSH_LOCAL_TRIPLE ?= aarch64-unknown-linux-musl
-XSH_RELEASE_SHA256 ?= 0874226398877b375ce2a8453f7b587d75ec6a40a601fddcf33fd80dbdf08a27
 endif
 
-XSH_LOCAL_BIN_DIR ?= ../xsh/target/$(XSH_LOCAL_TRIPLE)/debug
+XSH_ROOT_ABS := $(abspath $(XSH_ROOT))
+XSH_LOCAL_BIN_DIR ?= $(XSH_ROOT)/target/$(XSH_LOCAL_TRIPLE)/debug
 XSH_LOCAL_BINS := $(XSH_LOCAL_BIN_DIR)/xsh $(XSH_LOCAL_BIN_DIR)/xsht
 
-test:
-ifeq ($(wildcard $(XSH_LOCAL_BINS)),$(XSH_LOCAL_BINS))
+test: xsh-local-bins
 	docker build \
 	    --platform $(LAPUTA_DOCKER_PLATFORM) \
 	    --build-context xshbin=$(XSH_LOCAL_BIN_DIR) \
 	    -t $(XSH_TEST_IMAGE) \
 	    -f Dockerfile.test-local \
 	    .
-else
-	docker build \
-	    --platform $(LAPUTA_DOCKER_PLATFORM) \
-	    --build-arg XSH_RELEASE=$(XSH_RELEASE) \
-	    --build-arg XSH_RELEASE_ARCH=$(XSH_RELEASE_ARCH) \
-	    --build-arg XSH_RELEASE_SHA256=$(XSH_RELEASE_SHA256) \
-	    -t $(XSH_TEST_IMAGE) \
-	    -f Dockerfile.test \
-	    .
-endif
 	docker run --rm \
 	    --platform $(LAPUTA_DOCKER_PLATFORM) \
 	    -v "$(CURDIR)":/src/packages \
 	    $(XSH_TEST_IMAGE)
+
+xsh-local-bins: xsh-builder-image
+	docker run --rm \
+	    --platform $(LAPUTA_DOCKER_PLATFORM) \
+	    -v "$(XSH_ROOT_ABS)":/work \
+	    -v "$(XSH_ROOT_ABS)/target/$(XSH_LOCAL_TRIPLE)":/work/target/$(XSH_LOCAL_TRIPLE) \
+	    -w /work \
+	    $(XSH_BUILD_IMAGE) \
+	    sh -c 'cargo build --target $(XSH_LOCAL_TRIPLE) --no-default-features --features "native-tests tools" --bin xsh --bin xsht'
+
+xsh-builder-image:
+	docker image inspect $(XSH_BUILD_IMAGE) >/dev/null 2>&1 || \
+	    docker build --platform $(LAPUTA_DOCKER_PLATFORM) -t $(XSH_BUILD_IMAGE) -f "$(XSH_ROOT)/Dockerfile.test" "$(XSH_ROOT)"
 
 update-checksums:
 	@mkdir -p $(CHECKSUM_ROOT) $(CHECKSUM_WORK) $(CHECKSUM_OUT)

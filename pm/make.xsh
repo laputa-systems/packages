@@ -1292,7 +1292,7 @@ export proc c_static_library(spec: CStaticLibrary) [] -> CTarget {
   }
 }
 
-export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget] {
+export proc c_multi_program(spec: CMultiProgram) [] -> Result[CMultiTarget] {
   var tasks = []
   var groups: Map[CompileTasks] = {}
   var cxx_groups: Map[Bool] = {}
@@ -1333,8 +1333,8 @@ export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget]
   }
 
   for target in spec.targets {
-    var objects = []
-    var target_deps = target.deps
+    var objects: List[Path] = []
+    var target_deps: List[Str] = target.deps
     var needs_cxx_link = true in [source_is_cxx(src) for src in target.sources]
 
     for group_name in target.groups {
@@ -1346,7 +1346,7 @@ export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget]
         )
       }
 
-      let compiled: CompileTasks = groups.get(group_name)?
+      let compiled: CompileTasks = groups.get(group_name, {tasks: [], objects: [], deps: []})
       objects = objects.extend(compiled.objects)
       target_deps = target_deps.extend(compiled.deps)
       needs_cxx_link = needs_cxx_link or cxx_groups.get(group_name, false)
