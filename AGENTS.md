@@ -55,9 +55,12 @@ Most PM tests need Linux filesystem/process behavior. From this repo, run:
 make test
 ```
 
-`make test` builds a scratch-runtime test image from the published XSH
-multicall, then runs `xsht test tests/xsh/pm.xsh` against the checkout mounted
-at `/src/packages`.
+`make test` builds a scratch-runtime test image, preferring the local sibling
+XSH Linux build under `../xsh/target/<arch>-unknown-linux-musl/debug` and
+falling back to the published XSH release when no local build exists. It runs
+`xsht test --cov --cov-json target/coverage/pm.json tests/xsh/pm.xsh` against
+the checkout mounted at `/src/packages`. Inspect the coverage JSON after the run
+for PM source line/proc coverage by file.
 
 For world changes, use:
 

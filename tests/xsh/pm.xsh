@@ -1,3 +1,4 @@
+use pm.configure
 use pm.make
 
 pure xsh_bin() -> Path {
@@ -174,6 +175,30 @@ proc test_pm_rejects_file_conflicts(ctx: TestContext) [fs, process, error] {
   )?
 }
 
+proc test_pm_rejects_unowned_non_etc_files(ctx: TestContext) [fs, process, error] {
+  let root = test.temp_dir(ctx, name: "root")?
+  let work = test.temp_dir(ctx, name: "work")?
+  let out = test.temp_dir(ctx, name: "out")?
+  let err = test.temp_path(ctx, name: "pm.err")
+  fs.mkdir(fp"${root}/usr/share")?
+
+  fs.write(
+    fp"${root}/usr/share/dep.txt",
+    """stale
+""",
+  )?
+
+  let status = run.status xsh_bin() pm.xsh -- install $root $work $out dep_dir() 2> $err
+  test.eq(status.ok, false)?
+  test.contains(err.read_text()?, "dep would overwrite unowned usr/share/dep.txt")?
+
+  test.eq(
+    fp"${root}/usr/share/dep.txt".read_text()?,
+    """stale
+""",
+  )?
+}
+
 proc test_pm_info_waterfox_bin_excludes_session_stack(ctx: TestContext) [fs, process, error] {
   let root = test.temp_dir(ctx, name: "waterfox-info-root")?
   let work = test.temp_dir(ctx, name: "waterfox-info-work")?
@@ -262,6 +287,142 @@ proc test_pm_extract_install_preserves_tree_entries(ctx: TestContext) [fs, proce
   test.eq(fp"${root}/bin".metadata()?.kind, "symlink")?
   test.eq(fp"${root}/bin".readlink()?.display(), "usr/bin")?
   test.eq(fp"${root}/usr/bin/extract-tree".metadata()?.mode % 4096, 0o755)?
+}
+
+proc test_pm_package_build_uses_configure_helpers(ctx: TestContext) [fs, process, error] {
+  let root = test.temp_dir(ctx, name: "root")?
+  let work = test.temp_dir(ctx, name: "work")?
+  let out = test.temp_dir(ctx, name: "out")?
+  let pkg = test.temp_dir(ctx, name: "configured-pkg")?
+  fs.mkdir(fp"${pkg}/files")?
+
+  fs.write(
+    fp"${pkg}/files/config.h.in",
+    """#undef ENABLE_CONFIGURED
+#undef DISABLED_FEATURE
+""",
+  )?
+
+  fs.write(
+    fp"${pkg}/files/message.in",
+    """name=@NAME@
+mode=@MODE@
+literal=@UNKNOWN@
+""",
+  )?
+
+  var defines: Map[Str] = {}
+  defines["ENABLE_CONFIGURED"] = "1"
+  configure.config_h(fp"${pkg}/files/config.h.in", fp"${pkg}/generated/config.h", defines)?
+  configure.substitute(
+    fp"${pkg}/files/message.in",
+    fp"${pkg}/generated/message.txt",
+    [["NAME", "configured-pkg"], ["MODE", "install"]],
+  )?
+
+  fs.write(
+    fp"${pkg}/PKGBUILD.xsh",
+    """export let name = "configured-pkg"
+export let ver = "1.0.0"
+export let rel = "1"
+export let deps: List[Str] = []
+export let mkdeps: List[Str] = []
+export let sources = [p"generated"]
+export let checksums = ["SKIP"]
+
+export proc build(dest: Path) [fs, error] -> Result[Unit] {
+  fs.install(p"config.h", fp"\${dest}/usr/share/configured-pkg/config.h", 0o644, parents: true)?
+  fs.install(p"message.txt", fp"\${dest}/usr/share/configured-pkg/message.txt", 0o644, parents: true)?
+}
+""",
+  )?
+
+  fs.write(
+    fp"${pkg}/proof.xsh",
+    r"""error ProofError = Failed(kind: Str, message: Str)
+
+proc main(root: Path = /rootfs) [fs, error] {
+  let header = fp"${root}/usr/share/configured-pkg/config.h"
+  let message = fp"${root}/usr/share/configured-pkg/message.txt"
+
+  if ! header.exists()? or ! message.exists()? {
+    return Err(ProofError.Failed("proof-configured-pkg", "missing configured outputs"))
+  }
+
+  print "configured-pkg ok"
+}
+
+main(@args)?
+""",
+  )?
+
+  let install_out = run.text xsh_bin() pm.xsh -- install $root $work $out $pkg ?
+  test.contains(install_out, "configured-pkg configured-pkg-1.0.0-1 build: 2 files")?
+  let header = fp"${root}/usr/share/configured-pkg/config.h".read_text()?
+  test.contains(header, "#define ENABLE_CONFIGURED 1")?
+  test.contains(header, "/* #undef DISABLED_FEATURE */")?
+  let message = fp"${root}/usr/share/configured-pkg/message.txt".read_text()?
+  test.contains(message, "name=configured-pkg")?
+  test.contains(message, "mode=install")?
+  test.contains(message, "literal=@UNKNOWN@")?
+}
+
+proc test_pm_package_build_extracts_tar_source(ctx: TestContext) [fs, process, error] {
+  let root = test.temp_dir(ctx, name: "root")?
+  let work = test.temp_dir(ctx, name: "work")?
+  let out = test.temp_dir(ctx, name: "out")?
+  let pkg = test.temp_dir(ctx, name: "tar-source-pkg")?
+  let tar_root = test.temp_dir(ctx, name: "tar-root")?
+  fs.mkdir(fp"${pkg}/files")?
+  fs.mkdir(fp"${tar_root}/upstream-1.0")?
+  fs.write(
+    fp"${tar_root}/upstream-1.0/data.txt",
+    """tar-source
+""",
+  )?
+  archive.tar_create(fp"${pkg}/files/upstream.tar.gz", tar_root, [p"upstream-1.0"], compression: "gz")?
+
+  fs.write(
+    fp"${pkg}/PKGBUILD.xsh",
+    """export let name = "tar-source-pkg"
+export let ver = "1.0.0"
+export let rel = "1"
+export let deps: List[Str] = []
+export let mkdeps: List[Str] = []
+export let sources = [p"files/upstream.tar.gz"]
+export let checksums = ["SKIP"]
+
+export proc build(dest: Path) [fs, error] -> Result[Unit] {
+  fs.install(p"data.txt", fp"\${dest}/usr/share/tar-source-pkg/data.txt", 0o644, parents: true)?
+}
+""",
+  )?
+
+  fs.write(
+    fp"${pkg}/proof.xsh",
+    r"""error ProofError = Failed(kind: Str, message: Str)
+
+proc main(root: Path = /rootfs) [fs, error] {
+  let payload = fp"${root}/usr/share/tar-source-pkg/data.txt"
+
+  if ! payload.exists()? {
+    return Err(ProofError.Failed("proof-tar-source-pkg", "missing extracted payload"))
+  }
+
+  print "tar-source-pkg ok"
+}
+
+main(@args)?
+""",
+  )?
+
+  let install_out = run.text xsh_bin() pm.xsh -- install $root $work $out $pkg ?
+  test.contains(install_out, "tar-source-pkg tar-source-pkg-1.0.0-1 build: 1 files")?
+  test.eq(
+    fp"${root}/usr/share/tar-source-pkg/data.txt".read_text()?,
+    """tar-source
+""",
+  )?
 }
 
 proc test_pm_missing_dependency(ctx: TestContext) [process, error] {
@@ -406,6 +567,43 @@ proc test_pm_remote_index_rejects_traversal_paths(ctx: TestContext) [fs, process
   test.eq(fp"${out}/escape.tar.gz".exists()?, false)?
 }
 
+proc test_pm_remote_install_rejects_invalid_metadata_sidecar(ctx: TestContext) [fs, process, env, error] {
+  let root = test.temp_dir(ctx, name: "root")?
+  let work = test.temp_dir(ctx, name: "work")?
+  let out = test.temp_dir(ctx, name: "out")?
+  let repo = test.temp_dir(ctx, name: "repo")?
+  let install_root = test.temp_dir(ctx, name: "install-root")?
+  let install_work = test.temp_dir(ctx, name: "install-work")?
+  let install_out = test.temp_dir(ctx, name: "install-out")?
+  let err = test.temp_path(ctx, name: "pm.err")
+  let repo_url = f"file://${repo.display()}"
+  let arch = fixture_arch()?
+
+  run.text xsh_bin() pm.xsh -- auth $root $work $out my-secret-token ?
+  run.text xsh_bin() pm.xsh -- install $root $work $out remote_app_dir() ?
+  run.text XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- upload $root $work $out remote_app_dir() ?
+
+  json.write(
+    fp"${repo}/metadata/${arch}/remote-app/remote-app-1.0.0-1.json",
+    {
+      arch,
+      name: "other-app",
+      ver: "1.0.0",
+      rel: "1",
+      manifest: ["usr/share/remote-app/payload.txt"],
+      files: [],
+      metadata_sha256: "corrupt",
+    },
+  )?
+
+  let refresh_out = run.text XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- refresh-index $install_root $install_work $install_out ?
+  test.contains(refresh_out, "remote-index 1 refreshed")?
+  let status = run.status XSH_PM_PUBLIC_REPO=$repo_url xsh_bin() pm.xsh -- install $install_root $install_work $install_out remote-app 2> $err
+  test.eq(status.ok, false)?
+  test.contains(err.read_text()?, "does not match remote-app 1.0.0-1")?
+  test.eq(fp"${install_root}/usr/share/remote-app/payload.txt".exists()?, false)?
+}
+
 proc test_pm_lifecycle_hooks(ctx: TestContext) [fs, process, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
@@ -452,6 +650,26 @@ proc test_pm_build_repo(ctx: TestContext) [fs, process, env, error] {
   test.ok(fp"${repo}/index.json".exists()?)?
   let arch = fixture_arch()?
   test.ok(fp"${repo}/packages/${arch}/baseinit/baseinit-2.0.0-1.tar.gz".exists()?)?
+}
+
+proc test_pm_upload_repo_export_includes_source_mirror(ctx: TestContext) [fs, process, env, error] {
+  let repo = test.temp_dir(ctx, name: "repo")?
+  let remote = test.temp_dir(ctx, name: "remote")?
+  let repo_url = f"file://${remote.display()}"
+  let arch = fixture_arch()?
+  let build_out = run.text xsh_bin() pm.xsh -- build $repo remote_app_dir() ?
+  test.contains(build_out, "remote-app 1.0.0-1 stage: done")?
+  test.ok(fp"${repo}/.out/source-mirrors/remote-app-1.0.0-1-${arch}.tar.gz".exists()?)?
+
+  let export_out = run.text XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- upload-repo-export $repo ?
+  test.contains(export_out, f"${arch} remote-app 1.0.0-1 exported")?
+  test.contains(export_out, "repo export uploaded")?
+
+  let source_rel = fp"sources/remote-app/remote-app-1.0.0-1-${arch}-src.tar.gz"
+  test.ok(fp"${remote}/${source_rel}".exists()?)?
+  let index_text = fp"${remote}/index.json".read_text()?
+  test.contains(index_text, f"\"source_tarball\":\"${source_rel.display()}\"")?
+  test.contains(index_text, "\"source_sha256\":\"")?
 }
 
 proc test_pm_build_repo_requires_package_dirs(ctx: TestContext) [fs, process, error] {

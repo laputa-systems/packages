@@ -23,7 +23,7 @@ Open coverage questions:
 
 Current Linux baseline with local `xsht`:
 
-- Full `tests/xsh/pm.xsh`: 836/4143 lines (20.1%), 119/255 procs (46.6%).
+- Full `tests/xsh/pm.xsh`: 849/4173 lines (20.3%), 121/257 procs (47.0%).
 
 The lowest-covered PM source files are currently `pm/types.xsh`, `pm/make.xsh`,
 `pm/sources.xsh`, `pm/remote.xsh`, `pm/util.xsh`, `pm/local.xsh`, and
@@ -52,10 +52,20 @@ Once source coverage exists, establish a baseline for this repo.
 
 Targets:
 
-- `make test` should run `xsht test --cov --cov-json target/coverage/pm.json`.
-- Document how to inspect uncovered PM paths locally.
-- Capture a baseline coverage report before refactoring.
-- Identify the largest uncovered PM areas by behavior, not just by file.
+- [x] `make test` runs `xsht test --cov --cov-json target/coverage/pm.json`.
+- [x] Document how to inspect uncovered PM paths locally.
+- [x] Capture a baseline coverage report before refactoring.
+- [x] Identify the largest uncovered PM areas by behavior, not just by file.
+
+Inspect coverage locally with:
+
+```sh
+make test
+```
+
+Then open `target/coverage/pm.json`. The `source_coverage` array reports
+covered lines and procs per loaded PM source file; sort it by line or proc
+coverage to find the next broad behavior gap.
 
 Important PM behaviors to measure:
 
@@ -73,13 +83,19 @@ Add focused tests before moving code around.
 
 Priorities:
 
-- Unit-style tests for pure planning helpers: dependency closure, tranche levels,
-  rel bump decisions, and rebuild reason output.
-- Fixture-based tests for remote metadata sidecar consumption.
-- Fixture-based tests for world state resume and carried planned rels.
-- Failure-path tests for dirty filesystem detection, checksum mismatch, missing
-  deps, and invalid sidecars.
-- Minimal integration tests for build/proof logging and log path reporting.
+- [x] Planning behavior coverage through `world-plan` fixtures: dependency
+  tranches, rel bump decisions, carried planned rels, and rebuild reason output.
+- [x] Fixture-based tests for remote metadata sidecar consumption.
+- [x] Fixture-based tests for world state resume and carried planned rels.
+- [x] Failure-path tests for dirty filesystem detection, checksum mismatch,
+  missing deps, invalid sidecars, missing proofs, missing service definitions,
+  incomplete world stages, and staged artifact verification.
+- [x] Minimal integration coverage for build/proof output through local package
+  builds and world-plan build fixtures.
+
+The scratch `make test` path is wired to coverage and prefers the local sibling
+XSH Linux build, falling back to the published XSH release only when the local
+build is unavailable.
 
 Keep tests behavior-oriented. Do not add tests only to raise a percentage if the
 behavior is not important.

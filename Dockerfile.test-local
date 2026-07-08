@@ -1,0 +1,21 @@
+FROM alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d AS rootfs
+
+COPY --from=xshbin /xsh /image/bin/xsh
+COPY --from=xshbin /xsht /image/bin/xsht
+COPY --from=xshbin /xsh /image/bin/xshi
+
+RUN mkdir -p /image/usr/bin /image/tmp /image/var/tmp && \
+    printf '#!/bin/xsh\nrun /bin/xshi @args ?\n' > /image/usr/bin/sh && \
+    cp /image/usr/bin/sh /image/bin/sh && \
+    chmod 0755 /image/bin/xsh /image/bin/xsht /image/bin/xshi /image/usr/bin/sh /image/bin/sh && \
+    chmod 1777 /image/tmp /image/var/tmp
+
+FROM scratch
+
+COPY --from=rootfs /image/ /
+
+ENV PATH=/bin:/usr/bin
+
+WORKDIR /src/packages
+
+CMD ["xsht", "test", "--cov", "--cov-json", "target/coverage/pm.json", "tests/xsh/pm.xsh"]
