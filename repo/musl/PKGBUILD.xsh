@@ -48,25 +48,6 @@ proc compiler_rt_builtins(arch: Str) [fs, error] -> Result[List[Path]] {
   []
 }
 
-proc compile_asm_lo_task(cc: Path, triple: Str, includes: List[Str], src: Path, out: Path) [] -> make.MakeTask {
-  let depfile = p""
-  let task_deps: List[Str] = []
-  var argv: List[Str] = [cc.display(), "-target", triple, "-c", "-fPIC", "-DPIC", "-Wa,--noexecstack"]
-  argv = argv.extend(includes).extend([src.display(), "-o", out.display()])
-
-  return {
-    name: out.display(),
-    outputs: [out],
-    inputs: [src],
-    deps: task_deps,
-    argv: argv,
-    cwd: p".",
-    env: {},
-    depfile: depfile,
-    stamp: fp"${out}.cmd",
-  }
-}
-
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let arch = pm_util.target_arch()?
@@ -227,13 +208,10 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   # Compile arch/ assembly overrides → LOBJS (skip C-specific flags; include
   # paths still passed for any .S files that use the C preprocessor).
-  for src in arch_s_files {
-    let out = fp"obj/${src.display()}".with_ext(".lo")
-    let task = compile_asm_lo_task(cc, triple, includes, src, out)
-    tasks = tasks.push(task)
-    lobj_deps = lobj_deps.push(task.name)
-    lobjs = lobjs.push(out)
-  }
+  let arch_asm = make.compile_asm_lo_tasks(cc, triple, includes, p"", arch_s_files, p"obj/arch-asm")
+  tasks = tasks.extend(arch_asm.tasks)
+  lobj_deps = lobj_deps.extend(arch_asm.deps)
+  lobjs = lobjs.extend(arch_asm.objects)
 
   # Compile top-level ldso/ → LDSO_OBJS (PIC; libc.so only, not in libc.a).
   # ldso/dlstart.c defines _dlstart (ELF entry of libc.so / the dynamic linker).

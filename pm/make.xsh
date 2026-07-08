@@ -1065,6 +1065,52 @@ export proc compile_lo_tasks(
   return {tasks, objects, deps: [task.name for task in tasks]}
 }
 
+export proc compile_asm_lo_task(
+  toolchain: Path,
+  triple: Str,
+  includes: List[Str],
+  src: Path,
+  out: Path,
+  deps: List[Str] = [],
+) [] -> MakeTask {
+  var argv: List[Str] = [toolchain.display(), "-target", triple, "-c", "-fPIC", "-DPIC", "-Wa,--noexecstack"]
+  argv = argv.extend(includes).extend([src.display(), "-o", out.display()])
+
+  return {
+    name: out.display(),
+    outputs: [out],
+    inputs: [src],
+    deps: deps,
+    argv: argv,
+    cwd: p".",
+    env: {},
+    depfile: p"",
+    stamp: stamp_path(out),
+  }
+}
+
+export proc compile_asm_lo_tasks(
+  toolchain: Path,
+  triple: Str,
+  includes: List[Str],
+  root: Path,
+  sources: List[Path],
+  out_dir: Path,
+  deps: List[Str] = [],
+) [] -> CompileTasks {
+  var tasks: List[MakeTask] = []
+  var objects: List[Path] = []
+
+  for src in sources {
+    let out = object_path_for_source(src, out_dir, ".lo")
+    let task = compile_asm_lo_task(toolchain, triple, includes, source_path(root, src), out, deps)
+    tasks = tasks.push(task)
+    objects = objects.push(out)
+  }
+
+  return {tasks, objects, deps: [task.name for task in tasks]}
+}
+
 export proc compile_cxx_task(
   toolchain: Path,
   triple: Str,
