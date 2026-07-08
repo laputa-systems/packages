@@ -1,20 +1,20 @@
 use pm.make as make
 
-export let name: Str = "samurai"
+export let name = "samurai"
 
-export let ver: Str = "1.2"
+export let ver = "1.2"
 
-export let rel: Str = "4"
+export let rel = "4"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps = ["llvm-toolchain"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/michaelforney/samurai/releases/download/VERSION/samurai-VERSION.tar.gz",
 ]
 
-export let checksums: List[Str] = ["3b8cf51548dfc49b7efe035e191ff5e1963ebc4fe8f6064a5eefc5343eaf78a5"]
+export let checksums = ["3b8cf51548dfc49b7efe035e191ff5e1963ebc4fe8f6064a5eefc5343eaf78a5"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?

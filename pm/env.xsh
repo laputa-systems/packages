@@ -6,23 +6,23 @@ export type PkgConfigContext = {
   ld_library_path: Str,
 }
 
-export let prefix: Path = /usr
+export let prefix = /usr
 
-export let sysconfdir: Path = /etc
+export let sysconfdir = /etc
 
-export let localstatedir: Path = /var
+export let localstatedir = /var
 
-export let libdir_name: Str = "lib"
+export let libdir_name = "lib"
 
-export let libexecdir_name: Str = "libexec"
+export let libexecdir_name = "libexec"
 
-export let bindir: Path = /usr/bin
+export let bindir = /usr/bin
 
-export let includedir: Path = /usr/include
+export let includedir = /usr/include
 
-export let libdir: Path = /usr/lib
+export let libdir = /usr/lib
 
-export let mandir: Path = /usr/share/man
+export let mandir = /usr/share/man
 
 export pure meson_prefix_arg() -> Str {
   f"-Dprefix=${prefix}"

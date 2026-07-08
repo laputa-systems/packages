@@ -3,25 +3,25 @@ use pm.util as pm_util
 
 error MuslError = Failed(message: Str)
 
-export let name: Str = "musl"
+export let name = "musl"
 
-export let ver: Str = "1.2.6"
+export let ver = "1.2.6"
 
-export let rel: Str = "10"
+export let rel = "10"
 
-export let deps: List[Str] = []
+export let deps = []
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps = ["llvm-toolchain"]
 
-export let nostrip: Bool = true
+export let nostrip = true
 
-export let sources: List[Path] = [p"https://musl.libc.org/releases/musl-VERSION.tar.gz"]
+export let sources = [p"https://musl.libc.org/releases/musl-VERSION.tar.gz"]
 
-export let checksums: List[Str] = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
+export let checksums = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
-export let checksums_aarch64: List[Str] = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
+export let checksums_aarch64 = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
-export let checksums_x86_64: List[Str] = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
+export let checksums_x86_64 = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
 pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {
   let re = regex.compile(pattern)?
@@ -67,7 +67,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # All other lines (#define, #if, #endif, blank, etc.) pass through unchanged.
   let arch_at = fs.read_text(fp"arch/${arch}/bits/alltypes.h.in")?
   let generic_at = fs.read_text(p"include/alltypes.h.in")?
-  var at_lines: List[Str] = []
+  var at_lines = []
 
   for line in [arch_at, generic_at].join("\n").split("\n") {
     if line.starts_with("TYPEDEF ") {
@@ -140,9 +140,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   # 2. src/{subsystem}/${arch}/*.[csS] — in-source arch overrides (math, thread,
   #    signal, etc. optimised assembly/C for the target architecture)
   # A file in either location with stem FOO shadows any src/*/FOO.c generic file.
-  var arch_stems: List[Str] = []
-  var arch_c_files: List[Path] = []
-  var arch_s_files: List[Path] = []
+  var arch_stems = []
+  var arch_c_files = []
+  var arch_s_files = []
 
   # 1. arch/${arch}/ direct children (headers only for aarch64/x86_64 in practice).
   for e in fs.ls(fp"arch/${arch}")? |> where .kind == "file" {
@@ -178,7 +178,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # excluded — their arch version is compiled instead.
   # fs.ls is non-recursive here intentionally: src/{subsystem}/{arch}/*.c files
   # at two levels deep must not be included (they are wrong-arch implementations).
-  var libc_srcs: List[Path] = []
+  var libc_srcs = []
 
   for subsys in fs.ls(p"src")? |> where .kind == "dir" {
     for e in fs.ls(subsys.path)? |> where .ext == "c" {
@@ -196,7 +196,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.mkdir(p"obj")?
 
   # Compile all src/ sources → LOBJS (PIC; go into both libc.a and libc.so).
-  var tasks: List[make.MakeTask] = []
+  var tasks = []
   let libc = make.compile_lo_tasks(cc, triple, cflags, [], includes, p"", libc_srcs, p"obj/libc")
   tasks = tasks.extend(libc.tasks)
 
@@ -217,8 +217,8 @@ export proc build(dest: Path) [fs, process, env, error] {
   # ldso/dlstart.c defines _dlstart (ELF entry of libc.so / the dynamic linker).
   # ldso/dynlink.c is the main dynamic-linker implementation.
   # Hardcoded list — ldso/ contains exactly these two files in every musl release.
-  var ldso_objs: List[Path] = []
-  var ldso_deps: List[Str] = []
+  var ldso_objs = []
+  var ldso_deps = []
   fs.mkdir(p"obj/ldso")?
   let ldso_sources = [fp"ldso/${src_name}.c" for src_name in ["dlstart", "dynlink"]]
   let ldso_compile = make.compile_lo_tasks(cc, triple, cflags, [], includes, p"", ldso_sources, p"obj/ldso")
@@ -255,7 +255,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-Wl,-e,_dlstart",
   ]
 
-  var so_argv: List[Any] = [cc, "-target", triple]
+  var so_argv = [cc, "-target", triple]
   so_argv = so_argv.extend(so_ldflags)
 
   for obj in all_so_objs {
@@ -284,8 +284,8 @@ export proc build(dest: Path) [fs, process, env, error] {
   # Non-PIE: crt1, crti, crtn (compile_c, no -fPIC).
   # PIE:     Scrt1, rcrt1 (compile_lo adds -fPIC/-DPIC for PIE executables).
   let crt_cflags = cflags.push("-DCRT")
-  var crt_tasks: List[make.MakeTask] = []
-  var crt_outs: List[Path] = []
+  var crt_tasks = []
+  var crt_outs = []
 
   for src_name in ["crt1", "crti", "crtn"] {
     let src = fp"crt/${src_name}.c"

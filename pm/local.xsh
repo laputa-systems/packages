@@ -9,7 +9,7 @@ export pure collect_manifest_text(manifest: List[Path]) -> Result[List[Str]] {
 }
 
 export proc load_manifest(db: Path) [fs, error] -> Result[List[Path]] {
-  var manifest: List[Path] = []
+  var manifest = []
 
   if fs.exists(fp"${db}/manifest.json")? {
     let stored: List[Str] = json.read(fp"${db}/manifest.json")?
@@ -87,7 +87,7 @@ export proc collect_old_manifest_extra(
 }
 
 export proc collect_etcsums(dest: Path, manifest: List[Path]) [fs, error] -> Result[List[EtcSum]] {
-  var sums: List[EtcSum] = []
+  var sums = []
 
   for rel_path in manifest {
     if is_etc_file(rel_path) {
@@ -104,7 +104,7 @@ export proc collect_etcsums(dest: Path, manifest: List[Path]) [fs, error] -> Res
 }
 
 export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error] -> Result[List[Record]] {
-  var files: List[Record] = []
+  var files = []
   let root_handle = fs.open_root(root)?
   defer fs.close_root(root_handle)
 
@@ -339,7 +339,7 @@ export proc collect_removable_manifest(
   manifest: List[Path],
   etcsums: Map[Str],
 ) [fs, error] -> Result[List[Path]] {
-  var removable: List[Path] = []
+  var removable = []
   let root_handle = fs.open_root(root)?
   defer fs.close_root(root_handle)
 
@@ -413,7 +413,7 @@ export proc call_installed_hook(metadata: Record, hook_name: Str, root: Path) [f
 }
 
 export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[Package]] {
-  var packages: List[Package] = []
+  var packages = []
   var seen: Map[Bool] = {}
 
   for dir in dirs {
@@ -424,7 +424,7 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
     let rel: Str = exports.get("rel")?
     let deps: List[Str] = exports.get("deps")?
     let mkdeps: List[Str] = exports.get("mkdeps")?
-    var target_build_deps: List[Str] = []
+    var target_build_deps = []
     let pkg_sources: List[Path] = exports.get("sources")?
     let base_checksums: List[Str] = exports.get("checksums")?
     let checksums = select_checksums(exports, base_checksums)?
@@ -489,7 +489,7 @@ export proc order_packages(
   packages: List[Package],
   allow_installed_deps: Bool,
 ) [fs, error] -> Result[List[Package]] {
-  var ordered: List[Package] = []
+  var ordered = []
   var by_name: Map[Int] = {}
   var pkg_index = 0
 
@@ -539,7 +539,7 @@ export proc filter_packages_by_names(packages: List[Package], names: List[Str]) 
 }
 
 export proc collect_upgrade_names(root: Path, packages: List[Package]) [fs, error] -> Result[List[Str]] {
-  var names: List[Str] = []
+  var names = []
 
   for pkg in packages {
     let db = package_db_path(root, pkg.name)

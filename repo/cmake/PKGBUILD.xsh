@@ -4,24 +4,24 @@ use pm.util as pm_util
 
 error ScriptError = Failed(kind: Str, message: Str)
 
-export let name: Str = "cmake"
+export let name = "cmake"
 
-export let ver: Str = "4.3.1"
+export let ver = "4.3.1"
 
-export let rel: Str = "13"
+export let rel = "13"
 
-export let deps: List[Str] = ["musl", "llvm-toolchain"]
+export let deps = ["musl", "llvm-toolchain"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "samurai"]
+export let mkdeps = ["llvm-toolchain", "samurai"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://cmake.org/files/vMAJOR.MINOR/cmake-VERSION.tar.gz",
   p"patches/cmake-no-execinfo.patch",
   p"patches/cmake-musl-ioctl-fallbacks.patch",
   p"patches/cmake-libarchive-no-closefrom.patch",
 ]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "0798f4be7a1a406a419ac32db90c2956936fecbf50db3057d7af47d69a2d7edb",
   "d6ebd2eb89ded4e1e12afccfabc9bcac4220c920f424118d411062ea23ece2cb",
   "eaba0ffc090bf877775e6d94ce63fdd702477962d5366d3f0e260ea2446e4aac",
@@ -706,7 +706,7 @@ set (CMAKE_INSTALL_RPATH "$ORIGIN/../lib" CACHE STRING "Runtime library search p
       let bc = fp"../Bootstrap.cmk/cmake"
       let init_cache = fp"../Bootstrap.cmk/InitialCacheFlags.cmake"
 
-      var cmake_args: List[Str] = [
+      var cmake_args = [
         bc.display(),
         "..",
         f"-C${init_cache.display()}",

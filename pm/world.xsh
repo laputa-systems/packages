@@ -30,7 +30,7 @@ proc order_world_build_packages(
   arch: Str,
   include_mkdeps: Bool,
 ) [fs, env, error] -> Result[List[Package]] {
-  var ordered: List[Package] = []
+  var ordered = []
   var local_names: Map[Bool] = {}
   var repo_names: Map[Bool] = {}
 
@@ -87,7 +87,7 @@ export proc missing_world_dependencies(
   local_names: Map[Bool],
   built_names: Map[Bool],
 ) [fs, error] -> Result[List[Str]] {
-  var missing: List[Str] = []
+  var missing = []
   var seen: Map[Bool] = {}
 
   for dep in deps {
@@ -112,7 +112,7 @@ proc missing_world_build_dependencies(
   built_names: Map[Bool],
   cross_build: Bool,
 ) [fs, error] -> Result[List[Str]] {
-  var missing: List[Str] = []
+  var missing = []
   var seen: Map[Bool] = {}
 
   for dep in deps {
@@ -140,7 +140,7 @@ proc missing_fresh_world_dependencies(
   built_names: Map[Bool],
   remote_latest: Map[RemotePackage],
 ) [fs, error] -> Result[List[Str]] {
-  var missing: List[Str] = []
+  var missing = []
   var seen: Map[Bool] = {}
 
   for dep in deps {
@@ -341,7 +341,7 @@ pure world_package_id(pkg: Package) -> Str {
 }
 
 proc world_package_rows(packages: List[Package]) [] -> List[Record] {
-  var rows: List[Record] = []
+  var rows = []
 
   for pkg in packages {
     let sources = [source.display() for source in pkg.sources]
@@ -441,7 +441,7 @@ proc world_cache_repo_dir(cache_key: Str) [env, error] -> Result[Path] {
 }
 
 proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]] {
-  var dirs: List[Path] = []
+  var dirs = []
   var seen: Map[Bool] = {}
 
   for item in raw {
@@ -481,7 +481,7 @@ proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]]
 }
 
 proc world_local_dependency_names(pkg: Package, local_names: Map[Bool]) [] -> List[Str] {
-  var names: List[Str] = []
+  var names = []
   var seen: Map[Bool] = {}
 
   for dep in effective_world_dependencies(pkg, true) {
@@ -526,7 +526,7 @@ proc summarize_changed_dependencies(changed_deps: List[Str]) [] -> Str {
     return visible.join(", ")
   }
 
-  var head: List[Str] = []
+  var head = []
   var index = 0
 
   while index < 4 {
@@ -640,14 +640,14 @@ proc planned_world_packages(
   remote_latest: Map[RemotePackage],
   state_planned_rels: Map[Str],
 ) [error] -> Result[WorldPlanResult] {
-  var planned: List[Package] = []
+  var planned = []
   var changed: Map[Bool] = {}
   var reasons: Map[Str] = {}
 
   for pkg in ordered {
     var planned_pkg = pkg
     var changed_dep = false
-    var changed_deps: List[Str] = []
+    var changed_deps = []
 
     for dep in world_local_dependency_names(pkg, local_names) {
       if changed.get(dep, false) {
@@ -779,7 +779,7 @@ proc sync_package_rel(pkg: Package, planned: Package) [fs, error] -> Result[Bool
 
   let pkgbuild = fp"${pkg.dir}/PKGBUILD.xsh"
   let lines = fs.read_text(pkgbuild)?.split("\n")
-  var output: List[Str] = []
+  var output = []
   var found = false
 
   for line in lines {
@@ -791,7 +791,7 @@ proc sync_package_rel(pkg: Package, planned: Package) [fs, error] -> Result[Bool
       }
 
       found = true
-      output = output.push(f"export let rel: Str = \"${planned.rel}\"")
+      output = output.push(f"export let rel = \"${planned.rel}\"")
     } else {
       output = output.push(line)
     }
@@ -1152,7 +1152,7 @@ proc world_remote_metadata_hashes(
   remote_latest: Map[RemotePackage],
   jobs: Int,
 ) [fs, net, time, error] -> Result[Map[Str]] {
-  var candidates: List[RemotePackage] = []
+  var candidates = []
 
   if repo == "" {
     let empty: Map[Str] = {}
@@ -1219,9 +1219,9 @@ proc run_compiler(argv: List[Any]) [process, error] {{
 }}
 
 proc main(...argv: List[Str]) [fs, process, error] {{
-  var cxx_args: List[Any] = []
-  var cxx_libs: List[Any] = []
-  var builtins_arg: List[Any] = []
+  var cxx_args = []
+  var cxx_libs = []
+  var builtins_arg = []
   let builtins = fp"${target_root}/usr/lib/libclang_rt.builtins-${target_arch}.a"
 
   if fs.exists(builtins)? {{
@@ -1313,7 +1313,7 @@ proc build_world_package(
   build_arch: Str,
   cross_build: Bool,
 ) [fs, net, process, env, time, error] -> Result[List[BuiltPackage]] {
-  var built: List[BuiltPackage] = []
+  var built = []
   let started_at = time.now()
   let log_path = fp"${repo_dir}/packages/${target_arch}/${pkg.name}/build.log"
   print --flush ${pkg.name} world_package_id(pkg) "build:" "starting"
@@ -1430,9 +1430,9 @@ proc write_world_state(
   let state_path = world_state_path(repo_dir)
   fs.mkdir(state_path.parent)?
   let arch = machine_arch()?
-  var built: List[Str] = []
-  var proofed: List[Str] = []
-  var unchanged: List[Str] = []
+  var built = []
+  var proofed = []
+  var unchanged = []
 
   for pkg in packages {
     if built_names.get(pkg.name, false) {
@@ -1681,7 +1681,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   print --flush ansi(colors, "1;34", "world-plan loading") ansi(colors, "2", f"packages for ${target_arch}")
   let package_dirs = expand_world_package_dirs(raw_args)?
   let pm_module_root = pm_module_root_path()?
-  var packages: List[Package] = []
+  var packages = []
 
   env {
     XSH_PM_ARCH = target_arch
@@ -1714,7 +1714,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   let lock = fs.lock(fp"${work}/pm.lock")?
   defer fs.unlock(lock)?
   let index_path = fp"${repo_dir}/index.json"
-  var index: List[RemotePackage] = []
+  var index = []
 
   if fs.exists(index_path)? {
     index = load_remote_index_from(index_path)?
@@ -1723,7 +1723,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   print --flush f"${ansi(colors, "1;36", "world-repo")} ${ansi(colors, "2", repo_dir.display())}"
   print --flush ansi(colors, "1;34", "world-plan fetching") ansi(colors, "2", "remote index")
   let repo_urls = load_repo_urls()?
-  var remote_index: List[RemotePackage] = []
+  var remote_index = []
   var remote_latest: Map[RemotePackage] = {}
   var build_remote_latest: Map[RemotePackage] = {}
 
@@ -1782,8 +1782,8 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
 
     while level <= build_max_level {
       let tranche = world_packages_at_level(ordered, levels, level)
-      var pending: List[Package] = []
-      var pending_originals: List[Package] = []
+      var pending = []
+      var pending_originals = []
 
       for pkg in tranche {
         let build_pkg: Package = planned_by_name.get(pkg.name)?
@@ -1901,7 +1901,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
         )?
 
         var pending_index = 0
-        var tranche_errors: List[Str] = []
+        var tranche_errors = []
 
         for built in built_batches {
           let original_pkg = pending_originals[pending_index]

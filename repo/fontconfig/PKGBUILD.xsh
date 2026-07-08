@@ -1,24 +1,24 @@
 use pm.env as pm_env
 use pm.make as make
 
-export let name: Str = "fontconfig"
+export let name = "fontconfig"
 
-export let ver: Str = "2.17.1"
+export let ver = "2.17.1"
 
-export let rel: Str = "2"
+export let rel = "2"
 
-export let deps: List[Str] = ["musl", "freetype", "expat"]
+export let deps = ["musl", "freetype", "expat"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "samurai", "pkgconf", "freetype", "expat"]
+export let mkdeps = ["llvm-toolchain", "muon", "samurai", "pkgconf", "freetype", "expat"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/VERSION/fontconfig-VERSION.tar.xz",
   p"files/generated/fccase.h => generated",
   p"files/generated/fclang.h => generated",
   p"files/generated/35-lang-normalize.conf => generated",
 ]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "9f5cae93f4fffc1fbc05ae99cdfc708cd60dfd6612ffc0512827025c026fa541",
   "299726ec60bc7a06ce3e523c75aef6745cb94cec4450e8ad53817427a3f7c84b",
   "3286b76659e4b23c34d2d133a8356253ce8eafb1f37475f7aff560ebad6d5863",
@@ -27,7 +27,7 @@ export let checksums: List[Str] = [
 
 type Declaration = {name: Str, define_name: Str}
 
-let conf_links: List[Str] = [
+let conf_links = [
   "10-scale-bitmap-fonts.conf",
   "10-yes-antialias.conf",
   "11-lcdfilter-default.conf",
@@ -62,7 +62,7 @@ pure c_ident(raw: Str) -> Str {
 
 proc extract_function_names(path_value: Path) [fs, error] -> Result[List[Str]] {
   let re = regex.compile("^(Fc[^ ]*)[ A-Za-z0-9_]*\\(.*")?
-  var names: List[Str] = []
+  var names = []
 
   for line in path_value.read_text()?.split("\n") {
     let captures = re.captures(line.trim())
@@ -95,7 +95,7 @@ proc source_definitions() [fs, error] -> Result[Map[Str]] {
 
 proc alias_declarations(headers: List[Path]) [fs, error] -> Result[List[Declaration]] {
   let definitions = source_definitions()?
-  var declarations: List[Declaration] = []
+  var declarations = []
   var seen: Map[Bool] = {}
 
   for header in headers {

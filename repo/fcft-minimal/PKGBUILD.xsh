@@ -1,15 +1,15 @@
 use pm.env as pm_env
 use pm.make as make
 
-export let name: Str = "fcft-minimal"
+export let name = "fcft-minimal"
 
-export let ver: Str = "3.3.3"
+export let ver = "3.3.3"
 
-export let rel: Str = "2"
+export let rel = "2"
 
-export let deps: List[Str] = ["musl", "fontconfig", "freetype", "pixman"]
+export let deps = ["musl", "fontconfig", "freetype", "pixman"]
 
-export let mkdeps: List[Str] = [
+export let mkdeps = [
   "llvm-toolchain",
   "muon",
   "samurai",
@@ -20,15 +20,15 @@ export let mkdeps: List[Str] = [
   "tllist",
 ]
 
-export let target_build_deps: List[Str] = ["pixman-dev", "tllist"]
+export let target_build_deps = ["pixman-dev", "tllist"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://codeberg.org/dnkl/fcft/archive/VERSION.tar.gz",
   p"files/generated/emoji-data.h => generated",
   p"files/generated/unicode-compose-table.h => generated",
 ]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "c0d8d485b45b1af829f73101d6588f404a32bf3c7543236b1a4707d44be81b60",
   "a06764871a5ea6f2a85f62656552011243069d3d6e1b4e4148aadbf5200aab86",
   "b5e24cfe476b8e5b30c37614a7f5e4479e011659b3615d92e42713bb8005679d",

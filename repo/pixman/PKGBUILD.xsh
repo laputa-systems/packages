@@ -1,19 +1,19 @@
 use pm.env as pm_env
 use pm.util as pm_util
 
-export let name: Str = "pixman"
+export let name = "pixman"
 
-export let ver: Str = "0.46.4"
+export let ver = "0.46.4"
 
-export let rel: Str = "4"
+export let rel = "4"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "pkgconf", "samurai"]
+export let mkdeps = ["llvm-toolchain", "muon", "pkgconf", "samurai"]
 
-export let sources: List[Path] = [p"https://xorg.freedesktop.org/releases/individual/lib/pixman-VERSION.tar.xz"]
+export let sources = [p"https://xorg.freedesktop.org/releases/individual/lib/pixman-VERSION.tar.xz"]
 
-export let checksums: List[Str] = ["a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239"]
+export let checksums = ["a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let jobs_flag = f"-j${cpu.count()}"

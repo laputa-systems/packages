@@ -1,9 +1,9 @@
 #!/bin/xsh --
 error Ext4FsckError = Failed(kind: Str, message: Str)
 
-let BLOCK_SIZE: Int = 4096
-let BLOCKS_PER_GROUP: Int = 32768
-let INODES_PER_GROUP: Int = 8192
+let BLOCK_SIZE = 4096
+let BLOCKS_PER_GROUP = 32768
+let INODES_PER_GROUP = 8192
 
 pure ceil_div(value: Int, divisor: Int) -> Int {
   if value == 0 {

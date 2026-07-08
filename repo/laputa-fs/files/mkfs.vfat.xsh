@@ -6,7 +6,7 @@ pure ceil_div(value: Int, divisor: Int) -> Int {
 }
 
 proc repeated_byte(value: Int, count: Int) [error] -> Result[Bytes] {
-  var items: List[Int] = []
+  var items = []
   var index = 0
 
   while index < count {

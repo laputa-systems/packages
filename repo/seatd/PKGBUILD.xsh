@@ -1,21 +1,21 @@
 use pm.env as pm_env
 
-export let name: Str = "seatd"
+export let name = "seatd"
 
-export let ver: Str = "0.9.3"
+export let ver = "0.9.3"
 
-export let rel: Str = "4"
+export let rel = "4"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "xinit"]
+export let mkdeps = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "xinit"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/kennylevinsen/seatd/archive/refs/tags/VERSION.tar.gz",
   p"service.xsh",
 ]
 
-export let checksums: List[Str] = ["302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96", "SKIP"]
+export let checksums = ["302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96", "SKIP"]
 
 proc patch_linux_headers() [fs, error] {
   fs.mkdir(p"linux")?

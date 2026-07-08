@@ -204,7 +204,7 @@ pure str_in_list(value: Str, values: List[Str]) -> Bool {
 
 export proc discover_sources(root: Path, extensions: List[Str], exclude: List[Path] = []) [fs, error] -> Result[List[Path]] {
   let source_root = path.absolute(root)?
-  var sources: List[Path] = []
+  var sources = []
 
   for entry in fs.walk(source_root, gitignore: false)? |> sort-by .path {
     continue unless entry.kind == "file"
@@ -396,7 +396,7 @@ pure musl_ldso_name(arch: Str) -> Str {
 
 proc native_cross_cxx_include_args(build_root: Path, target_root: Path, target: Str) [fs, error] -> Result[List[Str]] {
   let base = fp"${target_root}/usr/lib/llvm22/include/c++/v1"
-  var include_args: List[Str] = []
+  var include_args = []
 
   if fs.exists(base)? {
     include_args = ["-isystem", base.display()]
@@ -418,7 +418,7 @@ proc native_cross_cxx_include_args(build_root: Path, target_root: Path, target: 
 }
 
 pure strip_cross_driver_args(argv: List[Str]) -> List[Str] {
-  var out: List[Str] = []
+  var out = []
   var i = 1
 
   while i < argv.len() {
@@ -466,7 +466,7 @@ export proc effective_task_argv(raw_argv: List[Any], task_env: Record) [fs, env,
   }
 
   let stripped = strip_cross_driver_args(argv)
-  var out: List[Str] = [driver.display(), f"--target=${target}-linux-musl", f"--sysroot=${target_root.display()}"]
+  var out = [driver.display(), f"--target=${target}-linux-musl", f"--sysroot=${target_root.display()}"]
 
   if cxx {
     out = out.extend(native_cross_cxx_include_args(build_root, target_root, target)?)
@@ -493,7 +493,7 @@ export proc effective_task_argv(raw_argv: List[Any], task_env: Record) [fs, env,
     link_args = link_args.push(builtins.display())
   }
 
-  var cxx_lib_args: List[Str] = []
+  var cxx_lib_args = []
 
   if cxx {
     cxx_lib_args = ["-L", llvm_lib_dir.display(), "-lc++", "-lc++abi"]
@@ -595,7 +595,7 @@ pure dep_path(cwd: Path, dep: Str) -> Path {
 
 proc depfile_inputs(depfile: Path, cwd: Path) [fs, error] -> Result[List[Path]] {
   if ! depfile.exists()? {
-    let deps: List[Path] = []
+    let deps = []
     return deps
   }
 
@@ -608,7 +608,7 @@ proc depfile_inputs(depfile: Path, cwd: Path) [fs, error] -> Result[List[Path]] 
   let first = normalized.split("\n")[0]
 
   if ! first.contains(":") {
-    let deps: List[Path] = []
+    let deps = []
     return deps
   }
 
@@ -769,7 +769,7 @@ pure completed_index_key(index: Int) -> Str {
 }
 
 proc remove_running_indices(running: List[Record], completed_indices: Map[Bool]) [] -> List[Record] {
-  var next: List[Record] = []
+  var next = []
   var index = 0
 
   for row in running {
@@ -821,13 +821,13 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
   var task_by_name: Map[Record] = {}
   var dependents: Map[List[Str]] = {}
   var remaining_deps: Map[Int] = {}
-  var ready: List[Str] = []
+  var ready = []
   var ready_index = 0
   var done: Map[Bool] = {}
   var scheduled: Map[Bool] = {}
-  var running: List[Record] = []
-  var pending_stamps: List[Record] = []
-  let no_dependents: List[Str] = []
+  var running = []
+  var pending_stamps = []
+  let no_dependents = []
   var done_count = 0
   var spawn_count = 0
   var skip_count = 0
@@ -900,7 +900,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
 
     let completed_rows = process.wait_ready([row.handle for row in running])?
     var completed_indices: Map[Bool] = {}
-    var completed_tasks: List[Record] = []
+    var completed_tasks = []
 
     for completed in completed_rows {
       let completed_index: Int = completed.index
@@ -1000,7 +1000,7 @@ export proc compile_lo_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let depfile = depfile_path(out)
-  var argv: List[Any] = [toolchain, "-target", triple, "-c", "-fPIC", "-DPIC"]
+  var argv = [toolchain, "-target", triple, "-c", "-fPIC", "-DPIC"]
   argv = argv.extend(cflags).extend(defs).extend(includes)
   argv = argv.extend([src, "-o", out, "-MMD", "-MP", "-MF", depfile])
 
@@ -1028,8 +1028,8 @@ export proc compile_lo_tasks(
   out_dir: Path,
   deps: List[Str] = [],
 ) [] -> CompileTasks {
-  var tasks: List[MakeTask] = []
-  var objects: List[Path] = []
+  var tasks = []
+  var objects = []
 
   for src in sources {
     let out = object_path_for_source(src, out_dir, ".lo")
@@ -1049,7 +1049,7 @@ export proc compile_asm_lo_task(
   out: Path,
   deps: List[Str] = [],
 ) [] -> MakeTask {
-  var argv: List[Any] = [toolchain, "-target", triple, "-c", "-fPIC", "-DPIC", "-Wa,--noexecstack"]
+  var argv = [toolchain, "-target", triple, "-c", "-fPIC", "-DPIC", "-Wa,--noexecstack"]
   argv = argv.extend(includes).extend([src, "-o", out])
 
   return {
@@ -1074,8 +1074,8 @@ export proc compile_asm_lo_tasks(
   out_dir: Path,
   deps: List[Str] = [],
 ) [] -> CompileTasks {
-  var tasks: List[MakeTask] = []
-  var objects: List[Path] = []
+  var tasks = []
+  var objects = []
 
   for src in sources {
     let out = object_path_for_source(src, out_dir, ".lo")
@@ -1099,7 +1099,7 @@ export proc compile_cxx_task(
 ) [] -> MakeTask {
   let _ = toolchain
   let depfile = depfile_path(out)
-  var argv: List[Any] = ["c++", "-target", triple, "-c"]
+  var argv = ["c++", "-target", triple, "-c"]
   argv = argv.extend(cflags).extend(defs).extend(includes)
   argv = argv.extend([src, "-o", out, "-MMD", "-MP", "-MF", depfile])
 
@@ -1127,8 +1127,8 @@ export proc compile_cxx_tasks(
   out_dir: Path,
   deps: List[Str] = [],
 ) [] -> CompileTasks {
-  var tasks: List[MakeTask] = []
-  var objects: List[Path] = []
+  var tasks = []
+  var objects = []
 
   for src in sources {
     let out = object_path_for_source(src, out_dir, ".o")
@@ -1151,7 +1151,7 @@ export proc compile_c_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let depfile = depfile_path(out)
-  var argv: List[Any] = [toolchain, "-target", triple, "-c"]
+  var argv = [toolchain, "-target", triple, "-c"]
   argv = argv.extend(cflags).extend(defs).extend(includes)
   argv = argv.extend([src, "-o", out, "-MMD", "-MP", "-MF", depfile])
 
@@ -1179,8 +1179,8 @@ export proc compile_c_tasks(
   out_dir: Path,
   deps: List[Str] = [],
 ) [] -> CompileTasks {
-  var tasks: List[MakeTask] = []
-  var objects: List[Path] = []
+  var tasks = []
+  var objects = []
 
   for src in sources {
     let out = object_path_for_source(src, out_dir, ".o")
@@ -1203,8 +1203,8 @@ export proc compile_mixed_tasks(
   out_dir: Path,
   deps: List[Str] = [],
 ) [] -> CompileTasks {
-  var tasks: List[MakeTask] = []
-  var objects: List[Path] = []
+  var tasks = []
+  var objects = []
 
   for src in sources {
     let out = object_path_for_source(src, out_dir, ".o")
@@ -1299,11 +1299,11 @@ export proc c_static_library(spec: CStaticLibrary) [] -> CTarget {
 }
 
 export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget] {
-  var tasks: List[MakeTask] = []
+  var tasks = []
   var groups: Map[CompileTasks] = {}
   var cxx_groups: Map[Bool] = {}
   var outputs: Map[Path] = {}
-  var deps: List[Str] = []
+  var deps = []
 
   for source_group in spec.groups {
     if groups.has(source_group.name) {
@@ -1341,7 +1341,7 @@ export proc c_multi_program(spec: CMultiProgram) [error] -> Result[CMultiTarget]
   }
 
   for target in spec.targets {
-    var objects: List[Path] = []
+    var objects = []
     var target_deps: List[Str] = target.deps
     var needs_cxx_link = [source_is_cxx(src) for src in target.sources].contains(true)
 
@@ -1396,7 +1396,7 @@ export proc link_shared_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let _ = toolchain
-  var argv: List[Any] = ["cc", "-target", triple, "-shared", f"-Wl,-soname,${soname}"]
+  var argv = ["cc", "-target", triple, "-shared", f"-Wl,-soname,${soname}"]
   argv = argv.extend(ldflags).extend(objs).extend(["-o", out])
 
   return {
@@ -1422,7 +1422,7 @@ export proc link_executable_cxx_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let _ = toolchain
-  var argv: List[Any] = ["c++", "-target", triple]
+  var argv = ["c++", "-target", triple]
   argv = argv.extend(objs).extend(libs).extend(ldflags).extend(["-o", out])
 
   return {
@@ -1450,7 +1450,7 @@ export proc link_executable_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let _ = toolchain
-  var argv: List[Any] = ["cc", "-target", triple]
+  var argv = ["cc", "-target", triple]
   argv = argv.extend(objs).extend(libs).extend(ldflags).extend(["-o", out])
 
   return {
@@ -1468,7 +1468,7 @@ export proc link_executable_task(
 
 export proc link_archive_task(toolchain: Path, objs: List[Path], out: Path, deps: List[Str] = []) [] -> MakeTask {
   let _ = toolchain
-  var argv: List[Any] = ["ar", "rcs", out]
+  var argv = ["ar", "rcs", out]
   argv = argv.extend(objs)
 
   return {

@@ -45,7 +45,7 @@ proc order_repo_build_packages(
   packages: List[Package],
   index: List[RemotePackage],
 ) [fs, env, error] -> Result[List[Package]] {
-  var ordered: List[Package] = []
+  var ordered = []
   var by_name: Map[Int] = {}
   var pkg_index = 0
 
@@ -108,7 +108,7 @@ export proc upload_set_repo(argv: List[Str]) [fs, net, process, env, time, error
   let work = fp"${repo_dir}/.work"
   let out = fp"${repo_dir}/.out"
   let upload_ctx: PmContext = {command: "upload", root: build_root, work, out}
-  var raw_args: List[Str] = []
+  var raw_args = []
   var build_i = 2
 
   while build_i < argv.len() {
@@ -139,7 +139,7 @@ export proc build_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let ctx: PmContext = {command: "build", root: build_root, work: build_work, out: build_out}
   let upload_ctx: PmContext = {...ctx, command: "upload"}
   fs.mkdir(repo_dir)?
-  var raw_args: List[Str] = []
+  var raw_args = []
   var build_i = 2
 
   while build_i < argv.len() {
@@ -148,7 +148,7 @@ export proc build_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   }
 
   let index_path = fp"${repo_dir}/index.json"
-  var index: List[RemotePackage] = []
+  var index = []
 
   if fs.exists(index_path)? {
     index = load_remote_index_from(index_path)?

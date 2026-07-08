@@ -49,7 +49,7 @@ int main(void) { puts("hello cmake"); return 0; }
   cd fp"${tmp}/build" {
     let linker_flags = f"-dynamic -Wl,-rpath,/usr/lib -Wl,-dynamic-linker,${dynlinker.display()}"
 
-    var cmake_args: List[Str] = [
+    var cmake_args = [
       cmake.display(),
       "..",
       "-G",

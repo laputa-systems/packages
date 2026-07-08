@@ -1,18 +1,18 @@
 use pm.make as make
 
-export let name: Str = "iptables"
+export let name = "iptables"
 
-export let ver: Str = "1.8.11"
+export let ver = "1.8.11"
 
-export let rel: Str = "4"
+export let rel = "4"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps = ["llvm-toolchain"]
 
-export let sources: List[Path] = [p"https://www.netfilter.org/projects/iptables/files/iptables-VERSION.tar.xz"]
+export let sources = [p"https://www.netfilter.org/projects/iptables/files/iptables-VERSION.tar.xz"]
 
-export let checksums: List[Str] = ["d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2"]
+export let checksums = ["d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2"]
 
 proc write_iptables_stub() [fs, error] {
   fs.write(

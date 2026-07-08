@@ -2,19 +2,19 @@ use pm.configure as configure
 use pm.make as make
 use pm.util as pm_util
 
-export let name: Str = "pkgconf"
+export let name = "pkgconf"
 
-export let ver: Str = "2.5.1"
+export let ver = "2.5.1"
 
-export let rel: Str = "7"
+export let rel = "7"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps = ["llvm-toolchain"]
 
-export let sources: List[Path] = [p"https://distfiles.ariadne.space/pkgconf/pkgconf-VERSION.tar.xz"]
+export let sources = [p"https://distfiles.ariadne.space/pkgconf/pkgconf-VERSION.tar.xz"]
 
-export let checksums: List[Str] = ["cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243"]
+export let checksums = ["cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
@@ -73,7 +73,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   # Step 2: compile libpkgconf (15 source files → PIC .lo objects).
   # File list from Makefile's am_libpkgconf_la_OBJECTS.
-  let lib_srcs: List[Path] = [
+  let lib_srcs = [
     p"libpkgconf/audit.c",
     p"libpkgconf/buffer.c",
     p"libpkgconf/cache.c",
@@ -125,7 +125,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # Step 4: compile and link pkgconf binary.
   # Source files from am_pkgconf_OBJECTS. Automake prefixes objects with the
   # binary name (pkgconf-main.o from main.c) but the sources use plain names.
-  let pkgconf_srcs: List[Path] = [p"cli/main.c", p"cli/getopt_long.c", p"cli/renderer-msvc.c"]
+  let pkgconf_srcs = [p"cli/main.c", p"cli/getopt_long.c", p"cli/renderer-msvc.c"]
   let pkgconf = make.c_program({
     cc,
     triple,
@@ -145,7 +145,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   # Step 5: compile and link bomtool binary.
   # cli/getopt_long.c is shared with pkgconf; compile separately to a different obj.
-  let bomtool_srcs: List[Path] = [p"cli/bomtool/main.c", p"cli/getopt_long.c"]
+  let bomtool_srcs = [p"cli/bomtool/main.c", p"cli/getopt_long.c"]
   let bomtool = make.c_program({
     cc,
     triple,

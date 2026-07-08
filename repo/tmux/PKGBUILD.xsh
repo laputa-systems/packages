@@ -1,24 +1,24 @@
 use pm.make as make
 use pm.util as pm_util
 
-export let name: Str = "tmux"
+export let name = "tmux"
 
-export let ver: Str = "next-3.7"
+export let ver = "next-3.7"
 
-export let rel: Str = "6"
+export let rel = "6"
 
-export let deps: List[Str] = ["musl", "libevent", "utf8proc"]
+export let deps = ["musl", "libevent", "utf8proc"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "pkgconf"]
+export let mkdeps = ["llvm-toolchain", "pkgconf"]
 
 # Source is a fixed GitHub commit archive (no VERSION substitution needed).
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/laputa-systems/tmux/archive/f83a6070f75a66d9ac6d4e897544e85302b8ec4b.tar.gz",
   p"files/cmd-parse.c",
   p"files/cmd-parse.h",
 ]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "fc47986264c2102cc0cbecd97d5d8a1e296c5ac8cb245da8af58bdd6abd313e8",
   "eb2d780fa143be299bc37db68e745347214d2f8dffe64bab4befc3048573c2dc",
   "838324384f77cd41f0d9de9ba36b980e437efdf54e136b8a1854bee58cf6882f",

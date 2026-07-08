@@ -72,7 +72,7 @@ export proc scan_waterfox_elf(
   let allowed = clean_lines(allowed_external_sonames.read_text()?)
   let private = private_sonames(private_library_root)?
   let reject = regex.compile(reject_pattern)?
-  var files: List[ElfFileReport] = []
+  var files = []
   var all_sonames: Map[Bool] = {}
   var external: Map[Bool] = {}
 

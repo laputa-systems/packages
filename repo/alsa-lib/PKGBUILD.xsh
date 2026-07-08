@@ -1,18 +1,18 @@
 use pm.make as make
 
-export let name: Str = "alsa-lib"
+export let name = "alsa-lib"
 
-export let ver: Str = "1.2.15.3"
+export let ver = "1.2.15.3"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps = ["llvm-toolchain"]
 
-export let sources: List[Path] = [p"https://www.alsa-project.org/files/pub/lib/alsa-lib-VERSION.tar.bz2"]
+export let sources = [p"https://www.alsa-project.org/files/pub/lib/alsa-lib-VERSION.tar.bz2"]
 
-export let checksums: List[Str] = ["7b079d614d582cade7ab8db2364e65271d0877a37df8757ac4ac0c8970be861e"]
+export let checksums = ["7b079d614d582cade7ab8db2364e65271d0877a37df8757ac4ac0c8970be861e"]
 
 proc write_asound_stub() [fs, error] {
   fs.write(

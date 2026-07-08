@@ -240,10 +240,10 @@ export pure goarch_for(arch: Str) -> Str {
 export pure source_vars(source: Str, pkg: Package, arch: Str) -> Str {
   let version = pkg.ver.replace("+", ".").replace("-", ".").replace("_", ".")
   let parts = version.split(".")
-  let major: Str = parts.get(0, "")
-  let minor: Str = parts.get(1, "")
-  let patch_part: Str = parts.get(2, "")
-  let ident: Str = parts.get(3, "")
+  let major = parts.get(0, "")
+  let minor = parts.get(1, "")
+  let patch_part = parts.get(2, "")
+  let ident = parts.get(3, "")
   let goarch = goarch_for(arch)
 
   return source.replace("VERSION", pkg.ver).replace("RELEASE", pkg.rel).replace("MAJOR", major).replace("MINOR", minor).replace(

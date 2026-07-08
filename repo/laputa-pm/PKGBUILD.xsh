@@ -1,16 +1,16 @@
-export let name: Str = "laputa-pm"
+export let name = "laputa-pm"
 
-export let ver: Str = "1"
+export let ver = "1"
 
-export let rel: Str = "5"
+export let rel = "5"
 
-export let deps: List[Str] = ["xsh"]
+export let deps = ["xsh"]
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
-export let sources: List[Path] = [../../pm.xsh, p"../../pm => pm"]
+export let sources = [../../pm.xsh, p"../../pm => pm"]
 
-export let checksums: List[Str] = ["SKIP", "SKIP"]
+export let checksums = ["SKIP", "SKIP"]
 
 export proc build(dest: Path) [fs, env, error] {
   fs.install(p"pm.xsh", fp"${dest}/usr/lib/pm/pm.xsh", 0o644, parents: true, overwrite: true)?
@@ -36,7 +36,7 @@ proc main(...argv: List[Str]) [fs, process, env, error] {
   let work = env.get("XSH_PM_WORK") ?? "/var/cache/pm/work"
   let out = env.get("XSH_PM_OUT") ?? "/var/cache/pm/out"
   let command = argv[0]
-  var forwarded: List[Str] = ["xsh", "/usr/lib/pm/pm.xsh", "--", command, "/", work, out]
+  var forwarded = ["xsh", "/usr/lib/pm/pm.xsh", "--", command, "/", work, out]
   var index = 1
 
   if command == "world-plan" or command == "help" or command == "-h" or command == "--help" {

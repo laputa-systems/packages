@@ -44,7 +44,7 @@ proc dir_block(
   entries: List[Bytes],
   cluster_size: Int,
 ) [error] -> Result[Bytes] {
-  var parts: List[Bytes] = [
+  var parts = [
     dir_entry(".          ", 16, self_cluster, 0)?,
     dir_entry("..         ", 16, parent_cluster, 0)?,
   ]

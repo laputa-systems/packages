@@ -1,21 +1,21 @@
-export let name: Str = "laputa-fs"
+export let name = "laputa-fs"
 
-export let ver: Str = "1"
+export let ver = "1"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = ["xsh"]
+export let deps = ["xsh"]
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
-export let sources: List[Path] = [
+export let sources = [
   p"files/mkfs.vfat.xsh",
   p"files/mkfs.ext4.xsh",
   p"files/fsck.ext4.xsh",
   p"files/fat-put.xsh",
 ]
 
-export let checksums: List[Str] = ["SKIP", "SKIP", "SKIP", "SKIP"]
+export let checksums = ["SKIP", "SKIP", "SKIP", "SKIP"]
 
 export proc build(dest: Path) [fs, error] {
   fs.install(p"mkfs.vfat.xsh", fp"${dest}/usr/bin/mkfs.vfat", 0o755, parents: true, overwrite: true)?

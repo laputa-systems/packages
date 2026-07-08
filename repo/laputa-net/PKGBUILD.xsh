@@ -1,18 +1,18 @@
-export let name: Str = "laputa-net"
+export let name = "laputa-net"
 
-export let ver: Str = "1"
+export let ver = "1"
 
-export let rel: Str = "8"
+export let rel = "8"
 
 # ifup/ifdown are xsh core applets; the net service drives them.
 # wpa_supplicant provides Wi-Fi association for wireless interfaces.
-export let deps: List[Str] = ["xsh", "wpa_supplicant"]
+export let deps = ["xsh", "wpa_supplicant"]
 
-export let mkdeps: List[Str] = ["xinit"]
+export let mkdeps = ["xinit"]
 
-export let sources: List[Path] = [p"service.xsh", p"interfaces"]
+export let sources = [p"service.xsh", p"interfaces"]
 
-export let checksums: List[Str] = ["SKIP", "SKIP"]
+export let checksums = ["SKIP", "SKIP"]
 
 export proc build(dest: Path) [fs, error] {
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/net.xsh", 0o644, parents: true, overwrite: true)?

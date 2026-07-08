@@ -21,7 +21,7 @@ proc metadata_manifest_paths(metadata: Record) [error] -> Result[List[Path]] {
 
 proc metadata_etcsums(metadata: Record) [error] -> Result[List[EtcSum]] {
   let files: List[Record] = metadata.get("files")?
-  var sums: List[EtcSum] = []
+  var sums = []
 
   for file in files {
     let path_text: Str = file.get("path")?
@@ -63,8 +63,8 @@ export proc install_remote_tarball(
   let label = if from_cache { "cache-installed" } else { "remote-installed" }
   print --flush ${pkg.name} version_id(pkg.ver, pkg.rel) "install:" "starting" $label
   let db = package_db_path(ctx.root, pkg.name)
-  var manifest: List[Path] = []
-  var etcsums: List[EtcSum] = []
+  var manifest = []
+  var etcsums = []
   var local_pkg = package_from_remote(pkg)?
   let sidecar = fetch_remote_metadata_sidecar(ctx.out, pkg)?
   var have_sidecar = false
@@ -193,7 +193,7 @@ export proc install_built_packages(ctx: PmContext, built: List[BuiltPackage]) [f
 }
 
 export proc collect_installed_names(root: Path) [fs, error] -> Result[List[Str]] {
-  var names: List[Str] = []
+  var names = []
   let packages_db = packages_db_path(root)
 
   if ! fs.exists(packages_db)? {
@@ -285,7 +285,7 @@ export proc print_package_info(root: Path, name: Str) [fs, error] {
   let rel: Str = metadata.get("rel")?
   let deps: List[Str] = metadata.get("deps")?
   let mkdeps: List[Str] = metadata.get("mkdeps")?
-  let empty_target_build_deps: List[Str] = []
+  let empty_target_build_deps = []
 
   let target_build_deps: List[Str] = if metadata.has("target_build_deps") {
     metadata.get("target_build_deps")?

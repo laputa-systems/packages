@@ -1,22 +1,22 @@
 use pm.env as pm_env
 
-export let name: Str = "libxkbcommon"
+export let name = "libxkbcommon"
 
-export let ver: Str = "1.11.0"
+export let ver = "1.11.0"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = ["musl", "xkeyboard-config"]
+export let deps = ["musl", "xkeyboard-config"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "samurai", "pkgconf", "xkeyboard-config"]
+export let mkdeps = ["llvm-toolchain", "muon", "samurai", "pkgconf", "xkeyboard-config"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/xkbcommon/libxkbcommon/archive/xkbcommon-VERSION.tar.gz",
   p"files/parser.c => generated",
   p"files/parser.h => generated",
 ]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "78a6b14f16e9a55025978c252e53ce9e16a02bfdb929550b9a0db5af87db7e02",
   "e237a6b6396515462e50c56041681c1b1ce83f8582e8ab661a48d91cdaf97a8e",
   "5abcf6696e29a393960b9d842a719b025fcaea2c8c41b2976b5fa5f28e763b96",

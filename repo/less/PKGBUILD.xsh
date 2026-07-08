@@ -1,22 +1,22 @@
 use pm.make as make
 use pm.util as pm_util
 
-export let name: Str = "less"
+export let name = "less"
 
-export let ver: Str = "701"
+export let ver = "701"
 
-export let rel: Str = "4"
+export let rel = "4"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps = ["llvm-toolchain"]
 
 # Source is a fixed GitHub commit archive (no VERSION substitution needed).
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/laputa-systems/less/archive/0f176037c66cdeb038b39b0b71d9c291363c26ec.tar.gz",
 ]
 
-export let checksums: List[Str] = ["846a3b60efa6199bcab518d0934bd83bded678d97e58e8202b55ce7192377f69"]
+export let checksums = ["846a3b60efa6199bcab518d0934bd83bded678d97e58e8202b55ce7192377f69"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
@@ -67,7 +67,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let less_hlp = p"less.hlp"
   fs.write(p"help.c", run.text $buildgen.output "help" < ${less_hlp}?)?
 
-  let less_srcs: List[Path] = [
+  let less_srcs = [
     p"main.c",
     p"screen.c",
     p"brac.c",

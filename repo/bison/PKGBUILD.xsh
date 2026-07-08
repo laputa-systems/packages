@@ -3,19 +3,19 @@ use pm.make as make
 use pm.target as target
 use pm.util as pm_util
 
-export let name: Str = "bison"
+export let name = "bison"
 
-export let ver: Str = "3.8.2"
+export let ver = "3.8.2"
 
-export let rel: Str = "5"
+export let rel = "5"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps = ["llvm-toolchain"]
 
-export let sources: List[Path] = [p"https://mirrors.kernel.org/gnu/bison/bison-VERSION.tar.xz", p"files/bison.xsh"]
+export let sources = [p"https://mirrors.kernel.org/gnu/bison/bison-VERSION.tar.xz", p"files/bison.xsh"]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "9bba0214ccf7f1079c5d59210045227bcf619519840ebfa80cd3849cff5a5bf2",
   "8d5a90d09af0d60aa203e197840fb3e4e2d95863de1f102d399793c1a47e7eb4",
 ]
@@ -540,7 +540,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.write(p"lib/unistr.h", fs.read_text(p"lib/unistr.in.h")?)?
   fs.write(p"lib/uniwidth.h", fs.read_text(p"lib/uniwidth.in.h")?)?
   fs.write(p"lib/textstyle.h", fs.read_text(p"lib/textstyle.in.h")?)?
-  var scratch_lines: List[Str] = []
+  var scratch_lines = []
 
   for line in p"lib/malloc/scratch_buffer.h".lines()? {
     if ! line.contains("libc_hidden_proto") {
@@ -638,11 +638,11 @@ getprogname (void)
   # -Ilib for gnulib interface headers and generated passthrough headers.
   # -Isrc for bison's own internal headers.
   let includes = ["-I.", "-Ilib", "-Isrc"]
-  var lib_sources: List[Path] = []
+  var lib_sources = []
   var in_sources = false
 
   for line in p"lib/gnulib.mk".lines()? {
-    var chunk: Str = line
+    var chunk = line
 
     if line.starts_with("lib_libbison_a_SOURCES +=") {
       chunk = line.replace("lib_libbison_a_SOURCES +=", "")

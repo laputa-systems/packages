@@ -1,13 +1,13 @@
 use pm.env as pm_env
 use pm.util as pm_util
 
-export let name: Str = "wlroots0.19-mesa"
+export let name = "wlroots0.19-mesa"
 
-export let ver: Str = "0.19.3"
+export let ver = "0.19.3"
 
-export let rel: Str = "12"
+export let rel = "12"
 
-export let deps: List[Str] = [
+export let deps = [
   "musl",
   "wayland-libs-server",
   "wayland-libs-client",
@@ -21,7 +21,7 @@ export let deps: List[Str] = [
   "libdisplay-info",
 ]
 
-export let mkdeps: List[Str] = [
+export let mkdeps = [
   "llvm-toolchain",
   "linux",
   "muon",
@@ -39,13 +39,13 @@ export let mkdeps: List[Str] = [
   "libdisplay-info",
 ]
 
-export let target_build_deps: List[Str] = ["wayland-dev", "wayland-protocols", "pixman-dev"]
+export let target_build_deps = ["wayland-dev", "wayland-protocols", "pixman-dev"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/VERSION/wlroots-VERSION.tar.gz",
 ]
 
-export let checksums: List[Str] = ["a6ff89b64ea15e424d1b0db4a22145fccf5ec2ff2e7b8af0fa35e2ac8975986f"]
+export let checksums = ["a6ff89b64ea15e424d1b0db4a22145fccf5ec2ff2e7b8af0fa35e2ac8975986f"]
 
 type PnpRecord = {id: Str, vendor: Str}
 
@@ -110,7 +110,7 @@ proc write_pnpids(root: Str) [fs, error] {
   }
 
   records = records |> sort-by .id
-  var cases: List[Str] = []
+  var cases = []
 
   for entry in records {
     let chars = entry.id.split("")

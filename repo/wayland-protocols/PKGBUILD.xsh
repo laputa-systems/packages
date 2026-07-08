@@ -1,20 +1,20 @@
 use pm.env as pm_env
 
-export let name: Str = "wayland-protocols"
+export let name = "wayland-protocols"
 
-export let ver: Str = "1.45"
+export let ver = "1.45"
 
-export let rel: Str = "5"
+export let rel = "5"
 
-export let deps: List[Str] = []
+export let deps = []
 
-export let mkdeps: List[Str] = ["muon", "pkgconf", "wayland-dev"]
+export let mkdeps = ["muon", "pkgconf", "wayland-dev"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/VERSION/downloads/wayland-protocols-VERSION.tar.xz",
 ]
 
-export let checksums: List[Str] = ["4d2b2a9e3e099d017dc8107bf1c334d27bb87d9e4aff19a0c8d856d17cd41ef0"]
+export let checksums = ["4d2b2a9e3e099d017dc8107bf1c334d27bb87d9e4aff19a0c8d856d17cd41ef0"]
 
 proc patch_generated_header_install() [fs, error] {
   let build_file = p"meson.build"

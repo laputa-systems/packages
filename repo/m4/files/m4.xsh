@@ -1850,7 +1850,7 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
   if name == "include" or name == "sinclude" {
     let filepath = if margs.len() >= 1 { margs[0] } else { "" }
     let paths_str = sg(st, "include_paths", "")
-    var found_path: Path = fp"${filepath}"
+    var found_path = fp"${filepath}"
     var found = false
 
     for p in paths_str.split("\n") {

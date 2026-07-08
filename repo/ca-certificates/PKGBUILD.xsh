@@ -1,16 +1,16 @@
-export let name: Str = "ca-certificates"
+export let name = "ca-certificates"
 
-export let ver: Str = "2026.03.19"
+export let ver = "2026.03.19"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = []
+export let deps = []
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
-export let sources: List[Path] = [p"files/cacert.pem", p"files/update-certdata.xsh"]
+export let sources = [p"files/cacert.pem", p"files/update-certdata.xsh"]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "b6e66569cc3d438dd5abe514d0df50005d570bfc96c14dca8f768d020cb96171",
   "903bc0e759182b1837fb075fc6cfc3d0667c94e51ec7934f1cb66c1049608fa7",
 ]

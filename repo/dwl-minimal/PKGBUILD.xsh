@@ -1,15 +1,15 @@
 use pm.env as pm_env
 use pm.util as pm_util
 
-export let name: Str = "dwl-minimal"
+export let name = "dwl-minimal"
 
-export let ver: Str = "0.8"
+export let ver = "0.8"
 
-export let rel: Str = "4"
+export let rel = "4"
 
-export let deps: List[Str] = ["musl", "wlroots0.19-mesa", "wayland-libs-server", "libxkbcommon", "libinput"]
+export let deps = ["musl", "wlroots0.19-mesa", "wayland-libs-server", "libxkbcommon", "libinput"]
 
-export let mkdeps: List[Str] = [
+export let mkdeps = [
   "llvm-toolchain",
   "pkgconf",
   "wayland-dev",
@@ -23,11 +23,11 @@ export let mkdeps: List[Str] = [
   "libinput",
 ]
 
-export let target_build_deps: List[Str] = ["wayland-dev", "wayland-protocols", "pixman-dev"]
+export let target_build_deps = ["wayland-dev", "wayland-protocols", "pixman-dev"]
 
-export let sources: List[Path] = [p"https://codeberg.org/dwl/dwl/archive/vVERSION.tar.gz"]
+export let sources = [p"https://codeberg.org/dwl/dwl/archive/vVERSION.tar.gz"]
 
-export let checksums: List[Str] = ["a80cc39794a17b9753349496e2cb127f1de22eb179d78f2c22ef647f2643a654"]
+export let checksums = ["a80cc39794a17b9753349496e2cb127f1de22eb179d78f2c22ef647f2643a654"]
 
 proc sysroot_path(root: Str, raw: Str) [fs, error] -> Result[Path] {
   let path_value = fp"${raw.trim()}"

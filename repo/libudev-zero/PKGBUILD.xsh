@@ -1,19 +1,19 @@
 use pm.make as make
 use pm.util as pm_util
 
-export let name: Str = "libudev-zero"
+export let name = "libudev-zero"
 
-export let ver: Str = "1.0.3"
+export let ver = "1.0.3"
 
-export let rel: Str = "2"
+export let rel = "2"
 
-export let deps: List[Str] = ["musl", "linux"]
+export let deps = ["musl", "linux"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux"]
+export let mkdeps = ["llvm-toolchain", "linux"]
 
-export let sources: List[Path] = [p"https://github.com/illiliti/libudev-zero/archive/VERSION.tar.gz"]
+export let sources = [p"https://github.com/illiliti/libudev-zero/archive/VERSION.tar.gz"]
 
-export let checksums: List[Str] = ["0bd89b657d62d019598e6c7ed726ff8fed80e8ba092a83b484d66afb80b77da5"]
+export let checksums = ["0bd89b657d62d019598e6c7ed726ff8fed80e8ba092a83b484d66afb80b77da5"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
@@ -21,7 +21,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let triple = f"${arch}-linux-musl"
   let cflags = ["-std=c99", "-Wall", "-Wextra", "-Wpedantic", "-Wmissing-prototypes", "-Wstrict-prototypes"]
   let defs = ["-D_XOPEN_SOURCE=700", "-D__user="]
-  let includes: List[Str] = []
+  let includes = []
   let srcs = [p"udev.c", p"udev_list.c", p"udev_device.c", p"udev_monitor.c", p"udev_enumerate.c"]
   let libudev = make.c_shared_library({
     cc,

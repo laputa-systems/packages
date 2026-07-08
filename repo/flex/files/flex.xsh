@@ -136,7 +136,7 @@ proc parse_definitions(text: Str) [error] -> Result[Map[Str]] {
 }
 
 proc parse_start_conditions(text: Str) [error] -> Result[List[Str]] {
-  var states: List[Str] = []
+  var states = []
 
   for raw in text.lines() {
     let words = raw.trim().split(" ") |> where . != ""
@@ -158,7 +158,7 @@ proc parse_start_conditions(text: Str) [error] -> Result[List[Str]] {
 }
 
 proc parse_exclusive_start_conditions(text: Str) [error] -> Result[List[Str]] {
-  var states: List[Str] = []
+  var states = []
 
   for raw in text.lines() {
     let words = raw.trim().split(" ") |> where . != ""
@@ -231,12 +231,12 @@ proc split_state_qualifier(pattern: Str) [error] -> Result[StateQualifier] {
     Err(_) => {}
   }
 
-  let states: List[Str] = []
+  let states = []
   return {states, pattern}
 }
 
 proc parse_rules(text: Str, defs: Map[Str]) [error] -> Result[List[LexRule]] {
-  var rules: List[LexRule] = []
+  var rules = []
 
   for raw in text.lines() {
     continue when raw.trim() == "" or raw.starts_with(" ") or raw.starts_with("\t") or raw.trim().starts_with("%")
@@ -496,7 +496,7 @@ proc state_id(state: Str, states: List[Str]) [error] -> Result[Int] {
 }
 
 proc generate_state_defines(states: List[Str]) [error] -> Result[Str] {
-  var lines: List[Str] = ["#define INITIAL 0"]
+  var lines = ["#define INITIAL 0"]
   var i = 0
 
   while i < states.len() {
@@ -508,7 +508,7 @@ proc generate_state_defines(states: List[Str]) [error] -> Result[Str] {
 }
 
 proc generate_exclusive_table(states: List[Str], exclusive: List[Str]) [error] -> Result[Str] {
-  var values: List[Str] = ["0"]
+  var values = ["0"]
 
   for state in states {
     values = values.push(if exclusive.contains(state) { "1" } else { "0" })
@@ -518,7 +518,7 @@ proc generate_exclusive_table(states: List[Str], exclusive: List[Str]) [error] -
 }
 
 proc generate_rule_table(rules: List[LexRule], states: List[Str]) [error] -> Result[Str] {
-  var lines: List[Str] = []
+  var lines = []
 
   for rule in rules {
     let bol = if rule.bol { "1" } else { "0" }
@@ -542,7 +542,7 @@ proc generate_rule_table(rules: List[LexRule], states: List[Str]) [error] -> Res
 }
 
 proc generate_actions(rules: List[LexRule]) [error] -> Result[Str] {
-  var lines: List[Str] = []
+  var lines = []
   var i = 0
 
   for rule in rules {

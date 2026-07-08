@@ -1,19 +1,19 @@
 use pm.env as pm_env
-export let name: Str = "expat"
+export let name = "expat"
 
-export let ver: Str = "2.7.3"
+export let ver = "2.7.3"
 
-export let rel: Str = "2"
+export let rel = "2"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "cmake", "samurai"]
+export let mkdeps = ["llvm-toolchain", "cmake", "samurai"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/libexpat/libexpat/releases/download/R_2_7_3/expat-VERSION.tar.xz",
 ]
 
-export let checksums: List[Str] = ["71df8f40706a7bb0a80a5367079ea75d91da4f8c65c58ec59bcdfbf7decdab9f"]
+export let checksums = ["71df8f40706a7bb0a80a5367079ea75d91da4f8c65c58ec59bcdfbf7decdab9f"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?

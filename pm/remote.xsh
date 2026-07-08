@@ -14,7 +14,7 @@ proc dotenv_lookup(body: Str, name: Str) [] -> Str {
 
     if line.starts_with(f"${name}=") {
       let parts = line.split("=")
-      var value_parts: List[Str] = []
+      var value_parts = []
       var part_index = 1
 
       while part_index < parts.len() {
@@ -380,7 +380,7 @@ export proc load_remote_index_from(index_path: Path) [fs, error] -> Result[List[
     return decode_remote_index(rows)
   }
 
-  let empty: List[RemotePackage] = []
+  let empty = []
   empty
 }
 
@@ -401,7 +401,7 @@ proc try_load_remote_index_from_repo(repo: Str, out: Path) [fs, net, error] -> R
   )?
 
   if response.status == 404 {
-    let empty: List[RemotePackage] = []
+    let empty = []
     return empty
   }
 
@@ -434,7 +434,7 @@ export proc decode_remote_index(rows: List[Record]) [error] -> Result[List[Remot
 
 export proc decode_remote_package(row: Record) [error] -> Result[RemotePackage] {
   var arch = "aarch64"
-  let empty_target_build_deps: List[Str] = []
+  let empty_target_build_deps = []
 
   if row.has("arch") {
     let stored_arch: Str = row.get("arch")?
@@ -492,7 +492,7 @@ proc merge_remote_indexes(base: List[RemotePackage], overlay: List[RemotePackage
 export proc refresh_remote_index(out: Path) [fs, net, env, time, error] -> Result[List[RemotePackage]] {
   let repo_urls = load_repo_urls()?
   var fetched = false
-  var index: List[RemotePackage] = []
+  var index = []
 
   if repo_urls.public_repo != "" {
     index = merge_remote_indexes(index, load_remote_index_from_repo(repo_urls.public_repo, out)?)?
@@ -531,7 +531,7 @@ export proc upsert_remote_package(
   index: List[RemotePackage],
   entry: RemotePackage,
 ) [error] -> Result[List[RemotePackage]] {
-  var updated: List[RemotePackage] = []
+  var updated = []
   var replaced = false
 
   for existing in index {
@@ -568,7 +568,7 @@ export proc collect_remote_packages(
   index: List[RemotePackage],
   names: List[Str],
 ) [fs, env, error] -> Result[List[RemotePackage]] {
-  var packages: List[RemotePackage] = []
+  var packages = []
   var seen: Map[Bool] = {}
   var pending = names
   var pending_index = 0
@@ -597,7 +597,7 @@ export proc order_remote_packages(
   root: Path,
   packages: List[RemotePackage],
 ) [fs, error] -> Result[List[RemotePackage]] {
-  var ordered: List[RemotePackage] = []
+  var ordered = []
   var by_name: Map[Int] = {}
   var pkg_index = 0
 
@@ -681,7 +681,7 @@ export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env
 
   let repo_urls = load_repo_urls()?
   var fetched = false
-  var failures: List[Str] = []
+  var failures = []
 
   if repo_urls.public_repo != "" {
     let rel = fp"${pkg.tarball}"
@@ -746,7 +746,7 @@ export proc fetch_remote_metadata_sidecar(out: Path, pkg: RemotePackage) [fs, ne
   let rel = ensure_relative_path(fp"${pkg.metadata}", "remote metadata")?
   let repo_urls = load_repo_urls()?
   var fetched = false
-  var failures: List[Str] = []
+  var failures = []
 
   if repo_urls.public_repo != "" {
     let failure = fetch_repo_file_with_retry(repo_urls.public_repo, rel, metadata, timeout: 60s)?
@@ -784,8 +784,8 @@ export proc fetch_remote_metadata_sidecar(out: Path, pkg: RemotePackage) [fs, ne
 }
 
 export pure package_from_remote(pkg: RemotePackage) -> Result[Package] {
-  let pkg_sources: List[Path] = []
-  let checksums: List[Str] = []
+  let pkg_sources = []
+  let checksums = []
 
   {
     dir: p".",

@@ -126,7 +126,7 @@ proc parse_tokens(decls: Str) [error] -> Result[Map[Int]] {
 }
 
 proc parse_token_names(decls: Str) [error] -> Result[List[Str]] {
-  var names: List[Str] = []
+  var names = []
 
   for raw in decls.lines() {
     let line = raw.trim()
@@ -211,9 +211,9 @@ proc remove_comments(text: Str) [error] -> Result[Str] {
 
 proc parse_rules(text: Str) [error] -> Result[List[GrammarRule]] {
   let grammar = remove_comments(remove_actions(text)?)?.replace(":", " : ").replace("|", " | ").replace(";", " ; ")
-  var rules: List[GrammarRule] = []
+  var rules = []
   var lhs = ""
-  var rhs: List[Str] = []
+  var rhs = []
   var pending_lhs = ""
 
   for word in grammar.split(" ") |> where .trim() != "" {
@@ -245,7 +245,7 @@ proc parse_rules(text: Str) [error] -> Result[List[GrammarRule]] {
 }
 
 proc nonterminals(rules: List[GrammarRule]) [error] -> Result[List[Str]] {
-  var names: List[Str] = []
+  var names = []
 
   for rule in rules {
     if ! names.contains(rule.lhs) {
@@ -333,7 +333,7 @@ pure has_locations(decls: Str) -> Bool {
 }
 
 proc token_enum_lines(names: List[Str]) [error] -> Result[List[Str]] {
-  var lines: List[Str] = ["    YYEMPTY = -2,", "    YYEOF = 0,", "    YYerror = 256,", "    YYUNDEF = 257,"]
+  var lines = ["    YYEMPTY = -2,", "    YYEOF = 0,", "    YYerror = 256,", "    YYUNDEF = 257,"]
   var code = 258
   var i = 0
 
@@ -1171,7 +1171,7 @@ proc rule_lhs_values(rules: List[GrammarRule], names: List[Str]) [error] -> Resu
 }
 
 proc rule_rhs_start_values(rules: List[GrammarRule]) [error] -> Result[List[Str]] {
-  var values: List[Str] = []
+  var values = []
   var offset = 0
 
   for rule in rules {
@@ -1187,7 +1187,7 @@ proc rule_rhs_len_values(rules: List[GrammarRule]) [error] -> Result[List[Str]] 
 }
 
 proc rule_rhs_symbol_values(rules: List[GrammarRule], names: List[Str], tokens: Map[Int]) [error] -> Result[List[Str]] {
-  var values: List[Str] = []
+  var values = []
 
   for rule in rules {
     for item in rule.rhs {
@@ -1217,7 +1217,7 @@ ${rhs_symbols}"""
 }
 
 proc generate_verbose_report(rules: List[GrammarRule], start: Str) [error] -> Result[Str] {
-  var lines: List[Str] = ["Grammar", "", f"start: ${start}", "", "Rules"]
+  var lines = ["Grammar", "", f"start: ${start}", "", "Rules"]
   var i = 0
 
   for rule in rules {

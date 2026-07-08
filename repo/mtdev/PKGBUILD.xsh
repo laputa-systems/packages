@@ -1,19 +1,19 @@
 use pm.make as make
 use pm.util as pm_util
 
-export let name: Str = "mtdev"
+export let name = "mtdev"
 
-export let ver: Str = "1.1.7"
+export let ver = "1.1.7"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = ["musl", "linux"]
+export let deps = ["musl", "linux"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux"]
+export let mkdeps = ["llvm-toolchain", "linux"]
 
-export let sources: List[Path] = [p"http://bitmath.org/code/mtdev/mtdev-VERSION.tar.gz"]
+export let sources = [p"http://bitmath.org/code/mtdev/mtdev-VERSION.tar.gz"]
 
-export let checksums: List[Str] = ["a55bd02a9af4dd266c0042ec608744fff3a017577614c057da09f1f4566ea32c"]
+export let checksums = ["a55bd02a9af4dd266c0042ec608744fff3a017577614c057da09f1f4566ea32c"]
 
 proc write_config() [fs, error] {
   fs.write(

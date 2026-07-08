@@ -206,8 +206,8 @@ proc test_pm_info_waterfox_bin_excludes_session_stack(ctx: TestContext) [fs, pro
   let work = test.temp_dir(ctx, name: "waterfox-info-work")?
   let out = test.temp_dir(ctx, name: "waterfox-info-out")?
   let db = fp"${root}/var/lib/xsh-pm/packages/waterfox-bin"
-  let no_mkdeps: List[Str] = []
-  let no_etcsums: List[Record] = []
+  let no_mkdeps = []
+  let no_etcsums = []
   fs.mkdir(db)?
 
   json.write(
@@ -328,8 +328,8 @@ literal=@UNKNOWN@
     r"""export let name = "configured-pkg"
 export let ver = "1.0.0"
 export let rel = "1"
-export let deps: List[Str] = []
-export let mkdeps: List[Str] = []
+export let deps = []
+export let mkdeps = []
 export let sources = [p"generated"]
 export let checksums = ["SKIP"]
 
@@ -392,8 +392,8 @@ proc test_pm_package_build_extracts_tar_source(ctx: TestContext) [fs, process, e
     r"""export let name = "tar-source-pkg"
 export let ver = "1.0.0"
 export let rel = "1"
-export let deps: List[Str] = []
-export let mkdeps: List[Str] = []
+export let deps = []
+export let mkdeps = []
 export let sources = [p"files/upstream.tar.gz"]
 export let checksums = ["SKIP"]
 
@@ -449,10 +449,10 @@ proc test_pm_build_prepared_package_command_writes_manifest_and_tarball(ctx: Tes
     r"""export let name = "prepared-pkg"
 export let ver = "1.0.0"
 export let rel = "1"
-export let deps: List[Str] = []
-export let mkdeps: List[Str] = []
-export let sources: List[Path] = []
-export let checksums: List[Str] = []
+export let deps = []
+export let mkdeps = []
+export let sources = []
+export let checksums = []
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.install(p"payload.txt", fp"${dest}/usr/share/prepared-pkg/payload.txt", 0o644, parents: true)?
@@ -647,10 +647,10 @@ proc test_pm_build_set_stages_local_dependencies(ctx: TestContext) [fs, process,
     r"""export let name = "laputa-pm"
 export let ver = "1.0.0"
 export let rel = "1"
-export let deps: List[Str] = []
-export let mkdeps: List[Str] = []
-export let sources: List[Path] = []
-export let checksums: List[Str] = []
+export let deps = []
+export let mkdeps = []
+export let sources = []
+export let checksums = []
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.mkdir(fp"${dest}/usr/share/laputa-pm")?
@@ -680,10 +680,10 @@ main(@args)?
     r"""export let name = "local-lib"
 export let ver = "1.0.0"
 export let rel = "1"
-export let deps: List[Str] = []
-export let mkdeps: List[Str] = []
-export let sources: List[Path] = []
-export let checksums: List[Str] = []
+export let deps = []
+export let mkdeps = []
+export let sources = []
+export let checksums = []
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.mkdir(fp"${dest}/usr/share/local-lib")?
@@ -713,10 +713,10 @@ main(@args)?
     r"""export let name = "local-app"
 export let ver = "1.0.0"
 export let rel = "1"
-export let deps: List[Str] = ["local-lib"]
-export let mkdeps: List[Str] = []
-export let sources: List[Path] = []
-export let checksums: List[Str] = []
+export let deps = ["local-lib"]
+export let mkdeps = []
+export let sources = []
+export let checksums = []
 
 export proc build(dest: Path) [fs, env, error] -> Result[Unit] {
   let root = fp"${env.get("LAPUTA_ROOT")?}"
@@ -951,10 +951,10 @@ proc test_pm_requires_package_proof(ctx: TestContext) [fs, process, error] {
     r"""export let name = "proofless"
 export let ver = "1.0.0"
 export let rel = "1"
-export let deps: List[Str] = []
-export let mkdeps: List[Str] = []
-export let sources: List[Path] = []
-export let checksums: List[Str] = []
+export let deps = []
+export let mkdeps = []
+export let sources = []
+export let checksums = []
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.write(fp"${dest}/proofless.txt", "proofless\n")?
@@ -979,10 +979,10 @@ proc test_pm_requires_service_definition(ctx: TestContext) [fs, process, error] 
     r"""export let name = "svcless"
 export let ver = "1.0.0"
 export let rel = "1"
-export let deps: List[Str] = []
-export let mkdeps: List[Str] = []
-export let sources: List[Path] = []
-export let checksums: List[Str] = []
+export let deps = []
+export let mkdeps = []
+export let sources = []
+export let checksums = []
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.mkdir(fp"${dest}/usr/lib/xinit/services")?
@@ -1102,8 +1102,8 @@ proc test_pm_world_plan_displays_remote_to_local_catchup(ctx: TestContext) [fs, 
   let repo = test.temp_dir(ctx, name: "repo")?
   let repo_url = f"file://${repo.display()}"
   let arch = fixture_arch()?
-  let no_deps: List[Str] = []
-  let no_mkdeps: List[Str] = []
+  let no_deps = []
+  let no_mkdeps = []
 
   json.write(
     fp"${repo}/index.json",
@@ -1143,10 +1143,10 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
   let repo_url = f"file://${repo.display()}"
   let arch = fixture_arch()?
   run.text xsh_bin() pm.xsh -- build $repo world_pm_dir() world_lib_dir() world_app_dir() ?
-  let no_deps: List[Str] = []
-  let no_mkdeps: List[Str] = []
-  let lib_deps: List[Str] = ["laputa-pm"]
-  let app_deps: List[Str] = ["world-lib"]
+  let no_deps = []
+  let no_mkdeps = []
+  let lib_deps = ["laputa-pm"]
+  let app_deps = ["world-lib"]
 
   json.write(
     fp"${repo}/index.json",
@@ -1212,8 +1212,8 @@ proc test_pm_world_plan_autobumps_rel_for_changed_metadata(ctx: TestContext) [fs
   let remote = test.temp_dir(ctx, name: "world-remote")?
   let repo_url = f"file://${remote.display()}"
   let arch = fixture_arch()?
-  let no_deps: List[Str] = []
-  let no_mkdeps: List[Str] = []
+  let no_deps = []
+  let no_mkdeps = []
   let metadata_rel = fp"metadata/${arch}/laputa-pm/laputa-pm-1.0.0-2.json"
   fs.mkdir(fp"${remote}/${metadata_rel}".parent)?
   json.write(fp"${remote}/${metadata_rel}", {metadata_sha256: "remote-old"})?
@@ -1253,8 +1253,8 @@ proc test_pm_world_plan_sync_rels_updates_pkgbuilds_after_upload(ctx: TestContex
   let pkg = test.temp_dir(ctx, name: "world-pm-copy")?
   let repo_url = f"file://${remote.display()}"
   let arch = fixture_arch()?
-  let no_deps: List[Str] = []
-  let no_mkdeps: List[Str] = []
+  let no_deps = []
+  let no_mkdeps = []
   let metadata_rel = fp"metadata/${arch}/laputa-pm/laputa-pm-1.0.0-2.json"
   let _ = fs.copy_tree(world_pm_dir(), pkg, parents: true, overwrite: true)?
   fs.mkdir(fp"${remote}/${metadata_rel}".parent)?
@@ -1283,7 +1283,7 @@ proc test_pm_world_plan_sync_rels_updates_pkgbuilds_after_upload(ctx: TestContex
 
   let synced = run.text HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- world-plan $pkg --build --upload --sync-rels --jobs 1 ?
   test.contains(synced, "laputa-pm 1.0.0-1 -> 1.0.0-3 rel-synced")?
-  test.contains(fp"${pkg}/PKGBUILD.xsh".read_text()?, "export let rel: Str = \"3\"")?
+  test.contains(fp"${pkg}/PKGBUILD.xsh".read_text()?, "export let rel = \"3\"")?
   let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan $pkg ?
   test.contains(output, "laputa-pm 1.0.0-3")?
   test.ok(! output.contains("->"))?

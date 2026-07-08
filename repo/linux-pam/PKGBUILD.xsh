@@ -1,19 +1,19 @@
 use pm.env as pm_env
-export let name: Str = "linux-pam"
+export let name = "linux-pam"
 
-export let ver: Str = "1.7.2"
+export let ver = "1.7.2"
 
-export let rel: Str = "4"
+export let rel = "4"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "samurai"]
+export let mkdeps = ["llvm-toolchain", "linux", "muon", "samurai"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/linux-pam/linux-pam/releases/download/vVERSION/Linux-PAM-VERSION.tar.xz",
 ]
 
-export let checksums: List[Str] = ["3d86b6383fb5fd9eb9578d2cd47d92801191f4bf3f9bc61419bfefc8aa1e531a"]
+export let checksums = ["3d86b6383fb5fd9eb9578d2cd47d92801191f4bf3f9bc61419bfefc8aa1e531a"]
 
 proc patch_modules() [fs, error] {
   let root_build = p"meson.build"

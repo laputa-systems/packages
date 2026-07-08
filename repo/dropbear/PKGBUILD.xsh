@@ -1,22 +1,22 @@
 use pm.make as make
 
-export let name: Str = "dropbear"
+export let name = "dropbear"
 
-export let ver: Str = "2025.89"
+export let ver = "2025.89"
 
-export let rel: Str = "13"
+export let rel = "13"
 
-export let deps: List[Str] = ["musl", "zlib"]
+export let deps = ["musl", "zlib"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "xinit"]
+export let mkdeps = ["llvm-toolchain", "xinit"]
 
 # Source is a git commit (no VERSION substitution needed).
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/mkj/dropbear/archive/f5d44406ef2952ca69a68d59c6b0f7f0ff777305.tar.gz",
   p"service.xsh",
 ]
 
-export let checksums: List[Str] = ["ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c", "SKIP"]
+export let checksums = ["ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c", "SKIP"]
 
 proc install_manpage(source: Path, dest: Path) [fs, error] {
   if source.exists()? {
@@ -98,7 +98,7 @@ proc write_config_h() [fs, error] {
 }
 
 proc ifndef_wrapped_defines(source: Path) [fs, error] -> Result[Str] {
-  var lines: List[Str] = []
+  var lines = []
 
   for line in source.read_text()?.split("\n") {
     let words = line.words()

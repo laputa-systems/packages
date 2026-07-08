@@ -2,13 +2,13 @@ use pm.env as pm_env
 use pm.make as make
 use pm.util as pm_util
 
-export let name: Str = "foot-minimal"
+export let name = "foot-minimal"
 
-export let ver: Str = "1.27.0"
+export let ver = "1.27.0"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = [
+export let deps = [
   "musl",
   "wayland-libs-client",
   "wayland-libs-cursor",
@@ -21,7 +21,7 @@ export let deps: List[Str] = [
   "utf8proc",
 ]
 
-export let mkdeps: List[Str] = [
+export let mkdeps = [
   "llvm-toolchain",
   "linux",
   "pkgconf",
@@ -37,9 +37,9 @@ export let mkdeps: List[Str] = [
   "tllist",
 ]
 
-export let target_build_deps: List[Str] = ["wayland-dev", "wayland-protocols", "pixman-dev", "tllist"]
+export let target_build_deps = ["wayland-dev", "wayland-protocols", "pixman-dev", "tllist"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://codeberg.org/dnkl/foot/archive/VERSION.tar.gz",
   p"files/generated/emoji-variation-sequences.h => generated",
   p"files/generated/foot-terminfo.h => generated",
@@ -47,7 +47,7 @@ export let sources: List[Path] = [
   p"files/generated/srgb.h => generated",
 ]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "4e6131cc859ec6a36569f1978cf3617cc3836a681d13d228ded1b4885dab7770",
   "c78138c30e2b89f2ab7f1ed95996696be12f5182b0a3037828438b26d48040ba",
   "a2ff78b72d3b941f05d2a690eaaba4ac7fcb62ce7c599558a4e50a89f8950f76",

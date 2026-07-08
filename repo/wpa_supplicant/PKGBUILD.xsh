@@ -1,26 +1,26 @@
 use pm.make as make
 
-export let name: Str = "wpa_supplicant"
+export let name = "wpa_supplicant"
 
-export let ver: Str = "2.11"
+export let ver = "2.11"
 
-export let rel: Str = "1"
+export let rel = "1"
 
 # Internal TLS/crypto — no openssl needed.
 # The nl80211 driver unconditionally includes <netlink/genl/genl.h>, so libnl3
 # headers and library are required at build time (TODO: create libnl3 package).
-export let deps: List[Str] = ["musl", "linux"]
+export let deps = ["musl", "linux"]
 
-export let mkdeps: List[Str] = ["xsh", "llvm-toolchain", "libnl3", "xinit"]
+export let mkdeps = ["xsh", "llvm-toolchain", "libnl3", "xinit"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://w1.fi/releases/wpa_supplicant-2.11.tar.gz",
   p"config",
   p"service.xsh",
   p"wpa_supplicant.conf",
 ]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "912ea06f74e30a8e36fbb68064d6cdff218d8d591db0fc5d75dee6c81ac7fc0a",
   "SKIP",
   "SKIP",
@@ -46,9 +46,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   let triple = f"${env.get("XSH_PM_ARCH") ?? "aarch64"}-linux-musl"
 
   # Flags mirror wpa_supplicant's defconfig: no IPv6, no D-Bus, no readline.
-  var cflags: List[Str] = ["-O2", "-Wall"]
+  var cflags = ["-O2", "-Wall"]
 
-  var includes: List[Str] = [
+  var includes = [
     "-I",
     fp"${src}/src".display(),
     "-I",
@@ -59,7 +59,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     "/usr/include",
   ]
 
-  var defs: List[Str] = [
+  var defs = [
     "-DCONFIG_CTRL_IFACE",
     "-DCONFIG_CTRL_IFACE_UNIX",
     "-DCONFIG_BACKEND_FILE",
@@ -74,7 +74,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-DCONFIG_LIBNL32",
   ]
 
-  var ldflags: List[Str] = ["-L", "/usr/lib", "-lnl-3", "-lnl-genl-3"]
+  var ldflags = ["-L", "/usr/lib", "-lnl-3", "-lnl-genl-3"]
 
   # The set of .c files needed for a minimal WPA2-PSK + SAE build with internal
   # TLS/crypto.  Each entry is a path relative to the source root.
@@ -83,7 +83,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   # CONFIG_DRIVER_NL80211, CONFIG_SAE, and CONFIG_CTRL_IFACE bring in.
   # sae_pk.c is excluded (requires CONFIG_SAE_PK).  tdls.c, preauth.c,
   # peerkey.c, wpa_ft.c are excluded (require additional config).
-  let shared_sources: List[Path] = [
+  let shared_sources = [
     p"src/utils/os_unix.c",
     p"src/utils/eloop.c",
     p"src/utils/common.c",

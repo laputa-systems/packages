@@ -1,31 +1,31 @@
-export let name: Str = "xsh"
+export let name = "xsh"
 
-export let ver: Str = "0.0.0"
+export let ver = "0.0.0"
 
-export let rel: Str = "10"
+export let rel = "10"
 
-export let deps: List[Str] = []
+export let deps = []
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/laputa-systems/xsh/releases/download/release-e12de8c8ce6388bcbf80df96bf57ebd8afc2d0df/xsh-multicall-release-e12de8c8ce6388bcbf80df96bf57ebd8afc2d0df-ARCH-linux-musl => xsh-multicall",
   p"https://github.com/laputa-systems/xsh/releases/download/release-e12de8c8ce6388bcbf80df96bf57ebd8afc2d0df/core-release-e12de8c8ce6388bcbf80df96bf57ebd8afc2d0df.tar.xz => xsh-core",
 ]
 
-export let checksums: List[Str] = ["SKIP", "0bae60ddb8e15a2f03f81ccf4e5ad69e6ed2215d656ea6a6395a24d1e86dcdeb"]
+export let checksums = ["SKIP", "0bae60ddb8e15a2f03f81ccf4e5ad69e6ed2215d656ea6a6395a24d1e86dcdeb"]
 
-export let checksums_aarch64: List[Str] = [
+export let checksums_aarch64 = [
   "0874226398877b375ce2a8453f7b587d75ec6a40a601fddcf33fd80dbdf08a27",
   "0bae60ddb8e15a2f03f81ccf4e5ad69e6ed2215d656ea6a6395a24d1e86dcdeb",
 ]
 
-export let checksums_x86_64: List[Str] = [
+export let checksums_x86_64 = [
   "a000d143c13ecd83041e2e7c91690a09a4bc1d2405d859195082f07f85ac21ea",
   "0bae60ddb8e15a2f03f81ccf4e5ad69e6ed2215d656ea6a6395a24d1e86dcdeb",
 ]
 
-export let nostrip: Bool = true
+export let nostrip = true
 
 error XshPackageError = Source(message: Str)
 

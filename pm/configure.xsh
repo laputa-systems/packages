@@ -8,7 +8,7 @@
 export proc config_h(in_path: Path, out_path: Path, defines: Map[Str]) [fs, error] -> Result[Unit] {
   let content = fs.read_text(in_path)?
   let lines = content.split("\n")
-  var out_lines: List[Str] = []
+  var out_lines = []
 
   for line in lines {
     if line.starts_with("#undef ") {

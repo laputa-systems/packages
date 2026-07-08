@@ -1,18 +1,18 @@
 use pm.util as pm_util
 
-export let name: Str = "muon"
+export let name = "muon"
 
-export let ver: Str = "0.5.0"
+export let ver = "0.5.0"
 
-export let rel: Str = "5"
+export let rel = "5"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "samurai"]
+export let mkdeps = ["llvm-toolchain", "samurai"]
 
-export let sources: List[Path] = [p"https://github.com/muon-build/muon/archive/refs/tags/VERSION.tar.gz"]
+export let sources = [p"https://github.com/muon-build/muon/archive/refs/tags/VERSION.tar.gz"]
 
-export let checksums: List[Str] = ["565c1b6e1e58f7e90d8813fda0e2102df69fb493ddab4cf6a84ce3647466bee5"]
+export let checksums = ["565c1b6e1e58f7e90d8813fda0e2102df69fb493ddab4cf6a84ce3647466bee5"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?

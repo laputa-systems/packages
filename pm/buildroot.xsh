@@ -14,7 +14,7 @@ export proc missing_dependency_names(
   include_mkdeps: Bool,
   local_names: Map[Bool],
 ) [fs, error] -> Result[List[Str]] {
-  var names: List[Str] = []
+  var names = []
   var seen: Map[Bool] = {}
 
   for pkg in packages {

@@ -2,15 +2,15 @@ use pm.env as pm_env
 use pm.make as make
 use pm.util as pm_util
 
-export let name: Str = "wl-clipboard"
+export let name = "wl-clipboard"
 
-export let ver: Str = "2.3.0"
+export let ver = "2.3.0"
 
-export let rel: Str = "2"
+export let rel = "2"
 
-export let deps: List[Str] = ["musl", "wayland-libs-client"]
+export let deps = ["musl", "wayland-libs-client"]
 
-export let mkdeps: List[Str] = [
+export let mkdeps = [
   "llvm-toolchain",
   "muon",
   "samurai",
@@ -20,11 +20,11 @@ export let mkdeps: List[Str] = [
   "wayland-libs-client",
 ]
 
-export let target_build_deps: List[Str] = ["wayland-dev", "wayland-protocols"]
+export let target_build_deps = ["wayland-dev", "wayland-protocols"]
 
-export let sources: List[Path] = [p"https://github.com/bugaevc/wl-clipboard/archive/refs/tags/vVERSION.tar.gz"]
+export let sources = [p"https://github.com/bugaevc/wl-clipboard/archive/refs/tags/vVERSION.tar.gz"]
 
-export let checksums: List[Str] = ["b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402"]
+export let checksums = ["b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402"]
 
 proc patch_optional_installs() [fs, error] {
   fs.write(p"data/meson.build", "")?

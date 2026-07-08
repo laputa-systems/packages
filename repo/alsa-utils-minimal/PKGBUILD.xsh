@@ -1,18 +1,18 @@
 use pm.make as make
 
-export let name: Str = "alsa-utils-minimal"
+export let name = "alsa-utils-minimal"
 
-export let ver: Str = "1.2.15.2"
+export let ver = "1.2.15.2"
 
-export let rel: Str = "4"
+export let rel = "4"
 
-export let deps: List[Str] = ["musl", "alsa-lib", "libudev-zero"]
+export let deps = ["musl", "alsa-lib", "libudev-zero"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "alsa-lib"]
+export let mkdeps = ["llvm-toolchain", "alsa-lib"]
 
-export let sources: List[Path] = [p"https://www.alsa-project.org/files/pub/utils/alsa-utils-VERSION.tar.bz2"]
+export let sources = [p"https://www.alsa-project.org/files/pub/utils/alsa-utils-VERSION.tar.bz2"]
 
-export let checksums: List[Str] = ["7aaaafbfb01942113ec0c31e51f705910e81079205088ca2f8f137a3869e1a3a"]
+export let checksums = ["7aaaafbfb01942113ec0c31e51f705910e81079205088ca2f8f137a3869e1a3a"]
 
 proc write_tool_source() [fs, error] {
   fs.write(

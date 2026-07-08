@@ -1,20 +1,20 @@
 use pm.make as make
 
-export let name: Str = "eudev-lite"
+export let name = "eudev-lite"
 
-export let ver: Str = "3.2.14"
+export let ver = "3.2.14"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps = ["llvm-toolchain"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/eudev-project/eudev/releases/download/vVERSION/eudev-VERSION.tar.gz",
 ]
 
-export let checksums: List[Str] = ["8da4319102f24abbf7fff5ce9c416af848df163b29590e666d334cc1927f006f"]
+export let checksums = ["8da4319102f24abbf7fff5ce9c416af848df163b29590e666d334cc1927f006f"]
 
 proc write_udev_stub() [fs, error] {
   fs.write(

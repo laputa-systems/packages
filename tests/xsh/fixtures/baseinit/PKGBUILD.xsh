@@ -4,13 +4,13 @@ export let ver = "2.0.0"
 
 export let rel = "1"
 
-export let deps: List[Str] = []
+export let deps = []
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
-export let sources: List[Path] = []
+export let sources = []
 
-export let checksums: List[Str] = []
+export let checksums = []
 
 proc write_file(path_value: Path, text: Str) [fs, error] {
   fs.mkdir(path_value.parent)?

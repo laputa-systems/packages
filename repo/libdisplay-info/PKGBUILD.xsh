@@ -1,20 +1,20 @@
 use pm.env as pm_env
 
-export let name: Str = "libdisplay-info"
+export let name = "libdisplay-info"
 
-export let ver: Str = "0.3.0"
+export let ver = "0.3.0"
 
-export let rel: Str = "5"
+export let rel = "5"
 
-export let deps: List[Str] = ["musl", "hwdata"]
+export let deps = ["musl", "hwdata"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "samurai", "pkgconf", "hwdata"]
+export let mkdeps = ["llvm-toolchain", "muon", "samurai", "pkgconf", "hwdata"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/VERSION/downloads/libdisplay-info-VERSION.tar.xz",
 ]
 
-export let checksums: List[Str] = ["6ae77cd937f9cf7d1321d35c116062c4911e8447010a6a713ac4286f7a9d5987"]
+export let checksums = ["6ae77cd937f9cf7d1321d35c116062c4911e8447010a6a713ac4286f7a9d5987"]
 
 type PnpRecord = {id: Str, name: Str}
 

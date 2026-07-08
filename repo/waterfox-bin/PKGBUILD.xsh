@@ -1,23 +1,23 @@
-export let name: Str = "waterfox-bin"
+export let name = "waterfox-bin"
 
-export let ver: Str = "140.11.0esr"
+export let ver = "140.11.0esr"
 
-export let rel: Str = "5"
+export let rel = "5"
 
-export let deps: List[Str] = ["musl", "ca-certificates"]
+export let deps = ["musl", "ca-certificates"]
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
-export let nostrip: Bool = true
+export let nostrip = true
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/joshuarli/waterfox-musl-squashed/releases/download/initial-arm64-hermetic/waterfox-140.11.0esr.en-US.linux-musl-aarch64.stage1-minwayland-release-arm64.1.tar.xz => waterfox",
   p"files/waterfox-elf-scan.xsh",
   p"files/waterfox-private-needed.xsh",
   p"files/waterfox-allowed-external.sonames",
 ]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "f22e9a92b15f26a1b805d85a7a1418ede89d8c6116b65b5af1d5600771ae89f2",
   "0219070d80bdb05529e73db1e0ffbe5d9e997237851ba680006b9beaba8eea65",
   "7a490e4ed78686a50d2548e58f6bdacae040636db0686c9021e6c38530b85f6f",

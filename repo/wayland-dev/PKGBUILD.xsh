@@ -1,25 +1,25 @@
 use pm.env as pm_env
 use pm.util as pm_util
 
-export let name: Str = "wayland-dev"
+export let name = "wayland-dev"
 
-export let ver: Str = "1.24.0"
+export let ver = "1.24.0"
 
-export let rel: Str = "4"
+export let rel = "4"
 
-export let deps: List[Str] = ["musl", "expat", "wayland-libs-client", "wayland-libs-server", "wayland-libs-cursor"]
+export let deps = ["musl", "expat", "wayland-libs-client", "wayland-libs-server", "wayland-libs-cursor"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "muon", "samurai", "pkgconf", "expat", "libffi"]
+export let mkdeps = ["llvm-toolchain", "muon", "samurai", "pkgconf", "expat", "libffi"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://gitlab.freedesktop.org/wayland/wayland/-/releases/VERSION/downloads/wayland-VERSION.tar.xz",
 ]
 
-export let checksums: List[Str] = ["82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536"]
+export let checksums = ["82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536"]
 
 proc write_embedded_dtd() [fs, error] {
   let dump = p"protocol/wayland.dtd".read_bytes()?.dump("hex-u8")
-  var values: List[Str] = []
+  var values = []
 
   for line in dump.split("\n") {
     let words = line.words()

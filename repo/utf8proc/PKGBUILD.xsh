@@ -1,19 +1,19 @@
 use pm.env as pm_env
 use pm.make as make
 
-export let name: Str = "utf8proc"
+export let name = "utf8proc"
 
-export let ver: Str = "2.10.0"
+export let ver = "2.10.0"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "cmake", "samurai"]
+export let mkdeps = ["llvm-toolchain", "cmake", "samurai"]
 
-export let sources: List[Path] = [p"https://github.com/JuliaStrings/utf8proc/archive/vVERSION.tar.gz"]
+export let sources = [p"https://github.com/JuliaStrings/utf8proc/archive/vVERSION.tar.gz"]
 
-export let checksums: List[Str] = ["6f4f1b639daa6dca9f80bc5db1233e9cbaa31a67790887106160b33ef743f136"]
+export let checksums = ["6f4f1b639daa6dca9f80bc5db1233e9cbaa31a67790887106160b33ef743f136"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?

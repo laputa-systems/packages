@@ -2,29 +2,29 @@ use pm.util as pm_util
 
 error SudoRsBuildError = MissingRustStd(path: Str)
 
-export let name: Str = "sudo-rs"
+export let name = "sudo-rs"
 
-export let ver: Str = "0.2.13"
+export let ver = "0.2.13"
 
-export let rel: Str = "11"
+export let rel = "11"
 
-export let deps: List[Str] = ["linux-pam", "gnu-stubs"]
+export let deps = ["linux-pam", "gnu-stubs"]
 
-export let mkdeps: List[Str] = ["cargo", "llvm-toolchain", "linux-pam", "ca-certificates"]
+export let mkdeps = ["cargo", "llvm-toolchain", "linux-pam", "ca-certificates"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://static.crates.io/crates/sudo-rs/sudo-rs-VERSION.crate",
   p"https://static.rust-lang.org/dist/2026-04-16/rust-std-1.95.0-ARCH-unknown-linux-musl.tar.xz => rust-std",
 ]
 
-export let checksums: List[Str] = ["3537fb3bdef870cacb354892e3fc76af7775e691570d49b402295c8fbef3656b", "SKIP"]
+export let checksums = ["3537fb3bdef870cacb354892e3fc76af7775e691570d49b402295c8fbef3656b", "SKIP"]
 
-export let checksums_aarch64: List[Str] = [
+export let checksums_aarch64 = [
   "3537fb3bdef870cacb354892e3fc76af7775e691570d49b402295c8fbef3656b",
   "f6710416ed9a7d5cf2a15efa761eb79a1deeb43f9961bbe05cc97bec4ef9064a",
 ]
 
-export let checksums_x86_64: List[Str] = [
+export let checksums_x86_64 = [
   "3537fb3bdef870cacb354892e3fc76af7775e691570d49b402295c8fbef3656b",
   "aee540abf132920f791ef781489851a078d69dff493fb628d49c1d573f92bb3a",
 ]

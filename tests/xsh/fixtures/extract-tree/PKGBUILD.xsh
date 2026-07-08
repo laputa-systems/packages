@@ -4,9 +4,9 @@ export let ver = "1.0.0"
 
 export let rel = "1"
 
-export let deps: List[Str] = []
+export let deps = []
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
 export let sources = [p"files/rootfs"]
 

@@ -139,7 +139,7 @@ export proc checkout_git_source(source: Str, dest: Path) [fs, process, env, erro
     return
   }
 
-  var git: Path = p"git"
+  var git = p"git"
 
   match process.which("git") {
     Ok(tool) => git = tool
@@ -328,7 +328,7 @@ export proc stage_package_sources(
 ) [fs, net, process, env, time, error] {
   let arch = machine_arch()?
   var source_index = 0
-  var entries: List[Record] = []
+  var entries = []
 
   for raw in pkg.sources {
     let line = parse_source_line(raw)?
@@ -471,7 +471,7 @@ export proc generate_checksums_for(
   arch: Str,
   stored: List[Str],
 ) [fs, net, process, env, time, error] -> Result[List[Str]] {
-  var generated: List[Str] = []
+  var generated = []
   var source_index = 0
 
   for raw in pkg.sources {
@@ -495,7 +495,7 @@ export proc collect_checksum_updates(
   work: Path,
   pkg: Package,
 ) [fs, net, process, env, time, error] -> Result[List[ChecksumUpdate]] {
-  var updates: List[ChecksumUpdate] = []
+  var updates = []
   var added = false
   let exports = pkg.exports
 
@@ -526,7 +526,7 @@ export proc collect_checksum_updates(
 export proc write_checksum_field(pkg: Package, field: Str, values: List[Str]) [fs, error] {
   let pkgbuild = fp"${pkg.dir}/PKGBUILD.xsh"
   let lines = fs.read_text(pkgbuild)?.split("\n")
-  var output: List[Str] = []
+  var output = []
   var in_block = false
   var found = false
 

@@ -2,19 +2,19 @@ use pm.util as pm_util
 
 error GnuStubsError = Failed(message: Str)
 
-export let name: Str = "gnu-stubs"
+export let name = "gnu-stubs"
 
-export let ver: Str = "22.1.8"
+export let ver = "22.1.8"
 
-export let rel: Str = "2"
+export let rel = "2"
 
-export let deps: List[Str] = []
+export let deps = []
 
-export let mkdeps: List[Str] = ["llvm-toolchain"]
+export let mkdeps = ["llvm-toolchain"]
 
-export let sources: List[Path] = [p"files/.keep"]
+export let sources = [p"files/.keep"]
 
-export let checksums: List[Str] = ["SKIP"]
+export let checksums = ["SKIP"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let build_arch = pm_util.build_arch()?

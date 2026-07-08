@@ -1,13 +1,13 @@
-export let name: Str = "libseat"
+export let name = "libseat"
 
-export let ver: Str = "0.9.3"
+export let ver = "0.9.3"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = ["seatd"]
+export let deps = ["seatd"]
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
-export let sources: List[Path] = []
+export let sources = []
 
-export let checksums: List[Str] = []
+export let checksums = []

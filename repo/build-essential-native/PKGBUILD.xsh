@@ -1,10 +1,10 @@
-export let name: Str = "build-essential-native"
+export let name = "build-essential-native"
 
-export let ver: Str = "1"
+export let ver = "1"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = [
+export let deps = [
   "ca-certificates",
   "musl",
   "zlib",
@@ -19,11 +19,11 @@ export let deps: List[Str] = [
   "muon",
 ]
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
-export let sources: List[Path] = []
+export let sources = []
 
-export let checksums: List[Str] = []
+export let checksums = []
 
 export proc build(dest: Path) [fs, error] {
   fs.mkdir(dest)?

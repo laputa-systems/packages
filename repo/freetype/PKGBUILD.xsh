@@ -1,19 +1,19 @@
 use pm.env as pm_env
 use pm.make as make
 
-export let name: Str = "freetype"
+export let name = "freetype"
 
-export let ver: Str = "2.14.1"
+export let ver = "2.14.1"
 
-export let rel: Str = "2"
+export let rel = "2"
 
-export let deps: List[Str] = ["musl", "zlib", "libpng"]
+export let deps = ["musl", "zlib", "libpng"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "cmake", "samurai", "pkgconf", "zlib", "libpng"]
+export let mkdeps = ["llvm-toolchain", "cmake", "samurai", "pkgconf", "zlib", "libpng"]
 
-export let sources: List[Path] = [p"https://download-mirror.savannah.gnu.org/releases/freetype/freetype-VERSION.tar.xz"]
+export let sources = [p"https://download-mirror.savannah.gnu.org/releases/freetype/freetype-VERSION.tar.xz"]
 
-export let checksums: List[Str] = ["32427e8c471ac095853212a37aef816c60b42052d4d9e48230bab3bdf2936ccc"]
+export let checksums = ["32427e8c471ac095853212a37aef816c60b42052d4d9e48230bab3bdf2936ccc"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?

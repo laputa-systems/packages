@@ -63,14 +63,14 @@ export proc verify_private_needed(
 ) [fs, error] -> Result[PrivateNeededReport] {
   let allowed = clean_lines(allowed_external_sonames.read_text()?)
   let private = private_sonames(private_library_root)?
-  var files: List[PrivateNeededFile] = []
+  var files = []
 
   for entry in fs.walk(root, gitignore: false)? |> where .kind == "file" {
     if is_elf_candidate(entry.name, entry.executable) {
       let info = elf.inspect(entry.path)?
 
       if info.type != "not-elf" {
-        var needed: List[PrivateNeededEntry] = []
+        var needed = []
 
         for soname in info.needed {
           if ! list_contains(allowed, soname) {

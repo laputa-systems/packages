@@ -1,18 +1,18 @@
-export let name: Str = "baselayout"
+export let name = "baselayout"
 
-export let ver: Str = "1"
+export let ver = "1"
 
-export let rel: Str = "14"
+export let rel = "14"
 
-export let deps: List[Str] = []
+export let deps = []
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
-export let sources: List[Path] = [p"files/rootfs"]
+export let sources = [p"files/rootfs"]
 
-export let checksums: List[Str] = ["SKIP"]
+export let checksums = ["SKIP"]
 
-export let extract_install: Bool = true
+export let extract_install = true
 
 export proc build(dest: Path) [fs, error] {
   let _ = fs.copy_tree(p".", dest, parents: true, overwrite: true)?

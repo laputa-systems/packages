@@ -1,12 +1,12 @@
 #!/bin/xsh --
 error Ext4ToolError = Failed(kind: Str, message: Str)
 
-let BLOCK_SIZE: Int = 4096
-let BLOCKS_PER_GROUP: Int = 32768
-let INODES_PER_GROUP: Int = 8192
-let INODE_SIZE: Int = 256
-let INODE_TABLE_BLOCKS: Int = 512
-let FIXED_TIME: Int = 1700000000
+let BLOCK_SIZE = 4096
+let BLOCKS_PER_GROUP = 32768
+let INODES_PER_GROUP = 8192
+let INODE_SIZE = 256
+let INODE_TABLE_BLOCKS = 512
+let FIXED_TIME = 1700000000
 
 type ExtEntry = {
   rel: Str,
@@ -158,7 +158,7 @@ proc collect_entries(root: Path, dir: Path, entries: List[ExtEntry]) [fs, error]
 }
 
 proc assign_inodes(entries: List[ExtEntry]) [] -> List[ExtEntry] {
-  var out: List[ExtEntry] = []
+  var out = []
   var index = 0
 
   for entry in entries |> sort-by .rel {
@@ -226,7 +226,7 @@ proc dirent(item: DirItem, rec_len: Int) [error] -> Result[Bytes] {
 }
 
 proc dir_items(entries: List[ExtEntry], rel: Str, self_inode: Int, parent_inode: Int) [] -> List[DirItem] {
-  var items: List[DirItem] = [
+  var items = [
     {inode: self_inode, name: ".", kind: "dir"},
     {inode: parent_inode, name: "..", kind: "dir"},
   ]
@@ -246,8 +246,8 @@ proc min_dirent_len(item: DirItem) [] -> Int {
 
 proc dir_data(entries: List[ExtEntry], rel: Str, self_inode: Int, parent_inode: Int) [error] -> Result[Bytes] {
   let items = dir_items(entries, rel, self_inode, parent_inode)
-  var blocks: List[Bytes] = []
-  var parts: List[Bytes] = []
+  var blocks = []
+  var parts = []
   var used = 0
   var index = 0
 
@@ -347,7 +347,7 @@ proc allocate_blocks(used: Map[Bool], next: Int, total_blocks: Int, count: Int) 
   }
 
   var double = 0
-  var indirects: List[Int] = []
+  var indirects = []
 
   if count > 1036 {
     let result = allocate_block(current_used, current_next, total_blocks)?
@@ -366,7 +366,7 @@ proc allocate_blocks(used: Map[Bool], next: Int, total_blocks: Int, count: Int) 
   }
 
   let metadata_blocks = (if single != 0 { 1 } else { 0 }) + (if double != 0 { 1 } else { 0 }) + indirects.len()
-  let blocks: List[Int] = []
+  let blocks = []
 
   return {
     used: current_used,
@@ -395,7 +395,7 @@ proc u32_block(values: List[Int]) [error] -> Result[Bytes] {
 }
 
 proc int_slice(values: List[Int], offset: Int, length: Int) [] -> List[Int] {
-  var out: List[Int] = []
+  var out = []
   var index = offset
   let end = offset + length
 
@@ -427,7 +427,7 @@ proc data_block_at(alloc: ExtAlloc, index: Int) [] -> Int {
 }
 
 proc data_blocks_slice(alloc: ExtAlloc, offset: Int, length: Int) [] -> List[Int] {
-  var values: List[Int] = []
+  var values = []
   var block = alloc.first
   var seen = 0
 
@@ -452,7 +452,7 @@ proc write_indirect_blocks(image: Path, alloc: ExtAlloc) [error] {
   }
 
   if alloc.double != 0 {
-    var double_ptrs: List[Int] = []
+    var double_ptrs = []
     var offset = 1036
 
     for indirect in alloc.indirects {
@@ -663,7 +663,7 @@ proc superblock(
 }
 
 proc block_bitmap_bytes(first: Int, group_blocks: Int, allocated_next: Int) [error] -> Result[Bytes] {
-  var out: List[Int] = []
+  var out = []
   var byte_index = 0
 
   while byte_index < BLOCK_SIZE {
@@ -688,7 +688,7 @@ proc block_bitmap_bytes(first: Int, group_blocks: Int, allocated_next: Int) [err
 }
 
 proc inode_bitmap_bytes(first_inode: Int, max_inode: Int) [error] -> Result[Bytes] {
-  var out: List[Int] = []
+  var out = []
   var byte_index = 0
 
   while byte_index < BLOCK_SIZE {
@@ -734,7 +734,7 @@ proc write_headers(
   label: Str,
 ) [error] {
   let max_inode = if entries.len() == 0 { 10 } else { entries[entries.len() - 1].inode }
-  var desc_parts: List[Bytes] = []
+  var desc_parts = []
   var free_blocks_total = 0
   var group_index = 0
 

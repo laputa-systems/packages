@@ -1,20 +1,20 @@
 use pm.env as pm_env
 
-export let name: Str = "libevdev"
+export let name = "libevdev"
 
-export let ver: Str = "1.13.6"
+export let ver = "1.13.6"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = ["musl", "linux"]
+export let deps = ["musl", "linux"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf"]
+export let mkdeps = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://gitlab.freedesktop.org/libevdev/libevdev/-/archive/libevdev-VERSION/libevdev-libevdev-VERSION.tar.gz",
 ]
 
-export let checksums: List[Str] = ["54748fded25633399a8418d7c4c123fe365037c901b4389e0bf3dd7688fb1c7e"]
+export let checksums = ["54748fded25633399a8418d7c4c123fe365037c901b4389e0bf3dd7688fb1c7e"]
 
 type EventDef = {attr: Str, value: Int, name: Str}
 
@@ -139,7 +139,7 @@ proc c_lookup_lines(
 }
 
 proc collect_event_defs(path_value: Path) [fs, error] -> Result[Record] {
-  var defs: List[EventDef] = []
+  var defs = []
   var max_codes: Map[Int] = {}
 
   for line in path_value.read_text()?.split("\n") {
@@ -199,7 +199,7 @@ proc write_event_names() [fs, error] {
     }
   }
 
-  var lines: List[Str] = [
+  var lines = [
     "/* THIS FILE IS GENERATED, DO NOT EDIT */",
     "",
     "#ifndef EVENT_NAMES_H",

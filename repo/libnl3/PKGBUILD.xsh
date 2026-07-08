@@ -1,18 +1,18 @@
 use pm.make as make
 
-export let name: Str = "libnl3"
+export let name = "libnl3"
 
-export let ver: Str = "3.11.0"
+export let ver = "3.11.0"
 
-export let rel: Str = "1"
+export let rel = "1"
 
-export let deps: List[Str] = ["musl", "linux"]
+export let deps = ["musl", "linux"]
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
-export let sources: List[Path] = [p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz"]
+export let sources = [p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz"]
 
-export let checksums: List[Str] = ["2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d"]
+export let checksums = ["2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cwd = fs.cwd()?
@@ -82,10 +82,10 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.mkdir(fp"${dest}/usr")?
   fs.mkdir(fp"${dest}/usr/lib")?
   fs.mkdir(fp"${dest}/usr/include")?
-  var cflags: List[Str] = ["-O2", "-fPIC", "-DPIC", "-D_GNU_SOURCE"]
-  var defs: List[Str] = []
+  var cflags = ["-O2", "-fPIC", "-DPIC", "-D_GNU_SOURCE"]
+  var defs = []
 
-  var includes: List[Str] = [
+  var includes = [
     "-I",
     fp"${src}/include".display(),
     "-I",
@@ -97,7 +97,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   ]
 
   # Core source files for libnl-3.so
-  let core_sources: List[Path] = [
+  let core_sources = [
     p"lib/mpls.c",
     p"lib/addr.c",
     p"lib/attr.c",
@@ -118,7 +118,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   ]
 
   # genl source files for libnl-genl-3.so
-  let genl_sources: List[Path] = [p"lib/genl/ctrl.c", p"lib/genl/family.c", p"lib/genl/genl.c", p"lib/genl/mngt.c"]
+  let genl_sources = [p"lib/genl/ctrl.c", p"lib/genl/family.c", p"lib/genl/genl.c", p"lib/genl/mngt.c"]
 
   let core_so = fp"${dest}/usr/lib/libnl-3.so.200.26.0"
   let genl_so = fp"${dest}/usr/lib/libnl-genl-3.so.200.26.0"

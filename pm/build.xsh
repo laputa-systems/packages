@@ -220,7 +220,7 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
   let etcsums = collect_etcsums(dest, manifest)?
   write_package_db(dest, pkg, manifest, etcsums)?
   let dest_text = dest.display()
-  var archive_paths: List[Path] = []
+  var archive_paths = []
 
   for entry in fs.walk(dest) {
     var include = entry.kind == "file" or entry.kind == "symlink"
@@ -360,7 +360,7 @@ proc build_packages_in_chroot(
   ctx: PmContext,
   packages: List[Package],
 ) [fs, net, process, env, time, error] -> Result[List[BuiltPackage]] {
-  var built: List[BuiltPackage] = []
+  var built = []
   var owners: Map[Str] = {}
 
   for pkg in packages {
@@ -493,7 +493,7 @@ export proc build_packages(
     return build_packages_in_chroot(ctx, packages)
   }
 
-  var built: List[BuiltPackage] = []
+  var built = []
   var owners: Map[Str] = {}
 
   if packages.len() > 0 {
@@ -568,7 +568,7 @@ export proc build_packages(
     let etcsums = collect_etcsums(dest, manifest)?
     write_package_db(dest, pkg, manifest, etcsums)?
     let dest_text = dest.display()
-    var archive_paths: List[Path] = []
+    var archive_paths = []
 
     for entry in fs.walk(dest) {
       var include = entry.kind == "file" or entry.kind == "symlink"

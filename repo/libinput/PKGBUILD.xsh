@@ -1,15 +1,15 @@
 use pm.env as pm_env
 use pm.util as pm_util
 
-export let name: Str = "libinput"
+export let name = "libinput"
 
-export let ver: Str = "1.31.2"
+export let ver = "1.31.2"
 
-export let rel: Str = "3"
+export let rel = "3"
 
-export let deps: List[Str] = ["musl", "libudev-zero", "libevdev", "mtdev"]
+export let deps = ["musl", "libudev-zero", "libevdev", "mtdev"]
 
-export let mkdeps: List[Str] = [
+export let mkdeps = [
   "llvm-toolchain",
   "linux",
   "muon",
@@ -20,11 +20,11 @@ export let mkdeps: List[Str] = [
   "mtdev",
 ]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://gitlab.freedesktop.org/libinput/libinput/-/archive/VERSION/libinput-VERSION.tar.gz",
 ]
 
-export let checksums: List[Str] = ["507a40b8a74568ed7c2bd05acf2e15ee3d9f4703102dca86d4f6a804e73bf1f6"]
+export let checksums = ["507a40b8a74568ed7c2bd05acf2e15ee3d9f4703102dca86d4f6a804e73bf1f6"]
 
 proc patch_python_tools() [fs, env, error] {
   let meson = p"meson.build"

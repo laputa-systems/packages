@@ -3,23 +3,23 @@ use pm.util as pm_util
 
 error ScriptError = Failed(kind: Str, message: Str)
 
-export let name: Str = "mdevd"
+export let name = "mdevd"
 
-export let ver: Str = "0.1.8.2"
+export let ver = "0.1.8.2"
 
-export let rel: Str = "4"
+export let rel = "4"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "xinit"]
+export let mkdeps = ["llvm-toolchain", "xinit"]
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://skarnet.org/software/mdevd/mdevd-VERSION.tar.gz",
   p"https://skarnet.org/software/skalibs/skalibs-2.15.0.0.tar.gz => skalibs",
   p"service.xsh",
 ]
 
-export let checksums: List[Str] = [
+export let checksums = [
   "ce1ae0149b6a57a34f608218fd6181aa6aa68135cac2f4d931b5b417b072e244",
   "7fde96e8afb4191593a15328883e9c7726c96891cf071222146821e8c87f8007",
   "SKIP",
@@ -255,7 +255,7 @@ proc write_sysdeps_h(target: Str, sysdeps: Map[Str]) [fs, error] {
 }
 
 proc write_uint_header(bits: Int, dfmt: Str, ofmt: Str, xfmt: Str, bfmt: Str, sysdeps: Map[Str]) [fs, error] {
-  var parts: List[Str] = []
+  var parts = []
   parts = parts.push(gen_types_internal(p"skalibs/src/headers/bits-header".read_text()?, "", "", bits))
 
   if bits == 64 {
@@ -300,7 +300,7 @@ proc append_type_template(
 }
 
 proc write_types_h(sysdeps: Map[Str]) [fs, error] {
-  var parts: List[Str] = [p"skalibs/src/headers/types-header".read_text()?]
+  var parts = [p"skalibs/src/headers/types-header".read_text()?]
 
   for type_name in ["short", "int", "long"] {
     let bits = sysdep_bits(sysdeps, f"u${type_name}")?
@@ -394,7 +394,7 @@ proc compile_skalibs(cc: Path, triple: Str, target: Str) [fs, process, env, erro
   ]
 
   let includes = ["-Iskalibs/src/include"]
-  var skalibs_sources: List[Path] = []
+  var skalibs_sources = []
 
   for entry in fs.walk(p"skalibs/src", gitignore: false)? |> where .kind == "file" and .ext == "c" {
     let src_display = entry.path.display()

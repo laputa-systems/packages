@@ -1,19 +1,19 @@
 use pm.env as pm_env
 use pm.make as make
 
-export let name: Str = "zlib"
+export let name = "zlib"
 
-export let ver: Str = "1.3.2"
+export let ver = "1.3.2"
 
-export let rel: Str = "6"
+export let rel = "6"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "cmake", "samurai"]
+export let mkdeps = ["llvm-toolchain", "cmake", "samurai"]
 
-export let sources: List[Path] = [p"https://zlib.net/fossils/zlib-VERSION.tar.gz"]
+export let sources = [p"https://zlib.net/fossils/zlib-VERSION.tar.gz"]
 
-export let checksums: List[Str] = ["bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"]
+export let checksums = ["bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?

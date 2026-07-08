@@ -2,27 +2,27 @@ use pm.util as pm_util
 
 error LlvmToolchainError = Failed(message: Str)
 
-export let name: Str = "llvm-toolchain"
+export let name = "llvm-toolchain"
 
-export let ver: Str = "22.1.8"
+export let ver = "22.1.8"
 
-export let rel: Str = "9"
+export let rel = "9"
 
-export let deps: List[Str] = ["musl"]
+export let deps = ["musl"]
 
-export let mkdeps: List[Str] = []
+export let mkdeps = []
 
-export let nostrip: Bool = true
+export let nostrip = true
 
-export let sources: List[Path] = [
+export let sources = [
   p"https://github.com/laputa-systems/llvm-prebuilt-musl/releases/download/llvm-musl-VERSION/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt",
 ]
 
-export let checksums: List[Str] = ["SKIP"]
+export let checksums = ["SKIP"]
 
-export let checksums_aarch64: List[Str] = ["675f9cf871313a5672a63882d4d30dd6dd55df0aa9caee70970542eb03a23da3"]
+export let checksums_aarch64 = ["675f9cf871313a5672a63882d4d30dd6dd55df0aa9caee70970542eb03a23da3"]
 
-export let checksums_x86_64: List[Str] = ["ac0bd443a1933bbd2c0efbedf6ebc97ff8ca2469e5ba65eadb966fb75f65dd1c"]
+export let checksums_x86_64 = ["ac0bd443a1933bbd2c0efbedf6ebc97ff8ca2469e5ba65eadb966fb75f65dd1c"]
 
 pure bool_literal(value: Bool) -> Str {
   if value {
@@ -235,7 +235,7 @@ env {
   let linking = ! compile_only(argv)
   let runtime = default_runtime(argv)
   let startfiles = default_startfiles(argv)
-  var exec_args: List[Str] = [
+  var exec_args = [
     "--no-default-config",
     f"--target=\${arch}-linux-musl",
     "--sysroot=/",

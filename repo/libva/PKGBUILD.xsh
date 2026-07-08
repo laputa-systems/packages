@@ -1,21 +1,21 @@
 use pm.env as pm_env
 use pm.util as pm_util
 
-export let name: Str = "libva"
+export let name = "libva"
 
-export let ver: Str = "2.22.0"
+export let ver = "2.22.0"
 
-export let rel: Str = "2"
+export let rel = "2"
 
-export let deps: List[Str] = ["musl", "libdrm", "wayland-libs-client"]
+export let deps = ["musl", "libdrm", "wayland-libs-client"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "libdrm", "wayland-dev"]
+export let mkdeps = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "libdrm", "wayland-dev"]
 
-export let target_build_deps: List[Str] = ["wayland-dev"]
+export let target_build_deps = ["wayland-dev"]
 
-export let sources: List[Path] = [p"https://github.com/intel/libva/releases/download/VERSION/libva-VERSION.tar.bz2"]
+export let sources = [p"https://github.com/intel/libva/releases/download/VERSION/libva-VERSION.tar.bz2"]
 
-export let checksums: List[Str] = ["e3da2250654c8d52b3f59f8cb3f3d8e7fb1a2ee64378dbc400fbc5663de7edb8"]
+export let checksums = ["e3da2250654c8d52b3f59f8cb3f3d8e7fb1a2ee64378dbc400fbc5663de7edb8"]
 
 export proc process_sources(src: Path) [fs, error] {
   let trace = fp"${src}/va/va_trace.c"

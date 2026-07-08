@@ -108,7 +108,7 @@ proc command_search(ctx: PmContext, raw: List[Str]) [fs, env, error] {
   }
 
   let query = raw[0]
-  var dirs: List[Path] = []
+  var dirs = []
   var search_index = 1
 
   while search_index < raw.len() {
@@ -162,7 +162,7 @@ proc build_install_packages(argv: List[Str]) [fs, net, process, env, time, error
   let build_root = path.absolute(fp"${argv[2]}")?
   let work = path.absolute(fp"${argv[3]}")?
   let out = path.absolute(fp"${argv[4]}")?
-  var raw_args: List[Str] = []
+  var raw_args = []
   var build_i = 5
 
   while build_i < argv.len() {
@@ -187,7 +187,7 @@ proc build_install_packages(argv: List[Str]) [fs, net, process, env, time, error
   let ordered = order_packages(build_root, packages, true)?
 
   for pkg in ordered {
-    var built: List[BuiltPackage] = []
+    var built = []
 
     env {
       LAPUTA_ROOT = build_root.display()
@@ -217,7 +217,7 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let root_ctx: PmContext = {command: "build-set", root, work, out}
   let build_ctx: PmContext = {command: "build-set", root: build_root, work, out}
   let upload_ctx: PmContext = {...build_ctx, command: "upload"}
-  var raw_args: List[Str] = []
+  var raw_args = []
   var build_i = 2
 
   while build_i < argv.len() {
@@ -236,7 +236,7 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let lock = fs.lock(fp"${work}/pm.lock")?
   defer fs.unlock(lock)?
   let index_path = fp"${repo_dir}/index.json"
-  var index: List[RemotePackage] = []
+  var index = []
 
   if fs.exists(index_path)? {
     index = load_remote_index_from(index_path)?
@@ -265,7 +265,7 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
       missing_world_dependencies(build_root, effective_world_dependencies(pkg, true), local_names, built_names)?,
     )?
 
-    var built: List[BuiltPackage] = []
+    var built = []
 
     env {
       LAPUTA_ROOT = build_root.display()
@@ -396,7 +396,7 @@ proc default_root_command_argv(argv: List[Str]) [fs, error] -> Result[List[Str]]
     return argv
   }
 
-  var expanded: List[Str] = [
+  var expanded = [
     argv[0],
     fp"${repo_root}/.root".display(),
     fp"${repo_root}/.work".display(),
@@ -456,7 +456,7 @@ export proc run_pm_cli(argv: List[Str]) [fs, net, process, env, time, error] {
   var a = argv
 
   if a.len() >= 1 and a[0] == "--" {
-    var shifted: List[Str] = []
+    var shifted = []
     var i = 1
 
     while i < a.len() {

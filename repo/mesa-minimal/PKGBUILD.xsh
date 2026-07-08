@@ -1,18 +1,18 @@
 use pm.make as make
 
-export let name: Str = "mesa-minimal"
+export let name = "mesa-minimal"
 
-export let ver: Str = "24.2.8"
+export let ver = "24.2.8"
 
-export let rel: Str = "21"
+export let rel = "21"
 
-export let deps: List[Str] = ["musl", "libdrm", "wayland-libs-client", "wayland-libs-server", "libffi"]
+export let deps = ["musl", "libdrm", "wayland-libs-client", "wayland-libs-server", "libffi"]
 
-export let mkdeps: List[Str] = ["llvm-toolchain", "linux", "pkgconf", "libdrm", "wayland-dev", "libffi"]
+export let mkdeps = ["llvm-toolchain", "linux", "pkgconf", "libdrm", "wayland-dev", "libffi"]
 
-export let sources: List[Path] = [p"files/source-marker.txt => ."]
+export let sources = [p"files/source-marker.txt => ."]
 
-export let checksums: List[Str] = ["2f848716fcc0bb55ee07c37ab374d8b8824dd38debcc0be4711b4930f1c67381"]
+export let checksums = ["2f848716fcc0bb55ee07c37ab374d8b8824dd38debcc0be4711b4930f1c67381"]
 
 proc write_sources() [fs, error] {
   fs.write(
