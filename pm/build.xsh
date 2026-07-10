@@ -239,7 +239,7 @@ main(@args)?
 
     if ! status.ok {
       if status.exited() {
-        abort(status.exit_code()?)
+        return Err(PmError.ExtensionFailed(f"package build for ${pkg.name} exited with status ${status.exit_code()?}"))
       }
 
       return Err(PmError.ExtensionFailed(f"package build for ${pkg.name} was signaled"))
@@ -372,7 +372,7 @@ proc run_logged_proof_command(
 
     if ! status.ok {
       if status.exited() {
-        abort(status.exit_code()?)
+        return Err(PmError.ExtensionFailed(f"package proof exited with status ${status.exit_code()?}"))
       }
 
       return Err(PmError.ExtensionFailed("package proof was signaled"))
@@ -385,7 +385,7 @@ proc run_logged_proof_command(
 
   if ! status.ok {
     if status.exited() {
-      abort(status.exit_code()?)
+      return Err(PmError.ExtensionFailed(f"package proof exited with status ${status.exit_code()?}"))
     }
 
     return Err(PmError.ExtensionFailed("package proof was signaled"))
@@ -492,7 +492,7 @@ proc build_packages_in_chroot(
         }
 
         if status.exited() {
-          abort(status.exit_code()?)
+          return Err(PmError.ExtensionFailed(f"chroot build for ${pkg.name} exited with status ${status.exit_code()?}"))
         }
 
         return Err(PmError.ExtensionFailed(f"chroot build for ${pkg.name} was signaled"))

@@ -4,7 +4,7 @@ export let name = "libdisplay-info"
 
 export let ver = "0.3.0"
 
-export let rel = "5"
+export let rel = "6"
 
 export let deps = ["musl", "hwdata"]
 
@@ -106,7 +106,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     PKG_CONFIG_PATH = pc.pkg_config_path
     PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
   } {
-    run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "-Dtest=false" "build" ?
+    run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "build" ?
     run $muon "-C" "build" samu $jobs_flag ?
 
     env {

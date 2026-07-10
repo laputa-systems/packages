@@ -7,7 +7,7 @@ export let name = "bison"
 
 export let ver = "3.8.2"
 
-export let rel = "5"
+export let rel = "6"
 
 export let deps = ["musl"]
 
@@ -642,7 +642,7 @@ getprogname (void)
   var in_sources = false
 
   for line in p"lib/gnulib.mk".lines()? {
-    var chunk = line
+    var chunk: Str = line
 
     if line.starts_with("lib_libbison_a_SOURCES +=") {
       chunk = line.replace("lib_libbison_a_SOURCES +=", "")
