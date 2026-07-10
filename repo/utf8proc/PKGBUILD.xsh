@@ -13,7 +13,9 @@ export let mkdeps = ["llvm-toolchain", "cmake", "samurai"]
 
 export let sources = [p"https://github.com/JuliaStrings/utf8proc/archive/vVERSION.tar.gz"]
 
-export let checksums = ["6f4f1b639daa6dca9f80bc5db1233e9cbaa31a67790887106160b33ef743f136"]
+export let checksums = [
+  "6f4f1b639daa6dca9f80bc5db1233e9cbaa31a67790887106160b33ef743f136",
+]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?

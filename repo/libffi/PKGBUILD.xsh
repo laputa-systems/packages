@@ -13,7 +13,9 @@ export let mkdeps = ["llvm-toolchain", "linux"]
 
 export let sources = [p"https://github.com/libffi/libffi/releases/download/vVERSION/libffi-VERSION.tar.gz"]
 
-export let checksums = ["f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc"]
+export let checksums = [
+  "f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc",
+]
 
 type LibffiTarget = {target: Str, dir: Str, sources: List[Str]}
 

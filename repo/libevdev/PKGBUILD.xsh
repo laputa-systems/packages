@@ -14,7 +14,9 @@ export let sources = [
   p"https://gitlab.freedesktop.org/libevdev/libevdev/-/archive/libevdev-VERSION/libevdev-libevdev-VERSION.tar.gz",
 ]
 
-export let checksums = ["54748fded25633399a8418d7c4c123fe365037c901b4389e0bf3dd7688fb1c7e"]
+export let checksums = [
+  "54748fded25633399a8418d7c4c123fe365037c901b4389e0bf3dd7688fb1c7e",
+]
 
 type EventDef = {attr: Str, value: Int, name: Str}
 

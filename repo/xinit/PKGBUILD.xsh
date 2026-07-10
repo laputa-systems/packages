@@ -12,9 +12,13 @@ export let sources = [p"https://github.com/laputa-systems/xinit/raw/c6af71070559
 
 export let checksums = ["9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"]
 
-export let checksums_aarch64 = ["9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"]
+export let checksums_aarch64 = [
+  "9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d",
+]
 
-export let checksums_x86_64 = ["9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"]
+export let checksums_x86_64 = [
+  "9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d",
+]
 
 export let nostrip = true
 

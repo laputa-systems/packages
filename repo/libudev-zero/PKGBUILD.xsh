@@ -13,7 +13,9 @@ export let mkdeps = ["llvm-toolchain", "linux"]
 
 export let sources = [p"https://github.com/illiliti/libudev-zero/archive/VERSION.tar.gz"]
 
-export let checksums = ["0bd89b657d62d019598e6c7ed726ff8fed80e8ba092a83b484d66afb80b77da5"]
+export let checksums = [
+  "0bd89b657d62d019598e6c7ed726ff8fed80e8ba092a83b484d66afb80b77da5",
+]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?

@@ -12,7 +12,9 @@ export let mkdeps = ["llvm-toolchain"]
 
 export let sources = [p"https://www.alsa-project.org/files/pub/lib/alsa-lib-VERSION.tar.bz2"]
 
-export let checksums = ["7b079d614d582cade7ab8db2364e65271d0877a37df8757ac4ac0c8970be861e"]
+export let checksums = [
+  "7b079d614d582cade7ab8db2364e65271d0877a37df8757ac4ac0c8970be861e",
+]
 
 proc write_asound_stub() [fs, error] {
   fs.write(

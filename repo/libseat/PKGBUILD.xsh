@@ -10,4 +10,5 @@ export let mkdeps = []
 
 export let sources = []
 
-export let checksums = []
+export let checksums = [
+]

@@ -43,7 +43,9 @@ export let target_build_deps = ["wayland-dev", "wayland-protocols", "pixman-dev"
 
 export let sources = [p"https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/VERSION/wlroots-VERSION.tar.gz"]
 
-export let checksums = ["a6ff89b64ea15e424d1b0db4a22145fccf5ec2ff2e7b8af0fa35e2ac8975986f"]
+export let checksums = [
+  "a6ff89b64ea15e424d1b0db4a22145fccf5ec2ff2e7b8af0fa35e2ac8975986f",
+]
 
 type PnpRecord = {id: Str, vendor: Str}
 

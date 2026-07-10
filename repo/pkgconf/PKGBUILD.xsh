@@ -14,7 +14,9 @@ export let mkdeps = ["llvm-toolchain"]
 
 export let sources = [p"https://distfiles.ariadne.space/pkgconf/pkgconf-VERSION.tar.xz"]
 
-export let checksums = ["cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243"]
+export let checksums = [
+  "cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243",
+]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?

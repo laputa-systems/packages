@@ -16,7 +16,10 @@ export let sources = [
   p"service.xsh",
 ]
 
-export let checksums = ["ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c", "SKIP"]
+export let checksums = [
+  "ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c",
+  "SKIP",
+]
 
 proc install_manpage(source: Path, dest: Path) [fs, error] {
   if source.exists()? {

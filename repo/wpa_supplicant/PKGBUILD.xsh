@@ -20,7 +20,12 @@ export let sources = [
   p"wpa_supplicant.conf",
 ]
 
-export let checksums = ["912ea06f74e30a8e36fbb68064d6cdff218d8d591db0fc5d75dee6c81ac7fc0a", "SKIP", "SKIP", "SKIP"]
+export let checksums = [
+  "912ea06f74e30a8e36fbb68064d6cdff218d8d591db0fc5d75dee6c81ac7fc0a",
+  "SKIP",
+  "SKIP",
+  "SKIP",
+]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cwd = fs.cwd()?

@@ -19,8 +19,8 @@ export let sources = [
 
 export let checksums = [
   "f22e9a92b15f26a1b805d85a7a1418ede89d8c6116b65b5af1d5600771ae89f2",
-  "da35dc1e2df51d9c4903c1bb2653ef7578ca51a6df169c1ad2f2219394cda5b7",
-  "d6c8ca103437ffe2cfd06bc3b3f091d59ee9bf68d5ddff72d8a123bec660e563",
+  "6c422f8fff25ea1e9c0be524064bc3f95a6b47abcbca5c2c3dee02c85c2bd0c1",
+  "f096fda5370eb78b4e14fe5d535ab780fb3d0c61dd703856c59683264dfb550e",
   "2190dcebd0a465fb2ed33caec377f8f9e3a0e6ab60b715e7cfa0e5bf179ef6ea",
 ]
 

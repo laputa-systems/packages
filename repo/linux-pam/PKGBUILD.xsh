@@ -12,7 +12,9 @@ export let mkdeps = ["llvm-toolchain", "linux", "muon", "samurai"]
 
 export let sources = [p"https://github.com/linux-pam/linux-pam/releases/download/vVERSION/Linux-PAM-VERSION.tar.xz"]
 
-export let checksums = ["3d86b6383fb5fd9eb9578d2cd47d92801191f4bf3f9bc61419bfefc8aa1e531a"]
+export let checksums = [
+  "3d86b6383fb5fd9eb9578d2cd47d92801191f4bf3f9bc61419bfefc8aa1e531a",
+]
 
 proc patch_modules() [fs, error] {
   let root_build = p"meson.build"
