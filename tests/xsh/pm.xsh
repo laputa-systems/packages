@@ -947,16 +947,26 @@ proc test_pm_upload_repo_export_includes_source_mirror(ctx: TestContext) [fs, pr
   test.ok(fp"${repo}/.out/source-mirrors/remote-app-1.0.0-1-${arch}.tar.gz".exists()?)?
   let export_out = run.text XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- upload-repo-export $repo ?
   test.contains(export_out, "repo-export loading remote index")?
-  test.contains(export_out, "repo-export 1/1 aarch64 remote-app 1.0.0-1 uploading")?
-  test.contains(export_out, "repo-export 1/1 aarch64 remote-app uploading tarball")?
+  test.contains(export_out, "repo-export aarch64 remote-app 1.0.0-1 uploading")?
+  test.contains(export_out, "repo-export aarch64 remote-app uploading tarball")?
   test.contains(export_out, f"${arch} remote-app 1.0.0-1 exported")?
   test.contains(export_out, "repo export uploaded")?
   let source_rel = fp"sources/remote-app/remote-app-1.0.0-1-${arch}-src.tar.gz"
+  var remote_rows: List[Record] = json.read(fp"${remote}/index.json")?
+  var legacy_rows: List[Record] = []
+  for row in remote_rows {
+    legacy_rows = legacy_rows.push({...row, target_build_deps: []})
+  }
+  json.write(fp"${remote}/index.json", legacy_rows)?
+  let repeat_out = run.text XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- upload-repo-export $repo ?
+  test.contains(repeat_out, f"repo-export ${arch} remote-app 1.0.0-1 already-exported")?
+  test.ok(! ("uploading" in repeat_out))?
   test.ok(fp"${remote}/${source_rel}".exists()?)?
   let index_text = fp"${remote}/index.json".read_text()?
   test.contains(index_text, f"\"source_tarball\":\"${source_rel.display()}\"")?
   test.contains(index_text, "\"source_sha256\":\"")?
   let err = test.temp_path(ctx, name: "export-missing.err")
+  fs.remove(fp"${repo}/.out/source-mirrors/remote-app-1.0.0-1-${arch}.tar.gz")?
   fs.remove(fp"${repo}/packages/${arch}/remote-app/remote-app-1.0.0-1.tar.gz")?
   let missing_status = run.status XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- upload-repo-export $repo 2> $err
   test.eq(missing_status.ok, false)?

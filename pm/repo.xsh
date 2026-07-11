@@ -243,10 +243,21 @@ export proc upload_repo_export_file(repo: Str, rel: Path, source: Path, token: S
   }
 }
 
+proc export_entry_with_local_source(repo_dir: Path, entry: RemotePackage) [fs, error] -> Result[RemotePackage] {
+  let source = fp"${repo_dir}/.out/source-mirrors/${package_id(entry.name, entry.ver, entry.rel)}-${entry.arch}.tar.gz"
+
+  if ! fs.exists(source)? {
+    return entry
+  }
+
+  let source_rel = remote_source_rel_for_arch(entry.arch, entry.name, entry.ver, entry.rel)
+  {...entry, source_sha256: hash.sha256(source)?.hex(), source_tarball: source_rel.display()}
+}
+
 proc remote_export_entry_same(remote_index: List[RemotePackage], entry: RemotePackage) [] -> Bool {
   for rpkg in remote_index {
     if rpkg.arch == entry.arch and rpkg.name == entry.name {
-      return rpkg.ver == entry.ver and rpkg.rel == entry.rel and rpkg.deps == entry.deps and rpkg.mkdeps == entry.mkdeps and rpkg.target_build_deps == entry.target_build_deps and rpkg.sha256 == entry.sha256 and rpkg.size == entry.size and rpkg.tarball == entry.tarball and rpkg.metadata == entry.metadata and rpkg.source_sha256 == entry.source_sha256 and rpkg.source_tarball == entry.source_tarball and rpkg.metapackage == entry.metapackage
+      return rpkg.ver == entry.ver and rpkg.rel == entry.rel and rpkg.deps == entry.deps and rpkg.mkdeps == entry.mkdeps and (rpkg.target_build_deps.len() == 0 or rpkg.target_build_deps == entry.target_build_deps) and rpkg.sha256 == entry.sha256 and rpkg.size == entry.size and rpkg.tarball == entry.tarball and rpkg.metadata == entry.metadata and rpkg.source_sha256 == entry.source_sha256 and rpkg.source_tarball == entry.source_tarball and rpkg.metapackage == entry.metapackage
     }
   }
 
@@ -272,7 +283,9 @@ export proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, er
   fs.mkdir(work)?
   fs.mkdir(out)?
   var pending = []
-  for entry in export_index {
+  for staged_entry in export_index {
+    let entry = export_entry_with_local_source(repo_dir, staged_entry)?
+
     if remote_export_entry_same(remote_index, entry) {
       print --flush f"repo-export" ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) "already-exported"
     } else {

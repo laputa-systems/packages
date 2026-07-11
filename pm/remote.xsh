@@ -379,9 +379,11 @@ proc try_load_remote_index_from_repo(repo: Str, out: Path) [fs, net, error] -> R
     return load_remote_index_from(repo_file_path(repo, p"index.json")?)?
   }
 
+  # The mirror advertises a cache lifetime for index.json; PM needs the current generation.
   let response = net.request({
     method: "GET",
     url: repo_url_for(repo, p"index.json")?,
+    headers: [{name: "Cache-Control", value: "no-cache"}, {name: "Pragma", value: "no-cache"}],
     pool: "pm",
     timeout: 15s,
     connect_timeout: 5s,
