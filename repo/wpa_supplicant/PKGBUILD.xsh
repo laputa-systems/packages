@@ -4,7 +4,7 @@ export let name = "wpa_supplicant"
 
 export let ver = "2.11"
 
-export let rel = "2"
+export let rel = "3"
 
 # Internal TLS/crypto — no openssl needed.
 # The nl80211 driver unconditionally includes <netlink/genl/genl.h>, so libnl3
@@ -46,7 +46,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let triple = f"${env.get("XSH_PM_ARCH") ?? "aarch64"}-linux-musl"
 
   # Flags mirror wpa_supplicant's defconfig: no IPv6, no D-Bus, no readline.
-  var cflags = ["-O2", "-Wall"]
+  var cflags = ["-O2", "-Wall", "-ffunction-sections", "-fdata-sections"]
 
   var includes = [
     "-I",
@@ -74,7 +74,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-DCONFIG_LIBNL32",
   ]
 
-  var ldflags = ["-L", "/usr/lib", "-lnl-3", "-lnl-genl-3"]
+  var ldflags = ["-L", "/usr/lib", "-lnl-3", "-lnl-genl-3", "-Wl,--gc-sections"]
 
   # The set of .c files needed for a minimal WPA2-PSK + SAE build with internal
   # TLS/crypto.  Each entry is a path relative to the source root.
@@ -191,6 +191,19 @@ export proc build(dest: Path) [fs, process, env, error] {
     p"wpa_supplicant/scan.c",
   ]
 
+  let shared = make.c_static_library({
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+    root: src,
+    sources: shared_sources,
+    out_dir: fp"${objs}/shared-objs",
+    out: fp"${objs}/libwpa-common.a",
+    deps: [],
+  })
+
   let multi = make.c_multi_program({
     cc,
     triple,
@@ -199,53 +212,47 @@ export proc build(dest: Path) [fs, process, env, error] {
     includes,
     root: src,
     out_dir: fp"${objs}/compile",
-    groups: [
-      {
-        name: "shared",
-        cflags: [],
-        defs: [],
-        includes: [],
-        root: p"",
-        sources: shared_sources,
-        out_dir: fp"${objs}/shared-objs",
-        deps: [],
-      },
-    ],
+    groups: [],
     targets: [
       {
         name: "wpa_supplicant",
-        groups: ["shared"],
+        groups: [],
         sources: [p"wpa_supplicant/main.c"],
-        libs: [],
+        libs: [shared.output],
         ldflags,
         out: fp"${objs}/wpa_supplicant",
-        deps: [],
+        deps: shared.deps,
       },
       {
         name: "wpa_cli",
-        groups: ["shared"],
+        groups: [],
         sources: [p"wpa_supplicant/wpa_cli.c"],
-        libs: [],
+        libs: [shared.output],
         ldflags,
         out: fp"${objs}/wpa_cli",
-        deps: [],
+        deps: shared.deps,
       },
       {
         name: "wpa_passphrase",
-        groups: ["shared"],
+        groups: [],
         sources: [p"wpa_supplicant/wpa_passphrase.c"],
-        libs: [],
+        libs: [shared.output],
         ldflags,
         out: fp"${objs}/wpa_passphrase",
-        deps: [],
+        deps: shared.deps,
       },
     ],
   })?
 
-  make.run_tasks(multi.tasks, make.jobs()?)?
+  make.run_tasks(shared.tasks.extend(multi.tasks), make.jobs()?)?
   let wpa_supplicant_out = multi.outputs.get("wpa_supplicant")?
   let wpa_cli_out = multi.outputs.get("wpa_cli")?
   let passphrase_out = multi.outputs.get("wpa_passphrase")?
+  let strip = process.which("llvm-strip")?
+
+  for binary in [wpa_supplicant_out, wpa_cli_out, passphrase_out] {
+    run $strip "--strip-unneeded" $binary ?
+  }
 
   # Install under /usr/bin: baselayout symlinks /usr/sbin -> bin so
   # installing to /usr/sbin would fail proof extraction with "symlink escape".

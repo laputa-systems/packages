@@ -7,7 +7,7 @@ export let name = "musl"
 
 export let ver = "1.2.6"
 
-export let rel = "14"
+export let rel = "15"
 
 export let deps = []
 
@@ -327,11 +327,11 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   # These libraries are folded into libc on musl, but compiler drivers and
   # upstream build systems still commonly link with their conventional names.
-  # Install real files instead of symlinks so proof extraction works with the
-  # released XSH tar extractor.
+  # Keep the aliases as relative symlinks so they do not duplicate libc in the
+  # installed root or package archive.
   for lib in ["m", "dl", "rt", "crypt", "pthread"] {
-    fs.install(libc_so, fp"${dest}/usr/lib/lib${lib}.so", 0o755, parents: true, overwrite: true)?
-    fs.install(libc_a, fp"${dest}/usr/lib/lib${lib}.a", 0o644, parents: true, overwrite: true)?
+    fs.symlink(p"libc.so", fp"${dest}/usr/lib/lib${lib}.so")?
+    fs.symlink(p"libc.a", fp"${dest}/usr/lib/lib${lib}.a")?
   }
 
   # Clang's musl driver links libssp_nonshared by default. Keep the archive
@@ -359,7 +359,8 @@ export proc build(dest: Path) [fs, process, env, error] {
     }
   }
 
-  # musl installs ld-musl-*.so.1 as a hard link to libc.so.
+  # musl installs ld-musl-*.so.1 as a hard link to libc.so. Use a relative
+  # symlink in the package so the alias does not duplicate the libc payload.
   # Ship the loader under /usr/lib; baselayout provides /lib -> usr/lib
   # for binaries whose ELF interpreter is /lib/ld-musl-*.so.1.
   var ldso = ""
@@ -371,7 +372,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   if ldso != "" {
-    fs.install(libc_so, fp"${dest}/usr/lib/${ldso}", 0o755, parents: true, overwrite: true)?
+    fs.symlink(p"libc.so", fp"${dest}/usr/lib/${ldso}")?
     fs.mkdir(fp"${dest}/usr/bin")?
     fs.remove(fp"${dest}/usr/bin/ldd", missing_ok: true)?
 

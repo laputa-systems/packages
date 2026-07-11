@@ -2,13 +2,11 @@ export let name = "tailscale"
 
 export let ver = "1.96.4"
 
-export let rel = "10"
+export let rel = "11"
 
 export let deps = ["iptables", "xinit"]
 
-export let mkdeps = []
-
-export let nostrip = true
+export let mkdeps = ["llvm-toolchain"]
 
 export let sources = [p"https://pkgs.tailscale.com/stable/tailscale_VERSION_GOARCH.tgz", p"service.xsh"]
 
@@ -24,7 +22,10 @@ export let checksums_x86_64 = [
   "SKIP",
 ]
 
-export proc build(dest: Path) [fs, error] {
+export proc build(dest: Path) [fs, process, error] {
+  let strip = process.which("llvm-strip")?
+  run $strip "--strip-all" p"tailscale" p"tailscaled" ?
+
   fs.install(p"tailscale", fp"${dest}/usr/bin/tailscale", 0o755, parents: true, overwrite: true)?
   fs.install(p"tailscaled", fp"${dest}/usr/bin/tailscaled", 0o755, parents: true, overwrite: true)?
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/tailscaled.xsh", 0o644, parents: true, overwrite: true)?
