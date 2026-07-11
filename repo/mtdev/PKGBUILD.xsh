@@ -18,9 +18,9 @@ export let checksums = [
 ]
 
 export let filetree = [
-  {path: p"usr/include/var/tmp/pm-build/mtdev-1.1.7-6/src/include/mtdev-mapping.h", kind: "file"},
-  {path: p"usr/include/var/tmp/pm-build/mtdev-1.1.7-6/src/include/mtdev-plumbing.h", kind: "file"},
-  {path: p"usr/include/var/tmp/pm-build/mtdev-1.1.7-6/src/include/mtdev.h", kind: "file"},
+  {path: p"usr/include/mtdev-mapping.h", kind: "file"},
+  {path: p"usr/include/mtdev-plumbing.h", kind: "file"},
+  {path: p"usr/include/mtdev.h", kind: "file"},
   {path: p"usr/lib/libmtdev.so", kind: "symlink"},
   {path: p"usr/lib/libmtdev.so.1", kind: "symlink"},
   {path: p"usr/lib/libmtdev.so.1.0.0", kind: "binary"},

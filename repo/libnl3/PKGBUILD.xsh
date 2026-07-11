@@ -4,7 +4,7 @@ export let name = "libnl3"
 
 export let ver = "3.11.0"
 
-export let rel = "3"
+export let rel = "4"
 
 export let deps = ["musl", "linux"]
 
@@ -17,29 +17,7 @@ export let checksums = [
 ]
 
 export let filetree = [
-  {path: p"objs", kind: "tree"},
   {path: p"usr", kind: "tree"},
-  {path: p"objs/lib_addr.lo", kind: "binary"},
-  {path: p"objs/lib_attr.lo", kind: "binary"},
-  {path: p"objs/lib_cache.lo", kind: "binary"},
-  {path: p"objs/lib_cache_mngr.lo", kind: "binary"},
-  {path: p"objs/lib_cache_mngt.lo", kind: "binary"},
-  {path: p"objs/lib_data.lo", kind: "binary"},
-  {path: p"objs/lib_error.lo", kind: "binary"},
-  {path: p"objs/lib_genl_ctrl.lo", kind: "binary"},
-  {path: p"objs/lib_genl_family.lo", kind: "binary"},
-  {path: p"objs/lib_genl_genl.lo", kind: "binary"},
-  {path: p"objs/lib_genl_mngt.lo", kind: "binary"},
-  {path: p"objs/lib_handlers.lo", kind: "binary"},
-  {path: p"objs/lib_hash.lo", kind: "binary"},
-  {path: p"objs/lib_hashtable.lo", kind: "binary"},
-  {path: p"objs/lib_mpls.lo", kind: "binary"},
-  {path: p"objs/lib_msg.lo", kind: "binary"},
-  {path: p"objs/lib_nl.lo", kind: "binary"},
-  {path: p"objs/lib_object.lo", kind: "binary"},
-  {path: p"objs/lib_socket.lo", kind: "binary"},
-  {path: p"objs/lib_utils.lo", kind: "binary"},
-  {path: p"objs/lib_version.lo", kind: "binary"},
   {path: p"usr/lib/libnl-3.so", kind: "symlink"},
   {path: p"usr/lib/libnl-3.so.200", kind: "symlink"},
   {path: p"usr/lib/libnl-3.so.200.26.0", kind: "binary"},
@@ -51,7 +29,7 @@ export let filetree = [
 export proc build(dest: Path) [fs, process, env, error] {
   let cwd = fs.cwd()?
   let src = cwd
-  let objs = fp"${dest}/objs"
+  let objs = p"objs"
   fs.mkdir(objs)?
 
   # Generate include/netlink/version.h from version.h.in

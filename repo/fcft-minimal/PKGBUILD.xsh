@@ -5,7 +5,7 @@ export let name = "fcft-minimal"
 
 export let ver = "3.3.3"
 
-export let rel = "7"
+export let rel = "8"
 
 export let deps = ["musl", "fontconfig", "freetype", "pixman"]
 
@@ -29,7 +29,7 @@ export let sources = [
 ]
 
 export let checksums = [
-  "c0d8d485b45b1af829f73101d6588f404a32bf3c7543236b1a4707d44be81b60",
+  "e9c89127c35ddbe02924f5c625c7b53c4f466302d6d0e329d157032d57f6cc7a",
   "a06764871a5ea6f2a85f62656552011243069d3d6e1b4e4148aadbf5200aab86",
   "b5e24cfe476b8e5b30c37614a7f5e4479e011659b3615d92e42713bb8005679d",
 ]

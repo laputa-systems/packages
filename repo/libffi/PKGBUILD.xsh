@@ -20,14 +20,14 @@ export let checksums = [
 type LibffiTarget = {target: Str, dir: Str, sources: List[Str]}
 
 export let filetree = [
-  {path: p"usr/include/var/tmp/pm-build/libffi-3.5.2-7/src/include/Makefile.am", kind: "file"},
-  {path: p"usr/include/var/tmp/pm-build/libffi-3.5.2-7/src/include/Makefile.in", kind: "file"},
-  {path: p"usr/include/var/tmp/pm-build/libffi-3.5.2-7/src/include/ffi.h", kind: "file"},
-  {path: p"usr/include/var/tmp/pm-build/libffi-3.5.2-7/src/include/ffi.h.in", kind: "file"},
-  {path: p"usr/include/var/tmp/pm-build/libffi-3.5.2-7/src/include/ffi_cfi.h", kind: "file"},
-  {path: p"usr/include/var/tmp/pm-build/libffi-3.5.2-7/src/include/ffi_common.h", kind: "file"},
-  {path: p"usr/include/var/tmp/pm-build/libffi-3.5.2-7/src/include/ffitarget.h", kind: "file"},
-  {path: p"usr/include/var/tmp/pm-build/libffi-3.5.2-7/src/include/tramp.h", kind: "file"},
+  {path: p"usr/include/Makefile.am", kind: "file"},
+  {path: p"usr/include/Makefile.in", kind: "file"},
+  {path: p"usr/include/ffi.h", kind: "file"},
+  {path: p"usr/include/ffi.h.in", kind: "file"},
+  {path: p"usr/include/ffi_cfi.h", kind: "file"},
+  {path: p"usr/include/ffi_common.h", kind: "file"},
+  {path: p"usr/include/ffitarget.h", kind: "file"},
+  {path: p"usr/include/tramp.h", kind: "file"},
   {path: p"usr/lib/libffi.so", kind: "symlink"},
   {path: p"usr/lib/libffi.so.8", kind: "symlink"},
   {path: p"usr/lib/libffi.so.8.2.0", kind: "binary"},
