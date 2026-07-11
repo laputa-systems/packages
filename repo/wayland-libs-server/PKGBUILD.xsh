@@ -19,6 +19,12 @@ export let checksums = [
   "82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536",
 ]
 
+export let filetree = [
+  {path: p"usr/lib/libwayland-server.so", kind: "symlink"},
+  {path: p"usr/lib/libwayland-server.so.0", kind: "symlink"},
+  {path: p"usr/lib/libwayland-server.so.0.24.0", kind: "binary"},
+]
+
 proc write_embedded_dtd() [fs, error] {
   let dump = p"protocol/wayland.dtd".read_bytes()?.dump("hex-u8")
   var values = []
@@ -180,9 +186,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.remove(fp"${dest}/usr/lib/pkgconfig", missing_ok: true)?
   fs.remove(fp"${dest}/usr/share", missing_ok: true)?
 }
-
-export let filetree = [
-  {path: p"usr/lib/libwayland-server.so", kind: "symlink"},
-  {path: p"usr/lib/libwayland-server.so.0", kind: "symlink"},
-  {path: p"usr/lib/libwayland-server.so.0.24.0", kind: "binary"},
-]

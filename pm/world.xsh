@@ -1210,9 +1210,15 @@ proc build_world_package(
     }
   } ?
 
+  let tarball_size = if built.len() > 0 {
+    compressed_package_size(fs.metadata(built[0].tarball)?.size)
+  } else {
+    "0K"
+  }
+
   print --flush ${pkg.name} world_package_id(pkg) "build:" "finished" time.duration_compact(
     (time.now() - started_at) / 1000,
-  ) "log:" $log_path
+  ) "size:" $tarball_size "log:" $log_path
 
   built
 }

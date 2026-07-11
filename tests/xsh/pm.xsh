@@ -792,6 +792,7 @@ main(@args)?
   test.contains(output, "laputa-pm proof: ok")?
   test.contains(output, "local-lib proof: ok")?
   test.contains(output, "local-app proof: ok")?
+  test.contains(output, "size: ")?
   test.ok(fp"${repo}/packages/${arch}/laputa-pm/laputa-pm-1.0.0-1.tar.gz".exists()?)?
   test.ok(fp"${repo}/packages/${arch}/local-lib/local-lib-1.0.0-1.tar.gz".exists()?)?
   test.ok(fp"${repo}/packages/${arch}/local-app/local-app-1.0.0-1.tar.gz".exists()?)?
@@ -1126,6 +1127,7 @@ proc test_pm_world_plan_build_and_upload(ctx: TestContext) [fs, process, env, er
   test.contains(output, "world-lib proof: ok")?
   test.contains(output, "world-app proof: ok")?
   test.contains(output, "world-plan build complete")?
+  test.contains(output, "size: ")?
   test.contains(output, "repo export uploaded")?
   let stage = single_world_cache(home)?
   let arch = fixture_arch()?

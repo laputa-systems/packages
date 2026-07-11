@@ -17,6 +17,13 @@ export let checksums = [
   "a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239",
 ]
 
+export let filetree = [
+  {path: p"usr/include/pixman-1/pixman-version.h", kind: "file"},
+  {path: p"usr/include/pixman-1/pixman.h", kind: "file"},
+  {path: p"usr/lib/libpixman-1.so", kind: "symlink"},
+  {path: p"usr/lib/pkgconfig/pixman-1.pc", kind: "file"},
+]
+
 proc patch_musl_math() [fs, error] {
   let meson = p"meson.build"
 
@@ -64,10 +71,3 @@ export proc build(dest: Path) [fs, process, env, error] {
     }
   }
 }
-
-export let filetree = [
-  {path: p"usr/include/pixman-1/pixman-version.h", kind: "file"},
-  {path: p"usr/include/pixman-1/pixman.h", kind: "file"},
-  {path: p"usr/lib/libpixman-1.so", kind: "symlink"},
-  {path: p"usr/lib/pkgconfig/pixman-1.pc", kind: "file"},
-]

@@ -51,6 +51,11 @@ export let checksums = [
   "39fa47de004dc15b2d71fad9256734992f93743cdb65ef1a70d454b0403f5031",
 ]
 
+export let filetree = [
+  {path: p"boot", kind: "tree"},
+  {path: p"usr", kind: "tree"},
+]
+
 proc package_arch() [env, error] -> Result[Str] {
   let arch = pm_util.target_arch()?
 
@@ -189,8 +194,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.install(p".config", fp"${dest}/usr/share/linux/config-${ver}", 0o644, parents: true, overwrite: true)?
   install_uapi_headers(dest, srcarch)?
 }
-
-export let filetree = [
-  {path: p"boot", kind: "tree"},
-  {path: p"usr", kind: "tree"},
-]

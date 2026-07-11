@@ -24,6 +24,10 @@ export let checksums = [
   "838324384f77cd41f0d9de9ba36b980e437efdf54e136b8a1854bee58cf6882f",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/tmux", kind: "binary"},
+]
+
 proc write_config_h() [fs, error] {
   fs.write(
     p"config.h",
@@ -160,7 +164,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   let tmux = build_tmux(cc)?
   fs.install(tmux, fp"${dest}/usr/bin/tmux", 0o755, parents: true, overwrite: true)?
 }
-
-export let filetree = [
-  {path: p"usr/bin/tmux", kind: "binary"},
-]

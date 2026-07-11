@@ -16,14 +16,6 @@ export let checksums = [
 
 export let extract_install = true
 
-export proc build(dest: Path) [fs, error] {
-  let _ = fs.copy_tree(p".", dest, parents: true, overwrite: true)?
-
-  for keep in fs.walk(dest) |> where .kind == "file" and .name == ".keep" {
-    keep.path.remove()?
-  }
-}
-
 export let filetree = [
   {path: p"bin", kind: "symlink"},
   {path: p"etc/environment", kind: "file"},
@@ -52,3 +44,11 @@ export let filetree = [
   {path: p"var/mail", kind: "symlink"},
   {path: p"var/run", kind: "symlink"},
 ]
+
+export proc build(dest: Path) [fs, error] {
+  let _ = fs.copy_tree(p".", dest, parents: true, overwrite: true)?
+
+  for keep in fs.walk(dest) |> where .kind == "file" and .name == ".keep" {
+    keep.path.remove()?
+  }
+}

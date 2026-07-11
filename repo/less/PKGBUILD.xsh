@@ -18,6 +18,11 @@ export let checksums = [
   "846a3b60efa6199bcab518d0934bd83bded678d97e58e8202b55ce7192377f69",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/less", kind: "binary"},
+  {path: p"usr/libexec/less-osc8-open", kind: "file"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let target_arch = pm_util.target_arch()?
@@ -136,8 +141,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.install(less.output, fp"${dest}/usr/bin/less", 0o755, parents: true, overwrite: true)?
   fs.install(p"less-osc8-open.sh", fp"${dest}/usr/libexec/less-osc8-open", 0o755, parents: true, overwrite: true)?
 }
-
-export let filetree = [
-  {path: p"usr/bin/less", kind: "binary"},
-  {path: p"usr/libexec/less-osc8-open", kind: "file"},
-]

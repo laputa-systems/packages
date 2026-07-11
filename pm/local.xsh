@@ -1,5 +1,5 @@
-use extensions
 use elf
+use extensions
 use sources
 use types
 use util
@@ -92,6 +92,11 @@ export pure package_needs_strip_tool(pkg: Package) -> Bool {
   }
 
   false
+}
+
+export pure compressed_package_size(size: Int) -> Str {
+  let kib = (size + 1023) / 1024
+  f"${kib}K"
 }
 
 export proc collect_old_manifest_extra(

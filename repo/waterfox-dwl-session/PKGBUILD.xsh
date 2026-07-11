@@ -13,6 +13,13 @@ export let sources = []
 export let checksums = [
 ]
 
+export let filetree = [
+  {path: p"etc/asound.conf", kind: "file"},
+  {path: p"usr/bin/waterfox-dwl-session", kind: "file"},
+  {path: p"usr/bin/waterfox-session-clipboard-proof", kind: "file"},
+  {path: p"usr/lib/init/rc.d/waterfox-dwl-session.boot", kind: "file"},
+]
+
 proc install_session(dest: Path) [fs, error] {
   fs.write(
     fp"${dest}/usr/bin/waterfox-dwl-session",
@@ -394,10 +401,3 @@ export proc post_install(root: Path) [fs, error] {
     add_group_member(group_file, group_name, "laputa")?
   }
 }
-
-export let filetree = [
-  {path: p"etc/asound.conf", kind: "file"},
-  {path: p"usr/bin/waterfox-dwl-session", kind: "file"},
-  {path: p"usr/bin/waterfox-session-clipboard-proof", kind: "file"},
-  {path: p"usr/lib/init/rc.d/waterfox-dwl-session.boot", kind: "file"},
-]

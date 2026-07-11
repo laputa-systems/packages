@@ -28,6 +28,13 @@ export let checksums = [
   "b334fe4e1718220cd3a0110759575a91e10028d1959959941e198ce90a0e1f4d",
 ]
 
+export let filetree = [
+  {path: p"usr", kind: "tree"},
+  {path: p"usr/bin/cmake", kind: "binary"},
+  {path: p"usr/bin/cpack", kind: "binary"},
+  {path: p"usr/bin/ctest", kind: "binary"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let target_arch = pm_util.target_arch()?
@@ -858,10 +865,3 @@ set (CMAKE_INSTALL_RPATH "$ORIGIN/../lib" CACHE STRING "Runtime library search p
     } ?
   } ?
 }
-
-export let filetree = [
-  {path: p"usr", kind: "tree"},
-  {path: p"usr/bin/cmake", kind: "binary"},
-  {path: p"usr/bin/cpack", kind: "binary"},
-  {path: p"usr/bin/ctest", kind: "binary"},
-]

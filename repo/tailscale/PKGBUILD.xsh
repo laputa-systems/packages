@@ -22,6 +22,13 @@ export let checksums_x86_64 = [
   "SKIP",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/tailscale", kind: "binary"},
+  {path: p"usr/bin/tailscaled", kind: "binary"},
+  {path: p"usr/lib/sysctl.d/50-tailscale-ipv6.conf", kind: "file"},
+  {path: p"usr/lib/xinit/services/tailscaled.xsh", kind: "file"},
+]
+
 export proc build(dest: Path) [fs, error] {
   fs.install(p"tailscale", fp"${dest}/usr/bin/tailscale", 0o755, parents: true, overwrite: true)?
   fs.install(p"tailscaled", fp"${dest}/usr/bin/tailscaled", 0o755, parents: true, overwrite: true)?
@@ -38,10 +45,3 @@ net.ipv6.conf.default.disable_ipv6 = 1
 """,
   )?
 }
-
-export let filetree = [
-  {path: p"usr/bin/tailscale", kind: "binary"},
-  {path: p"usr/bin/tailscaled", kind: "binary"},
-  {path: p"usr/lib/sysctl.d/50-tailscale-ipv6.conf", kind: "file"},
-  {path: p"usr/lib/xinit/services/tailscaled.xsh", kind: "file"},
-]

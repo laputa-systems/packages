@@ -20,6 +20,42 @@ export let checksums = [
   "0f6f22bcd40969af45cfd50bdb5ffd78cc68c3da06354084291cffd77740e7f4",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/bison", kind: "binary"},
+  {path: p"usr/bin/yacc", kind: "file"},
+  {path: p"usr/lib/pm/repo/bison/files/bison.xsh", kind: "file"},
+  {path: p"usr/share/bison/README.md", kind: "file"},
+  {path: p"usr/share/bison/bison-default.css", kind: "file"},
+  {path: p"usr/share/bison/local.mk", kind: "file"},
+  {path: p"usr/share/bison/m4sugar/foreach.m4", kind: "file"},
+  {path: p"usr/share/bison/m4sugar/m4sugar.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/bison.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/c++-skel.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/c++.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/c-like.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/c-skel.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/c.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/d-skel.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/d.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/glr.c", kind: "file"},
+  {path: p"usr/share/bison/skeletons/glr.cc", kind: "file"},
+  {path: p"usr/share/bison/skeletons/glr2.cc", kind: "file"},
+  {path: p"usr/share/bison/skeletons/java-skel.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/java.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/lalr1.cc", kind: "file"},
+  {path: p"usr/share/bison/skeletons/lalr1.d", kind: "file"},
+  {path: p"usr/share/bison/skeletons/lalr1.java", kind: "file"},
+  {path: p"usr/share/bison/skeletons/location.cc", kind: "file"},
+  {path: p"usr/share/bison/skeletons/stack.hh", kind: "file"},
+  {path: p"usr/share/bison/skeletons/traceon.m4", kind: "file"},
+  {path: p"usr/share/bison/skeletons/variant.hh", kind: "file"},
+  {path: p"usr/share/bison/skeletons/yacc.c", kind: "file"},
+  {path: p"usr/share/bison/xslt/bison.xsl", kind: "file"},
+  {path: p"usr/share/bison/xslt/xml2dot.xsl", kind: "file"},
+  {path: p"usr/share/bison/xslt/xml2text.xsl", kind: "file"},
+  {path: p"usr/share/bison/xslt/xml2xhtml.xsl", kind: "file"},
+]
+
 proc install_data_tree(src: Path, dest: Path) [fs, error] {
   for e in fs.ls(src)? {
     if e.kind == "dir" {
@@ -721,39 +757,3 @@ main(@args)?
   install_data_tree(p"data", fp"${dest}/usr/share/bison")?
   fs.install(p"bison.xsh", fp"${dest}/usr/lib/pm/repo/bison/files/bison.xsh", 0o755, parents: true, overwrite: true)?
 }
-
-export let filetree = [
-  {path: p"usr/bin/bison", kind: "binary"},
-  {path: p"usr/bin/yacc", kind: "file"},
-  {path: p"usr/lib/pm/repo/bison/files/bison.xsh", kind: "file"},
-  {path: p"usr/share/bison/README.md", kind: "file"},
-  {path: p"usr/share/bison/bison-default.css", kind: "file"},
-  {path: p"usr/share/bison/local.mk", kind: "file"},
-  {path: p"usr/share/bison/m4sugar/foreach.m4", kind: "file"},
-  {path: p"usr/share/bison/m4sugar/m4sugar.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/bison.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/c++-skel.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/c++.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/c-like.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/c-skel.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/c.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/d-skel.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/d.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/glr.c", kind: "file"},
-  {path: p"usr/share/bison/skeletons/glr.cc", kind: "file"},
-  {path: p"usr/share/bison/skeletons/glr2.cc", kind: "file"},
-  {path: p"usr/share/bison/skeletons/java-skel.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/java.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/lalr1.cc", kind: "file"},
-  {path: p"usr/share/bison/skeletons/lalr1.d", kind: "file"},
-  {path: p"usr/share/bison/skeletons/lalr1.java", kind: "file"},
-  {path: p"usr/share/bison/skeletons/location.cc", kind: "file"},
-  {path: p"usr/share/bison/skeletons/stack.hh", kind: "file"},
-  {path: p"usr/share/bison/skeletons/traceon.m4", kind: "file"},
-  {path: p"usr/share/bison/skeletons/variant.hh", kind: "file"},
-  {path: p"usr/share/bison/skeletons/yacc.c", kind: "file"},
-  {path: p"usr/share/bison/xslt/bison.xsl", kind: "file"},
-  {path: p"usr/share/bison/xslt/xml2dot.xsl", kind: "file"},
-  {path: p"usr/share/bison/xslt/xml2text.xsl", kind: "file"},
-  {path: p"usr/share/bison/xslt/xml2xhtml.xsl", kind: "file"},
-]

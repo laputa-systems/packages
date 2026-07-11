@@ -22,6 +22,12 @@ export let checksums_x86_64 = [
 
 export let nostrip = true
 
+export let filetree = [
+  {path: p"init", kind: "symlink"},
+  {path: p"usr/bin/init", kind: "symlink"},
+  {path: p"usr/bin/xinit", kind: "file"},
+]
+
 export proc build(dest: Path) [fs, error] {
   let xinit = fp"${dest}/usr/bin/xinit"
   fs.install(p"xinit.xsh", xinit, 0o755, parents: true, overwrite: true)?
@@ -30,9 +36,3 @@ export proc build(dest: Path) [fs, error] {
   fs.symlink(p"xinit", fp"${dest}/usr/bin/init")?
   fs.symlink(p"usr/bin/xinit", fp"${dest}/init")?
 }
-
-export let filetree = [
-  {path: p"init", kind: "symlink"},
-  {path: p"usr/bin/init", kind: "symlink"},
-  {path: p"usr/bin/xinit", kind: "file"},
-]

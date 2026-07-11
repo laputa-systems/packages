@@ -14,11 +14,6 @@ export let checksums = [
   "9f79e813c08fc86cfa46dd75c4fcda1a4a51b482db2607e1fcfaafb92f588a31",
 ]
 
-export proc build(dest: Path) [fs, error] {
-  fs.mkdir(fp"${dest}/usr/share/alsa")?
-  let _ = fs.copy_tree(p"ucm2", fp"${dest}/usr/share/alsa/ucm2", parents: true, overwrite: true)?
-}
-
 export let filetree = [
   {path: p"usr", kind: "tree"},
   {path: p"usr/share/alsa/ucm2/conf.d/DB410c/DB410c.conf", kind: "symlink"},
@@ -165,3 +160,8 @@ export let filetree = [
   {path: p"usr/share/alsa/ucm2/module/snd_soc_tegra_alc5632.conf", kind: "symlink"},
   {path: p"usr/share/alsa/ucm2/module/snd_soc_tegra_max98090.conf", kind: "symlink"},
 ]
+
+export proc build(dest: Path) [fs, error] {
+  fs.mkdir(fp"${dest}/usr/share/alsa")?
+  let _ = fs.copy_tree(p"ucm2", fp"${dest}/usr/share/alsa/ucm2", parents: true, overwrite: true)?
+}

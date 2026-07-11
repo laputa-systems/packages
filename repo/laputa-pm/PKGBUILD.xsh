@@ -15,6 +15,30 @@ export let checksums = [
   "SKIP",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/pm", kind: "file"},
+  {path: p"usr/lib/pm/pm.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/build.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/buildroot.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/chroot-run.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/cli.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/configure.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/env.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/extensions.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/install.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/local.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/make.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/meson.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/proof.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/remote.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/repo.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/sources.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/target.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/types.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/util.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/world.xsh", kind: "file"},
+]
+
 export proc build(dest: Path) [fs, env, error] {
   fs.install(p"pm.xsh", fp"${dest}/usr/lib/pm/pm.xsh", 0o644, parents: true, overwrite: true)?
   let _ = fs.copy_tree(p"pm", fp"${dest}/usr/lib/pm/pm", parents: true, overwrite: true)?
@@ -75,27 +99,3 @@ main(@args)?
 
   fs.chmod(fp"${dest}/usr/bin/pm", 0o755)?
 }
-
-export let filetree = [
-  {path: p"usr/bin/pm", kind: "file"},
-  {path: p"usr/lib/pm/pm.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/build.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/buildroot.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/chroot-run.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/cli.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/configure.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/env.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/extensions.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/install.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/local.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/make.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/meson.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/proof.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/remote.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/repo.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/sources.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/target.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/types.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/util.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/world.xsh", kind: "file"},
-]

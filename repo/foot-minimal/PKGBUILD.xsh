@@ -55,6 +55,11 @@ export let checksums = [
   "9053596e40a895d310fa3cf74a68ae1f87828d20a3cdcc927275acaf9d2104cc",
 ]
 
+export let filetree = [
+  {path: p"etc/xdg/foot/foot.ini", kind: "file"},
+  {path: p"usr/bin/foot", kind: "binary"},
+]
+
 proc sysroot_path(root: Str, raw: Str) [fs, error] -> Result[Path] {
   let path_value = fp"${raw.trim()}"
 
@@ -235,8 +240,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   write_minimal_config(dest)?
   fs.remove(fp"${dest}/usr/share", missing_ok: true)?
 }
-
-export let filetree = [
-  {path: p"etc/xdg/foot/foot.ini", kind: "file"},
-  {path: p"usr/bin/foot", kind: "binary"},
-]

@@ -18,6 +18,24 @@ export let checksums = [
   "cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/bomtool", kind: "binary"},
+  {path: p"usr/bin/pkg-config", kind: "symlink"},
+  {path: p"usr/bin/pkgconf", kind: "binary"},
+  {path: p"usr/include/pkgconf/libpkgconf/bsdstubs.h", kind: "file"},
+  {path: p"usr/include/pkgconf/libpkgconf/config.h", kind: "file"},
+  {path: p"usr/include/pkgconf/libpkgconf/iter.h", kind: "file"},
+  {path: p"usr/include/pkgconf/libpkgconf/libpkgconf-api.h", kind: "file"},
+  {path: p"usr/include/pkgconf/libpkgconf/libpkgconf.h", kind: "file"},
+  {path: p"usr/include/pkgconf/libpkgconf/stdinc.h", kind: "file"},
+  {path: p"usr/include/pkgconf/libpkgconf/win-dirent.h", kind: "file"},
+  {path: p"usr/lib/libpkgconf.a", kind: "file"},
+  {path: p"usr/lib/libpkgconf.so", kind: "symlink"},
+  {path: p"usr/lib/libpkgconf.so.7", kind: "symlink"},
+  {path: p"usr/lib/libpkgconf.so.7.0.0", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/libpkgconf.pc", kind: "file"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let arch = pm_util.target_arch()?
@@ -203,21 +221,3 @@ Cflags: -I\${includedir}/pkgconf
   fs.mkdir(fp"${dest}/usr/lib/pkgconfig")?
   fs.write(fp"${dest}/usr/lib/pkgconfig/libpkgconf.pc", pc_template.replace("PKG_VER", ver))?
 }
-
-export let filetree = [
-  {path: p"usr/bin/bomtool", kind: "binary"},
-  {path: p"usr/bin/pkg-config", kind: "symlink"},
-  {path: p"usr/bin/pkgconf", kind: "binary"},
-  {path: p"usr/include/pkgconf/libpkgconf/bsdstubs.h", kind: "file"},
-  {path: p"usr/include/pkgconf/libpkgconf/config.h", kind: "file"},
-  {path: p"usr/include/pkgconf/libpkgconf/iter.h", kind: "file"},
-  {path: p"usr/include/pkgconf/libpkgconf/libpkgconf-api.h", kind: "file"},
-  {path: p"usr/include/pkgconf/libpkgconf/libpkgconf.h", kind: "file"},
-  {path: p"usr/include/pkgconf/libpkgconf/stdinc.h", kind: "file"},
-  {path: p"usr/include/pkgconf/libpkgconf/win-dirent.h", kind: "file"},
-  {path: p"usr/lib/libpkgconf.a", kind: "file"},
-  {path: p"usr/lib/libpkgconf.so", kind: "symlink"},
-  {path: p"usr/lib/libpkgconf.so.7", kind: "symlink"},
-  {path: p"usr/lib/libpkgconf.so.7.0.0", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/libpkgconf.pc", kind: "file"},
-]

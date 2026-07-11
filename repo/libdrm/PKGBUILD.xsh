@@ -18,6 +18,35 @@ export let checksums = [
 
 type Modifier = {vendor: Str, mod: Str, name: Str}
 
+export let filetree = [
+  {path: p"usr/include/libdrm/amdgpu_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/drm_fourcc.h", kind: "file"},
+  {path: p"usr/include/libdrm/drm_mode.h", kind: "file"},
+  {path: p"usr/include/libdrm/drm_sarea.h", kind: "file"},
+  {path: p"usr/include/libdrm/i915_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/mach64_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/mga_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/msm_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/nouveau_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/qxl_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/r128_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/radeon_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/savage_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/sis_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/tegra_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/vc4_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/via_drm.h", kind: "file"},
+  {path: p"usr/include/libdrm/virtgpu_drm.h", kind: "file"},
+  {path: p"usr/include/libsync.h", kind: "file"},
+  {path: p"usr/include/xf86drm.h", kind: "file"},
+  {path: p"usr/include/xf86drmMode.h", kind: "file"},
+  {path: p"usr/lib/libdrm.so", kind: "symlink"},
+  {path: p"usr/lib/libdrm.so.2", kind: "symlink"},
+  {path: p"usr/lib/libdrm.so.2.127.0", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/libdrm.pc", kind: "file"},
+]
+
 proc write_format_modifier_table() [fs, error] {
   let header = p"include/drm/drm_fourcc.h"
   var intel = []
@@ -119,32 +148,3 @@ export proc build(dest: Path) [fs, process, env, error] {
     } ?
   } ?
 }
-
-export let filetree = [
-  {path: p"usr/include/libdrm/amdgpu_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/drm_fourcc.h", kind: "file"},
-  {path: p"usr/include/libdrm/drm_mode.h", kind: "file"},
-  {path: p"usr/include/libdrm/drm_sarea.h", kind: "file"},
-  {path: p"usr/include/libdrm/i915_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/mach64_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/mga_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/msm_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/nouveau_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/qxl_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/r128_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/radeon_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/savage_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/sis_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/tegra_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/vc4_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/via_drm.h", kind: "file"},
-  {path: p"usr/include/libdrm/virtgpu_drm.h", kind: "file"},
-  {path: p"usr/include/libsync.h", kind: "file"},
-  {path: p"usr/include/xf86drm.h", kind: "file"},
-  {path: p"usr/include/xf86drmMode.h", kind: "file"},
-  {path: p"usr/lib/libdrm.so", kind: "symlink"},
-  {path: p"usr/lib/libdrm.so.2", kind: "symlink"},
-  {path: p"usr/lib/libdrm.so.2.127.0", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/libdrm.pc", kind: "file"},
-]

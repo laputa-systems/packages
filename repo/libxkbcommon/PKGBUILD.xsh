@@ -22,6 +22,18 @@ export let checksums = [
   "5abcf6696e29a393960b9d842a719b025fcaea2c8c41b2976b5fa5f28e763b96",
 ]
 
+export let filetree = [
+  {path: p"usr/include/xkbcommon/xkbcommon-compat.h", kind: "file"},
+  {path: p"usr/include/xkbcommon/xkbcommon-compose.h", kind: "file"},
+  {path: p"usr/include/xkbcommon/xkbcommon-keysyms.h", kind: "file"},
+  {path: p"usr/include/xkbcommon/xkbcommon-names.h", kind: "file"},
+  {path: p"usr/include/xkbcommon/xkbcommon.h", kind: "file"},
+  {path: p"usr/lib/libxkbcommon.so", kind: "symlink"},
+  {path: p"usr/lib/libxkbcommon.so.0", kind: "symlink"},
+  {path: p"usr/lib/libxkbcommon.so.0.11.0", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/xkbcommon.pc", kind: "file"},
+]
+
 proc patch_vendored_parser() [fs, error] {
   fs.install(p"generated/parser.c", p"src/xkbcomp/parser.c", 0o644, parents: true, overwrite: true)?
   fs.install(p"generated/parser.h", p"src/xkbcomp/parser.h", 0o644, parents: true, overwrite: true)?
@@ -77,15 +89,3 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.remove(fp"${dest}/usr/share/bash-completion", missing_ok: true)?
 }
-
-export let filetree = [
-  {path: p"usr/include/xkbcommon/xkbcommon-compat.h", kind: "file"},
-  {path: p"usr/include/xkbcommon/xkbcommon-compose.h", kind: "file"},
-  {path: p"usr/include/xkbcommon/xkbcommon-keysyms.h", kind: "file"},
-  {path: p"usr/include/xkbcommon/xkbcommon-names.h", kind: "file"},
-  {path: p"usr/include/xkbcommon/xkbcommon.h", kind: "file"},
-  {path: p"usr/lib/libxkbcommon.so", kind: "symlink"},
-  {path: p"usr/lib/libxkbcommon.so.0", kind: "symlink"},
-  {path: p"usr/lib/libxkbcommon.so.0.11.0", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/xkbcommon.pc", kind: "file"},
-]

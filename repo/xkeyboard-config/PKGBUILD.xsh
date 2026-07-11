@@ -16,6 +16,20 @@ export let checksums = [
   "169e075a92d957a57787c199e84e359df2931b7196c1c5b4a3d576ee6235a87c",
 ]
 
+export let filetree = [
+  {path: p"usr", kind: "tree"},
+  {path: p"usr/share/X11/xkb", kind: "symlink"},
+  {path: p"usr/share/pkgconfig/xkeyboard-config.pc", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/caps", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/esperanto", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/grp", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/japan", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/korean", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/lv2", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/lv3", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/lv5", kind: "symlink"},
+]
+
 proc rule_parts(ruleset: Str) [fs, error] -> Result[List[Path]] {
   let entries = fs.ls(p"rules")?
     |> where .kind == "file"
@@ -114,17 +128,3 @@ Version: 2.45
 
   fs.symlink(p"xkeyboard-config-2.pc", fp"${dest}/usr/share/pkgconfig/xkeyboard-config.pc")?
 }
-
-export let filetree = [
-  {path: p"usr", kind: "tree"},
-  {path: p"usr/share/X11/xkb", kind: "symlink"},
-  {path: p"usr/share/pkgconfig/xkeyboard-config.pc", kind: "symlink"},
-  {path: p"usr/share/xkeyboard-config-2/symbols/caps", kind: "symlink"},
-  {path: p"usr/share/xkeyboard-config-2/symbols/esperanto", kind: "symlink"},
-  {path: p"usr/share/xkeyboard-config-2/symbols/grp", kind: "symlink"},
-  {path: p"usr/share/xkeyboard-config-2/symbols/japan", kind: "symlink"},
-  {path: p"usr/share/xkeyboard-config-2/symbols/korean", kind: "symlink"},
-  {path: p"usr/share/xkeyboard-config-2/symbols/lv2", kind: "symlink"},
-  {path: p"usr/share/xkeyboard-config-2/symbols/lv3", kind: "symlink"},
-  {path: p"usr/share/xkeyboard-config-2/symbols/lv5", kind: "symlink"},
-]

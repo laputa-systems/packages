@@ -27,6 +27,14 @@ export let checksums = [
   "SKIP",
 ]
 
+export let filetree = [
+  {path: p"etc/wpa_supplicant/wpa_supplicant.conf", kind: "file"},
+  {path: p"usr/bin/wpa_cli", kind: "binary"},
+  {path: p"usr/bin/wpa_passphrase", kind: "binary"},
+  {path: p"usr/bin/wpa_supplicant", kind: "binary"},
+  {path: p"usr/lib/xinit/services/wpa_supplicant.xsh", kind: "file"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let cwd = fs.cwd()?
   let tgz = fp"${cwd}/wpa_supplicant-2.11.tar.gz"
@@ -273,11 +281,3 @@ export proc build(dest: Path) [fs, process, env, error] {
     overwrite: true,
   )?
 }
-
-export let filetree = [
-  {path: p"etc/wpa_supplicant/wpa_supplicant.conf", kind: "file"},
-  {path: p"usr/bin/wpa_cli", kind: "binary"},
-  {path: p"usr/bin/wpa_passphrase", kind: "binary"},
-  {path: p"usr/bin/wpa_supplicant", kind: "binary"},
-  {path: p"usr/lib/xinit/services/wpa_supplicant.xsh", kind: "file"},
-]

@@ -31,6 +31,10 @@ export let checksums = [
   "a80cc39794a17b9753349496e2cb127f1de22eb179d78f2c22ef647f2643a654",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/dwl", kind: "binary"},
+]
+
 proc sysroot_path(root: Str, raw: Str) [fs, error] -> Result[Path] {
   let path_value = fp"${raw.trim()}"
 
@@ -243,7 +247,3 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.install(p"dwl", fp"${dest}/usr/bin/dwl", 0o755, parents: true, overwrite: true)?
 }
-
-export let filetree = [
-  {path: p"usr/bin/dwl", kind: "binary"},
-]

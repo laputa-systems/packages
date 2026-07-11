@@ -29,6 +29,12 @@ export let checksums_x86_64 = [
   "aee540abf132920f791ef781489851a078d69dff493fb628d49c1d573f92bb3a",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/su", kind: "binary"},
+  {path: p"usr/bin/sudo", kind: "binary"},
+  {path: p"usr/bin/sudoedit", kind: "symlink"},
+]
+
 pure rust_triple(arch: Str) -> Str {
   if arch == "aarch64" or arch == "arm64" {
     return "aarch64-unknown-linux-musl"
@@ -125,9 +131,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.install(fp"target/${triple}/release/su", fp"${dest}/usr/bin/su", 0o4755, parents: true, overwrite: true)?
   fs.symlink(p"sudo", fp"${dest}/usr/bin/sudoedit")?
 }
-
-export let filetree = [
-  {path: p"usr/bin/su", kind: "binary"},
-  {path: p"usr/bin/sudo", kind: "binary"},
-  {path: p"usr/bin/sudoedit", kind: "symlink"},
-]

@@ -16,6 +16,12 @@ export let checksums = [
   "7aaaafbfb01942113ec0c31e51f705910e81079205088ca2f8f137a3869e1a3a",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/alsactl", kind: "binary"},
+  {path: p"usr/bin/amixer", kind: "binary"},
+  {path: p"usr/bin/aplay", kind: "binary"},
+]
+
 proc write_tool_source() [fs, error] {
   fs.write(
     p"laputa-alsa-tool.c",
@@ -92,9 +98,3 @@ export proc build(dest: Path) [fs, process, env, error] {
     fs.install(tool.output, fp"${dest}/usr/bin/${tool_name}", 0o755, parents: true, overwrite: true)?
   }
 }
-
-export let filetree = [
-  {path: p"usr/bin/alsactl", kind: "binary"},
-  {path: p"usr/bin/amixer", kind: "binary"},
-  {path: p"usr/bin/aplay", kind: "binary"},
-]

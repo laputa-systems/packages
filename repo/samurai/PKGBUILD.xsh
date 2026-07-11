@@ -16,6 +16,11 @@ export let checksums = [
   "3b8cf51548dfc49b7efe035e191ff5e1963ebc4fe8f6064a5eefc5343eaf78a5",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/ninja", kind: "symlink"},
+  {path: p"usr/bin/samu", kind: "binary"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let os = system.uname()?
@@ -59,8 +64,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.install(samu.output, fp"${dest}/usr/bin/samu", 0o755, parents: true, overwrite: true)?
   fs.symlink(p"samu", fp"${dest}/usr/bin/ninja")?
 }
-
-export let filetree = [
-  {path: p"usr/bin/ninja", kind: "symlink"},
-  {path: p"usr/bin/samu", kind: "binary"},
-]

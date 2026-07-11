@@ -28,6 +28,11 @@ export let checksums = [
   "b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/wl-copy", kind: "binary"},
+  {path: p"usr/bin/wl-paste", kind: "binary"},
+]
+
 proc patch_optional_installs() [fs, error] {
   fs.write(p"data/meson.build", "")?
   fs.write(p"completions/meson.build", "")?
@@ -78,8 +83,3 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.remove(fp"${dest}/usr/share/man", missing_ok: true)?
 }
-
-export let filetree = [
-  {path: p"usr/bin/wl-copy", kind: "binary"},
-  {path: p"usr/bin/wl-paste", kind: "binary"},
-]

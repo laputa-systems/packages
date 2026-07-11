@@ -17,6 +17,11 @@ export let checksums = [
   "a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239",
 ]
 
+export let filetree = [
+  {path: p"usr/lib/libpixman-1.so.0", kind: "symlink"},
+  {path: p"usr/lib/libpixman-1.so.0.46.4", kind: "binary"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let jobs_flag = f"-j${cpu.count()}"
   let arch = pm_util.target_arch()?
@@ -39,8 +44,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.remove(fp"${dest}/usr/lib/pkgconfig", missing_ok: true)?
   fs.remove(fp"${dest}/usr/lib/libpixman-1.so", missing_ok: true)?
 }
-
-export let filetree = [
-  {path: p"usr/lib/libpixman-1.so.0", kind: "symlink"},
-  {path: p"usr/lib/libpixman-1.so.0.46.4", kind: "binary"},
-]

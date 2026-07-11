@@ -28,6 +28,33 @@ export let checksums_x86_64 = [
   "ac0bd443a1933bbd2c0efbedf6ebc97ff8ca2469e5ba65eadb966fb75f65dd1c",
 ]
 
+export let filetree = [
+  {path: p"usr", kind: "tree"},
+  {path: p"usr/lib/llvm22/bin/clang", kind: "symlink"},
+  {path: p"usr/lib/llvm22/bin/clang++", kind: "symlink"},
+  {path: p"usr/lib/llvm22/bin/clang-22", kind: "binary"},
+  {path: p"usr/lib/llvm22/bin/clang-cl", kind: "symlink"},
+  {path: p"usr/lib/llvm22/bin/clang-cpp", kind: "symlink"},
+  {path: p"usr/lib/llvm22/bin/ld.lld", kind: "symlink"},
+  {path: p"usr/lib/llvm22/bin/ld64.lld", kind: "symlink"},
+  {path: p"usr/lib/llvm22/bin/lld", kind: "binary"},
+  {path: p"usr/lib/llvm22/bin/lld-link", kind: "symlink"},
+  {path: p"usr/lib/llvm22/bin/llvm-ar", kind: "binary"},
+  {path: p"usr/lib/llvm22/bin/llvm-nm", kind: "binary"},
+  {path: p"usr/lib/llvm22/bin/llvm-objcopy", kind: "binary"},
+  {path: p"usr/lib/llvm22/bin/llvm-objdump", kind: "binary"},
+  {path: p"usr/lib/llvm22/bin/llvm-ranlib", kind: "symlink"},
+  {path: p"usr/lib/llvm22/bin/llvm-readelf", kind: "symlink"},
+  {path: p"usr/lib/llvm22/bin/llvm-readobj", kind: "binary"},
+  {path: p"usr/lib/llvm22/bin/llvm-size", kind: "binary"},
+  {path: p"usr/lib/llvm22/bin/llvm-strings", kind: "binary"},
+  {path: p"usr/lib/llvm22/bin/llvm-strip", kind: "symlink"},
+  {path: p"usr/lib/llvm22/bin/llvm-symbolizer", kind: "binary"},
+  {path: p"usr/lib/llvm22/bin/wasm-ld", kind: "symlink"},
+  {path: p"usr/lib/llvm22/lib/libLTO.so", kind: "symlink"},
+  {path: p"usr/lib/llvm22/lib/libLTO.so.22.1", kind: "binary"},
+]
+
 pure bool_literal(value: Bool) -> Str {
   if value {
     return "true"
@@ -431,30 +458,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   install_prebuilt_tree(dest)?
   install_wrappers(dest)?
 }
-
-export let filetree = [
-  {path: p"usr", kind: "tree"},
-  {path: p"usr/lib/llvm22/bin/clang", kind: "symlink"},
-  {path: p"usr/lib/llvm22/bin/clang++", kind: "symlink"},
-  {path: p"usr/lib/llvm22/bin/clang-22", kind: "binary"},
-  {path: p"usr/lib/llvm22/bin/clang-cl", kind: "symlink"},
-  {path: p"usr/lib/llvm22/bin/clang-cpp", kind: "symlink"},
-  {path: p"usr/lib/llvm22/bin/ld.lld", kind: "symlink"},
-  {path: p"usr/lib/llvm22/bin/ld64.lld", kind: "symlink"},
-  {path: p"usr/lib/llvm22/bin/lld", kind: "binary"},
-  {path: p"usr/lib/llvm22/bin/lld-link", kind: "symlink"},
-  {path: p"usr/lib/llvm22/bin/llvm-ar", kind: "binary"},
-  {path: p"usr/lib/llvm22/bin/llvm-nm", kind: "binary"},
-  {path: p"usr/lib/llvm22/bin/llvm-objcopy", kind: "binary"},
-  {path: p"usr/lib/llvm22/bin/llvm-objdump", kind: "binary"},
-  {path: p"usr/lib/llvm22/bin/llvm-ranlib", kind: "symlink"},
-  {path: p"usr/lib/llvm22/bin/llvm-readelf", kind: "symlink"},
-  {path: p"usr/lib/llvm22/bin/llvm-readobj", kind: "binary"},
-  {path: p"usr/lib/llvm22/bin/llvm-size", kind: "binary"},
-  {path: p"usr/lib/llvm22/bin/llvm-strings", kind: "binary"},
-  {path: p"usr/lib/llvm22/bin/llvm-strip", kind: "symlink"},
-  {path: p"usr/lib/llvm22/bin/llvm-symbolizer", kind: "binary"},
-  {path: p"usr/lib/llvm22/bin/wasm-ld", kind: "symlink"},
-  {path: p"usr/lib/llvm22/lib/libLTO.so", kind: "symlink"},
-  {path: p"usr/lib/llvm22/lib/libLTO.so.22.1", kind: "binary"},
-]

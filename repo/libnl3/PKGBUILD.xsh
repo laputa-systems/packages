@@ -16,6 +16,38 @@ export let checksums = [
   "2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d",
 ]
 
+export let filetree = [
+  {path: p"objs", kind: "tree"},
+  {path: p"usr", kind: "tree"},
+  {path: p"objs/lib_addr.lo", kind: "binary"},
+  {path: p"objs/lib_attr.lo", kind: "binary"},
+  {path: p"objs/lib_cache.lo", kind: "binary"},
+  {path: p"objs/lib_cache_mngr.lo", kind: "binary"},
+  {path: p"objs/lib_cache_mngt.lo", kind: "binary"},
+  {path: p"objs/lib_data.lo", kind: "binary"},
+  {path: p"objs/lib_error.lo", kind: "binary"},
+  {path: p"objs/lib_genl_ctrl.lo", kind: "binary"},
+  {path: p"objs/lib_genl_family.lo", kind: "binary"},
+  {path: p"objs/lib_genl_genl.lo", kind: "binary"},
+  {path: p"objs/lib_genl_mngt.lo", kind: "binary"},
+  {path: p"objs/lib_handlers.lo", kind: "binary"},
+  {path: p"objs/lib_hash.lo", kind: "binary"},
+  {path: p"objs/lib_hashtable.lo", kind: "binary"},
+  {path: p"objs/lib_mpls.lo", kind: "binary"},
+  {path: p"objs/lib_msg.lo", kind: "binary"},
+  {path: p"objs/lib_nl.lo", kind: "binary"},
+  {path: p"objs/lib_object.lo", kind: "binary"},
+  {path: p"objs/lib_socket.lo", kind: "binary"},
+  {path: p"objs/lib_utils.lo", kind: "binary"},
+  {path: p"objs/lib_version.lo", kind: "binary"},
+  {path: p"usr/lib/libnl-3.so", kind: "symlink"},
+  {path: p"usr/lib/libnl-3.so.200", kind: "symlink"},
+  {path: p"usr/lib/libnl-3.so.200.26.0", kind: "binary"},
+  {path: p"usr/lib/libnl-genl-3.so", kind: "symlink"},
+  {path: p"usr/lib/libnl-genl-3.so.200", kind: "symlink"},
+  {path: p"usr/lib/libnl-genl-3.so.200.26.0", kind: "binary"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let cwd = fs.cwd()?
   let src = cwd
@@ -208,35 +240,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   let headers_dest = fp"${dest}/usr/include/netlink"
   make.install_header_tree(headers_src, headers_dest, [p"version.h.in"])?
 }
-
-export let filetree = [
-  {path: p"objs", kind: "tree"},
-  {path: p"usr", kind: "tree"},
-  {path: p"objs/lib_addr.lo", kind: "binary"},
-  {path: p"objs/lib_attr.lo", kind: "binary"},
-  {path: p"objs/lib_cache.lo", kind: "binary"},
-  {path: p"objs/lib_cache_mngr.lo", kind: "binary"},
-  {path: p"objs/lib_cache_mngt.lo", kind: "binary"},
-  {path: p"objs/lib_data.lo", kind: "binary"},
-  {path: p"objs/lib_error.lo", kind: "binary"},
-  {path: p"objs/lib_genl_ctrl.lo", kind: "binary"},
-  {path: p"objs/lib_genl_family.lo", kind: "binary"},
-  {path: p"objs/lib_genl_genl.lo", kind: "binary"},
-  {path: p"objs/lib_genl_mngt.lo", kind: "binary"},
-  {path: p"objs/lib_handlers.lo", kind: "binary"},
-  {path: p"objs/lib_hash.lo", kind: "binary"},
-  {path: p"objs/lib_hashtable.lo", kind: "binary"},
-  {path: p"objs/lib_mpls.lo", kind: "binary"},
-  {path: p"objs/lib_msg.lo", kind: "binary"},
-  {path: p"objs/lib_nl.lo", kind: "binary"},
-  {path: p"objs/lib_object.lo", kind: "binary"},
-  {path: p"objs/lib_socket.lo", kind: "binary"},
-  {path: p"objs/lib_utils.lo", kind: "binary"},
-  {path: p"objs/lib_version.lo", kind: "binary"},
-  {path: p"usr/lib/libnl-3.so", kind: "symlink"},
-  {path: p"usr/lib/libnl-3.so.200", kind: "symlink"},
-  {path: p"usr/lib/libnl-3.so.200.26.0", kind: "binary"},
-  {path: p"usr/lib/libnl-genl-3.so", kind: "symlink"},
-  {path: p"usr/lib/libnl-genl-3.so.200", kind: "symlink"},
-  {path: p"usr/lib/libnl-genl-3.so.200.26.0", kind: "binary"},
-]

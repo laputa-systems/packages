@@ -20,6 +20,15 @@ export let checksums = [
 
 type EventDef = {attr: Str, value: Int, name: Str}
 
+export let filetree = [
+  {path: p"usr/include/libevdev-1.0/libevdev/libevdev-uinput.h", kind: "file"},
+  {path: p"usr/include/libevdev-1.0/libevdev/libevdev.h", kind: "file"},
+  {path: p"usr/lib/libevdev.so", kind: "symlink"},
+  {path: p"usr/lib/libevdev.so.2", kind: "symlink"},
+  {path: p"usr/lib/libevdev.so.2.3.0", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/libevdev.pc", kind: "file"},
+]
+
 pure event_prefixes() -> List[Str] {
   [
     "EV_",
@@ -336,12 +345,3 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.remove(fp"${dest}/usr/share/man", missing_ok: true)?
 }
-
-export let filetree = [
-  {path: p"usr/include/libevdev-1.0/libevdev/libevdev-uinput.h", kind: "file"},
-  {path: p"usr/include/libevdev-1.0/libevdev/libevdev.h", kind: "file"},
-  {path: p"usr/lib/libevdev.so", kind: "symlink"},
-  {path: p"usr/lib/libevdev.so.2", kind: "symlink"},
-  {path: p"usr/lib/libevdev.so.2.3.0", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/libevdev.pc", kind: "file"},
-]

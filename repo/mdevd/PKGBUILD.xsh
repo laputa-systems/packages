@@ -25,6 +25,12 @@ export let checksums = [
   "SKIP",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/mdevd", kind: "binary"},
+  {path: p"usr/bin/mdevd-coldplug", kind: "binary"},
+  {path: p"usr/lib/xinit/services/mdevd.xsh", kind: "file"},
+]
+
 pure upper_ascii(text: Str) -> Str {
   text.replace("a", "A").replace("b", "B").replace("c", "C").replace("d", "D").replace("e", "E").replace("f", "F").replace("g", "G").replace("h", "H").replace("i", "I").replace("j", "J").replace("k", "K").replace("l", "L").replace("m", "M").replace("n", "N").replace("o", "O").replace("p", "P").replace("q", "Q").replace("r", "R").replace("s", "S").replace("t", "T").replace("u", "U").replace("v", "V").replace("w", "W").replace("x", "X").replace("y", "Y").replace("z", "Z")
 }
@@ -510,9 +516,3 @@ struct sockaddr_nl {
   fs.install(coldplug_bin, fp"${dest}/usr/bin/mdevd-coldplug", 0o755, parents: true, overwrite: true)?
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/mdevd.xsh", 0o644, parents: true, overwrite: true)?
 }
-
-export let filetree = [
-  {path: p"usr/bin/mdevd", kind: "binary"},
-  {path: p"usr/bin/mdevd-coldplug", kind: "binary"},
-  {path: p"usr/lib/xinit/services/mdevd.xsh", kind: "file"},
-]

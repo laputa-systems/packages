@@ -16,6 +16,15 @@ export let checksums = [
   "d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/ip6tables", kind: "binary"},
+  {path: p"usr/bin/ip6tables-restore", kind: "binary"},
+  {path: p"usr/bin/ip6tables-save", kind: "binary"},
+  {path: p"usr/bin/iptables", kind: "binary"},
+  {path: p"usr/bin/iptables-restore", kind: "binary"},
+  {path: p"usr/bin/iptables-save", kind: "binary"},
+]
+
 proc write_iptables_stub() [fs, error] {
   fs.write(
     p"laputa-iptables.c",
@@ -74,12 +83,3 @@ export proc build(dest: Path) [fs, process, env, error] {
     fs.install(iptables.output, fp"${dest}/usr/bin/${tool_name}", 0o755, parents: true, overwrite: true)?
   }
 }
-
-export let filetree = [
-  {path: p"usr/bin/ip6tables", kind: "binary"},
-  {path: p"usr/bin/ip6tables-restore", kind: "binary"},
-  {path: p"usr/bin/ip6tables-save", kind: "binary"},
-  {path: p"usr/bin/iptables", kind: "binary"},
-  {path: p"usr/bin/iptables-restore", kind: "binary"},
-  {path: p"usr/bin/iptables-save", kind: "binary"},
-]

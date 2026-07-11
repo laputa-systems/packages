@@ -14,15 +14,15 @@ export let checksums = [
   "d9ed5d0a07525c7e7bd587b4364e4bc41021dd668658d09864453d9bb374a78d",
 ]
 
-export proc build(dest: Path) [fs, error] {
-  for entry in fs.ls(p".")? |> where .kind == "file" and .ext == "ttf" {
-    fs.install(entry.path, fp"${dest}/usr/share/fonts/TTF/${entry.name}", 0o644, parents: true, overwrite: true)?
-  }
-}
-
 export let filetree = [
   {path: p"usr/share/fonts/TTF/Hack-Bold.ttf", kind: "file"},
   {path: p"usr/share/fonts/TTF/Hack-BoldItalic.ttf", kind: "file"},
   {path: p"usr/share/fonts/TTF/Hack-Italic.ttf", kind: "file"},
   {path: p"usr/share/fonts/TTF/Hack-Regular.ttf", kind: "file"},
 ]
+
+export proc build(dest: Path) [fs, error] {
+  for entry in fs.ls(p".")? |> where .kind == "file" and .ext == "ttf" {
+    fs.install(entry.path, fp"${dest}/usr/share/fonts/TTF/${entry.name}", 0o644, parents: true, overwrite: true)?
+  }
+}

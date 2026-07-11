@@ -17,6 +17,14 @@ export let checksums = [
   "6f4f1b639daa6dca9f80bc5db1233e9cbaa31a67790887106160b33ef743f136",
 ]
 
+export let filetree = [
+  {path: p"usr/include/utf8proc.h", kind: "file"},
+  {path: p"usr/lib/libutf8proc.so", kind: "symlink"},
+  {path: p"usr/lib/libutf8proc.so.3", kind: "symlink"},
+  {path: p"usr/lib/libutf8proc.so.3.1.0", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/libutf8proc.pc", kind: "file"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?
   let samu = process.which("samu")?
@@ -46,11 +54,3 @@ export proc build(dest: Path) [fs, process, env, error] {
     }
   } ?
 }
-
-export let filetree = [
-  {path: p"usr/include/utf8proc.h", kind: "file"},
-  {path: p"usr/lib/libutf8proc.so", kind: "symlink"},
-  {path: p"usr/lib/libutf8proc.so.3", kind: "symlink"},
-  {path: p"usr/lib/libutf8proc.so.3.1.0", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/libutf8proc.pc", kind: "file"},
-]

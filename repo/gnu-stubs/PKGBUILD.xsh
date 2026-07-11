@@ -18,6 +18,13 @@ export let checksums = [
   "SKIP",
 ]
 
+export let filetree = [
+  {path: p"usr/lib/crtbeginS.o", kind: "binary"},
+  {path: p"usr/lib/crtendS.o", kind: "binary"},
+  {path: p"usr/lib/libgcc_s.so", kind: "binary"},
+  {path: p"usr/lib/libgcc_s.so.1", kind: "symlink"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let build_arch = pm_util.build_arch()?
   let target_arch = pm_util.target_arch()?
@@ -69,10 +76,3 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.symlink(p"libgcc_s.so", fp"${libdir}/libgcc_s.so.1")?
 }
-
-export let filetree = [
-  {path: p"usr/lib/crtbeginS.o", kind: "binary"},
-  {path: p"usr/lib/crtendS.o", kind: "binary"},
-  {path: p"usr/lib/libgcc_s.so", kind: "binary"},
-  {path: p"usr/lib/libgcc_s.so.1", kind: "symlink"},
-]

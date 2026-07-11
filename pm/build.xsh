@@ -514,7 +514,12 @@ proc build_packages_in_chroot(
     run_package_proof(ctx, pkg, id, tarball, item.manifest, built, build_log_text, build_log)?
     run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     built = built.push(item)
-    append_build_log_or_print(build_log_text, build_log, f"${pkg.name} ${id} build: ${item.manifest.len()} files")?
+    let tarball_size = fs.metadata(tarball)?.size
+    append_build_log_or_print(
+      build_log_text,
+      build_log,
+      f"${pkg.name} ${id} build: ${item.manifest.len()} files size: ${compressed_package_size(tarball_size)}",
+    )?
   }
 
   built
@@ -622,6 +627,7 @@ export proc build_packages(
     run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     let metadata_files = collect_metadata_files(dest, manifest)?
     let metadata_sha256 = metadata_files_sha256(pkg, metadata_files)?
+    let tarball_size = fs.metadata(tarball)?.size
 
     built = built.push({
       pkg,
@@ -633,7 +639,11 @@ export proc build_packages(
       metadata_files,
     })
 
-    append_build_log_or_print("", fp"", f"${pkg.name} ${id} build: ${manifest.len()} files")?
+    append_build_log_or_print(
+      "",
+      fp"",
+      f"${pkg.name} ${id} build: ${manifest.len()} files size: ${compressed_package_size(tarball_size)}",
+    )?
   }
 
   built

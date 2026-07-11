@@ -16,6 +16,22 @@ export let checksums = [
   "71df8f40706a7bb0a80a5367079ea75d91da4f8c65c58ec59bcdfbf7decdab9f",
 ]
 
+export let filetree = [
+  {path: p"usr/include/expat.h", kind: "file"},
+  {path: p"usr/include/expat_config.h", kind: "file"},
+  {path: p"usr/include/expat_external.h", kind: "file"},
+  {path: p"usr/lib/cmake/expat-2.7.3/expat-config-version.cmake", kind: "file"},
+  {path: p"usr/lib/cmake/expat-2.7.3/expat-config.cmake", kind: "file"},
+  {path: p"usr/lib/cmake/expat-2.7.3/expat-release.cmake", kind: "file"},
+  {path: p"usr/lib/cmake/expat-2.7.3/expat.cmake", kind: "file"},
+  {path: p"usr/lib/libexpat.so", kind: "symlink"},
+  {path: p"usr/lib/libexpat.so.1", kind: "symlink"},
+  {path: p"usr/lib/libexpat.so.1.11.1", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/expat.pc", kind: "file"},
+  {path: p"usr/share/doc/expat/AUTHORS", kind: "file"},
+  {path: p"usr/share/doc/expat/changelog", kind: "file"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?
   let samu = process.which("samu")?
@@ -53,19 +69,3 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.remove(fp"${dest}/usr/lib/libexpat.a", missing_ok: true)?
 }
-
-export let filetree = [
-  {path: p"usr/include/expat.h", kind: "file"},
-  {path: p"usr/include/expat_config.h", kind: "file"},
-  {path: p"usr/include/expat_external.h", kind: "file"},
-  {path: p"usr/lib/cmake/expat-2.7.3/expat-config-version.cmake", kind: "file"},
-  {path: p"usr/lib/cmake/expat-2.7.3/expat-config.cmake", kind: "file"},
-  {path: p"usr/lib/cmake/expat-2.7.3/expat-release.cmake", kind: "file"},
-  {path: p"usr/lib/cmake/expat-2.7.3/expat.cmake", kind: "file"},
-  {path: p"usr/lib/libexpat.so", kind: "symlink"},
-  {path: p"usr/lib/libexpat.so.1", kind: "symlink"},
-  {path: p"usr/lib/libexpat.so.1.11.1", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/expat.pc", kind: "file"},
-  {path: p"usr/share/doc/expat/AUTHORS", kind: "file"},
-  {path: p"usr/share/doc/expat/changelog", kind: "file"},
-]

@@ -16,6 +16,10 @@ export let checksums = [
   "565c1b6e1e58f7e90d8813fda0e2102df69fb493ddab4cf6a84ce3647466bee5",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/muon", kind: "binary"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let cross_build = pm_util.build_arch()? != pm_util.target_arch()?
@@ -87,7 +91,3 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.install(p"build/muon", fp"${dest}/usr/bin/muon", 0o755, parents: true, overwrite: true)?
 }
-
-export let filetree = [
-  {path: p"usr/bin/muon", kind: "binary"},
-]

@@ -22,6 +22,12 @@ export let checksums = [
   "04e69adec37dba8e5b5df326900d25ccc5bf3535aa7f03ecf4fc51269bc67779",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/flex", kind: "binary"},
+  {path: p"usr/bin/lex", kind: "symlink"},
+  {path: p"usr/lib/pm/repo/flex/files/flex.xsh", kind: "file"},
+]
+
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let arch = pm_util.target_arch()?
@@ -123,9 +129,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.symlink(p"flex", fp"${dest}/usr/bin/lex")?
   fs.install(p"flex.xsh", fp"${dest}/usr/lib/pm/repo/flex/files/flex.xsh", 0o755, parents: true, overwrite: true)?
 }
-
-export let filetree = [
-  {path: p"usr/bin/flex", kind: "binary"},
-  {path: p"usr/bin/lex", kind: "symlink"},
-  {path: p"usr/lib/pm/repo/flex/files/flex.xsh", kind: "file"},
-]

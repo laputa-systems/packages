@@ -32,42 +32,6 @@ export let checksums_x86_64 = [
 
 export let nostrip = true
 
-pure rust_dist_arch(arch: Str) -> Str {
-  if arch == "arm64" {
-    return "aarch64"
-  }
-
-  if arch == "amd64" {
-    return "x86_64"
-  }
-
-  arch
-}
-
-export proc build(dest: Path) [fs, env, error] {
-  let arch = rust_dist_arch(pm_util.target_arch()?)
-  var cargo_src = p"cargo/cargo"
-  var rustc_src = p"rustc/rustc"
-  var rust_std_src = fp"rust-std/rust-std-${arch}-unknown-linux-musl"
-
-  if ! fs.exists(cargo_src)? {
-    cargo_src = fp"cargo/cargo-${ver}-${arch}-unknown-linux-musl/cargo"
-  }
-
-  if ! fs.exists(rustc_src)? {
-    rustc_src = fp"rustc/rustc-${ver}-${arch}-unknown-linux-musl/rustc"
-  }
-
-  if ! fs.exists(rust_std_src)? {
-    rust_std_src = fp"rust-std/rust-std-${ver}-${arch}-unknown-linux-musl/rust-std-${arch}-unknown-linux-musl"
-  }
-
-  var copied = fs.copy_tree(cargo_src, fp"${dest}/usr", parents: true, overwrite: true)?
-  copied = fs.copy_tree(rustc_src, fp"${dest}/usr", parents: true, overwrite: true)?
-  copied = fs.copy_tree(rust_std_src, fp"${dest}/usr", parents: true, overwrite: true)?
-  let _ = copied
-}
-
 export let filetree = [
   {path: p"usr", kind: "tree"},
   {path: p"usr/bin/cargo", kind: "binary"},
@@ -110,3 +74,39 @@ export let filetree = [
   {path: p"usr/lib/rustlib/aarch64-unknown-linux-musl/lib/self-contained/rcrt1.o", kind: "binary"},
   {path: p"usr/libexec/rust-analyzer-proc-macro-srv", kind: "binary"},
 ]
+
+pure rust_dist_arch(arch: Str) -> Str {
+  if arch == "arm64" {
+    return "aarch64"
+  }
+
+  if arch == "amd64" {
+    return "x86_64"
+  }
+
+  arch
+}
+
+export proc build(dest: Path) [fs, env, error] {
+  let arch = rust_dist_arch(pm_util.target_arch()?)
+  var cargo_src = p"cargo/cargo"
+  var rustc_src = p"rustc/rustc"
+  var rust_std_src = fp"rust-std/rust-std-${arch}-unknown-linux-musl"
+
+  if ! fs.exists(cargo_src)? {
+    cargo_src = fp"cargo/cargo-${ver}-${arch}-unknown-linux-musl/cargo"
+  }
+
+  if ! fs.exists(rustc_src)? {
+    rustc_src = fp"rustc/rustc-${ver}-${arch}-unknown-linux-musl/rustc"
+  }
+
+  if ! fs.exists(rust_std_src)? {
+    rust_std_src = fp"rust-std/rust-std-${ver}-${arch}-unknown-linux-musl/rust-std-${arch}-unknown-linux-musl"
+  }
+
+  var copied = fs.copy_tree(cargo_src, fp"${dest}/usr", parents: true, overwrite: true)?
+  copied = fs.copy_tree(rustc_src, fp"${dest}/usr", parents: true, overwrite: true)?
+  copied = fs.copy_tree(rust_std_src, fp"${dest}/usr", parents: true, overwrite: true)?
+  let _ = copied
+}

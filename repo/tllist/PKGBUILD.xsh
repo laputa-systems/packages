@@ -14,6 +14,11 @@ export let checksums = [
   "0e7b7094a02550dd80b7243bcffc3671550b0f1d8ba625e4dff52517827d5d23",
 ]
 
+export let filetree = [
+  {path: p"usr/include/tllist.h", kind: "file"},
+  {path: p"usr/lib/pkgconfig/tllist.pc", kind: "file"},
+]
+
 export proc build(dest: Path) [fs, error] {
   fs.install(p"tllist.h", fp"${dest}/usr/include/tllist.h", 0o644, parents: true, overwrite: true)?
   fs.mkdir(fp"${dest}/usr/lib/pkgconfig")?
@@ -30,8 +35,3 @@ Cflags: -I\${includedir}
 """,
   )?
 }
-
-export let filetree = [
-  {path: p"usr/include/tllist.h", kind: "file"},
-  {path: p"usr/lib/pkgconfig/tllist.pc", kind: "file"},
-]

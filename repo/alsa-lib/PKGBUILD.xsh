@@ -16,6 +16,14 @@ export let checksums = [
   "7b079d614d582cade7ab8db2364e65271d0877a37df8757ac4ac0c8970be861e",
 ]
 
+export let filetree = [
+  {path: p"usr/include/alsa/asoundlib.h", kind: "file"},
+  {path: p"usr/lib/libasound.so", kind: "symlink"},
+  {path: p"usr/lib/libasound.so.2", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/alsa.pc", kind: "file"},
+  {path: p"usr/share/alsa/alsa.conf", kind: "file"},
+]
+
 proc write_asound_stub() [fs, error] {
   fs.write(
     p"laputa-asound.c",
@@ -163,11 +171,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   install_pkg_config(dest)?
   install_config(dest)?
 }
-
-export let filetree = [
-  {path: p"usr/include/alsa/asoundlib.h", kind: "file"},
-  {path: p"usr/lib/libasound.so", kind: "symlink"},
-  {path: p"usr/lib/libasound.so.2", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/alsa.pc", kind: "file"},
-  {path: p"usr/share/alsa/alsa.conf", kind: "file"},
-]

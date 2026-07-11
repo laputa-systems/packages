@@ -16,6 +16,12 @@ export let checksums = [
   "8da4319102f24abbf7fff5ce9c416af848df163b29590e666d334cc1927f006f",
 ]
 
+export let filetree = [
+  {path: p"usr/bin/udevadm", kind: "binary"},
+  {path: p"usr/bin/udevd", kind: "binary"},
+  {path: p"usr/lib/udev/systemd-udevd", kind: "binary"},
+]
+
 proc write_udev_stub() [fs, error] {
   fs.write(
     p"laputa-udev.c",
@@ -83,9 +89,3 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.mkdir(fp"${dest}/usr/lib/udev")?
   fs.mkdir(fp"${dest}/usr/lib/udev/rules.d")?
 }
-
-export let filetree = [
-  {path: p"usr/bin/udevadm", kind: "binary"},
-  {path: p"usr/bin/udevd", kind: "binary"},
-  {path: p"usr/lib/udev/systemd-udevd", kind: "binary"},
-]

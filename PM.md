@@ -158,6 +158,10 @@ tarball is installed into both roots before later local packages build.
 Every package proof runs after its tarball is created. Proof roots contain the
 candidate package plus its dependencies and seeded XSH/PM runtime.
 
+Successful builds report the final compressed tarball size in KiB after
+stripping and proof completion. World builds include the same size on their
+completion line.
+
 ## Remote Repos
 
 Remote install/update operations use `XSH_PM_REPO`, then `LAPUTA_REPO`, then
