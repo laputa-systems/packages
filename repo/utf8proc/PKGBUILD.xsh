@@ -5,7 +5,7 @@ export let name = "utf8proc"
 
 export let ver = "2.10.0"
 
-export let rel = "6"
+export let rel = "7"
 
 export let deps = ["musl"]
 

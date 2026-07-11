@@ -9,7 +9,7 @@ export let name = "linux"
 
 export let ver = "7.0.5"
 
-export let rel = "32"
+export let rel = "33"
 
 export let deps: List[Str] = []
 

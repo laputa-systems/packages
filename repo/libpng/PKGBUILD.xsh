@@ -5,7 +5,7 @@ export let name = "libpng"
 
 export let ver = "1.6.50"
 
-export let rel = "7"
+export let rel = "8"
 
 export let deps = ["musl", "zlib"]
 

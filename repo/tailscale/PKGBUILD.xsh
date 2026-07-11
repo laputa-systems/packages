@@ -6,7 +6,7 @@ export let rel = "11"
 
 export let deps = ["iptables", "xinit"]
 
-export let mkdeps = []
+export let mkdeps = ["llvm-toolchain"]
 
 export let sources = [p"https://pkgs.tailscale.com/stable/tailscale_VERSION_GOARCH.tgz", p"service.xsh"]
 

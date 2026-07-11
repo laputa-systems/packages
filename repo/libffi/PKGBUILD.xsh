@@ -5,7 +5,7 @@ export let name = "libffi"
 
 export let ver = "3.5.2"
 
-export let rel = "8"
+export let rel = "9"
 
 export let deps = ["musl", "linux"]
 

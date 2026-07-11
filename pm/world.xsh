@@ -204,10 +204,6 @@ export proc effective_world_dependencies(pkg: Package, include_mkdeps: Bool) [] 
 
   if include_mkdeps {
     deps = deps.extend(pkg.mkdeps)
-
-    if package_needs_strip_tool(pkg) and "llvm-toolchain" not in deps {
-      deps = deps.push("llvm-toolchain")
-    }
   }
 
   deps
@@ -218,16 +214,8 @@ proc effective_world_build_dependencies(pkg: Package, cross_build: Bool) [] -> L
 
   if cross_build {
     deps = pkg.mkdeps
-
-    if pkg.name == "llvm-toolchain" and "llvm-toolchain" not in deps {
-      deps = deps.push("llvm-toolchain")
-    }
   } else {
     deps = effective_world_dependencies(pkg, true)
-  }
-
-  if package_needs_strip_tool(pkg) and "llvm-toolchain" not in deps {
-    deps = deps.push("llvm-toolchain")
   }
 
   deps
@@ -318,10 +306,6 @@ proc effective_world_seed_dependencies(
 
   if include_mkdeps {
     deps = deps.extend(pkg.mkdeps)
-
-    if package_needs_strip_tool(pkg) and "llvm-toolchain" not in deps {
-      deps = deps.push("llvm-toolchain")
-    }
   }
 
   deps
@@ -713,8 +697,21 @@ proc planned_world_package_map(planned: List[Package]) [] -> Map[Package] {
 proc world_plan_version_text(
   pkg: Package,
   planned: Package,
+  remote_latest: Map[RemotePackage],
   colors: Bool,
 ) [error] -> Result[Str] {
+  if remote_latest.has(pkg.name) {
+    let remote_pkg: RemotePackage = remote_latest.get(pkg.name)?
+
+    if compare_version_text(pkg.ver, remote_pkg.ver) == 0 and compare_version_text(pkg.rel, remote_pkg.rel) > 0 {
+      return f"${ansi(colors, "2", version_id(remote_pkg.ver, remote_pkg.rel))} ${ansi(colors, "1;33", "->")} ${ansi(
+        colors,
+        "1;33",
+        version_id(planned.ver, planned.rel),
+      )}"
+    }
+  }
+
   let current = version_id(pkg.ver, pkg.rel)
   let next = version_id(planned.ver, planned.rel)
 
@@ -772,7 +769,7 @@ proc print_world_plan(
           f"stage: ${status} (local ${version_id(pkg.ver, pkg.rel)})",
         )}"
       } else {
-        version_text = world_plan_version_text(pkg, planned_pkg, colors)?
+        version_text = world_plan_version_text(pkg, planned_pkg, remote_latest, colors)?
       }
 
       print --flush f"  ${ansi(colors, "1;32", pkg.name)} ${version_text}${suffix}"

@@ -5,7 +5,7 @@ export let name = "dwl-minimal"
 
 export let ver = "0.8"
 
-export let rel = "8"
+export let rel = "9"
 
 export let deps = ["musl", "wlroots0.19-mesa", "wayland-libs-server", "libxkbcommon", "libinput"]
 

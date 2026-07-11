@@ -1249,8 +1249,7 @@ proc test_pm_world_plan_displays_remote_to_local_catchup(ctx: TestContext) [fs, 
   )?
 
   let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() ?
-  test.contains(output, "laputa-pm 1.0.0-1")?
-  test.ok(! ("->" in output))?
+  test.contains(output, "laputa-pm 1.0.0-0 -> 1.0.0-1 because local rel above remote")?
   test.ok(! ("remote newer" in output))?
 }
 

@@ -80,20 +80,6 @@ export pure package_with_extract_install(pkg: Package, extract_install: Bool) ->
   }
 }
 
-export pure package_needs_strip_tool(pkg: Package) -> Bool {
-  if pkg.nostrip {
-    return false
-  }
-
-  for entry in pkg.filetree {
-    if entry.kind == "binary" {
-      return true
-    }
-  }
-
-  false
-}
-
 export pure compressed_package_size(size: Int) -> Str {
   let kib = (size + 1023) / 1024
   f"${kib}K"

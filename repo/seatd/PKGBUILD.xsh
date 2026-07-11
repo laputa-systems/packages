@@ -4,7 +4,7 @@ export let name = "seatd"
 
 export let ver = "0.9.3"
 
-export let rel = "6"
+export let rel = "7"
 
 export let deps = ["musl"]
 

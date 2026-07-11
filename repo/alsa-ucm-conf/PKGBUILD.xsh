@@ -2,7 +2,7 @@ export let name = "alsa-ucm-conf"
 
 export let ver = "1.2.15.3"
 
-export let rel = "6"
+export let rel = "7"
 
 export let deps = ["alsa-lib"]
 

@@ -4,7 +4,7 @@ export let name = "linux-pam"
 
 export let ver = "1.7.2"
 
-export let rel = "7"
+export let rel = "8"
 
 export let deps = ["musl"]
 

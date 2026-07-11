@@ -4,7 +4,7 @@ export let name = "alsa-utils-minimal"
 
 export let ver = "1.2.15.2"
 
-export let rel = "8"
+export let rel = "9"
 
 export let deps = ["musl", "alsa-lib", "libudev-zero"]
 

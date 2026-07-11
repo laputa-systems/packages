@@ -4,7 +4,7 @@ export let name = "libdisplay-info"
 
 export let ver = "0.3.0"
 
-export let rel = "7"
+export let rel = "8"
 
 export let deps = ["musl", "hwdata"]
 

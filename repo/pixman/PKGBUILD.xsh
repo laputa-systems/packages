@@ -5,7 +5,7 @@ export let name = "pixman"
 
 export let ver = "0.46.4"
 
-export let rel = "7"
+export let rel = "8"
 
 export let deps = ["musl"]
 

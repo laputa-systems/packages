@@ -5,7 +5,7 @@ export let name = "libevent"
 
 export let ver = "2.1.12-stable"
 
-export let rel = "6"
+export let rel = "7"
 
 export let deps = ["musl"]
 

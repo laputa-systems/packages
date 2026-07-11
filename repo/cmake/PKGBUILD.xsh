@@ -8,7 +8,7 @@ export let name = "cmake"
 
 export let ver = "4.3.1"
 
-export let rel = "15"
+export let rel = "16"
 
 export let deps = ["musl", "llvm-toolchain"]
 

@@ -45,7 +45,9 @@ must be produced by `build()`, and every produced file must be declared either
 explicitly or beneath a `tree` directory entry. An ELF executable or library
 must be declared explicitly as `binary`; PM validates that classification and
 automatically runs `llvm-strip --strip-unneeded` on those entries before the
-package archive and proof are created. `tree` entries are useful for large
+package archive and proof are created. Packages that declare binaries must list
+`llvm-toolchain` in `mkdeps` so the stripping tool is available in the build
+root. `tree` entries are useful for large
 header or documentation trees, but ELF files and symlinks inside them still
 need explicit entries. `nostrip: true` remains an escape hatch for packages
 that intentionally preserve binary symbols.

@@ -4,7 +4,7 @@ export let name = "libdrm"
 
 export let ver = "2.4.127"
 
-export let rel = "7"
+export let rel = "8"
 
 export let deps = ["musl", "libudev-zero"]
 

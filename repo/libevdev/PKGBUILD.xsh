@@ -4,7 +4,7 @@ export let name = "libevdev"
 
 export let ver = "1.13.6"
 
-export let rel = "6"
+export let rel = "7"
 
 export let deps = ["musl", "linux"]
 

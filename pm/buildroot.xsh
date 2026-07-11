@@ -73,7 +73,7 @@ export proc install_chroot_base(
   }
 
   if include_tool_runtime {
-    install_remote_dependency_set(ctx, ["musl", "zlib", "llvm-toolchain"])?
+    install_remote_dependency_set(ctx, ["musl", "zlib"])?
   }
 }
 

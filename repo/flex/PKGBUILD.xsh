@@ -6,7 +6,7 @@ export let name = "flex"
 
 export let ver = "2.6.4"
 
-export let rel = "8"
+export let rel = "9"
 
 export let deps = ["musl", "m4"]
 

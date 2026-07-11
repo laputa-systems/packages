@@ -2,7 +2,7 @@ export let name = "laputa-net"
 
 export let ver = "1"
 
-export let rel = "8"
+export let rel = "9"
 
 # ifup/ifdown are xsh core applets; the net service drives them.
 # wpa_supplicant provides Wi-Fi association for wireless interfaces.
