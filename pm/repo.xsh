@@ -257,7 +257,7 @@ proc export_entry_with_local_source(repo_dir: Path, entry: RemotePackage) [fs, e
 proc remote_export_entry_same(remote_index: List[RemotePackage], entry: RemotePackage) [] -> Bool {
   for rpkg in remote_index {
     if rpkg.arch == entry.arch and rpkg.name == entry.name {
-      return rpkg.ver == entry.ver and rpkg.rel == entry.rel and rpkg.deps == entry.deps and rpkg.mkdeps == entry.mkdeps and (rpkg.target_build_deps.len() == 0 or rpkg.target_build_deps == entry.target_build_deps) and rpkg.sha256 == entry.sha256 and rpkg.size == entry.size and rpkg.tarball == entry.tarball and rpkg.metadata == entry.metadata and rpkg.source_sha256 == entry.source_sha256 and rpkg.source_tarball == entry.source_tarball and rpkg.metapackage == entry.metapackage
+      return rpkg.ver == entry.ver and rpkg.rel == entry.rel and rpkg.deps == entry.deps and rpkg.mkdeps_host == entry.mkdeps_host and (rpkg.mkdeps_target.len() == 0 or rpkg.mkdeps_target == entry.mkdeps_target) and rpkg.sha256 == entry.sha256 and rpkg.size == entry.size and rpkg.tarball == entry.tarball and rpkg.metadata == entry.metadata and rpkg.source_sha256 == entry.source_sha256 and rpkg.source_tarball == entry.source_tarball and rpkg.metapackage == entry.metapackage
     }
   }
 
@@ -283,6 +283,7 @@ export proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, er
   fs.mkdir(work)?
   fs.mkdir(out)?
   var pending = []
+
   for staged_entry in export_index {
     let entry = export_entry_with_local_source(repo_dir, staged_entry)?
 

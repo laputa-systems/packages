@@ -19,12 +19,11 @@ export let deps = [
   "muon",
 ]
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = []
 
-export let checksums = [
-]
+export let checksums = []
 
 export let filetree = []
 

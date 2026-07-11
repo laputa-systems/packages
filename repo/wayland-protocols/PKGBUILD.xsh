@@ -8,15 +8,13 @@ export let rel = "9"
 
 export let deps = []
 
-export let mkdeps = ["muon", "pkgconf", "wayland-dev"]
+export let mkdeps_host = ["muon", "pkgconf", "wayland-dev"]
 
 export let sources = [
   p"https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/VERSION/downloads/wayland-protocols-VERSION.tar.xz",
 ]
 
-export let checksums = [
-  "4d2b2a9e3e099d017dc8107bf1c334d27bb87d9e4aff19a0c8d856d17cd41ef0",
-]
+export let checksums = ["4d2b2a9e3e099d017dc8107bf1c334d27bb87d9e4aff19a0c8d856d17cd41ef0"]
 
 export let filetree = [
   {path: p"usr/share/pkgconfig/wayland-protocols.pc", kind: "file"},
@@ -34,7 +32,10 @@ export let filetree = [
   {path: p"usr/share/wayland-protocols/staging/drm-lease/drm-lease-v1.xml", kind: "file"},
   {path: p"usr/share/wayland-protocols/staging/ext-background-effect/ext-background-effect-v1.xml", kind: "file"},
   {path: p"usr/share/wayland-protocols/staging/ext-data-control/ext-data-control-v1.xml", kind: "file"},
-  {path: p"usr/share/wayland-protocols/staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml", kind: "file"},
+  {
+    path: p"usr/share/wayland-protocols/staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml",
+    kind: "file",
+  },
   {path: p"usr/share/wayland-protocols/staging/ext-idle-notify/ext-idle-notify-v1.xml", kind: "file"},
   {path: p"usr/share/wayland-protocols/staging/ext-image-capture-source/ext-image-capture-source-v1.xml", kind: "file"},
   {path: p"usr/share/wayland-protocols/staging/ext-image-copy-capture/ext-image-copy-capture-v1.xml", kind: "file"},
@@ -58,9 +59,15 @@ export let filetree = [
   {path: p"usr/share/wayland-protocols/unstable/idle-inhibit/idle-inhibit-unstable-v1.xml", kind: "file"},
   {path: p"usr/share/wayland-protocols/unstable/input-method/input-method-unstable-v1.xml", kind: "file"},
   {path: p"usr/share/wayland-protocols/unstable/input-timestamps/input-timestamps-unstable-v1.xml", kind: "file"},
-  {path: p"usr/share/wayland-protocols/unstable/keyboard-shortcuts-inhibit/keyboard-shortcuts-inhibit-unstable-v1.xml", kind: "file"},
+  {
+    path: p"usr/share/wayland-protocols/unstable/keyboard-shortcuts-inhibit/keyboard-shortcuts-inhibit-unstable-v1.xml",
+    kind: "file",
+  },
   {path: p"usr/share/wayland-protocols/unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml", kind: "file"},
-  {path: p"usr/share/wayland-protocols/unstable/linux-explicit-synchronization/linux-explicit-synchronization-unstable-v1.xml", kind: "file"},
+  {
+    path: p"usr/share/wayland-protocols/unstable/linux-explicit-synchronization/linux-explicit-synchronization-unstable-v1.xml",
+    kind: "file",
+  },
   {path: p"usr/share/wayland-protocols/unstable/pointer-constraints/pointer-constraints-unstable-v1.xml", kind: "file"},
   {path: p"usr/share/wayland-protocols/unstable/pointer-gestures/pointer-gestures-unstable-v1.xml", kind: "file"},
   {path: p"usr/share/wayland-protocols/unstable/primary-selection/primary-selection-unstable-v1.xml", kind: "file"},

@@ -11,7 +11,7 @@ export let rel = "7"
 
 export let deps = ["musl"]
 
-export let mkdeps = ["llvm-toolchain"]
+export let mkdeps_host = ["llvm-toolchain"]
 
 export let sources = [p"https://mirrors.kernel.org/gnu/bison/bison-VERSION.tar.xz", p"files/bison.xsh"]
 

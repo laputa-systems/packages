@@ -11,7 +11,7 @@ export let rel = "4"
 # headers and library are required at build and runtime.
 export let deps = ["musl", "linux", "libnl3"]
 
-export let mkdeps = ["xsh", "llvm-toolchain", "libnl3", "xinit"]
+export let mkdeps_host = ["xsh", "llvm-toolchain", "libnl3", "xinit"]
 
 export let sources = [
   p"https://w1.fi/releases/wpa_supplicant-2.11.tar.gz",
@@ -20,12 +20,7 @@ export let sources = [
   p"wpa_supplicant.conf",
 ]
 
-export let checksums = [
-  "912ea06f74e30a8e36fbb68064d6cdff218d8d591db0fc5d75dee6c81ac7fc0a",
-  "SKIP",
-  "SKIP",
-  "SKIP",
-]
+export let checksums = ["912ea06f74e30a8e36fbb68064d6cdff218d8d591db0fc5d75dee6c81ac7fc0a", "SKIP", "SKIP", "SKIP"]
 
 export let filetree = [
   {path: p"etc/wpa_supplicant/wpa_supplicant.conf", kind: "file"},

@@ -6,7 +6,7 @@ export let rel = "10"
 
 export let deps = []
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = [
   p"https://github.com/laputa-systems/xsh/releases/download/release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b/xsh-multicall-release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b-ARCH-linux-musl => xsh-multicall",

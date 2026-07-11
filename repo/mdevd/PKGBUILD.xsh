@@ -11,7 +11,7 @@ export let rel = "7"
 
 export let deps = ["musl"]
 
-export let mkdeps = ["llvm-toolchain", "xinit"]
+export let mkdeps_host = ["llvm-toolchain", "xinit"]
 
 export let sources = [
   p"https://skarnet.org/software/mdevd/mdevd-VERSION.tar.gz",

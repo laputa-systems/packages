@@ -9,7 +9,7 @@ export let rel = "9"
 
 export let deps = ["musl", "libevent", "utf8proc"]
 
-export let mkdeps = ["llvm-toolchain", "pkgconf"]
+export let mkdeps_host = ["llvm-toolchain", "pkgconf"]
 
 # Source is a fixed GitHub commit archive (no VERSION substitution needed).
 export let sources = [
@@ -24,9 +24,7 @@ export let checksums = [
   "838324384f77cd41f0d9de9ba36b980e437efdf54e136b8a1854bee58cf6882f",
 ]
 
-export let filetree = [
-  {path: p"usr/bin/tmux", kind: "binary"},
-]
+export let filetree = [{path: p"usr/bin/tmux", kind: "binary"}]
 
 proc write_config_h() [fs, error] {
   fs.write(

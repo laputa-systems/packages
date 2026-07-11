@@ -11,7 +11,7 @@ export proc local_package_names(packages: List[Package]) [] -> Map[Bool] {
 export proc missing_dependency_names(
   root: Path,
   packages: List[Package],
-  include_mkdeps: Bool,
+  include_mkdeps_host: Bool,
   local_names: Map[Bool],
 ) [fs, error] -> Result[List[Str]] {
   var names = []
@@ -20,9 +20,9 @@ export proc missing_dependency_names(
   for pkg in packages {
     var deps = pkg.deps
 
-    if include_mkdeps {
-      deps = deps.extend(pkg.mkdeps)
-      deps = deps.extend(pkg.target_build_deps)
+    if include_mkdeps_host {
+      deps = deps.extend(pkg.mkdeps_host)
+      deps = deps.extend(pkg.mkdeps_target)
     }
 
     for dep in deps {

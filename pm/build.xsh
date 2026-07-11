@@ -255,7 +255,6 @@ main(@args)?
     |> sort-by .display()
 
   validate_and_strip_package(pkg, dest, manifest)?
-
   let etcsums = collect_etcsums(dest, manifest)?
   write_package_db(dest, pkg, manifest, etcsums)?
   let dest_text = dest.display()
@@ -515,6 +514,7 @@ proc build_packages_in_chroot(
     run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     built = built.push(item)
     let tarball_size = fs.metadata(tarball)?.size
+
     append_build_log_or_print(
       build_log_text,
       build_log,

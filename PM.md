@@ -14,7 +14,7 @@ Required exports:
 - `ver: Str`
 - `rel: Str`
 - `deps: List[Str]`
-- `mkdeps: List[Str]`
+- `mkdeps_host: List[Str]`
 - `sources: List[Path]`
 - `checksums: List[Str]`
 - `filetree: List[{path: Path, kind: Str}]`
@@ -23,7 +23,7 @@ Required exports:
 Optional exports:
 
 - `nostrip: Bool`
-- `target_build_deps: List[Str]`
+- `mkdeps_target: List[Str]`
 - `checksums_aarch64: List[Str]`
 - `checksums_x86_64: List[Str]`
 - `prepare(src: Path) -> Result[Unit]`
@@ -33,8 +33,8 @@ Optional exports:
 - `pre_remove(root: Path) -> Result[Unit]`
 - `post_remove(root: Path) -> Result[Unit]`
 
-`deps` are runtime dependencies. `mkdeps` are executable build-time tools.
-`target_build_deps` are target-side build metadata packages such as headers,
+`deps` are runtime dependencies. `mkdeps_host` are executable build-time tools.
+`mkdeps_target` are target-side build metadata packages such as headers,
 pkg-config files, protocol XML, and other files needed while compiling but not
 needed by installed runtime files. The PM base runtime includes `laputa-pm`, so
 package definitions should not list it just to get `/usr/bin/pm`,
@@ -46,7 +46,7 @@ explicitly or beneath a `tree` directory entry. An ELF executable or library
 must be declared explicitly as `binary`; PM validates that classification and
 automatically runs `llvm-strip --strip-unneeded` on those entries before the
 package archive and proof are created. Packages that declare binaries must list
-`llvm-toolchain` in `mkdeps` so the stripping tool is available in the build
+`llvm-toolchain` in `mkdeps_host` so the stripping tool is available in the build
 root. `tree` entries are useful for large
 header or documentation trees, but ELF files and symlinks inside them still
 need explicit entries. `nostrip: true` remains an escape hatch for packages
@@ -113,7 +113,7 @@ xsh pm.xsh -- world-plan repo --arch x86_64
 ## World Rebuilds
 
 `world-plan` expands package roots such as `repo`, computes dependency
-tranches using runtime deps, `mkdeps`, and `target_build_deps`, and prints a
+tranches using runtime deps, `mkdeps_host`, and `mkdeps_target`, and prints a
 human-readable plan. The default arch is the host arch; `--arch aarch64` and
 `--arch x86_64` are supported.
 
@@ -145,12 +145,12 @@ inside PM-managed Laputa roots instead of relying on ambient host tools.
 `build-install` uses two roots:
 
 - `ROOT`: runtime deps and built packages.
-- `BUILD_ROOT`: runtime deps, `mkdeps`, `target_build_deps`, tool runtime, and
+- `BUILD_ROOT`: runtime deps, `mkdeps_host`, `mkdeps_target`, tool runtime, and
   built packages.
 
 For native cross world builds, PM keeps the target package root and native build
-tool root separate. `target_build_deps` are staged for the target arch alongside
-runtime deps. `mkdeps` are staged for the build arch so executable tools run on
+tool root separate. `mkdeps_target` are staged for the target arch alongside
+runtime deps. `mkdeps_host` are staged for the build arch so executable tools run on
 the host.
 
 Each package source tree is copied into `/var/tmp/pm-build/<pkg-id>` inside the
@@ -179,8 +179,8 @@ changed.
 
 ## Installed State
 
-The installed package database records version, deps, mkdeps,
-target_build_deps, manifest entries, and `/etc` checksums. Installs use
+The installed package database records version, deps, mkdeps_host,
+mkdeps_target, manifest entries, and `/etc` checksums. Installs use
 manifest ownership checks to avoid dirty overwrites. Removes refuse to break
 dependent packages.
 

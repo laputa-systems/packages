@@ -8,13 +8,11 @@ export let rel = "4"
 
 export let deps = ["musl", "linux"]
 
-export let mkdeps = ["llvm-toolchain"]
+export let mkdeps_host = ["llvm-toolchain"]
 
 export let sources = [p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz"]
 
-export let checksums = [
-  "2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d",
-]
+export let checksums = ["2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d"]
 
 export let filetree = [
   {path: p"usr", kind: "tree"},

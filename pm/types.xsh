@@ -14,8 +14,8 @@ export type PackageExports = module {
   export let ver: Str
   export let rel: Str
   export let deps: List[Str]
-  export let mkdeps: List[Str]
-  export optional let target_build_deps: List[Str]
+  export let mkdeps_host: List[Str]
+  export optional let mkdeps_target: List[Str]
   export let sources: List[Path]
   export let checksums: List[Str]
   export let filetree: List[FileTreeEntry]
@@ -32,8 +32,8 @@ export type Package = {
   ver: Str,
   rel: Str,
   deps: List[Str],
-  mkdeps: List[Str],
-  target_build_deps: List[Str],
+  mkdeps_host: List[Str],
+  mkdeps_target: List[Str],
   sources: List[Path],
   checksums: List[Str],
   filetree: List[FileTreeEntry],
@@ -58,8 +58,8 @@ export type PackageIndex = {
   ver: Str,
   rel: Str,
   deps: List[Str],
-  mkdeps: List[Str],
-  target_build_deps: List[Str],
+  mkdeps_host: List[Str],
+  mkdeps_target: List[Str],
 }
 
 export type RemotePackage = {
@@ -68,8 +68,8 @@ export type RemotePackage = {
   ver: Str,
   rel: Str,
   deps: List[Str],
-  mkdeps: List[Str],
-  target_build_deps: List[Str],
+  mkdeps_host: List[Str],
+  mkdeps_target: List[Str],
   sha256: Str,
   size: Int,
   tarball: Str,

@@ -8,7 +8,7 @@ export let rel = "15"
 
 export let deps = ["musl", "zlib"]
 
-export let mkdeps = ["llvm-toolchain", "xinit"]
+export let mkdeps_host = ["llvm-toolchain", "xinit"]
 
 # Source is a git commit (no VERSION substitution needed).
 export let sources = [
@@ -16,10 +16,7 @@ export let sources = [
   p"service.xsh",
 ]
 
-export let checksums = [
-  "ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c",
-  "SKIP",
-]
+export let checksums = ["ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c", "SKIP"]
 
 export let filetree = [
   {path: p"usr/bin/dbclient", kind: "binary"},

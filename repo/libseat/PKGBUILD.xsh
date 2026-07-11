@@ -6,11 +6,10 @@ export let rel = "7"
 
 export let deps = ["seatd"]
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = []
 
-export let checksums = [
-]
+export let checksums = []
 
 export let filetree = []

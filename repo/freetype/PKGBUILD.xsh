@@ -9,13 +9,11 @@ export let rel = "7"
 
 export let deps = ["musl", "zlib", "libpng"]
 
-export let mkdeps = ["llvm-toolchain", "cmake", "samurai", "pkgconf", "zlib", "libpng"]
+export let mkdeps_host = ["llvm-toolchain", "cmake", "samurai", "pkgconf", "zlib", "libpng"]
 
 export let sources = [p"https://download-mirror.savannah.gnu.org/releases/freetype/freetype-VERSION.tar.xz"]
 
-export let checksums = [
-  "32427e8c471ac095853212a37aef816c60b42052d4d9e48230bab3bdf2936ccc",
-]
+export let checksums = ["32427e8c471ac095853212a37aef816c60b42052d4d9e48230bab3bdf2936ccc"]
 
 export let filetree = [
   {path: p"usr/include/freetype2/dlg/dlg.h", kind: "file"},

@@ -8,7 +8,7 @@ export let rel = "8"
 
 export let deps = ["musl", "llvm-toolchain", "gnu-stubs"]
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = [
   p"https://static.rust-lang.org/dist/2026-04-16/cargo-VERSION-ARCH-unknown-linux-musl.tar.xz => cargo",

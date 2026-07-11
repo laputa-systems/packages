@@ -6,7 +6,7 @@ export let rel = "9"
 
 export let deps = ["musl", "ca-certificates"]
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let nostrip = true
 

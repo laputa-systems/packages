@@ -6,12 +6,11 @@ export let rel = "23"
 
 export let deps = ["waterfox-bin", "dwl-minimal", "seatd", "mdevd", "libudev-zero", "ca-certificates", "foot-minimal"]
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = []
 
-export let checksums = [
-]
+export let checksums = []
 
 export let filetree = [
   {path: p"etc/asound.conf", kind: "file"},

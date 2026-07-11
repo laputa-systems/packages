@@ -6,7 +6,7 @@ export let rel = "1"
 
 export let deps = []
 
-export let mkdeps = ["make"]
+export let mkdeps_host = ["make"]
 
 export let sources = []
 

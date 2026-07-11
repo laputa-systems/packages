@@ -8,14 +8,11 @@ export let rel = "7"
 
 export let deps = ["musl"]
 
-export let mkdeps = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "xinit"]
+export let mkdeps_host = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "xinit"]
 
 export let sources = [p"https://github.com/kennylevinsen/seatd/archive/refs/tags/VERSION.tar.gz", p"service.xsh"]
 
-export let checksums = [
-  "302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96",
-  "SKIP",
-]
+export let checksums = ["302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96", "SKIP"]
 
 export let filetree = [
   {path: p"usr/bin/seatd", kind: "binary"},

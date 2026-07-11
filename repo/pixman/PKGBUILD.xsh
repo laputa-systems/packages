@@ -9,13 +9,11 @@ export let rel = "8"
 
 export let deps = ["musl"]
 
-export let mkdeps = ["llvm-toolchain", "muon", "pkgconf", "samurai"]
+export let mkdeps_host = ["llvm-toolchain", "muon", "pkgconf", "samurai"]
 
 export let sources = [p"https://xorg.freedesktop.org/releases/individual/lib/pixman-VERSION.tar.xz"]
 
-export let checksums = [
-  "a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239",
-]
+export let checksums = ["a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239"]
 
 export let filetree = [
   {path: p"usr/lib/libpixman-1.so.0", kind: "symlink"},

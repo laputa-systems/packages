@@ -9,13 +9,11 @@ export let rel = "7"
 
 export let deps = ["musl"]
 
-export let mkdeps = ["llvm-toolchain", "cmake", "samurai"]
+export let mkdeps_host = ["llvm-toolchain", "cmake", "samurai"]
 
 export let sources = [p"https://github.com/JuliaStrings/utf8proc/archive/vVERSION.tar.gz"]
 
-export let checksums = [
-  "6f4f1b639daa6dca9f80bc5db1233e9cbaa31a67790887106160b33ef743f136",
-]
+export let checksums = ["6f4f1b639daa6dca9f80bc5db1233e9cbaa31a67790887106160b33ef743f136"]
 
 export let filetree = [
   {path: p"usr/include/utf8proc.h", kind: "file"},

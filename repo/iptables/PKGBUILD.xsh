@@ -8,13 +8,11 @@ export let rel = "9"
 
 export let deps = ["musl"]
 
-export let mkdeps = ["llvm-toolchain"]
+export let mkdeps_host = ["llvm-toolchain"]
 
 export let sources = [p"https://www.netfilter.org/projects/iptables/files/iptables-VERSION.tar.xz"]
 
-export let checksums = [
-  "d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2",
-]
+export let checksums = ["d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2"]
 
 export let filetree = [
   {path: p"usr/bin/ip6tables", kind: "binary"},

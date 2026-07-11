@@ -9,13 +9,11 @@ export let rel = "11"
 
 export let deps = ["musl"]
 
-export let mkdeps = ["llvm-toolchain", "cmake", "samurai"]
+export let mkdeps_host = ["llvm-toolchain", "cmake", "samurai"]
 
 export let sources = [p"https://zlib.net/fossils/zlib-VERSION.tar.gz"]
 
-export let checksums = [
-  "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
-]
+export let checksums = ["bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"]
 
 export let filetree = [
   {path: p"usr/include/zconf.h", kind: "file"},

@@ -6,7 +6,7 @@ export let rel = "1"
 
 export let deps = ["dep"]
 
-export let mkdeps = ["llvm-toolchain"]
+export let mkdeps_host = ["llvm-toolchain"]
 
 export let sources = []
 

@@ -60,6 +60,7 @@ export proc verify_package_elf_dependencies(root: Path, name: Str) [fs, error] {
 
   if failures.len() > 0 {
     let first = failures[0]
+
     return Err(
       ProofError.Failed(
         f"proof-${name}",

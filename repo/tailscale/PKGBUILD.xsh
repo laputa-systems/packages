@@ -6,21 +6,15 @@ export let rel = "11"
 
 export let deps = ["iptables", "xinit"]
 
-export let mkdeps = ["llvm-toolchain"]
+export let mkdeps_host = ["llvm-toolchain"]
 
 export let sources = [p"https://pkgs.tailscale.com/stable/tailscale_VERSION_GOARCH.tgz", p"service.xsh"]
 
 export let checksums = ["SKIP", "SKIP"]
 
-export let checksums_aarch64 = [
-  "a27249bc70d7b37a68f8be7f5c4507ea5f354e592dce43cb5d4f3e742b313c3c",
-  "SKIP",
-]
+export let checksums_aarch64 = ["a27249bc70d7b37a68f8be7f5c4507ea5f354e592dce43cb5d4f3e742b313c3c", "SKIP"]
 
-export let checksums_x86_64 = [
-  "a1cba18826b1f91cb25ef7f5b8259b5258339b42db7867af9269e21829ea78cc",
-  "SKIP",
-]
+export let checksums_x86_64 = ["a1cba18826b1f91cb25ef7f5b8259b5258339b42db7867af9269e21829ea78cc", "SKIP"]
 
 export let filetree = [
   {path: p"usr/bin/tailscale", kind: "binary"},

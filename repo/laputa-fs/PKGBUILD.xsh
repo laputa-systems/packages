@@ -6,16 +6,11 @@ export let rel = "7"
 
 export let deps = ["xsh"]
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = [p"files/mkfs.vfat.xsh", p"files/mkfs.ext4.xsh", p"files/fsck.ext4.xsh", p"files/fat-put.xsh"]
 
-export let checksums = [
-  "SKIP",
-  "SKIP",
-  "SKIP",
-  "SKIP",
-]
+export let checksums = ["SKIP", "SKIP", "SKIP", "SKIP"]
 
 export let filetree = [
   {path: p"usr/bin/fsck.ext4", kind: "file"},

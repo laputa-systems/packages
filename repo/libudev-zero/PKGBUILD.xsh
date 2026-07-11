@@ -9,13 +9,11 @@ export let rel = "7"
 
 export let deps = ["musl", "linux"]
 
-export let mkdeps = ["llvm-toolchain", "linux"]
+export let mkdeps_host = ["llvm-toolchain", "linux"]
 
 export let sources = [p"https://github.com/illiliti/libudev-zero/archive/VERSION.tar.gz"]
 
-export let checksums = [
-  "0bd89b657d62d019598e6c7ed726ff8fed80e8ba092a83b484d66afb80b77da5",
-]
+export let checksums = ["0bd89b657d62d019598e6c7ed726ff8fed80e8ba092a83b484d66afb80b77da5"]
 
 export let filetree = [
   {path: p"usr/include/libudev.h", kind: "file"},

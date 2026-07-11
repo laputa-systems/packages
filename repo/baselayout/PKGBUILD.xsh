@@ -6,13 +6,11 @@ export let rel = "14"
 
 export let deps = []
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = [p"files/rootfs"]
 
-export let checksums = [
-  "SKIP",
-]
+export let checksums = ["SKIP"]
 
 export let extract_install = true
 

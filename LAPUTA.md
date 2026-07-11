@@ -42,7 +42,7 @@ Package recipes should prefer:
 - structured process arguments instead of shell strings;
 - `pm.make`, `pm.configure`, or direct compiler invocations where that is the
   smallest correct build;
-- explicit runtime deps and `mkdeps`;
+- explicit runtime deps and `mkdeps_host`;
 - package-local proofs that validate the installed artifact.
 
 See `PM.md` for the current PM contract.
@@ -117,8 +117,8 @@ practically. They are toolchain-owned implementation details, not a separate
 compatibility layer, and must not grow into a general `libgcc` replacement.
 Packages that can build without them should do so.
 
-Runtime `deps` should mean installed files needed by installed files. `mkdeps`
-should mean executable build tools. `target_build_deps` should mean target-side
+Runtime `deps` should mean installed files needed by installed files. `mkdeps_host`
+should mean executable build tools. `mkdeps_target` should mean target-side
 headers, pkg-config files, protocol XML, or other target metadata needed to
 build the package but not needed by its installed runtime files.
 
@@ -141,7 +141,7 @@ pkgconf, samurai, CMake, m4, flex, bison, Linux, muon, CA certificates, and the
 package-owned runtime closure required by those tools.
 
 Normal package proofs use PM-managed chroots. `pm build-set`, `pm
-build-install`, and `pm world-plan --build` install declared deps and `mkdeps`
+build-install`, and `pm world-plan --build` install declared deps and `mkdeps_host`
 into a build root, copy the prepared source tree into `/var/tmp/pm-build`, and
 run package hooks after entering the chroot.
 

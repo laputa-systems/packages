@@ -8,17 +8,13 @@ export let rel = "8"
 
 export let deps = ["musl"]
 
-export let mkdeps = ["llvm-toolchain", "samurai"]
+export let mkdeps_host = ["llvm-toolchain", "samurai"]
 
 export let sources = [p"https://github.com/muon-build/muon/archive/refs/tags/VERSION.tar.gz"]
 
-export let checksums = [
-  "565c1b6e1e58f7e90d8813fda0e2102df69fb493ddab4cf6a84ce3647466bee5",
-]
+export let checksums = ["565c1b6e1e58f7e90d8813fda0e2102df69fb493ddab4cf6a84ce3647466bee5"]
 
-export let filetree = [
-  {path: p"usr/bin/muon", kind: "binary"},
-]
+export let filetree = [{path: p"usr/bin/muon", kind: "binary"}]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?

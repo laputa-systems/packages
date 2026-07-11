@@ -9,7 +9,7 @@ export let rel = "8"
 
 export let deps = ["musl", "fontconfig", "freetype", "pixman"]
 
-export let mkdeps = [
+export let mkdeps_host = [
   "llvm-toolchain",
   "muon",
   "samurai",
@@ -20,7 +20,7 @@ export let mkdeps = [
   "tllist",
 ]
 
-export let target_build_deps = ["pixman-dev", "tllist"]
+export let mkdeps_target = ["pixman-dev", "tllist"]
 
 export let sources = [
   p"https://codeberg.org/dnkl/fcft/archive/VERSION.tar.gz",

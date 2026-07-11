@@ -21,7 +21,7 @@ export let deps = [
   "utf8proc",
 ]
 
-export let mkdeps = [
+export let mkdeps_host = [
   "llvm-toolchain",
   "linux",
   "pkgconf",
@@ -37,7 +37,7 @@ export let mkdeps = [
   "tllist",
 ]
 
-export let target_build_deps = ["wayland-dev", "wayland-protocols", "pixman-dev", "tllist"]
+export let mkdeps_target = ["wayland-dev", "wayland-protocols", "pixman-dev", "tllist"]
 
 export let sources = [
   p"https://codeberg.org/dnkl/foot/archive/VERSION.tar.gz",
@@ -55,10 +55,7 @@ export let checksums = [
   "9053596e40a895d310fa3cf74a68ae1f87828d20a3cdcc927275acaf9d2104cc",
 ]
 
-export let filetree = [
-  {path: p"etc/xdg/foot/foot.ini", kind: "file"},
-  {path: p"usr/bin/foot", kind: "binary"},
-]
+export let filetree = [{path: p"etc/xdg/foot/foot.ini", kind: "file"}, {path: p"usr/bin/foot", kind: "binary"}]
 
 proc sysroot_path(root: Str, raw: Str) [fs, error] -> Result[Path] {
   let path_value = fp"${raw.trim()}"

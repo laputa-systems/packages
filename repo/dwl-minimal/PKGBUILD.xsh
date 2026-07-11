@@ -9,7 +9,7 @@ export let rel = "9"
 
 export let deps = ["musl", "wlroots0.19-mesa", "wayland-libs-server", "libxkbcommon", "libinput"]
 
-export let mkdeps = [
+export let mkdeps_host = [
   "llvm-toolchain",
   "pkgconf",
   "wayland-dev",
@@ -23,17 +23,13 @@ export let mkdeps = [
   "libinput",
 ]
 
-export let target_build_deps = ["wayland-dev", "wayland-protocols", "pixman-dev"]
+export let mkdeps_target = ["wayland-dev", "wayland-protocols", "pixman-dev"]
 
 export let sources = [p"https://codeberg.org/dwl/dwl/archive/vVERSION.tar.gz"]
 
-export let checksums = [
-  "58dae5885a49731205cc6f01e7ce0e47819047b47f69dca3051998f872257c2d",
-]
+export let checksums = ["58dae5885a49731205cc6f01e7ce0e47819047b47f69dca3051998f872257c2d"]
 
-export let filetree = [
-  {path: p"usr/bin/dwl", kind: "binary"},
-]
+export let filetree = [{path: p"usr/bin/dwl", kind: "binary"}]
 
 proc sysroot_path(root: Str, raw: Str) [fs, error] -> Result[Path] {
   let path_value = fp"${raw.trim()}"

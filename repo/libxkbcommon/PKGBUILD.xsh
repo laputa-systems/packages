@@ -8,7 +8,7 @@ export let rel = "7"
 
 export let deps = ["musl", "xkeyboard-config"]
 
-export let mkdeps = ["llvm-toolchain", "muon", "samurai", "pkgconf", "xkeyboard-config"]
+export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "xkeyboard-config"]
 
 export let sources = [
   p"https://github.com/xkbcommon/libxkbcommon/archive/xkbcommon-VERSION.tar.gz",

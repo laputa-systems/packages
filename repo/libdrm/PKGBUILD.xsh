@@ -8,13 +8,11 @@ export let rel = "8"
 
 export let deps = ["musl", "libudev-zero"]
 
-export let mkdeps = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "libudev-zero"]
+export let mkdeps_host = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "libudev-zero"]
 
 export let sources = [p"https://dri.freedesktop.org/libdrm/libdrm-VERSION.tar.xz"]
 
-export let checksums = [
-  "051aeb3e542a57621018ffc443fb088dd69b78eef0ce4808b604ce0feac9f47f",
-]
+export let checksums = ["051aeb3e542a57621018ffc443fb088dd69b78eef0ce4808b604ce0feac9f47f"]
 
 type Modifier = {vendor: Str, mod: Str, name: Str}
 

@@ -12,7 +12,7 @@ export let rel = "16"
 
 export let deps = ["musl", "llvm-toolchain"]
 
-export let mkdeps = ["llvm-toolchain", "samurai"]
+export let mkdeps_host = ["llvm-toolchain", "samurai"]
 
 export let sources = [
   p"https://cmake.org/files/vMAJOR.MINOR/cmake-VERSION.tar.gz",

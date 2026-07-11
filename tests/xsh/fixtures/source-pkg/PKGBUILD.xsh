@@ -6,7 +6,7 @@ export let rel = "1"
 
 export let deps = []
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = [p"files/data.txt"]
 

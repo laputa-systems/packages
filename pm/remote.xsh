@@ -424,7 +424,7 @@ export proc decode_remote_index(rows: List[Record]) [error] -> Result[List[Remot
 
 export proc decode_remote_package(row: Record) [error] -> Result[RemotePackage] {
   var arch = "aarch64"
-  let empty_target_build_deps = []
+  let empty_mkdeps_target = []
 
   if row.has("arch") {
     let stored_arch: Str = row.get("arch")?
@@ -437,8 +437,8 @@ export proc decode_remote_package(row: Record) [error] -> Result[RemotePackage] 
     ver: row.get("ver")?,
     rel: row.get("rel")?,
     deps: row.get("deps")?,
-    mkdeps: row.get("mkdeps")?,
-    target_build_deps: if row.has("target_build_deps") { row.get("target_build_deps")? } else { empty_target_build_deps },
+    mkdeps_host: row.get("mkdeps_host")?,
+    mkdeps_target: if row.has("mkdeps_target") { row.get("mkdeps_target")? } else { empty_mkdeps_target },
     sha256: row.get("sha256")?,
     size: row.get("size")?,
     tarball: row.get("tarball")?,
@@ -787,8 +787,8 @@ export pure package_from_remote(pkg: RemotePackage) -> Result[Package] {
     ver: pkg.ver,
     rel: pkg.rel,
     deps: pkg.deps,
-    mkdeps: pkg.mkdeps,
-    target_build_deps: pkg.target_build_deps,
+    mkdeps_host: pkg.mkdeps_host,
+    mkdeps_target: pkg.mkdeps_target,
     sources: pkg_sources,
     checksums,
     filetree: [],
@@ -828,8 +828,8 @@ export pure remote_entry_for(
     ver: pkg.ver,
     rel: pkg.rel,
     deps: pkg.deps,
-    mkdeps: pkg.mkdeps,
-    target_build_deps: pkg.target_build_deps,
+    mkdeps_host: pkg.mkdeps_host,
+    mkdeps_target: pkg.mkdeps_target,
     sha256,
     size,
     tarball: tarball_rel,

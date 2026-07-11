@@ -28,7 +28,7 @@ proc order_world_build_packages(
   packages: List[Package],
   index: List[RemotePackage],
   arch: Str,
-  include_mkdeps: Bool,
+  include_mkdeps_host: Bool,
 ) [fs, env, error] -> Result[List[Package]] {
   var ordered = []
   var local_names: Map[Bool] = {}
@@ -53,12 +53,12 @@ proc order_world_build_packages(
       if ! added.get(pkg.name, false) {
         var ready = true
 
-        for dep in effective_world_seed_dependencies(pkg, include_mkdeps, true) {
-          if local_names.get(dep, false) and ! world_dependency_is_seeded(pkg, dep, ! include_mkdeps) {
+        for dep in effective_world_seed_dependencies(pkg, include_mkdeps_host, true) {
+          if local_names.get(dep, false) and ! world_dependency_is_seeded(pkg, dep, ! include_mkdeps_host) {
             if ! added.get(dep, false) {
               ready = false
             }
-          } else if ! world_dependency_is_seeded(pkg, dep, ! include_mkdeps) and ! repo_names.get(dep, false) and ! fs.exists(
+          } else if ! world_dependency_is_seeded(pkg, dep, ! include_mkdeps_host) and ! repo_names.get(dep, false) and ! fs.exists(
             package_db_path(root, dep),
           )? {
             return Err(PmError.MissingDependency(f"${pkg.name} depends on missing ${dep}"))
@@ -189,21 +189,21 @@ proc add_implicit_pm_dependency(pkg: Package, deps: List[Str]) [] -> List[Str] {
   deps
 }
 
-proc effective_world_target_dependencies(pkg: Package, include_target_build_deps: Bool) [] -> List[Str] {
+proc effective_world_target_dependencies(pkg: Package, include_mkdeps_target: Bool) [] -> List[Str] {
   var deps = pkg.deps
 
-  if include_target_build_deps {
-    deps = deps.extend(pkg.target_build_deps)
+  if include_mkdeps_target {
+    deps = deps.extend(pkg.mkdeps_target)
   }
 
   add_implicit_pm_dependency(pkg, deps)
 }
 
-export proc effective_world_dependencies(pkg: Package, include_mkdeps: Bool) [] -> List[Str] {
-  var deps = effective_world_target_dependencies(pkg, include_mkdeps)
+export proc effective_world_dependencies(pkg: Package, include_mkdeps_host: Bool) [] -> List[Str] {
+  var deps = effective_world_target_dependencies(pkg, include_mkdeps_host)
 
-  if include_mkdeps {
-    deps = deps.extend(pkg.mkdeps)
+  if include_mkdeps_host {
+    deps = deps.extend(pkg.mkdeps_host)
   }
 
   deps
@@ -213,7 +213,7 @@ proc effective_world_build_dependencies(pkg: Package, cross_build: Bool) [] -> L
   var deps = []
 
   if cross_build {
-    deps = pkg.mkdeps
+    deps = pkg.mkdeps_host
   } else {
     deps = effective_world_dependencies(pkg, true)
   }
@@ -299,13 +299,13 @@ proc seed_world_package_dependency_set(staged_root: Path, package_root: Path, ow
 
 proc effective_world_seed_dependencies(
   pkg: Package,
-  include_mkdeps: Bool,
-  include_target_build_deps: Bool,
+  include_mkdeps_host: Bool,
+  include_mkdeps_target: Bool,
 ) [] -> List[Str] {
-  var deps = effective_world_target_dependencies(pkg, include_target_build_deps)
+  var deps = effective_world_target_dependencies(pkg, include_mkdeps_target)
 
-  if include_mkdeps {
-    deps = deps.extend(pkg.mkdeps)
+  if include_mkdeps_host {
+    deps = deps.extend(pkg.mkdeps_host)
   }
 
   deps
@@ -315,19 +315,19 @@ proc seed_world_package_root(
   staged_root: Path,
   package_root: Path,
   pkg: Package,
-  include_mkdeps: Bool,
-  include_target_build_deps: Bool,
+  include_mkdeps_host: Bool,
+  include_mkdeps_target: Bool,
 ) [fs, error] {
   seed_world_package_dependency_set(
     staged_root,
     package_root,
     pkg.name,
-    effective_world_seed_dependencies(pkg, include_mkdeps, include_target_build_deps),
+    effective_world_seed_dependencies(pkg, include_mkdeps_host, include_mkdeps_target),
   )?
 }
 
 proc seed_world_package_tool_root(staged_root: Path, package_root: Path, pkg: Package) [fs, error] {
-  seed_world_package_dependency_set(staged_root, package_root, pkg.name, pkg.mkdeps)?
+  seed_world_package_dependency_set(staged_root, package_root, pkg.name, pkg.mkdeps_host)?
 }
 
 pure world_state_path(repo_dir: Path) -> Path {
@@ -351,8 +351,8 @@ proc world_package_rows(packages: List[Package]) [] -> List[Record] {
       id: world_package_id(pkg),
       dir: pkg.dir.display(),
       deps: pkg.deps,
-      mkdeps: pkg.mkdeps,
-      target_build_deps: pkg.target_build_deps,
+      mkdeps_host: pkg.mkdeps_host,
+      mkdeps_target: pkg.mkdeps_target,
       sources,
       checksums: pkg.checksums,
     })
@@ -495,11 +495,11 @@ proc world_dependency_kind(pkg: Package, dep: Str) [] -> Str {
     return "runtime"
   }
 
-  if dep in pkg.target_build_deps {
+  if dep in pkg.mkdeps_target {
     return "target-build"
   }
 
-  if dep in pkg.mkdeps {
+  if dep in pkg.mkdeps_host {
     return "build"
   }
 
@@ -763,6 +763,7 @@ proc print_world_plan(
 
       if staged_statuses.has(pkg.name) {
         let status = staged_statuses.get(pkg.name)?
+
         version_text = f"${ansi(colors, "1;33", version_id(planned_pkg.ver, planned_pkg.rel))} ${ansi(
           colors,
           "2",
@@ -881,10 +882,7 @@ proc compare_version_release(left_ver: Str, left_rel: Str, right_ver: Str, right
   compare_version_text(left_rel, right_rel)
 }
 
-proc validate_world_declared_versions(
-  packages: List[Package],
-  remote_latest: Map[RemotePackage],
-) [error] {
+proc validate_world_declared_versions(packages: List[Package], remote_latest: Map[RemotePackage]) [error] {
   for pkg in packages {
     if remote_latest.has(pkg.name) and ! world_package_always_newer_than_remote(pkg.name, pkg.ver) {
       let rpkg: RemotePackage = remote_latest.get(pkg.name)?
@@ -940,8 +938,8 @@ proc world_latest_remote(index: List[RemotePackage], arch: Str, name: Str) [erro
     ver: "",
     rel: "",
     deps: [],
-    mkdeps: [],
-    target_build_deps: [],
+    mkdeps_host: [],
+    mkdeps_target: [],
     sha256: "",
     size: 0,
     tarball: "",
@@ -1207,11 +1205,7 @@ proc build_world_package(
     }
   } ?
 
-  let tarball_size = if built.len() > 0 {
-    compressed_package_size(fs.metadata(built[0].tarball)?.size)
-  } else {
-    "0K"
-  }
+  let tarball_size = if built.len() > 0 { compressed_package_size(fs.metadata(built[0].tarball)?.size) } else { "0K" }
 
   print --flush ${pkg.name} world_package_id(pkg) "build:" "finished" time.duration_compact(
     (time.now() - started_at) / 1000,
@@ -1689,26 +1683,10 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   var staged_statuses: Map[Str] = {}
 
   if build_requested {
-    staged_statuses = world_staged_package_statuses(
-      repo_dir,
-      fingerprint,
-      root,
-      build_root,
-      planned,
-      cross_build,
-    )?
+    staged_statuses = world_staged_package_statuses(repo_dir, fingerprint, root, build_root, planned, cross_build)?
   }
 
-  print_world_plan(
-    ordered,
-    planned,
-    plan.reasons,
-    local_names,
-    world_jobs,
-    remote_latest,
-    target_arch,
-    staged_statuses,
-  )?
+  print_world_plan(ordered, planned, plan.reasons, local_names, world_jobs, remote_latest, target_arch, staged_statuses)?
 
   if build_requested {
     let state = ensure_world_state_compatible(repo_dir, fingerprint, planned)?
@@ -1740,7 +1718,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     install_chroot_base_for_arch(root_ctx, local_names, false, target_arch)?
 
     if build_root.display() != root.display() {
-    install_chroot_base_for_arch(build_ctx, build_local_names, true, world_build_arch)?
+      install_chroot_base_for_arch(build_ctx, build_local_names, true, world_build_arch)?
     }
 
     var level = 0

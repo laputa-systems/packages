@@ -10,7 +10,7 @@ export let rel = "7"
 
 export let deps = ["musl", "wayland-libs-client"]
 
-export let mkdeps = [
+export let mkdeps_host = [
   "llvm-toolchain",
   "muon",
   "samurai",
@@ -20,18 +20,13 @@ export let mkdeps = [
   "wayland-libs-client",
 ]
 
-export let target_build_deps = ["wayland-dev", "wayland-protocols"]
+export let mkdeps_target = ["wayland-dev", "wayland-protocols"]
 
 export let sources = [p"https://github.com/bugaevc/wl-clipboard/archive/refs/tags/vVERSION.tar.gz"]
 
-export let checksums = [
-  "b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402",
-]
+export let checksums = ["b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402"]
 
-export let filetree = [
-  {path: p"usr/bin/wl-copy", kind: "binary"},
-  {path: p"usr/bin/wl-paste", kind: "binary"},
-]
+export let filetree = [{path: p"usr/bin/wl-copy", kind: "binary"}, {path: p"usr/bin/wl-paste", kind: "binary"}]
 
 proc patch_optional_installs() [fs, error] {
   fs.write(p"data/meson.build", "")?

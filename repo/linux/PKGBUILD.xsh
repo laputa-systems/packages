@@ -13,7 +13,7 @@ export let rel = "33"
 
 export let deps: List[Str] = []
 
-export let mkdeps = ["llvm-toolchain", "flex", "bison"]
+export let mkdeps_host = ["llvm-toolchain", "flex", "bison"]
 
 export let nostrip = true
 
@@ -51,10 +51,7 @@ export let checksums = [
   "39fa47de004dc15b2d71fad9256734992f93743cdb65ef1a70d454b0403f5031",
 ]
 
-export let filetree = [
-  {path: p"boot", kind: "tree"},
-  {path: p"usr", kind: "tree"},
-]
+export let filetree = [{path: p"boot", kind: "tree"}, {path: p"usr", kind: "tree"}]
 
 proc package_arch() [env, error] -> Result[Str] {
   let arch = pm_util.target_arch()?

@@ -9,7 +9,7 @@ export let rel = "7"
 
 export let deps = ["musl", "freetype", "expat"]
 
-export let mkdeps = ["llvm-toolchain", "muon", "samurai", "pkgconf", "freetype", "expat"]
+export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "freetype", "expat"]
 
 export let sources = [
   p"https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/VERSION/fontconfig-VERSION.tar.xz",

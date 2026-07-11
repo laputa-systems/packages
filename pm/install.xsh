@@ -284,20 +284,14 @@ export proc print_package_info(root: Path, name: Str) [fs, error] {
   let ver: Str = metadata.get("ver")?
   let rel: Str = metadata.get("rel")?
   let deps: List[Str] = metadata.get("deps")?
-  let mkdeps: List[Str] = metadata.get("mkdeps")?
-  let empty_target_build_deps = []
-
-  let target_build_deps = if metadata.has("target_build_deps") {
-    metadata.get("target_build_deps")?
-  } else {
-    empty_target_build_deps
-  }
-
+  let mkdeps_host: List[Str] = metadata.get("mkdeps_host")?
+  let empty_mkdeps_target = []
+  let mkdeps_target = if metadata.has("mkdeps_target") { metadata.get("mkdeps_target")? } else { empty_mkdeps_target }
   let manifest = load_manifest(db)?
   print ${name} version_id(ver, rel)
   print "deps" deps.join(" ")
-  print "mkdeps" mkdeps.join(" ")
-  print "target_build_deps" target_build_deps.join(" ")
+  print "mkdeps_host" mkdeps_host.join(" ")
+  print "mkdeps_target" mkdeps_target.join(" ")
   print "files" manifest.len()
 }
 

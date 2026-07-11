@@ -70,8 +70,8 @@ export pure package_with_extract_install(pkg: Package, extract_install: Bool) ->
     ver: pkg.ver,
     rel: pkg.rel,
     deps: pkg.deps,
-    mkdeps: pkg.mkdeps,
-    target_build_deps: pkg.target_build_deps,
+    mkdeps_host: pkg.mkdeps_host,
+    mkdeps_target: pkg.mkdeps_target,
     sources: pkg.sources,
     checksums: pkg.checksums,
     filetree: pkg.filetree,
@@ -110,11 +110,7 @@ export proc collect_etcsums(dest: Path, manifest: List[Path]) [fs, error] -> Res
   sums
 }
 
-export proc validate_and_strip_package(
-  pkg: Package,
-  dest: Path,
-  manifest: List[Path],
-) [fs, process, error] {
+export proc validate_and_strip_package(pkg: Package, dest: Path, manifest: List[Path]) [fs, process, error] {
   var declared: Map[Str] = {}
   var binaries = []
 
@@ -148,7 +144,6 @@ export proc validate_and_strip_package(
 
   for rel_path in manifest {
     let key = rel_path.display()
-
     let path_value = fp"${dest}/${rel_path}"
     let actual_kind = fs.metadata(path_value)?.kind
     var declared_kind = declared.get(key, "")
@@ -173,9 +168,9 @@ export proc validate_and_strip_package(
       }
 
       match elf.inspect(path_value) {
-        Ok(info) if info.type != "not-elf" => {
-          return Err(PmError.PackageContract(f"${pkg.name} ELF output ${key} must be declared as binary"))
-        }
+        Ok(info) if info.type != "not-elf" => return Err(
+          PmError.PackageContract(f"${pkg.name} ELF output ${key} must be declared as binary"),
+        )
         Ok(_) => {}
         Err(_) => {}
       }
@@ -200,16 +195,16 @@ export proc validate_and_strip_package(
     }
 
     match elf.inspect(path_value) {
-      Ok(info) if info.type != "not-elf" and declared_kind == "file" => {
-        return Err(PmError.PackageContract(f"${pkg.name} ELF output ${key} must be declared as binary"))
-      }
-      Ok(info) if info.type == "not-elf" and declared_kind == "binary" => {
-        return Err(PmError.PackageContract(f"${pkg.name} declares non-ELF output ${key} as binary"))
-      }
+      Ok(info) if info.type != "not-elf" and declared_kind == "file" => return Err(
+        PmError.PackageContract(f"${pkg.name} ELF output ${key} must be declared as binary"),
+      )
+      Ok(info) if info.type == "not-elf" and declared_kind == "binary" => return Err(
+        PmError.PackageContract(f"${pkg.name} declares non-ELF output ${key} as binary"),
+      )
       Ok(_) => {}
-      Err(_) if declared_kind == "binary" => {
-        return Err(PmError.PackageContract(f"${pkg.name} declares non-ELF output ${key} as binary"))
-      }
+      Err(_) if declared_kind == "binary" => return Err(
+        PmError.PackageContract(f"${pkg.name} declares non-ELF output ${key} as binary"),
+      )
       Err(_) => {}
     }
   }
@@ -217,7 +212,7 @@ export proc validate_and_strip_package(
   for entry in pkg.filetree {
     let key = entry.path.display()
 
-    if entry.kind != "tree" and ! (fp"${dest}/${entry.path}").exists()? {
+    if entry.kind != "tree" and ! fp"${dest}/${entry.path}".exists()? {
       return Err(PmError.PackageContract(f"${pkg.name} declares missing file ${key}"))
     }
   }
@@ -267,11 +262,11 @@ export proc metadata_files_sha256(pkg: Package, files: List[Record]) [error] -> 
   var body = f"""name	${pkg.name}
 ver	${pkg.ver}
 deps	${pkg.deps.join(" ")}
-mkdeps	${pkg.mkdeps.join(" ")}
+mkdeps_host	${pkg.mkdeps_host.join(" ")}
 """
 
-  if pkg.target_build_deps.len() > 0 {
-    body = f"""${body}target_build_deps	${pkg.target_build_deps.join(" ")}
+  if pkg.mkdeps_target.len() > 0 {
+    body = f"""${body}mkdeps_target	${pkg.mkdeps_target.join(" ")}
 """
   }
 
@@ -306,8 +301,8 @@ export proc write_package_metadata(path_value: Path, arch: Str, item: BuiltPacka
       ver: item.pkg.ver,
       rel: item.pkg.rel,
       deps: item.pkg.deps,
-      mkdeps: item.pkg.mkdeps,
-      target_build_deps: item.pkg.target_build_deps,
+      mkdeps_host: item.pkg.mkdeps_host,
+      mkdeps_target: item.pkg.mkdeps_target,
       filetree: [{path: entry.path.display(), kind: entry.kind} for entry in item.pkg.filetree],
       manifest,
       metadata_sha256: item.metadata_sha256,
@@ -510,8 +505,8 @@ export proc write_package_db(root: Path, pkg: Package, manifest: List[Path], etc
       ver: pkg.ver,
       rel: pkg.rel,
       deps: pkg.deps,
-      mkdeps: pkg.mkdeps,
-      target_build_deps: pkg.target_build_deps,
+      mkdeps_host: pkg.mkdeps_host,
+      mkdeps_target: pkg.mkdeps_target,
       filetree: [{path: entry.path.display(), kind: entry.kind} for entry in pkg.filetree],
       nostrip: pkg.nostrip,
       extract_install: pkg.extract_install,
@@ -560,8 +555,8 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
     let ver: Str = exports.get("ver")?
     let rel: Str = exports.get("rel")?
     let deps: List[Str] = exports.get("deps")?
-    let mkdeps: List[Str] = exports.get("mkdeps")?
-    var target_build_deps = []
+    let mkdeps_host: List[Str] = exports.get("mkdeps_host")?
+    var mkdeps_target = []
     let pkg_sources: List[Path] = exports.get("sources")?
     let base_checksums: List[Str] = exports.get("checksums")?
     let checksums = select_checksums(exports, base_checksums)?
@@ -569,8 +564,8 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
     var nostrip = false
     var extract_install = false
 
-    if exports.has("target_build_deps") {
-      target_build_deps = exports.get("target_build_deps")?
+    if exports.has("mkdeps_target") {
+      mkdeps_target = exports.get("mkdeps_target")?
     }
 
     if exports.has("nostrip") {
@@ -608,8 +603,8 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
       ver,
       rel,
       deps,
-      mkdeps,
-      target_build_deps,
+      mkdeps_host,
+      mkdeps_target,
       sources: pkg_sources,
       checksums,
       filetree,
@@ -705,8 +700,8 @@ export pure collect_local_index(packages: List[Package]) -> Result[List[PackageI
     ver: pkg.ver,
     rel: pkg.rel,
     deps: pkg.deps,
-    mkdeps: pkg.mkdeps,
-    target_build_deps: pkg.target_build_deps,
+    mkdeps_host: pkg.mkdeps_host,
+    mkdeps_target: pkg.mkdeps_target,
   } for pkg in packages]
 
   index

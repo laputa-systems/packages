@@ -6,7 +6,7 @@ export let rel = "8"
 
 export let deps = []
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = [p"files/cacert.pem", p"files/update-certdata.xsh"]
 

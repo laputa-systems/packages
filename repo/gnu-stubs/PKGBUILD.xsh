@@ -10,13 +10,11 @@ export let rel = "7"
 
 export let deps = ["musl"]
 
-export let mkdeps = ["llvm-toolchain"]
+export let mkdeps_host = ["llvm-toolchain"]
 
 export let sources = [p"files/.keep"]
 
-export let checksums = [
-  "SKIP",
-]
+export let checksums = ["SKIP"]
 
 export let filetree = [
   {path: p"usr/lib/crtbeginS.o", kind: "binary"},

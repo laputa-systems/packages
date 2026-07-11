@@ -10,7 +10,7 @@ export let rel = "9"
 
 export let deps = ["musl", "m4"]
 
-export let mkdeps = ["llvm-toolchain"]
+export let mkdeps_host = ["llvm-toolchain"]
 
 export let sources = [
   p"https://github.com/westes/flex/releases/download/vVERSION/flex-VERSION.tar.gz",

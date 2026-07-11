@@ -8,14 +8,11 @@ export let rel = "9"
 # wpa_supplicant provides Wi-Fi association for wireless interfaces.
 export let deps = ["xsh", "wpa_supplicant"]
 
-export let mkdeps = ["xinit"]
+export let mkdeps_host = ["xinit"]
 
 export let sources = [p"service.xsh", p"interfaces"]
 
-export let checksums = [
-  "SKIP",
-  "SKIP",
-]
+export let checksums = ["SKIP", "SKIP"]
 
 export let filetree = [
   {path: p"etc/network/if-down.d/keep", kind: "file"},

@@ -208,7 +208,7 @@ proc test_pm_info_waterfox_bin_excludes_session_stack(ctx: TestContext) [fs, pro
   let work = test.temp_dir(ctx, name: "waterfox-info-work")?
   let out = test.temp_dir(ctx, name: "waterfox-info-out")?
   let db = fp"${root}/var/lib/xsh-pm/packages/waterfox-bin"
-  let no_mkdeps = []
+  let no_mkdeps_host = []
   let no_etcsums = []
   fs.mkdir(db)?
 
@@ -219,7 +219,7 @@ proc test_pm_info_waterfox_bin_excludes_session_stack(ctx: TestContext) [fs, pro
       ver: "140.11.0esr",
       rel: "1",
       deps: ["musl", "ca-certificates"],
-      mkdeps: no_mkdeps,
+      mkdeps_host: no_mkdeps_host,
       nostrip: true,
       dir: "repo/waterfox-bin",
     },
@@ -230,7 +230,7 @@ proc test_pm_info_waterfox_bin_excludes_session_stack(ctx: TestContext) [fs, pro
   let info = run.text xsh_bin() pm.xsh -- info $root $work $out waterfox-bin ?
   test.contains(info, "waterfox-bin 140.11.0esr-1")?
   test.contains(info, "deps musl ca-certificates")?
-  test.contains(info, "mkdeps")?
+  test.contains(info, "mkdeps_host")?
 
   for term in waterfox_forbidden_pm_info_terms() {
     test.eq(term in info, false, message: f"pm info unexpectedly contained ${term}")?
@@ -331,7 +331,7 @@ literal=@UNKNOWN@
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
-export let mkdeps = []
+export let mkdeps_host = []
 export let sources = [p"generated"]
 export let checksums = ["SKIP"]
 export let filetree = [
@@ -399,7 +399,7 @@ proc test_pm_package_build_extracts_tar_source(ctx: TestContext) [fs, process, e
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
-export let mkdeps = []
+export let mkdeps_host = []
 export let sources = [p"files/upstream.tar.gz"]
 export let checksums = ["SKIP"]
 export let filetree = [{path: p"usr/share/tar-source-pkg/data.txt", kind: "file"}]
@@ -457,7 +457,7 @@ proc test_pm_build_prepared_package_command_writes_manifest_and_tarball(ctx: Tes
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
-export let mkdeps = []
+export let mkdeps_host = []
 export let sources = []
 export let checksums = []
 export let filetree = [{path: p"usr/share/prepared-pkg/payload.txt", kind: "file"}]
@@ -527,8 +527,8 @@ proc test_pm_buildroot_missing_dependency_selection(ctx: TestContext) [fs, env, 
       ver: "1.0.0",
       rel: "1",
       deps: [],
-      mkdeps: [],
-      target_build_deps: [],
+      mkdeps_host: [],
+      mkdeps_target: [],
       nostrip: false,
       extract_install: false,
       dir: "tests/xsh/fixtures/dep",
@@ -605,7 +605,7 @@ export let rel = "1"
 
 export let deps = []
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = [p"files/data.txt"]
 
@@ -690,7 +690,7 @@ proc test_pm_build_set_stages_local_dependencies(ctx: TestContext) [fs, process,
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
-export let mkdeps = []
+export let mkdeps_host = []
 export let sources = []
 export let checksums = []
 export let filetree = [{path: p"usr/share/laputa-pm/local.txt", kind: "file"}]
@@ -724,7 +724,7 @@ main(@args)?
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
-export let mkdeps = []
+export let mkdeps_host = []
 export let sources = []
 export let checksums = []
 export let filetree = [{path: p"usr/share/local-lib/payload.txt", kind: "file"}]
@@ -758,7 +758,7 @@ main(@args)?
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps = ["local-lib"]
-export let mkdeps = []
+export let mkdeps_host = []
 export let sources = []
 export let checksums = []
 export let filetree = [{path: p"usr/share/local-app/dep.txt", kind: "file"}]
@@ -809,7 +809,7 @@ proc test_pm_remote_index_rejects_traversal_paths(ctx: TestContext) [fs, process
 
   fs.write(
     fp"${repo}/index.json",
-    f"""[{"arch":"${arch}","name":"evil","ver":"1.0.0","rel":"1","deps":[],"mkdeps":[],"target_build_deps":[],"sha256":"","size":1,"tarball":"../escape.tar.gz","metadata":"metadata/${arch}/evil/evil-1.0.0-1.json","source_sha256":"","source_tarball":"","metapackage":false}]
+    f"""[{"arch":"${arch}","name":"evil","ver":"1.0.0","rel":"1","deps":[],"mkdeps_host":[],"mkdeps_target":[],"sha256":"","size":1,"tarball":"../escape.tar.gz","metadata":"metadata/${arch}/evil/evil-1.0.0-1.json","source_sha256":"","source_tarball":"","metapackage":false}]
 """,
   )?
 
@@ -953,10 +953,7 @@ proc test_pm_upload_repo_export_includes_source_mirror(ctx: TestContext) [fs, pr
   test.contains(export_out, "repo export uploaded")?
   let source_rel = fp"sources/remote-app/remote-app-1.0.0-1-${arch}-src.tar.gz"
   var remote_rows: List[Record] = json.read(fp"${remote}/index.json")?
-  var legacy_rows: List[Record] = []
-  for row in remote_rows {
-    legacy_rows = legacy_rows.push({...row, target_build_deps: []})
-  }
+  var legacy_rows = [{...row, mkdeps_target: []} for row in remote_rows]
   json.write(fp"${remote}/index.json", legacy_rows)?
   let repeat_out = run.text XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- upload-repo-export $repo ?
   test.contains(repeat_out, f"repo-export ${arch} remote-app 1.0.0-1 already-exported")?
@@ -985,12 +982,7 @@ proc test_pm_help(ctx: TestContext) [process, error] {
   let _ = ctx
   let help = run.text xsh_bin() pm.xsh -- "-h" ?
   test.contains(help, "usage: pm COMMAND [ARG...]")?
-
-  test.contains(
-    help,
-    "world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--to-tranche N] [-j N|--jobs N]",
-  )?
-
+  test.contains(help, "world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--to-tranche N] [-j N|--jobs N]")?
   let world_help = run.text xsh_bin() pm.xsh -- world-plan "--help" ?
   test.contains(world_help, "usage: pm world-plan ...PKGDIR [OPTIONS]")?
   test.contains(world_help, "--arch ARCH")?
@@ -1009,7 +1001,15 @@ proc test_pm_world_elf_dependency_audit_detects_missing_provider_deps(ctx: TestC
   var providers: Map[Str] = {}
   providers["libz.so.1"] = "zlib"
   providers["libssl.so.3"] = "openssl"
-  let missing = pm_elfdeps.missing_elf_runtime_dependencies("app", ["zlib"], ["libz.so.1", "libssl.so.3"], "", providers)
+
+  let missing = pm_elfdeps.missing_elf_runtime_dependencies(
+    "app",
+    ["zlib"],
+    ["libz.so.1", "libssl.so.3"],
+    "",
+    providers,
+  )
+
   test.eq(missing.len(), 1)?
   test.eq(missing[0].soname, "libssl.so.3")?
   test.eq(missing[0].provider, "openssl")?
@@ -1043,7 +1043,6 @@ proc test_pm_world_elf_dependency_audit_ignores_library_symlink_providers(ctx: T
   fs.symlink(p"libpixman-1.so.0", fp"${root}/usr/lib/libpixman-1.so")?
   json.write(fp"${pixman_db}/manifest.json", ["usr/lib/libpixman-1.so.0"])?
   json.write(fp"${pixman_dev_db}/manifest.json", ["usr/lib/libpixman-1.so"])?
-
   let providers = pm_elfdeps.collect_library_providers(root)?
   test.eq(providers.get("libpixman-1.so.0", ""), "pixman")?
 }
@@ -1061,7 +1060,7 @@ proc test_pm_requires_package_proof(ctx: TestContext) [fs, process, error] {
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
-export let mkdeps = []
+export let mkdeps_host = []
 export let sources = []
 export let checksums = []
 export let filetree = [{path: p"proofless.txt", kind: "file"}]
@@ -1090,7 +1089,7 @@ proc test_pm_requires_service_definition(ctx: TestContext) [fs, process, error] 
 export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
-export let mkdeps = []
+export let mkdeps_host = []
 export let sources = []
 export let checksums = []
 export let filetree = [{path: p"usr/lib/xinit/services/svcless.xsh", kind: "file"}]
@@ -1235,7 +1234,7 @@ proc test_pm_world_plan_displays_remote_to_local_catchup(ctx: TestContext) [fs, 
   let repo_url = f"file://${repo.display()}"
   let arch = fixture_arch()?
   let no_deps = []
-  let no_mkdeps = []
+  let no_mkdeps_host = []
 
   json.write(
     fp"${repo}/index.json",
@@ -1246,7 +1245,7 @@ proc test_pm_world_plan_displays_remote_to_local_catchup(ctx: TestContext) [fs, 
         ver: "1.0.0",
         rel: "0",
         deps: no_deps,
-        mkdeps: no_mkdeps,
+        mkdeps_host: no_mkdeps_host,
         sha256: "",
         size: 0,
         tarball: f"packages/${arch}/laputa-pm/laputa-pm-1.0.0-0.tar.gz",
@@ -1276,7 +1275,7 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
   let arch = fixture_arch()?
   run.text xsh_bin() pm.xsh -- build $repo world_pm_dir() world_lib_dir() world_app_dir() ?
   let no_deps = []
-  let no_mkdeps = []
+  let no_mkdeps_host = []
   let lib_deps = ["laputa-pm"]
   let app_deps = ["world-lib"]
 
@@ -1289,7 +1288,7 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
         ver: "1.0.0",
         rel: "0",
         deps: no_deps,
-        mkdeps: no_mkdeps,
+        mkdeps_host: no_mkdeps_host,
         sha256: "",
         size: 0,
         tarball: f"packages/${arch}/laputa-pm/laputa-pm-1.0.0-0.tar.gz",
@@ -1304,7 +1303,7 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
         ver: "1.0.0",
         rel: "1",
         deps: lib_deps,
-        mkdeps: no_mkdeps,
+        mkdeps_host: no_mkdeps_host,
         sha256: "",
         size: 0,
         tarball: f"packages/${arch}/world-lib/world-lib-1.0.0-1.tar.gz",
@@ -1319,7 +1318,7 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
         ver: "1.0.0",
         rel: "1",
         deps: app_deps,
-        mkdeps: no_mkdeps,
+        mkdeps_host: no_mkdeps_host,
         sha256: "",
         size: 0,
         tarball: f"packages/${arch}/world-app/world-app-1.0.0-1.tar.gz",
@@ -1344,7 +1343,7 @@ proc test_pm_world_plan_rejects_declared_rel_behind_remote(ctx: TestContext) [fs
   let repo_url = f"file://${remote.display()}"
   let arch = fixture_arch()?
   let no_deps = []
-  let no_mkdeps = []
+  let no_mkdeps_host = []
   let metadata_rel = fp"metadata/${arch}/laputa-pm/laputa-pm-1.0.0-2.json"
   fs.mkdir(fp"${remote}/${metadata_rel}".parent)?
   json.write(fp"${remote}/${metadata_rel}", {metadata_sha256: "remote-old"})?
@@ -1358,7 +1357,7 @@ proc test_pm_world_plan_rejects_declared_rel_behind_remote(ctx: TestContext) [fs
         ver: "1.0.0",
         rel: "2",
         deps: no_deps,
-        mkdeps: no_mkdeps,
+        mkdeps_host: no_mkdeps_host,
         sha256: "",
         size: 0,
         tarball: f"packages/${arch}/laputa-pm/laputa-pm-1.0.0-2.tar.gz",
@@ -1564,8 +1563,8 @@ proc test_pm_refresh_index_merges_primary_over_public(ctx: TestContext) [fs, pro
         ver: "1.0.0",
         rel: "1",
         deps: [],
-        mkdeps: [],
-        target_build_deps: [],
+        mkdeps_host: [],
+        mkdeps_target: [],
         sha256: "public",
         size: 1,
         tarball: "packages/public/laputa-pm.tar.gz",
@@ -1580,8 +1579,8 @@ proc test_pm_refresh_index_merges_primary_over_public(ctx: TestContext) [fs, pro
         ver: "1.0.0",
         rel: "1",
         deps: [],
-        mkdeps: [],
-        target_build_deps: [],
+        mkdeps_host: [],
+        mkdeps_target: [],
         sha256: "public-only",
         size: 1,
         tarball: "packages/public/public-only.tar.gz",
@@ -1602,8 +1601,8 @@ proc test_pm_refresh_index_merges_primary_over_public(ctx: TestContext) [fs, pro
         ver: "1.0.0",
         rel: "2",
         deps: [],
-        mkdeps: [],
-        target_build_deps: [],
+        mkdeps_host: [],
+        mkdeps_target: [],
         sha256: "primary",
         size: 2,
         tarball: "packages/primary/laputa-pm.tar.gz",

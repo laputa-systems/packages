@@ -6,15 +6,13 @@ export let rel = "8"
 
 export let deps = []
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = [
   p"https://xorg.freedesktop.org/archive/individual/data/xkeyboard-config/xkeyboard-config-VERSION.tar.xz",
 ]
 
-export let checksums = [
-  "169e075a92d957a57787c199e84e359df2931b7196c1c5b4a3d576ee6235a87c",
-]
+export let checksums = ["169e075a92d957a57787c199e84e359df2931b7196c1c5b4a3d576ee6235a87c"]
 
 export let filetree = [
   {path: p"usr", kind: "tree"},

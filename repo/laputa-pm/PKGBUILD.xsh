@@ -6,14 +6,11 @@ export let rel = "9"
 
 export let deps = ["xsh"]
 
-export let mkdeps = []
+export let mkdeps_host = []
 
 export let sources = [../../pm.xsh, p"../../pm => pm"]
 
-export let checksums = [
-  "SKIP",
-  "SKIP",
-]
+export let checksums = ["SKIP", "SKIP"]
 
 export let filetree = [
   {path: p"usr/bin/pm", kind: "file"},

@@ -10,7 +10,7 @@ export let rel = "15"
 
 export let deps = ["linux-pam", "gnu-stubs", "musl"]
 
-export let mkdeps = ["cargo", "llvm-toolchain", "linux-pam", "ca-certificates"]
+export let mkdeps_host = ["cargo", "llvm-toolchain", "linux-pam", "ca-certificates"]
 
 export let sources = [
   p"https://static.crates.io/crates/sudo-rs/sudo-rs-VERSION.crate",
