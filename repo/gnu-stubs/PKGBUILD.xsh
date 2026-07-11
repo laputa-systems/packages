@@ -6,7 +6,7 @@ export let name = "gnu-stubs"
 
 export let ver = "22.1.8"
 
-export let rel = "2"
+export let rel = "6"
 
 export let deps = ["musl"]
 

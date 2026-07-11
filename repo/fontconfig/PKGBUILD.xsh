@@ -5,7 +5,7 @@ export let name = "fontconfig"
 
 export let ver = "2.17.1"
 
-export let rel = "2"
+export let rel = "6"
 
 export let deps = ["musl", "freetype", "expat"]
 

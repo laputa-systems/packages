@@ -5,7 +5,7 @@ export let name = "wayland-libs-cursor"
 
 export let ver = "1.24.0"
 
-export let rel = "3"
+export let rel = "7"
 
 export let deps = ["musl", "wayland-libs-client"]
 

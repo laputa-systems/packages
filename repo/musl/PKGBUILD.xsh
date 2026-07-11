@@ -7,7 +7,7 @@ export let name = "musl"
 
 export let ver = "1.2.6"
 
-export let rel = "10"
+export let rel = "14"
 
 export let deps = []
 

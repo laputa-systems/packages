@@ -2,7 +2,7 @@ export let name = "build-essential-native"
 
 export let ver = "1"
 
-export let rel = "3"
+export let rel = "7"
 
 export let deps = [
   "ca-certificates",

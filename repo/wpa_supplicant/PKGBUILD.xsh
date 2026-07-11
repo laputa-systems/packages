@@ -4,7 +4,7 @@ export let name = "wpa_supplicant"
 
 export let ver = "2.11"
 
-export let rel = "1"
+export let rel = "2"
 
 # Internal TLS/crypto — no openssl needed.
 # The nl80211 driver unconditionally includes <netlink/genl/genl.h>, so libnl3

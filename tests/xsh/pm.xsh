@@ -966,13 +966,12 @@ proc test_pm_help(ctx: TestContext) [process, error] {
 
   test.contains(
     help,
-    "world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--sync-rels] [--to-tranche N] [-j N|--jobs N]",
+    "world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--to-tranche N] [-j N|--jobs N]",
   )?
 
   let world_help = run.text xsh_bin() pm.xsh -- world-plan "--help" ?
   test.contains(world_help, "usage: pm world-plan ...PKGDIR [OPTIONS]")?
   test.contains(world_help, "--arch ARCH")?
-  test.contains(world_help, "--sync-rels")?
   test.contains(world_help, "--to-tranche N")?
 }
 
@@ -1235,7 +1234,8 @@ proc test_pm_world_plan_displays_remote_to_local_catchup(ctx: TestContext) [fs, 
   )?
 
   let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() ?
-  test.contains(output, "laputa-pm 1.0.0-0 -> 1.0.0-1")?
+  test.contains(output, "laputa-pm 1.0.0-1")?
+  test.ok(! ("->" in output))?
   test.ok(! ("remote newer" in output))?
 }
 
@@ -1307,15 +1307,14 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
     ],
   )?
 
-  let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() world_lib_dir() world_app_dir() ?
-  test.contains(output, "laputa-pm 1.0.0-0 -> 1.0.0-1")?
-  test.contains(output, "world-lib 1.0.0-1 -> 1.0.0-2")?
-  test.contains(output, "world-app 1.0.0-1 -> 1.0.0-2")?
-  test.ok(! ("remote same" in output))?
-  test.ok(! ("remote newer" in output))?
+  let err = test.temp_path(ctx, name: "world-dependency-rel.err")
+  let status = run.status HOME=$home NO_COLOR=1 XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() world_lib_dir() world_app_dir() --build --jobs 1 2> $err
+  test.eq(status.ok, false)?
+  test.contains(err.read_text()?, "world-lib dependencies changed")?
+  test.contains(err.read_text()?, "bump its declared rel above 1.0.0-1")?
 }
 
-proc test_pm_world_plan_autobumps_rel_for_changed_metadata(ctx: TestContext) [fs, process, env, error] {
+proc test_pm_world_plan_rejects_declared_rel_behind_remote(ctx: TestContext) [fs, process, env, error] {
   let home = test.temp_dir(ctx, name: "home")?
   let remote = test.temp_dir(ctx, name: "world-remote")?
   let repo_url = f"file://${remote.display()}"
@@ -1347,54 +1346,10 @@ proc test_pm_world_plan_autobumps_rel_for_changed_metadata(ctx: TestContext) [fs
     ],
   )?
 
-  let output = run.text HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() --build --jobs 1 ?
-  test.contains(output, "laputa-pm 1.0.0-3")?
-  let stage = single_world_cache(home)?
-  test.ok(fp"${stage}/packages/${arch}/laputa-pm/laputa-pm-1.0.0-3.tar.gz".exists()?)?
-  test.ok(fp"${stage}/metadata/${arch}/laputa-pm/laputa-pm-1.0.0-3.json".exists()?)?
-  test.contains(fp"${stage}/index.json".read_text()?, "\"rel\":\"3\"")?
-}
-
-proc test_pm_world_plan_sync_rels_updates_pkgbuilds_after_upload(ctx: TestContext) [fs, process, env, error] {
-  let home = test.temp_dir(ctx, name: "home")?
-  let remote = test.temp_dir(ctx, name: "world-remote")?
-  let pkg = test.temp_dir(ctx, name: "world-pm-copy")?
-  let repo_url = f"file://${remote.display()}"
-  let arch = fixture_arch()?
-  let no_deps = []
-  let no_mkdeps = []
-  let metadata_rel = fp"metadata/${arch}/laputa-pm/laputa-pm-1.0.0-2.json"
-  let _ = fs.copy_tree(world_pm_dir(), pkg, parents: true, overwrite: true)?
-  fs.mkdir(fp"${remote}/${metadata_rel}".parent)?
-  json.write(fp"${remote}/${metadata_rel}", {metadata_sha256: "remote-old"})?
-
-  json.write(
-    fp"${remote}/index.json",
-    [
-      {
-        arch,
-        name: "laputa-pm",
-        ver: "1.0.0",
-        rel: "2",
-        deps: no_deps,
-        mkdeps: no_mkdeps,
-        sha256: "",
-        size: 0,
-        tarball: f"packages/${arch}/laputa-pm/laputa-pm-1.0.0-2.tar.gz",
-        metadata: metadata_rel.display(),
-        source_sha256: "",
-        source_tarball: "",
-        metapackage: false,
-      },
-    ],
-  )?
-
-  let synced = run.text HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- world-plan $pkg --build --upload --sync-rels --jobs 1 ?
-  test.contains(synced, "laputa-pm 1.0.0-1 -> 1.0.0-3 rel-synced")?
-  test.contains(fp"${pkg}/PKGBUILD.xsh".read_text()?, "export let rel = \"3\"")?
-  let output = run.text HOME=$home NO_COLOR=1 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan $pkg ?
-  test.contains(output, "laputa-pm 1.0.0-3")?
-  test.ok(! ("->" in output))?
+  let err = test.temp_path(ctx, name: "declared-rel.err")
+  let status = run.status HOME=$home XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url xsh_bin() pm.xsh -- world-plan world_pm_dir() --build --jobs 1 2> $err
+  test.eq(status.ok, false)?
+  test.contains(err.read_text()?, "laputa-pm declares 1.0.0-1 but 1.0.0-2 is already published")?
 }
 
 proc test_pm_world_plan_upload_verifies_staged_artifacts(ctx: TestContext) [fs, process, env, error] {

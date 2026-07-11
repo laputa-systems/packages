@@ -2,7 +2,7 @@ export let name = "laputa-fs"
 
 export let ver = "1"
 
-export let rel = "3"
+export let rel = "7"
 
 export let deps = ["xsh"]
 

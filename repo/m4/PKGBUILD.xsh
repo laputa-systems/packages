@@ -2,7 +2,7 @@ export let name = "m4"
 
 export let ver = "1.0"
 
-export let rel = "3"
+export let rel = "7"
 
 export let deps = ["musl"]
 

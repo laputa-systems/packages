@@ -72,7 +72,7 @@ pm build REPO_DIR PKGDIR...
 pm build-set REPO_DIR PKGDIR...
 pm build-upload-set REPO_DIR PKGDIR...
 pm build-install ROOT BUILD_ROOT WORK OUT PKGDIR...
-pm world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--sync-rels] [--to-tranche N] [-j N|--jobs N]
+pm world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--to-tranche N] [-j N|--jobs N]
 pm install ROOT WORK OUT PKG...
 pm remove ROOT WORK OUT PKG...
 pm tree ROOT WORK OUT [PKG...]
@@ -115,9 +115,10 @@ parallel; `-j`/`--jobs` controls package concurrency and defaults to
 a world can be resumed incrementally.
 
 `world-plan` compares local package versions and metadata against the remote
-repo for the selected arch. It prints colored annotations for remote or metadata
-issues and plans rel bumps when local metadata changes. `--sync-rels` writes
-planned rel bumps back to local PKGBUILD files.
+repo for the selected arch. Package versions and rels declared in local
+`PKGBUILD.xsh` files are authoritative; a build fails if a declared release is
+behind the selected architecture's remote release. Bump the declaration
+explicitly before rebuilding.
 
 `--upload` refuses to publish until the staged world is complete and every
 package proof has passed. It uploads the complete staged package set and then

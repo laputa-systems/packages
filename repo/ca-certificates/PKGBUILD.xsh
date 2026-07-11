@@ -2,7 +2,7 @@ export let name = "ca-certificates"
 
 export let ver = "2026.03.19"
 
-export let rel = "3"
+export let rel = "8"
 
 export let deps = []
 

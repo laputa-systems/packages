@@ -4,7 +4,7 @@ export let name = "muon"
 
 export let ver = "0.5.0"
 
-export let rel = "5"
+export let rel = "7"
 
 export let deps = ["musl"]
 

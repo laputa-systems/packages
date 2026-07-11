@@ -6,7 +6,7 @@ export let name = "llvm-toolchain"
 
 export let ver = "22.1.8"
 
-export let rel = "9"
+export let rel = "11"
 
 export let deps = ["musl"]
 

@@ -2,7 +2,7 @@ export let name = "waterfox-bin"
 
 export let ver = "140.11.0esr"
 
-export let rel = "5"
+export let rel = "8"
 
 export let deps = ["musl", "ca-certificates"]
 

@@ -4,7 +4,7 @@ export let name = "expat"
 
 export let ver = "2.7.3"
 
-export let rel = "2"
+export let rel = "6"
 
 export let deps = ["musl"]
 

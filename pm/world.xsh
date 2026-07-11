@@ -13,7 +13,6 @@ type WorldPlanOptions = {
   arch: Str,
   build: Bool,
   upload: Bool,
-  sync_rels: Bool,
   to_tranche: Int,
   jobs: Int,
 }
@@ -637,8 +636,6 @@ proc planned_world_packages(
   ordered: List[Package],
   local_names: Map[Bool],
   remote_latest: Map[RemotePackage],
-  state_planned_rels: Map[Str],
-  arch: Str,
 ) [error] -> Result[WorldPlanResult] {
   var planned = []
   var changed: Map[Bool] = {}
@@ -660,69 +657,31 @@ proc planned_world_packages(
       let remote_pkg: RemotePackage = remote_latest.get(pkg.name)?
 
       if compare_version_text(pkg.ver, remote_pkg.ver) == 0 {
-        if state_planned_rels.has(pkg.name) {
-          let state_rel = state_planned_rels.get(pkg.name)?
-          let planned_rel = if compare_version_text(pkg.rel, state_rel) > 0 { pkg.rel } else { state_rel }
-          let remote_to_planned = compare_version_text(remote_pkg.rel, planned_rel)
-
-          if remote_to_planned < 0 or remote_to_planned == 0 and ! changed_dep {
-            planned_pkg = package_with_rel(pkg, planned_rel)
-
-            if compare_version_release(planned_pkg.ver, planned_pkg.rel, pkg.ver, pkg.rel) != 0 {
-              reasons[pkg.name] = f"carried ${arch} world-state rel ${state_rel}"
-            }
-          } else {
-            let rel_cmp = compare_version_text(planned_pkg.rel, remote_pkg.rel)
-
-            if rel_cmp < 0 or changed_dep and rel_cmp <= 0 {
-              planned_pkg = package_with_rel(pkg, next_world_rel(remote_pkg.rel))
-
-              reasons[pkg.name] = if changed_dep { f"changed ${summarize_changed_dependencies(changed_deps)}" } else { f"local rel below remote ${version_id(
-                remote_pkg.ver,
-                remote_pkg.rel,
-              )}" }
-            }
-          }
-        } else {
-          let rel_cmp = compare_version_text(planned_pkg.rel, remote_pkg.rel)
-
-          if rel_cmp < 0 or changed_dep and rel_cmp <= 0 {
-            planned_pkg = package_with_rel(pkg, next_world_rel(remote_pkg.rel))
-
-            reasons[pkg.name] = if changed_dep { f"changed ${summarize_changed_dependencies(changed_deps)}" } else { f"local rel below remote ${version_id(
-              remote_pkg.ver,
-              remote_pkg.rel,
-            )}" }
-          } else if rel_cmp > 0 {
-            reasons[pkg.name] = f"local rel above remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
-          }
+        if compare_version_text(pkg.rel, remote_pkg.rel) > 0 {
+          reasons[pkg.name] = f"local rel above remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
         }
       } else {
         reasons[pkg.name] = f"version differs from remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
       }
 
       changed[pkg.name] = compare_version_release(planned_pkg.ver, planned_pkg.rel, remote_pkg.ver, remote_pkg.rel) != 0
-    } else {
-      if state_planned_rels.has(pkg.name) {
-        let state_rel = state_planned_rels.get(pkg.name)?
 
-        if compare_version_text(pkg.rel, state_rel) <= 0 {
-          planned_pkg = package_with_rel(pkg, state_rel)
-          reasons[pkg.name] = f"new package carried ${arch} world-state rel ${state_rel}"
-        }
-      } else {
-        reasons[pkg.name] = "new package"
+      if changed_dep and compare_version_release(pkg.ver, pkg.rel, remote_pkg.ver, remote_pkg.rel) <= 0 {
+        return Err(
+          PmError.PackageContract(
+            f"${pkg.name} dependencies changed (${summarize_changed_dependencies(changed_deps)}); bump its declared rel above ${version_id(
+              remote_pkg.ver,
+              remote_pkg.rel,
+            )}",
+          ),
+        )
       }
-
+    } else {
+      reasons[pkg.name] = "new package"
       changed[pkg.name] = true
     }
 
-    if ! reasons.has(pkg.name) and changed_dep and compare_version_release(
-      planned_pkg.ver,
-      planned_pkg.rel,
-      pkg.ver,
-      pkg.rel,
-    ) != 0 {
+    if changed_dep and ! reasons.has(pkg.name) {
       reasons[pkg.name] = f"changed ${summarize_changed_dependencies(changed_deps)}"
     }
 
@@ -740,113 +699,16 @@ proc planned_world_package_map(planned: List[Package]) [] -> Map[Package] {
 proc world_plan_version_text(
   pkg: Package,
   planned: Package,
-  remote_latest: Map[RemotePackage],
   colors: Bool,
 ) [error] -> Result[Str] {
   let current = version_id(pkg.ver, pkg.rel)
   let next = version_id(planned.ver, planned.rel)
 
   if current == next {
-    if remote_latest.has(pkg.name) {
-      let rpkg: RemotePackage = remote_latest.get(pkg.name)?
-
-      if compare_version_release(rpkg.ver, rpkg.rel, planned.ver, planned.rel) < 0 or world_package_always_newer_than_remote(
-        pkg.name,
-        planned.ver,
-      ) {
-        return f"${ansi(colors, "2", version_id(rpkg.ver, rpkg.rel))} ${ansi(colors, "1;33", "->")} ${ansi(
-          colors,
-          "1;33",
-          next,
-        )}"
-      }
-    }
-
     return ansi(colors, "2", current)
   }
 
   f"${ansi(colors, "2", current)} ${ansi(colors, "1;33", "->")} ${ansi(colors, "1;33", next)}"
-}
-
-pure rel_field_line(line: Str) -> Bool {
-  line.starts_with("export let rel ") or line.starts_with("export let rel:") or line.starts_with("export let rel=")
-}
-
-proc sync_package_rel(pkg: Package, planned: Package) [fs, error] -> Result[Bool] {
-  if pkg.rel == planned.rel {
-    return false
-  }
-
-  let pkgbuild = fp"${pkg.dir}/PKGBUILD.xsh"
-  let lines = fs.read_text(pkgbuild)?.split("\n")
-  var output = []
-  var found = false
-
-  for line in lines {
-    let trimmed = line.trim()
-
-    if rel_field_line(trimmed) {
-      if found {
-        return Err(PmError.PackageContract(f"${pkg.name} has multiple rel declarations"))
-      }
-
-      found = true
-      output = output.push(f"export let rel = \"${planned.rel}\"")
-    } else {
-      output = output.push(line)
-    }
-  }
-
-  if ! found {
-    return Err(PmError.PackageContract(f"${pkg.name} has no rel declaration"))
-  }
-
-  fs.write(pkgbuild, output.join("\n"))?
-  true
-}
-
-proc verify_planned_rels_published(
-  packages: List[Package],
-  planned_by_name: Map[Package],
-  remote_latest: Map[RemotePackage],
-) [error] {
-  for pkg in packages {
-    let planned: Package = planned_by_name.get(pkg.name)?
-
-    if ! remote_latest.has(pkg.name) {
-      return Err(PmError.RemotePackage(f"${pkg.name} ${version_id(planned.ver, planned.rel)} is not in remote index"))
-    }
-
-    let rpkg: RemotePackage = remote_latest.get(pkg.name)?
-
-    if compare_version_release(rpkg.ver, rpkg.rel, planned.ver, planned.rel) != 0 {
-      return Err(
-        PmError.RemotePackage(
-          f"${pkg.name} planned ${version_id(planned.ver, planned.rel)} but remote has ${version_id(rpkg.ver, rpkg.rel)}",
-        ),
-      )
-    }
-  }
-}
-
-proc sync_world_rels(
-  ordered: List[Package],
-  planned_by_name: Map[Package],
-  remote_latest: Map[RemotePackage],
-) [fs, error] {
-  verify_planned_rels_published(ordered, planned_by_name, remote_latest)?
-  var changed = 0
-
-  for pkg in ordered {
-    let planned: Package = planned_by_name.get(pkg.name)?
-
-    if sync_package_rel(pkg, planned)? {
-      changed += 1
-      print ${pkg.name} version_id(pkg.ver, pkg.rel) "->" version_id(planned.ver, planned.rel) "rel-synced"
-    }
-  }
-
-  print f"world-plan rel sync complete ${changed} changed"
 }
 
 proc print_world_plan(
@@ -896,7 +758,7 @@ proc print_world_plan(
           f"stage: ${status} (local ${version_id(pkg.ver, pkg.rel)})",
         )}"
       } else {
-        version_text = world_plan_version_text(pkg, planned_pkg, remote_latest, colors)?
+        version_text = world_plan_version_text(pkg, planned_pkg, colors)?
       }
 
       print --flush f"  ${ansi(colors, "1;32", pkg.name)} ${version_text}${suffix}"
@@ -1008,49 +870,19 @@ proc compare_version_release(left_ver: Str, left_rel: Str, right_ver: Str, right
   compare_version_text(left_rel, right_rel)
 }
 
-proc validate_world_remote_versions(packages: List[Package], remote_index: List[RemotePackage]) [env, error] {
-  let arch = machine_arch()?
-
-  for pkg in packages {
-    var found = false
-    var remote_ver = ""
-    var remote_rel = ""
-
-    for entry in remote_index {
-      if entry.arch == arch and entry.name == pkg.name {
-        if ! found or compare_version_release(entry.ver, entry.rel, remote_ver, remote_rel) > 0 {
-          found = true
-          remote_ver = entry.ver
-          remote_rel = entry.rel
-        }
-      }
-    }
-
-    if found and compare_version_release(pkg.ver, pkg.rel, remote_ver, remote_rel) <= 0 {
-      return Err(
-        PmError.PackageContract(
-          f"${pkg.name} ${version_id(pkg.ver, pkg.rel)} is not newer than remote ${version_id(remote_ver, remote_rel)}",
-        ),
-      )
-    }
-  }
-}
-
-proc validate_world_remote_versions_for_plan(
+proc validate_world_declared_versions(
   packages: List[Package],
   remote_latest: Map[RemotePackage],
-  allow_equal: Bool,
-) [env, error] {
+) [error] {
   for pkg in packages {
     if remote_latest.has(pkg.name) and ! world_package_always_newer_than_remote(pkg.name, pkg.ver) {
       let rpkg: RemotePackage = remote_latest.get(pkg.name)?
       let cmp = compare_version_release(pkg.ver, pkg.rel, rpkg.ver, rpkg.rel)
-      let ver_cmp = compare_version_text(pkg.ver, rpkg.ver)
 
-      if ! allow_equal and cmp <= 0 or allow_equal and ver_cmp < 0 {
+      if cmp < 0 {
         return Err(
           PmError.PackageContract(
-            f"${pkg.name} ${version_id(pkg.ver, pkg.rel)} is not newer than remote ${version_id(rpkg.ver, rpkg.rel)}",
+            f"${pkg.name} declares ${version_id(pkg.ver, pkg.rel)} but ${version_id(rpkg.ver, rpkg.rel)} is already published for this architecture; bump PKGBUILD.xsh rel explicitly",
           ),
         )
       }
@@ -1122,17 +954,6 @@ proc world_latest_remote(index: List[RemotePackage], arch: Str, name: Str) [erro
   }
 
   latest
-}
-
-proc next_world_rel(rel: Str) [] -> Str {
-  match rel.parse_int() {
-    Ok(value) => f"${value + 1}"
-    Err(_) => f"${rel}.1"
-  }
-}
-
-pure package_with_rel(pkg: Package, rel: Str) -> Package {
-  {...pkg, rel}
 }
 
 proc remote_metadata_sha256(repo: Str, out: Path, entry: RemotePackage) [fs, net, time, error] -> Result[Str] {
@@ -1597,31 +1418,6 @@ proc world_staged_package_statuses(
   statuses
 }
 
-proc world_state_planned_rels(repo_dir: Path, packages: List[Package]) [fs, error] -> Result[Map[Str]] {
-  var rels: Map[Str] = {}
-  let state_path = world_state_path(repo_dir)
-
-  if ! fs.exists(state_path)? {
-    return rels
-  }
-
-  let state = read_world_state(repo_dir)?
-  var versions = {pkg.name: pkg.ver for pkg in packages}
-  let rows: List[Record] = state.get("packages")?
-
-  for row in rows {
-    let name: Str = row.get("name")?
-    let ver: Str = row.get("ver")?
-    let rel: Str = row.get("rel")?
-
-    if versions.has(name) and versions.get(name)? == ver {
-      rels[name] = rel
-    }
-  }
-
-  rels
-}
-
 proc find_world_index_entry(index: List[RemotePackage], arch: Str, pkg: Package) [error] -> Result[RemotePackage] {
   for entry in index {
     if entry.arch == arch and entry.name == pkg.name and entry.ver == pkg.ver and entry.rel == pkg.rel {
@@ -1774,11 +1570,6 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
       arch: {form: "--arch ARCH", default: host_world_arch()?, help: "plan for ARCH (arm64 maps to aarch64)"},
       build: {form: "--build", default: false, help: "build all planned packages into the world staging repo"},
       upload: {form: "--upload", default: false, help: "upload only after the world staging repo is complete"},
-      sync_rels: {
-        form: "--sync-rels",
-        default: false,
-        help: "update PKGBUILD rels to exact planned rels present in remote",
-      },
       to_tranche: {
         form: "--to-tranche N",
         default: -1,
@@ -1793,7 +1584,6 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   let raw_args = opts.pkgdirs
   let build_requested = opts.build
   let upload_requested = opts.upload
-  let sync_rels_requested = opts.sync_rels
   let world_jobs = opts.jobs
   let target_arch = validate_world_arch(opts.arch)?
   let to_tranche = parse_world_to_tranche(f"${opts.to_tranche}", "--to-tranche")?
@@ -1869,15 +1659,14 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     remote_latest = world_latest_remote_map(remote_index, target_arch)?
     build_remote_latest = world_latest_remote_map(remote_index, world_build_arch)?
 
-    if build_requested {
-      validate_world_remote_versions_for_plan(packages, remote_latest, true)?
+    if build_requested or upload_requested {
+      validate_world_declared_versions(packages, remote_latest)?
     }
   }
 
   let local_names = local_package_names(packages)
   let ordered = order_world_build_packages(build_root, packages, index, target_arch, ! cross_build)?
-  let state_planned_rels = world_state_planned_rels(repo_dir, packages)?
-  let plan = planned_world_packages(ordered, local_names, remote_latest, state_planned_rels, target_arch)?
+  let plan = planned_world_packages(ordered, local_names, remote_latest)?
   let planned = plan.packages
   let planned_by_name = planned_world_package_map(planned)
   var staged_statuses: Map[Str] = {}
@@ -2147,14 +1936,5 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     audit_world_elf_dependencies(root, planned)?
     print --flush "world-plan" "uploading" "repository export"
     upload_repo_export(["upload-repo-export", repo_dir.display()])?
-
-    if sync_rels_requested and repo_urls.repo != "" {
-      remote_index = load_remote_index_from_repo(repo_urls.repo, out)?
-      remote_latest = world_latest_remote_map(remote_index, target_arch)?
-    }
-  }
-
-  if sync_rels_requested {
-    sync_world_rels(ordered, planned_by_name, remote_latest)?
   }
 }

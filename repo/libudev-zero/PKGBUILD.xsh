@@ -5,7 +5,7 @@ export let name = "libudev-zero"
 
 export let ver = "1.0.3"
 
-export let rel = "2"
+export let rel = "6"
 
 export let deps = ["musl", "linux"]
 

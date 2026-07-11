@@ -2,7 +2,7 @@ export let name = "hwdata"
 
 export let ver = "0.400"
 
-export let rel = "3"
+export let rel = "8"
 
 export let deps = []
 

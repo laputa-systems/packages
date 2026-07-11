@@ -152,10 +152,11 @@ for the package world. A staging repo lives under `~/.cache/laputa/world-<hash>`
 and can be resumed while the plan hash is stable. Packages in the same tranche
 build in parallel. `--to-tranche N` supports incremental catch-up.
 
-`world-plan` compares local metadata with the remote mirror, plans rel bumps
-when package metadata changes, and `--sync-rels` can write those rel bumps to
-PKGBUILD files. `--upload` refuses to publish until the staged world is fully
-built and proved.
+`world-plan` compares local metadata with the remote mirror and treats package
+versions and rels declared in `PKGBUILD.xsh` as authoritative. A build fails if
+a declaration is behind the selected architecture's published release, so rel
+bump edits must be explicit. `--upload` refuses to publish until the staged
+world is fully built and proved.
 
 ## Linux
 

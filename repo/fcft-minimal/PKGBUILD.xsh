@@ -5,7 +5,7 @@ export let name = "fcft-minimal"
 
 export let ver = "3.3.3"
 
-export let rel = "2"
+export let rel = "6"
 
 export let deps = ["musl", "fontconfig", "freetype", "pixman"]
 

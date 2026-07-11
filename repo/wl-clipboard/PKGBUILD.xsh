@@ -6,7 +6,7 @@ export let name = "wl-clipboard"
 
 export let ver = "2.3.0"
 
-export let rel = "2"
+export let rel = "6"
 
 export let deps = ["musl", "wayland-libs-client"]
 

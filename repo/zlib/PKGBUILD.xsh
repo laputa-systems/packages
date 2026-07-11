@@ -5,7 +5,7 @@ export let name = "zlib"
 
 export let ver = "1.3.2"
 
-export let rel = "6"
+export let rel = "10"
 
 export let deps = ["musl"]
 

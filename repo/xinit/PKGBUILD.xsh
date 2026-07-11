@@ -2,7 +2,7 @@ export let name = "xinit"
 
 export let ver = "release-f9034b48f96f49f42914498cd7bbe8a080b945b3"
 
-export let rel = "6"
+export let rel = "7"
 
 export let deps = ["xsh"]
 
