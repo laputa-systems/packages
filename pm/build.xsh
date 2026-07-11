@@ -1,6 +1,7 @@
 use extensions
 use local
 use pm.env as pm_env
+use pm.proof as pm_proof
 use sources
 use types
 use util
@@ -894,6 +895,7 @@ proc run_package_proof(
 
   archive.tar_extract(tarball, proof_root, 0, "auto", true)?
   verify_package_proof_root(proof_root, pkg.name)?
+  pm_proof.verify_package_elf_dependencies(proof_root, pkg.name)?
   let xsh = xsh_runner()?
   seed_package_proof_shell(proof_root, xsh)?
   seed_chroot_device_paths(proof_root)?

@@ -1,3 +1,5 @@
+use elfdeps
+use local
 use pm.util as pm_util
 
 export error ProofError = Failed(kind: Str, message: Str)
@@ -11,6 +13,60 @@ export proc ensure(condition: Bool, kind: Str, message: Str) [error] {
 export proc package_metadata(root: Path, name: Str) [fs, error] {
   let db = fp"${root}/var/lib/xsh-pm/packages/${name}/metadata.json"
   ensure(fs.exists(db)?, f"proof-${name}", f"missing package metadata: ${db.display()}")?
+}
+
+proc package_dependency_map(root: Path) [fs, error] -> Result[Map[List[Str]]] {
+  var package_deps: Map[List[Str]] = {}
+  let packages_db = fp"${root}/var/lib/xsh-pm/packages"
+
+  if ! fs.exists(packages_db)? {
+    return package_deps
+  }
+
+  for entry in fs.children(packages_db) |> where .kind == "dir" {
+    let metadata_path = fp"${entry.path}/metadata.json"
+
+    if fs.exists(metadata_path)? {
+      let metadata: Record = json.read(metadata_path)?
+      var deps: List[Str] = []
+
+      if metadata.has("deps") {
+        deps = metadata.get("deps")?
+      }
+
+      package_deps[entry.name] = deps
+    }
+  }
+
+  package_deps
+}
+
+export proc verify_package_elf_dependencies(root: Path, name: Str) [fs, error] {
+  let providers = elfdeps.collect_library_providers(root)?
+  let package_deps = package_dependency_map(root)?
+  let allowed = elfdeps.runtime_dependency_closure(package_deps.get(name, []), package_deps)
+  let manifest = local.load_manifest(fp"${root}/var/lib/xsh-pm/packages/${name}")?
+  var failures = []
+
+  for rel_path in manifest {
+    let path_value = fp"${root}/${rel_path}"
+
+    if path_value.exists()? {
+      failures = failures.extend(
+        elfdeps.installed_file_elf_dependency_failures(name, allowed, rel_path, path_value, providers)?,
+      )
+    }
+  }
+
+  if failures.len() > 0 {
+    let first = failures[0]
+    return Err(
+      ProofError.Failed(
+        f"proof-${name}",
+        f"${first.file.display()} needs ${first.soname} from ${first.provider} without a runtime dependency",
+      ),
+    )
+  }
 }
 
 export pure elf_machine_name(arch: Str) -> Str {

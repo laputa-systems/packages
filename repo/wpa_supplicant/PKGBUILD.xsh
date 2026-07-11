@@ -8,8 +8,8 @@ export let rel = "1"
 
 # Internal TLS/crypto — no openssl needed.
 # The nl80211 driver unconditionally includes <netlink/genl/genl.h>, so libnl3
-# headers and library are required at build time (TODO: create libnl3 package).
-export let deps = ["musl", "linux"]
+# headers and library are required at build and runtime.
+export let deps = ["musl", "linux", "libnl3"]
 
 export let mkdeps = ["xsh", "llvm-toolchain", "libnl3", "xinit"]
 

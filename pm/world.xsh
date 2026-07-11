@@ -1,6 +1,6 @@
 use build as pm_build
 use buildroot
-use elf
+use elfdeps
 use install
 use local
 use remote
@@ -19,8 +19,6 @@ type WorldPlanOptions = {
 }
 
 type WorldPlanResult = {packages: List[Package], reasons: Map[Str]}
-
-type ElfDependencyFailure = {pkg: Str, file: Path, soname: Str, provider: Str}
 
 pure world_dependency_is_seeded(pkg: Package, dep: Str, cross_build: Bool) -> Bool {
   ! cross_build and (pkg.name == "musl" and (dep == "llvm-toolchain" or dep == "zlib") or pkg.name == "gnu-stubs" and dep == "llvm-toolchain")
@@ -1684,110 +1682,18 @@ proc verify_world_stage(repo_dir: Path, packages: List[Package], fingerprint: St
   }
 }
 
-pure path_basename_text(path_value: Path) -> Str {
-  let text = path_value.display()
-  let parts = text.split("/")
-  parts.get(parts.len() - 1, text)
-}
-
-pure path_may_provide_library(rel_path: Path) -> Bool {
-  let text = rel_path.display()
-  return (text.starts_with("lib/") or text.starts_with("usr/lib/")) and ".so" in path_basename_text(rel_path)
-}
-
-export pure elf_info_mentions_musl(needed: List[Str], interpreter: Str) -> Bool {
-  if "ld-musl-" in interpreter {
-    return true
-  }
-
-  return "libc.so" in needed
-}
-
-export pure missing_elf_runtime_dependencies(
-  pkg_name: Str,
-  deps: List[Str],
-  needed: List[Str],
-  interpreter: Str,
-  providers: Map[Str],
-) -> List[ElfDependencyFailure] {
-  var failures: List[ElfDependencyFailure] = []
-
-  if elf_info_mentions_musl(needed, interpreter) and pkg_name != "musl" and "musl" not in deps {
-    failures = failures.push({pkg: pkg_name, file: fp"", soname: "libc.so", provider: "musl"})
-  }
-
-  for soname in needed {
-    continue unless providers.has(soname)
-    let provider = providers.get(soname, "")
-
-    if provider != pkg_name and provider not in deps {
-      failures = failures.push({pkg: pkg_name, file: fp"", soname, provider})
-    }
-  }
-
-  failures
-}
-
-proc installed_file_elf_dependency_failures(
-  pkg: Package,
-  rel_path: Path,
-  path_value: Path,
-  providers: Map[Str],
-) [fs, error] -> Result[List[ElfDependencyFailure]] {
-  match elf.inspect(path_value) {
-    Ok(info) => {
-      var failures = missing_elf_runtime_dependencies(pkg.name, pkg.deps, info.needed, info.interpreter, providers)
-      failures = [{pkg: failure.pkg, file: rel_path, soname: failure.soname, provider: failure.provider} for failure in failures]
-      failures
-    }
-    Err(_) => []
-  }
-}
-
-proc collect_world_elf_library_providers(root: Path) [fs, error] -> Result[Map[Str]] {
-  var providers: Map[Str] = {}
-  let packages_db = packages_db_path(root)
-
-  if ! fs.exists(packages_db)? {
-    return providers
-  }
-
-  let entries = fs.children(packages_db)
-    |> where .kind == "dir"
-    |> sort-by .name
-
-  for entry in entries {
-    let manifest = load_manifest(entry.path)?
-
-    for rel_path in manifest {
-      let path_value = fp"${root}/${rel_path}"
-      continue unless path_value.exists()?
-
-      match elf.inspect(path_value) {
-        Ok(info) => {
-          if info.soname != "" {
-            providers[info.soname] = entry.name
-          } else if path_may_provide_library(rel_path) {
-            providers[path_basename_text(rel_path)] = entry.name
-          }
-        }
-        Err(_) => {
-          if path_may_provide_library(rel_path) {
-            providers[path_basename_text(rel_path)] = entry.name
-          }
-        }
-      }
-    }
-  }
-
-  providers
-}
-
 proc audit_world_elf_dependencies(root: Path, packages: List[Package]) [fs, env, error] {
-  let providers = collect_world_elf_library_providers(root)?
+  let providers = elfdeps.collect_library_providers(root)?
+  var package_deps: Map[List[Str]] = {}
+
+  for pkg in packages {
+    package_deps[pkg.name] = pkg.deps
+  }
+
   var failures: List[ElfDependencyFailure] = []
 
   for pkg in packages {
+    let allowed = elfdeps.runtime_dependency_closure(pkg.deps, package_deps)
     let db = package_db_path(root, pkg.name)
     continue unless fs.exists(db)?
     let manifest = load_manifest(db)?
@@ -1796,7 +1702,9 @@ proc audit_world_elf_dependencies(root: Path, packages: List[Package]) [fs, env,
       let path_value = fp"${root}/${rel_path}"
 
       if path_value.exists()? {
-        failures = failures.extend(installed_file_elf_dependency_failures(pkg, rel_path, path_value, providers)?)
+        failures = failures.extend(
+          elfdeps.installed_file_elf_dependency_failures(pkg.name, allowed, rel_path, path_value, providers)?,
+        )
       }
     }
   }

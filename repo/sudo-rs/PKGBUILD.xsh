@@ -8,7 +8,7 @@ export let ver = "0.2.13"
 
 export let rel = "11"
 
-export let deps = ["linux-pam", "gnu-stubs"]
+export let deps = ["linux-pam", "gnu-stubs", "musl"]
 
 export let mkdeps = ["cargo", "llvm-toolchain", "linux-pam", "ca-certificates"]
 

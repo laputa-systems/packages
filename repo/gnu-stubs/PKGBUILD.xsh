@@ -8,7 +8,7 @@ export let ver = "22.1.8"
 
 export let rel = "2"
 
-export let deps = []
+export let deps = ["musl"]
 
 export let mkdeps = ["llvm-toolchain"]
 

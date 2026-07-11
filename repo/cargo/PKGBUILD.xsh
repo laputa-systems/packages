@@ -6,7 +6,7 @@ export let ver = "1.95.0"
 
 export let rel = "4"
 
-export let deps = ["musl", "llvm-toolchain"]
+export let deps = ["musl", "llvm-toolchain", "gnu-stubs"]
 
 export let mkdeps = []
 

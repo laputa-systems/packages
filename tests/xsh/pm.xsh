@@ -1,5 +1,6 @@
 use pm.buildroot
 use pm.configure
+use pm.elfdeps as pm_elfdeps
 use pm.local as pm_local
 use pm.make
 use pm.world as pm_world
@@ -974,9 +975,9 @@ proc test_pm_help(ctx: TestContext) [process, error] {
 
 proc test_pm_world_musl_elf_dependency_audit_detects_elf_metadata(ctx: TestContext) [error] {
   let _ = ctx
-  test.ok(pm_world.elf_info_mentions_musl(["libc.so"], ""))?
-  test.ok(pm_world.elf_info_mentions_musl([], "/lib/ld-musl-aarch64.so.1"))?
-  test.eq(pm_world.elf_info_mentions_musl(["libz.so.1"], ""), false)?
+  test.ok(pm_elfdeps.elf_info_mentions_musl(["libc.so"], ""))?
+  test.ok(pm_elfdeps.elf_info_mentions_musl([], "/lib/ld-musl-aarch64.so.1"))?
+  test.eq(pm_elfdeps.elf_info_mentions_musl(["libz.so.1"], ""), false)?
 }
 
 proc test_pm_world_elf_dependency_audit_detects_missing_provider_deps(ctx: TestContext) [error] {
@@ -984,16 +985,43 @@ proc test_pm_world_elf_dependency_audit_detects_missing_provider_deps(ctx: TestC
   var providers: Map[Str] = {}
   providers["libz.so.1"] = "zlib"
   providers["libssl.so.3"] = "openssl"
-  let missing = pm_world.missing_elf_runtime_dependencies("app", ["zlib"], ["libz.so.1", "libssl.so.3"], "", providers)
+  let missing = pm_elfdeps.missing_elf_runtime_dependencies("app", ["zlib"], ["libz.so.1", "libssl.so.3"], "", providers)
   test.eq(missing.len(), 1)?
   test.eq(missing[0].soname, "libssl.so.3")?
   test.eq(missing[0].provider, "openssl")?
-  test.eq(pm_world.missing_elf_runtime_dependencies("zlib", [], ["libz.so.1"], "", providers).len(), 0)?
+  test.eq(pm_elfdeps.missing_elf_runtime_dependencies("zlib", [], ["libz.so.1"], "", providers).len(), 0)?
 
   test.eq(
-    pm_world.missing_elf_runtime_dependencies("app", ["zlib", "openssl"], ["libz.so.1", "libssl.so.3"], "", providers).len(),
+    pm_elfdeps.missing_elf_runtime_dependencies("app", ["zlib", "openssl"], ["libz.so.1", "libssl.so.3"], "", providers).len(),
     0,
   )?
+}
+
+proc test_pm_world_elf_dependency_audit_resolves_runtime_closure(ctx: TestContext) [error] {
+  let _ = ctx
+  var package_deps: Map[List[Str]] = {}
+  package_deps["libseat"] = ["seatd"]
+  package_deps["seatd"] = ["musl"]
+  let closure = pm_elfdeps.runtime_dependency_closure(["libseat"], package_deps)
+  test.ok(closure.get("libseat", false))?
+  test.ok(closure.get("seatd", false))?
+  test.ok(closure.get("musl", false))?
+}
+
+proc test_pm_world_elf_dependency_audit_ignores_library_symlink_providers(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "elf-provider-root")?
+  let pixman_db = fp"${root}/var/lib/xsh-pm/packages/pixman"
+  let pixman_dev_db = fp"${root}/var/lib/xsh-pm/packages/pixman-dev"
+  fs.mkdir(pixman_db)?
+  fs.mkdir(pixman_dev_db)?
+  fs.mkdir(fp"${root}/usr/lib")?
+  fs.write(fp"${root}/usr/lib/libpixman-1.so.0", "regular library")?
+  fs.symlink(p"libpixman-1.so.0", fp"${root}/usr/lib/libpixman-1.so")?
+  json.write(fp"${pixman_db}/manifest.json", ["usr/lib/libpixman-1.so.0"])?
+  json.write(fp"${pixman_dev_db}/manifest.json", ["usr/lib/libpixman-1.so"])?
+
+  let providers = pm_elfdeps.collect_library_providers(root)?
+  test.eq(providers.get("libpixman-1.so.0", ""), "pixman")?
 }
 
 proc test_pm_requires_package_proof(ctx: TestContext) [fs, process, error] {
