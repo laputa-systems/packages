@@ -8,7 +8,7 @@ export let rel = "1"
 
 export let deps = ["musl", "linux"]
 
-export let mkdeps = []
+export let mkdeps = ["llvm-toolchain"]
 
 export let sources = [p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz"]
 

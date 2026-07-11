@@ -482,15 +482,10 @@ proc build_packages_in_chroot(
       XSH_PM_IN_CHROOT = "1"
       SHELL = "/bin/xshi"
     } {
-      let started_at = time.now()
       let status = run_chroot_build_command(host_xsh, chroot_argv, build_log_text, build_log)?
       preserve_chroot_build_cache(ctx, pkg, src)?
 
       if ! status.ok {
-        if build_log_text != "" {
-          eprint --flush ${pkg.name} ${id} "build:" "failed" time.duration_compact((time.now() - started_at) / 1000) "log:" $build_log
-        }
-
         if status.exited() {
           return Err(PmError.ExtensionFailed(f"chroot build for ${pkg.name} exited with status ${status.exit_code()?}"))
         }
