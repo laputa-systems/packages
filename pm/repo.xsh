@@ -271,69 +271,67 @@ export proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, er
   let export_index = load_remote_index_from(index_path)?
   fs.mkdir(work)?
   fs.mkdir(out)?
-  let export_count = export_index.len()
-  var export_number = 0
-
+  var pending = []
   for entry in export_index {
-    export_number += 1
-
     if remote_export_entry_same(remote_index, entry) {
-      print --flush f"repo-export ${export_number}/${export_count}" ${entry.arch} ${entry.name} version_id(
-        entry.ver,
-        entry.rel,
-      ) "already-exported"
-      continue
+      print --flush f"repo-export" ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) "already-exported"
+    } else {
+      pending = pending.push(entry)
     }
+  }
 
-    var uploaded = entry
-    print --flush f"repo-export ${export_number}/${export_count}" ${entry.arch} ${entry.name} version_id(
-      entry.ver,
-      entry.rel,
-    ) "uploading"
+  let uploaded_entries = pending
+    |> par-map --jobs=4 { |entry|
+      var uploaded = entry
+      print --flush f"repo-export" ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) "uploading"
 
-    if ! entry.metapackage {
-      if entry.tarball == "" {
-        return Err(PmError.PackageTarball(f"${entry.name} ${version_id(entry.ver, entry.rel)} has no tarball"))
-      }
-
-      let tarball_rel = ensure_relative_path(fp"${entry.tarball}", "remote tarball")?
-      let tarball = fp"${repo_dir}/${tarball_rel.display()}"
-
-      if ! fs.exists(tarball)? {
-        return Err(PmError.PackageTarball(f"${tarball.display()} is missing"))
-      }
-
-      let tarball_metadata = fs.metadata(tarball)?
-      print --flush f"repo-export ${export_number}/${export_count}" ${entry.arch} ${entry.name} "uploading" "tarball" f"${tarball_metadata.size} bytes"
-      upload_repo_export_file(repo, tarball_rel, tarball, token, work)?
-      uploaded = {...uploaded, sha256: hash.sha256(tarball)?.hex(), size: tarball_metadata.size}
-
-      if entry.metadata != "" {
-        let metadata_rel = ensure_relative_path(fp"${entry.metadata}", "remote metadata")?
-        let metadata = fp"${repo_dir}/${metadata_rel.display()}"
-
-        if ! fs.exists(metadata)? {
-          return Err(PmError.PackageTarball(f"${metadata.display()} is missing"))
+      if ! entry.metapackage {
+        if entry.tarball == "" {
+          return Err(PmError.PackageTarball(f"${entry.name} ${version_id(entry.ver, entry.rel)} has no tarball"))
         }
 
-        let metadata_size = fs.metadata(metadata)?.size
-        print --flush f"repo-export ${export_number}/${export_count}" ${entry.arch} ${entry.name} "uploading" "metadata" f"${metadata_size} bytes"
-        upload_repo_export_file(repo, metadata_rel, metadata, token, work)?
+        let tarball_rel = ensure_relative_path(fp"${entry.tarball}", "remote tarball")?
+        let tarball = fp"${repo_dir}/${tarball_rel.display()}"
+
+        if ! fs.exists(tarball)? {
+          return Err(PmError.PackageTarball(f"${tarball.display()} is missing"))
+        }
+
+        let tarball_metadata = fs.metadata(tarball)?
+        print --flush f"repo-export" ${entry.arch} ${entry.name} "uploading" "tarball" f"${tarball_metadata.size} bytes"
+        upload_repo_export_file(repo, tarball_rel, tarball, token, work)?
+        uploaded = {...uploaded, sha256: hash.sha256(tarball)?.hex(), size: tarball_metadata.size}
+
+        if entry.metadata != "" {
+          let metadata_rel = ensure_relative_path(fp"${entry.metadata}", "remote metadata")?
+          let metadata = fp"${repo_dir}/${metadata_rel.display()}"
+
+          if ! fs.exists(metadata)? {
+            return Err(PmError.PackageTarball(f"${metadata.display()} is missing"))
+          }
+
+          let metadata_size = fs.metadata(metadata)?.size
+          print --flush f"repo-export" ${entry.arch} ${entry.name} "uploading" "metadata" f"${metadata_size} bytes"
+          upload_repo_export_file(repo, metadata_rel, metadata, token, work)?
+        }
       }
+
+      let source = fp"${repo_dir}/.out/source-mirrors/${package_id(entry.name, entry.ver, entry.rel)}-${entry.arch}.tar.gz"
+
+      if fs.exists(source)? {
+        let source_rel = remote_source_rel_for_arch(entry.arch, entry.name, entry.ver, entry.rel)
+        let source_size = fs.metadata(source)?.size
+        print --flush f"repo-export" ${entry.arch} ${entry.name} "uploading" "source" f"${source_size} bytes"
+        upload_repo_export_file(repo, source_rel, source, token, work)?
+        uploaded = {...uploaded, source_sha256: hash.sha256(source)?.hex(), source_tarball: source_rel.display()}
+      }
+
+      uploaded
     }
 
-    let source = fp"${repo_dir}/.out/source-mirrors/${package_id(entry.name, entry.ver, entry.rel)}-${entry.arch}.tar.gz"
-
-    if fs.exists(source)? {
-      let source_rel = remote_source_rel_for_arch(entry.arch, entry.name, entry.ver, entry.rel)
-      let source_size = fs.metadata(source)?.size
-      print --flush f"repo-export ${export_number}/${export_count}" ${entry.arch} ${entry.name} "uploading" "source" f"${source_size} bytes"
-      upload_repo_export_file(repo, source_rel, source, token, work)?
-      uploaded = {...uploaded, source_sha256: hash.sha256(source)?.hex(), source_tarball: source_rel.display()}
-    }
-
+  for uploaded in uploaded_entries {
     remote_index = upsert_remote_package(remote_index, uploaded)?
-    print --flush ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) "exported"
+    print --flush ${uploaded.arch} ${uploaded.name} version_id(uploaded.ver, uploaded.rel) "exported"
   }
 
   print --flush "repo-export" "writing" "remote index"
