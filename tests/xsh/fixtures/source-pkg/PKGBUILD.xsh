@@ -12,6 +12,8 @@ export let sources = [p"files/data.txt"]
 
 export let checksums = ["0000000000000000000000000000000000000000000000000000000000000000"]
 
+export let filetree = [{path: p"usr/share/source-pkg/data.txt", kind: "file"}]
+
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   let target = fp"${dest}/usr/share/source-pkg/data.txt"
   fs.mkdir(target.parent)?

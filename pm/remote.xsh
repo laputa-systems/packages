@@ -789,6 +789,7 @@ export pure package_from_remote(pkg: RemotePackage) -> Result[Package] {
     target_build_deps: pkg.target_build_deps,
     sources: pkg_sources,
     checksums,
+    filetree: [],
     nostrip: false,
     extract_install: false,
   }

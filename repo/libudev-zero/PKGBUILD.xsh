@@ -62,3 +62,10 @@ Cflags: -I\${includedir}
 """,
   )?
 }
+
+export let filetree = [
+  {path: p"usr/include/libudev.h", kind: "file"},
+  {path: p"usr/lib/libudev.so", kind: "symlink"},
+  {path: p"usr/lib/libudev.so.1", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/libudev.pc", kind: "file"},
+]

@@ -17,6 +17,7 @@ Required exports:
 - `mkdeps: List[Str]`
 - `sources: List[Path]`
 - `checksums: List[Str]`
+- `filetree: List[{path: Path, kind: Str}]`
 - `build(dest: Path) -> Result[Unit]`
 
 Optional exports:
@@ -38,6 +39,16 @@ pkg-config files, protocol XML, and other files needed while compiling but not
 needed by installed runtime files. The PM base runtime includes `laputa-pm`, so
 package definitions should not list it just to get `/usr/bin/pm`,
 `/bin/xsh`, or XSH core command links.
+
+`filetree` declares the completed payload tree. Each `file` and `symlink` entry
+must be produced by `build()`, and every produced file must be declared either
+explicitly or beneath a `tree` directory entry. An ELF executable or library
+must be declared explicitly as `binary`; PM validates that classification and
+automatically runs `llvm-strip --strip-unneeded` on those entries before the
+package archive and proof are created. `tree` entries are useful for large
+header or documentation trees, but ELF files and symlinks inside them still
+need explicit entries. `nostrip: true` remains an escape hatch for packages
+that intentionally preserve binary symbols.
 
 Source URLs may use `VERSION` and `ARCH`. Arch-specific checksums override the
 base `checksums` list for the matching package arch.

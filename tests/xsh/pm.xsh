@@ -334,6 +334,10 @@ export let deps = []
 export let mkdeps = []
 export let sources = [p"generated"]
 export let checksums = ["SKIP"]
+export let filetree = [
+  {path: p"usr/share/configured-pkg/config.h", kind: "file"},
+  {path: p"usr/share/configured-pkg/message.txt", kind: "file"},
+]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.install(p"config.h", fp"${dest}/usr/share/configured-pkg/config.h", 0o644, parents: true)?
@@ -398,6 +402,7 @@ export let deps = []
 export let mkdeps = []
 export let sources = [p"files/upstream.tar.gz"]
 export let checksums = ["SKIP"]
+export let filetree = [{path: p"usr/share/tar-source-pkg/data.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.install(p"data.txt", fp"${dest}/usr/share/tar-source-pkg/data.txt", 0o644, parents: true)?
@@ -455,6 +460,7 @@ export let deps = []
 export let mkdeps = []
 export let sources = []
 export let checksums = []
+export let filetree = [{path: p"usr/share/prepared-pkg/payload.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.install(p"payload.txt", fp"${dest}/usr/share/prepared-pkg/payload.txt", 0o644, parents: true)?
@@ -607,6 +613,8 @@ export let checksums = [
   "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f",
 ]
 
+export let filetree = [{path: p"usr/share/source-pkg/data.txt", kind: "file"}]
+
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   let target = fp"${dest}/usr/share/source-pkg/data.txt"
   fs.mkdir(target.parent)?
@@ -685,6 +693,7 @@ export let deps = []
 export let mkdeps = []
 export let sources = []
 export let checksums = []
+export let filetree = [{path: p"usr/share/laputa-pm/local.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.mkdir(fp"${dest}/usr/share/laputa-pm")?
@@ -718,6 +727,7 @@ export let deps = []
 export let mkdeps = []
 export let sources = []
 export let checksums = []
+export let filetree = [{path: p"usr/share/local-lib/payload.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.mkdir(fp"${dest}/usr/share/local-lib")?
@@ -751,6 +761,7 @@ export let deps = ["local-lib"]
 export let mkdeps = []
 export let sources = []
 export let checksums = []
+export let filetree = [{path: p"usr/share/local-app/dep.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, env, error] -> Result[Unit] {
   let root = fp"${env.get("LAPUTA_ROOT")?}"
@@ -1042,6 +1053,7 @@ export let deps = []
 export let mkdeps = []
 export let sources = []
 export let checksums = []
+export let filetree = [{path: p"proofless.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.write(fp"${dest}/proofless.txt", "proofless\n")?
@@ -1070,6 +1082,7 @@ export let deps = []
 export let mkdeps = []
 export let sources = []
 export let checksums = []
+export let filetree = [{path: p"usr/lib/xinit/services/svcless.xsh", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.mkdir(fp"${dest}/usr/lib/xinit/services")?

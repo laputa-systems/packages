@@ -254,6 +254,8 @@ main(@args)?
     }
     |> sort-by .display()
 
+  validate_and_strip_package(pkg, dest, manifest)?
+
   let etcsums = collect_etcsums(dest, manifest)?
   write_package_db(dest, pkg, manifest, etcsums)?
   let dest_text = dest.display()
@@ -582,6 +584,8 @@ export proc build_packages(
         entry.path.strip_prefix(dest)?
       }
       |> sort-by .display()
+
+    validate_and_strip_package(pkg, dest, manifest)?
 
     for rel_path in manifest {
       let key = rel_path.display()

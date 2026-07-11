@@ -243,3 +243,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.install(p"dwl", fp"${dest}/usr/bin/dwl", 0o755, parents: true, overwrite: true)?
 }
+
+export let filetree = [
+  {path: p"usr/bin/dwl", kind: "binary"},
+]

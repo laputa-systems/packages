@@ -160,3 +160,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let tmux = build_tmux(cc)?
   fs.install(tmux, fp"${dest}/usr/bin/tmux", 0o755, parents: true, overwrite: true)?
 }
+
+export let filetree = [
+  {path: p"usr/bin/tmux", kind: "binary"},
+]

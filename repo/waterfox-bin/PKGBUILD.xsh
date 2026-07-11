@@ -106,3 +106,36 @@ export proc build(dest: Path) [fs, error] {
 
   let _ = {copied, scan_report, private_needed_report}
 }
+
+export let filetree = [
+  {path: p"opt/waterfox/application.ini", kind: "file"},
+  {path: p"opt/waterfox/browser/omni.ja", kind: "file"},
+  {path: p"opt/waterfox/defaults/pref/channel-prefs.js", kind: "file"},
+  {path: p"opt/waterfox/defaults/pref/laputa-policy.js", kind: "file"},
+  {path: p"opt/waterfox/dependentlibs.list", kind: "file"},
+  {path: p"opt/waterfox/gmp-clearkey/0.1/libclearkey.so", kind: "binary"},
+  {path: p"opt/waterfox/gmp-clearkey/0.1/manifest.json", kind: "file"},
+  {path: p"opt/waterfox/libfreeblpriv3.so", kind: "binary"},
+  {path: p"opt/waterfox/libgkcodecs.so", kind: "binary"},
+  {path: p"opt/waterfox/liblgpllibs.so", kind: "binary"},
+  {path: p"opt/waterfox/libmozavcodec.so", kind: "binary"},
+  {path: p"opt/waterfox/libmozavutil.so", kind: "binary"},
+  {path: p"opt/waterfox/libmozsandbox.so", kind: "binary"},
+  {path: p"opt/waterfox/libmozsqlite3.so", kind: "binary"},
+  {path: p"opt/waterfox/libnspr4.so", kind: "binary"},
+  {path: p"opt/waterfox/libnss3.so", kind: "binary"},
+  {path: p"opt/waterfox/libnssutil3.so", kind: "binary"},
+  {path: p"opt/waterfox/libplc4.so", kind: "binary"},
+  {path: p"opt/waterfox/libplds4.so", kind: "binary"},
+  {path: p"opt/waterfox/libsmime3.so", kind: "binary"},
+  {path: p"opt/waterfox/libsoftokn3.so", kind: "binary"},
+  {path: p"opt/waterfox/libssl3.so", kind: "binary"},
+  {path: p"opt/waterfox/libxul.so", kind: "binary"},
+  {path: p"opt/waterfox/omni.ja", kind: "file"},
+  {path: p"opt/waterfox/platform.ini", kind: "file"},
+  {path: p"opt/waterfox/precomplete", kind: "file"},
+  {path: p"opt/waterfox/removed-files", kind: "file"},
+  {path: p"opt/waterfox/waterfox", kind: "file"},
+  {path: p"opt/waterfox/waterfox-bin", kind: "binary"},
+  {path: p"usr/bin/waterfox", kind: "file"},
+]

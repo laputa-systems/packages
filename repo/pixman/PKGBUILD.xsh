@@ -39,3 +39,8 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.remove(fp"${dest}/usr/lib/pkgconfig", missing_ok: true)?
   fs.remove(fp"${dest}/usr/lib/libpixman-1.so", missing_ok: true)?
 }
+
+export let filetree = [
+  {path: p"usr/lib/libpixman-1.so.0", kind: "symlink"},
+  {path: p"usr/lib/libpixman-1.so.0.46.4", kind: "binary"},
+]

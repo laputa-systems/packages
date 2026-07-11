@@ -74,3 +74,12 @@ export proc build(dest: Path) [fs, process, env, error] {
     fs.install(iptables.output, fp"${dest}/usr/bin/${tool_name}", 0o755, parents: true, overwrite: true)?
   }
 }
+
+export let filetree = [
+  {path: p"usr/bin/ip6tables", kind: "binary"},
+  {path: p"usr/bin/ip6tables-restore", kind: "binary"},
+  {path: p"usr/bin/ip6tables-save", kind: "binary"},
+  {path: p"usr/bin/iptables", kind: "binary"},
+  {path: p"usr/bin/iptables-restore", kind: "binary"},
+  {path: p"usr/bin/iptables-save", kind: "binary"},
+]

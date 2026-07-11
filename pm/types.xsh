@@ -7,6 +7,8 @@ export type PackageChecksumsContract = module {
   export let checksums: List[Str]
 }
 
+export type FileTreeEntry = {path: Path, kind: Str}
+
 export type PackageExports = module {
   export let name: Str
   export let ver: Str
@@ -16,6 +18,7 @@ export type PackageExports = module {
   export optional let target_build_deps: List[Str]
   export let sources: List[Path]
   export let checksums: List[Str]
+  export let filetree: List[FileTreeEntry]
   export optional let nostrip: Bool
   export optional let checksums_aarch64: List[Str]
   export optional let checksums_x86_64: List[Str]
@@ -33,6 +36,7 @@ export type Package = {
   target_build_deps: List[Str],
   sources: List[Path],
   checksums: List[Str],
+  filetree: List[FileTreeEntry],
   nostrip: Bool,
   extract_install: Bool,
 }

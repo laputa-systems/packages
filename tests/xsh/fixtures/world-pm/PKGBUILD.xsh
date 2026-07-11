@@ -12,6 +12,8 @@ export let sources = []
 
 export let checksums = []
 
+export let filetree = [{path: p"usr/bin/cat", kind: "file"}]
+
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   let target = fp"${dest}/usr/bin/cat"
   fs.mkdir(target.parent)?

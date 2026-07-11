@@ -134,3 +134,12 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.remove(fp"${dest}/usr/bin/seatd-launch", missing_ok: true)?
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/seatd.xsh", 0o644, parents: true, overwrite: true)?
 }
+
+export let filetree = [
+  {path: p"usr/bin/seatd", kind: "binary"},
+  {path: p"usr/include/libseat.h", kind: "file"},
+  {path: p"usr/lib/libseat.so", kind: "symlink"},
+  {path: p"usr/lib/libseat.so.1", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/libseat.pc", kind: "file"},
+  {path: p"usr/lib/xinit/services/seatd.xsh", kind: "file"},
+]

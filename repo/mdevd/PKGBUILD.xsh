@@ -510,3 +510,9 @@ struct sockaddr_nl {
   fs.install(coldplug_bin, fp"${dest}/usr/bin/mdevd-coldplug", 0o755, parents: true, overwrite: true)?
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/mdevd.xsh", 0o644, parents: true, overwrite: true)?
 }
+
+export let filetree = [
+  {path: p"usr/bin/mdevd", kind: "binary"},
+  {path: p"usr/bin/mdevd-coldplug", kind: "binary"},
+  {path: p"usr/lib/xinit/services/mdevd.xsh", kind: "file"},
+]

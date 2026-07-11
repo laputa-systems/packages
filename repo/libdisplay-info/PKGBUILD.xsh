@@ -116,3 +116,18 @@ export proc build(dest: Path) [fs, process, env, error] {
     } ?
   } ?
 }
+
+export let filetree = [
+  {path: p"usr/include/libdisplay-info/cta.h", kind: "file"},
+  {path: p"usr/include/libdisplay-info/cvt.h", kind: "file"},
+  {path: p"usr/include/libdisplay-info/displayid.h", kind: "file"},
+  {path: p"usr/include/libdisplay-info/displayid2.h", kind: "file"},
+  {path: p"usr/include/libdisplay-info/dmt.h", kind: "file"},
+  {path: p"usr/include/libdisplay-info/edid.h", kind: "file"},
+  {path: p"usr/include/libdisplay-info/gtf.h", kind: "file"},
+  {path: p"usr/include/libdisplay-info/info.h", kind: "file"},
+  {path: p"usr/lib/libdisplay-info.so", kind: "symlink"},
+  {path: p"usr/lib/libdisplay-info.so.0.3.0", kind: "binary"},
+  {path: p"usr/lib/libdisplay-info.so.3", kind: "symlink"},
+  {path: p"usr/lib/pkgconfig/libdisplay-info.pc", kind: "file"},
+]

@@ -253,7 +253,7 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     fs.mkdir(root)?
     fs.mkdir(build_root)?
     install_chroot_base(root_ctx, local_names, false)?
-    install_chroot_base(build_ctx, local_names, false)?
+    install_chroot_base(build_ctx, local_names, true)?
 
     install_remote_dependency_set(
       root_ctx,

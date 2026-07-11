@@ -136,3 +136,8 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.install(less.output, fp"${dest}/usr/bin/less", 0o755, parents: true, overwrite: true)?
   fs.install(p"less-osc8-open.sh", fp"${dest}/usr/libexec/less-osc8-open", 0o755, parents: true, overwrite: true)?
 }
+
+export let filetree = [
+  {path: p"usr/bin/less", kind: "binary"},
+  {path: p"usr/libexec/less-osc8-open", kind: "file"},
+]

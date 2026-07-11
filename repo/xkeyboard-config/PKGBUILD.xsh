@@ -114,3 +114,17 @@ Version: 2.45
 
   fs.symlink(p"xkeyboard-config-2.pc", fp"${dest}/usr/share/pkgconfig/xkeyboard-config.pc")?
 }
+
+export let filetree = [
+  {path: p"usr", kind: "tree"},
+  {path: p"usr/share/X11/xkb", kind: "symlink"},
+  {path: p"usr/share/pkgconfig/xkeyboard-config.pc", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/caps", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/esperanto", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/grp", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/japan", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/korean", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/lv2", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/lv3", kind: "symlink"},
+  {path: p"usr/share/xkeyboard-config-2/symbols/lv5", kind: "symlink"},
+]

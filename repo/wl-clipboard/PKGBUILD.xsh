@@ -78,3 +78,8 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.remove(fp"${dest}/usr/share/man", missing_ok: true)?
 }
+
+export let filetree = [
+  {path: p"usr/bin/wl-copy", kind: "binary"},
+  {path: p"usr/bin/wl-paste", kind: "binary"},
+]

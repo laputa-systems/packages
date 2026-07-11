@@ -92,3 +92,9 @@ export proc build(dest: Path) [fs, process, env, error] {
     fs.install(tool.output, fp"${dest}/usr/bin/${tool_name}", 0o755, parents: true, overwrite: true)?
   }
 }
+
+export let filetree = [
+  {path: p"usr/bin/alsactl", kind: "binary"},
+  {path: p"usr/bin/amixer", kind: "binary"},
+  {path: p"usr/bin/aplay", kind: "binary"},
+]

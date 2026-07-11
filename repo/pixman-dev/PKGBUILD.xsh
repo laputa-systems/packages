@@ -64,3 +64,10 @@ export proc build(dest: Path) [fs, process, env, error] {
     }
   }
 }
+
+export let filetree = [
+  {path: p"usr/include/pixman-1/pixman-version.h", kind: "file"},
+  {path: p"usr/include/pixman-1/pixman.h", kind: "file"},
+  {path: p"usr/lib/libpixman-1.so", kind: "symlink"},
+  {path: p"usr/lib/pkgconfig/pixman-1.pc", kind: "file"},
+]

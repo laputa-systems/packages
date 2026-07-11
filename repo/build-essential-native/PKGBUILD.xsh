@@ -29,3 +29,5 @@ export let checksums = [
 export proc build(dest: Path) [fs, error] {
   fs.mkdir(dest)?
 }
+
+export let filetree = []

@@ -83,3 +83,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.mkdir(fp"${dest}/usr/lib/udev")?
   fs.mkdir(fp"${dest}/usr/lib/udev/rules.d")?
 }
+
+export let filetree = [
+  {path: p"usr/bin/udevadm", kind: "binary"},
+  {path: p"usr/bin/udevd", kind: "binary"},
+  {path: p"usr/lib/udev/systemd-udevd", kind: "binary"},
+]

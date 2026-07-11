@@ -21,3 +21,9 @@ export proc build(dest: Path) [fs, error] {
   fs.symlink(p"certs/ca-certificates.crt", fp"${dest}/etc/ssl/cert.pem")?
   fs.install(p"update-certdata.xsh", fp"${dest}/usr/bin/update-certdata", 0o755, parents: true, overwrite: true)?
 }
+
+export let filetree = [
+  {path: p"etc/ssl/cert.pem", kind: "symlink"},
+  {path: p"etc/ssl/certs/ca-certificates.crt", kind: "file"},
+  {path: p"usr/bin/update-certdata", kind: "file"},
+]

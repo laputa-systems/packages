@@ -30,3 +30,13 @@ export proc build(dest: Path) [fs, error] {
     fs.write(fp"${dest}/etc/network/${hook_dir}/keep", "")?
   }
 }
+
+export let filetree = [
+  {path: p"etc/network/if-down.d/keep", kind: "file"},
+  {path: p"etc/network/if-post-down.d/keep", kind: "file"},
+  {path: p"etc/network/if-pre-down.d/keep", kind: "file"},
+  {path: p"etc/network/if-pre-up.d/keep", kind: "file"},
+  {path: p"etc/network/if-up.d/keep", kind: "file"},
+  {path: p"etc/network/interfaces", kind: "file"},
+  {path: p"usr/lib/xinit/services/net.xsh", kind: "file"},
+]

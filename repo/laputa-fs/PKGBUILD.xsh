@@ -23,3 +23,10 @@ export proc build(dest: Path) [fs, error] {
   fs.install(p"fsck.ext4.xsh", fp"${dest}/usr/bin/fsck.ext4", 0o755, parents: true, overwrite: true)?
   fs.install(p"fat-put.xsh", fp"${dest}/usr/lib/laputa-fs/fat-put", 0o755, parents: true, overwrite: true)?
 }
+
+export let filetree = [
+  {path: p"usr/bin/fsck.ext4", kind: "file"},
+  {path: p"usr/bin/mkfs.ext4", kind: "file"},
+  {path: p"usr/bin/mkfs.vfat", kind: "file"},
+  {path: p"usr/lib/laputa-fs/fat-put", kind: "file"},
+]

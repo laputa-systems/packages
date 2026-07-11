@@ -12,6 +12,14 @@ export let sources = []
 
 export let checksums = []
 
+export let filetree = [
+  {path: p"etc/inittab", kind: "file"},
+  {path: p"etc/rc.conf", kind: "file"},
+  {path: p"usr/lib/init/rc.boot", kind: "file"},
+  {path: p"usr/lib/init/rc.lib", kind: "file"},
+  {path: p"usr/lib/init/rc.shutdown", kind: "file"},
+]
+
 proc write_file(path_value: Path, text: Str) [fs, error] {
   fs.mkdir(path_value.parent)?
   fs.write(path_value, text)?

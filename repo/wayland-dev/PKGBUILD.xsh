@@ -171,3 +171,29 @@ export proc build(dest: Path) [fs, process, env, error] {
     }
   }
 }
+
+export let filetree = [
+  {path: p"usr/bin/wayland-scanner", kind: "binary"},
+  {path: p"usr/include/wayland-client-core.h", kind: "file"},
+  {path: p"usr/include/wayland-client-protocol.h", kind: "file"},
+  {path: p"usr/include/wayland-client.h", kind: "file"},
+  {path: p"usr/include/wayland-cursor.h", kind: "file"},
+  {path: p"usr/include/wayland-egl-backend.h", kind: "file"},
+  {path: p"usr/include/wayland-egl-core.h", kind: "file"},
+  {path: p"usr/include/wayland-egl.h", kind: "file"},
+  {path: p"usr/include/wayland-server-core.h", kind: "file"},
+  {path: p"usr/include/wayland-server-protocol.h", kind: "file"},
+  {path: p"usr/include/wayland-server.h", kind: "file"},
+  {path: p"usr/include/wayland-util.h", kind: "file"},
+  {path: p"usr/include/wayland-version.h", kind: "file"},
+  {path: p"usr/lib/pkgconfig/wayland-client.pc", kind: "file"},
+  {path: p"usr/lib/pkgconfig/wayland-cursor.pc", kind: "file"},
+  {path: p"usr/lib/pkgconfig/wayland-egl-backend.pc", kind: "file"},
+  {path: p"usr/lib/pkgconfig/wayland-egl.pc", kind: "file"},
+  {path: p"usr/lib/pkgconfig/wayland-scanner.pc", kind: "file"},
+  {path: p"usr/lib/pkgconfig/wayland-server.pc", kind: "file"},
+  {path: p"usr/share/aclocal/wayland-scanner.m4", kind: "file"},
+  {path: p"usr/share/wayland/wayland-scanner.mk", kind: "file"},
+  {path: p"usr/share/wayland/wayland.dtd", kind: "file"},
+  {path: p"usr/share/wayland/wayland.xml", kind: "file"},
+]

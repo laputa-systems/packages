@@ -189,3 +189,8 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.install(p".config", fp"${dest}/usr/share/linux/config-${ver}", 0o644, parents: true, overwrite: true)?
   install_uapi_headers(dest, srcarch)?
 }
+
+export let filetree = [
+  {path: p"boot", kind: "tree"},
+  {path: p"usr", kind: "tree"},
+]

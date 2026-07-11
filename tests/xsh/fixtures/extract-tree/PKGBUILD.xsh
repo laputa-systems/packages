@@ -12,6 +12,12 @@ export let sources = [p"files/rootfs"]
 
 export let checksums = ["SKIP"]
 
+export let filetree = [
+  {path: p"bin", kind: "symlink"},
+  {path: p"etc/extract-tree.conf", kind: "file"},
+  {path: p"usr/bin/extract-tree", kind: "file"},
+]
+
 export let extract_install = true
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {

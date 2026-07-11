@@ -1039,3 +1039,26 @@ export proc build(dest: Path) [fs, process, env, error] {
   install_headers(dest)?
   install_pkg_config(dest)?
 }
+
+export let filetree = [
+  {path: p"usr/include/EGL/egl.h", kind: "file"},
+  {path: p"usr/include/EGL/eglext.h", kind: "file"},
+  {path: p"usr/include/EGL/eglplatform.h", kind: "file"},
+  {path: p"usr/include/GLES2/gl2.h", kind: "file"},
+  {path: p"usr/include/GLES2/gl2ext.h", kind: "file"},
+  {path: p"usr/include/GLES2/gl2platform.h", kind: "file"},
+  {path: p"usr/include/KHR/khrplatform.h", kind: "file"},
+  {path: p"usr/include/gbm.h", kind: "file"},
+  {path: p"usr/lib/libEGL.so", kind: "symlink"},
+  {path: p"usr/lib/libEGL.so.1", kind: "symlink"},
+  {path: p"usr/lib/libEGL.so.1.0.0", kind: "binary"},
+  {path: p"usr/lib/libGLESv2.so", kind: "symlink"},
+  {path: p"usr/lib/libGLESv2.so.2", kind: "symlink"},
+  {path: p"usr/lib/libGLESv2.so.2.0.0", kind: "binary"},
+  {path: p"usr/lib/libgbm.so", kind: "symlink"},
+  {path: p"usr/lib/libgbm.so.1", kind: "symlink"},
+  {path: p"usr/lib/libgbm.so.1.0.0", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/egl.pc", kind: "file"},
+  {path: p"usr/lib/pkgconfig/gbm.pc", kind: "file"},
+  {path: p"usr/lib/pkgconfig/glesv2.pc", kind: "file"},
+]

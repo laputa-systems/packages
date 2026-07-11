@@ -125,3 +125,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.install(fp"target/${triple}/release/su", fp"${dest}/usr/bin/su", 0o4755, parents: true, overwrite: true)?
   fs.symlink(p"sudo", fp"${dest}/usr/bin/sudoedit")?
 }
+
+export let filetree = [
+  {path: p"usr/bin/su", kind: "binary"},
+  {path: p"usr/bin/sudo", kind: "binary"},
+  {path: p"usr/bin/sudoedit", kind: "symlink"},
+]

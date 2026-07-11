@@ -858,3 +858,10 @@ set (CMAKE_INSTALL_RPATH "$ORIGIN/../lib" CACHE STRING "Runtime library search p
     } ?
   } ?
 }
+
+export let filetree = [
+  {path: p"usr", kind: "tree"},
+  {path: p"usr/bin/cmake", kind: "binary"},
+  {path: p"usr/bin/cpack", kind: "binary"},
+  {path: p"usr/bin/ctest", kind: "binary"},
+]

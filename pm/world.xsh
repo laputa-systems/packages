@@ -204,23 +204,33 @@ export proc effective_world_dependencies(pkg: Package, include_mkdeps: Bool) [] 
 
   if include_mkdeps {
     deps = deps.extend(pkg.mkdeps)
+
+    if package_needs_strip_tool(pkg) and "llvm-toolchain" not in deps {
+      deps = deps.push("llvm-toolchain")
+    }
   }
 
   deps
 }
 
 proc effective_world_build_dependencies(pkg: Package, cross_build: Bool) [] -> List[Str] {
+  var deps = []
+
   if cross_build {
-    var deps = pkg.mkdeps
+    deps = pkg.mkdeps
 
     if pkg.name == "llvm-toolchain" and "llvm-toolchain" not in deps {
       deps = deps.push("llvm-toolchain")
     }
-
-    return deps
+  } else {
+    deps = effective_world_dependencies(pkg, true)
   }
 
-  effective_world_dependencies(pkg, true)
+  if package_needs_strip_tool(pkg) and "llvm-toolchain" not in deps {
+    deps = deps.push("llvm-toolchain")
+  }
+
+  deps
 }
 
 proc copy_world_seed_path(source_root: FsRoot, dest_root: FsRoot, rel_path: Path) [fs, error] {
@@ -308,6 +318,10 @@ proc effective_world_seed_dependencies(
 
   if include_mkdeps {
     deps = deps.extend(pkg.mkdeps)
+
+    if package_needs_strip_tool(pkg) and "llvm-toolchain" not in deps {
+      deps = deps.push("llvm-toolchain")
+    }
   }
 
   deps
@@ -1723,7 +1737,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     install_chroot_base_for_arch(root_ctx, local_names, false, target_arch)?
 
     if build_root.display() != root.display() {
-      install_chroot_base_for_arch(build_ctx, build_local_names, false, world_build_arch)?
+    install_chroot_base_for_arch(build_ctx, build_local_names, true, world_build_arch)?
     }
 
     var level = 0

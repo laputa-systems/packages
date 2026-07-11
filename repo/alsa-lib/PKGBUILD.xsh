@@ -163,3 +163,11 @@ export proc build(dest: Path) [fs, process, env, error] {
   install_pkg_config(dest)?
   install_config(dest)?
 }
+
+export let filetree = [
+  {path: p"usr/include/alsa/asoundlib.h", kind: "file"},
+  {path: p"usr/lib/libasound.so", kind: "symlink"},
+  {path: p"usr/lib/libasound.so.2", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/alsa.pc", kind: "file"},
+  {path: p"usr/share/alsa/alsa.conf", kind: "file"},
+]

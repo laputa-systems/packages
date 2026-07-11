@@ -77,3 +77,15 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.remove(fp"${dest}/usr/share/bash-completion", missing_ok: true)?
 }
+
+export let filetree = [
+  {path: p"usr/include/xkbcommon/xkbcommon-compat.h", kind: "file"},
+  {path: p"usr/include/xkbcommon/xkbcommon-compose.h", kind: "file"},
+  {path: p"usr/include/xkbcommon/xkbcommon-keysyms.h", kind: "file"},
+  {path: p"usr/include/xkbcommon/xkbcommon-names.h", kind: "file"},
+  {path: p"usr/include/xkbcommon/xkbcommon.h", kind: "file"},
+  {path: p"usr/lib/libxkbcommon.so", kind: "symlink"},
+  {path: p"usr/lib/libxkbcommon.so.0", kind: "symlink"},
+  {path: p"usr/lib/libxkbcommon.so.0.11.0", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/xkbcommon.pc", kind: "file"},
+]

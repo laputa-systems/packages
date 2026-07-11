@@ -431,3 +431,11 @@ ${default_options_guard}
   fs.mkdir(fp"${dest}/etc/dropbear")?
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/dropbear.xsh", 0o644, parents: true, overwrite: true)?
 }
+
+export let filetree = [
+  {path: p"usr/bin/dbclient", kind: "binary"},
+  {path: p"usr/bin/dropbear", kind: "binary"},
+  {path: p"usr/bin/dropbearconvert", kind: "binary"},
+  {path: p"usr/bin/dropbearkey", kind: "binary"},
+  {path: p"usr/lib/xinit/services/dropbear.xsh", kind: "file"},
+]

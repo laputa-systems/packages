@@ -235,3 +235,8 @@ export proc build(dest: Path) [fs, process, env, error] {
   write_minimal_config(dest)?
   fs.remove(fp"${dest}/usr/share", missing_ok: true)?
 }
+
+export let filetree = [
+  {path: p"etc/xdg/foot/foot.ini", kind: "file"},
+  {path: p"usr/bin/foot", kind: "binary"},
+]

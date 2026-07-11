@@ -123,3 +123,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.symlink(p"flex", fp"${dest}/usr/bin/lex")?
   fs.install(p"flex.xsh", fp"${dest}/usr/lib/pm/repo/flex/files/flex.xsh", 0o755, parents: true, overwrite: true)?
 }
+
+export let filetree = [
+  {path: p"usr/bin/flex", kind: "binary"},
+  {path: p"usr/bin/lex", kind: "symlink"},
+  {path: p"usr/lib/pm/repo/flex/files/flex.xsh", kind: "file"},
+]

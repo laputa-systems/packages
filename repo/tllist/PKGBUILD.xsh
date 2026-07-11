@@ -30,3 +30,8 @@ Cflags: -I\${includedir}
 """,
   )?
 }
+
+export let filetree = [
+  {path: p"usr/include/tllist.h", kind: "file"},
+  {path: p"usr/lib/pkgconfig/tllist.pc", kind: "file"},
+]

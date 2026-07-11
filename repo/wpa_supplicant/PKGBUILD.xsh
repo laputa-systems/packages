@@ -248,11 +248,6 @@ export proc build(dest: Path) [fs, process, env, error] {
   let wpa_supplicant_out = multi.outputs.get("wpa_supplicant")?
   let wpa_cli_out = multi.outputs.get("wpa_cli")?
   let passphrase_out = multi.outputs.get("wpa_passphrase")?
-  let strip = process.which("llvm-strip")?
-
-  for binary in [wpa_supplicant_out, wpa_cli_out, passphrase_out] {
-    run $strip "--strip-unneeded" $binary ?
-  }
 
   # Install under /usr/bin: baselayout symlinks /usr/sbin -> bin so
   # installing to /usr/sbin would fail proof extraction with "symlink escape".
@@ -278,3 +273,11 @@ export proc build(dest: Path) [fs, process, env, error] {
     overwrite: true,
   )?
 }
+
+export let filetree = [
+  {path: p"etc/wpa_supplicant/wpa_supplicant.conf", kind: "file"},
+  {path: p"usr/bin/wpa_cli", kind: "binary"},
+  {path: p"usr/bin/wpa_passphrase", kind: "binary"},
+  {path: p"usr/bin/wpa_supplicant", kind: "binary"},
+  {path: p"usr/lib/xinit/services/wpa_supplicant.xsh", kind: "file"},
+]

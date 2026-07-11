@@ -46,3 +46,11 @@ export proc build(dest: Path) [fs, process, env, error] {
     }
   } ?
 }
+
+export let filetree = [
+  {path: p"usr/include/utf8proc.h", kind: "file"},
+  {path: p"usr/lib/libutf8proc.so", kind: "symlink"},
+  {path: p"usr/lib/libutf8proc.so.3", kind: "symlink"},
+  {path: p"usr/lib/libutf8proc.so.3.1.0", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/libutf8proc.pc", kind: "file"},
+]

@@ -30,3 +30,9 @@ export proc build(dest: Path) [fs, error] {
   fs.symlink(p"xinit", fp"${dest}/usr/bin/init")?
   fs.symlink(p"usr/bin/xinit", fp"${dest}/init")?
 }
+
+export let filetree = [
+  {path: p"init", kind: "symlink"},
+  {path: p"usr/bin/init", kind: "symlink"},
+  {path: p"usr/bin/xinit", kind: "file"},
+]

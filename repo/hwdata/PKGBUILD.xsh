@@ -32,3 +32,9 @@ Version: 0.400
 """,
   )?
 }
+
+export let filetree = [
+  {path: p"usr/share/hwdata/pci.ids", kind: "file"},
+  {path: p"usr/share/hwdata/pnp.ids", kind: "file"},
+  {path: p"usr/share/pkgconfig/hwdata.pc", kind: "file"},
+]

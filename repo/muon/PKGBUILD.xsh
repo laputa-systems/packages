@@ -87,3 +87,7 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.install(p"build/muon", fp"${dest}/usr/bin/muon", 0o755, parents: true, overwrite: true)?
 }
+
+export let filetree = [
+  {path: p"usr/bin/muon", kind: "binary"},
+]

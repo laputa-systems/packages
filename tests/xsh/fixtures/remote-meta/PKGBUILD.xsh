@@ -12,6 +12,8 @@ export let sources = []
 
 export let checksums = []
 
+export let filetree = []
+
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.mkdir(dest)?
 }

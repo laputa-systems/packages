@@ -1,4 +1,5 @@
 use extensions
+use elf
 use sources
 use types
 use util
@@ -73,9 +74,24 @@ export pure package_with_extract_install(pkg: Package, extract_install: Bool) ->
     target_build_deps: pkg.target_build_deps,
     sources: pkg.sources,
     checksums: pkg.checksums,
+    filetree: pkg.filetree,
     nostrip: pkg.nostrip,
     extract_install,
   }
+}
+
+export pure package_needs_strip_tool(pkg: Package) -> Bool {
+  if pkg.nostrip {
+    return false
+  }
+
+  for entry in pkg.filetree {
+    if entry.kind == "binary" {
+      return true
+    }
+  }
+
+  false
 }
 
 export proc collect_old_manifest_extra(
@@ -101,6 +117,129 @@ export proc collect_etcsums(dest: Path, manifest: List[Path]) [fs, error] -> Res
   }
 
   sums
+}
+
+export proc validate_and_strip_package(
+  pkg: Package,
+  dest: Path,
+  manifest: List[Path],
+) [fs, process, error] {
+  var declared: Map[Str] = {}
+  var binaries = []
+
+  for entry in pkg.filetree {
+    let key = entry.path.display()
+
+    if key == "" or key.starts_with("/") or key.starts_with("../") or "/../" in key {
+      return Err(PmError.PackageContract(f"${pkg.name} declares an invalid filetree path ${key}"))
+    }
+
+    if entry.kind != "file" and entry.kind != "binary" and entry.kind != "symlink" and entry.kind != "tree" {
+      return Err(PmError.PackageContract(f"${pkg.name} declares invalid filetree kind ${entry.kind} for ${key}"))
+    }
+
+    if declared.has(key) {
+      return Err(PmError.PackageContract(f"${pkg.name} declares ${key} more than once"))
+    }
+
+    declared[key] = entry.kind
+
+    if entry.kind == "binary" {
+      binaries = binaries.push(entry.path)
+    }
+
+    if entry.kind == "tree" {
+      if fs.metadata(fp"${dest}/${entry.path}")?.kind != "dir" {
+        return Err(PmError.PackageContract(f"${pkg.name} declares ${key} as a tree, but it is not a directory"))
+      }
+    }
+  }
+
+  for rel_path in manifest {
+    let key = rel_path.display()
+
+    let path_value = fp"${dest}/${rel_path}"
+    let actual_kind = fs.metadata(path_value)?.kind
+    var declared_kind = declared.get(key, "")
+
+    if declared_kind == "" {
+      var covered_by_tree = false
+
+      for entry in pkg.filetree {
+        let tree = entry.path.display()
+
+        if entry.kind == "tree" and key.starts_with(f"${tree}/") {
+          covered_by_tree = true
+        }
+      }
+
+      if ! covered_by_tree {
+        return Err(PmError.PackageContract(f"${pkg.name} built undeclared file ${key}"))
+      }
+
+      if actual_kind == "symlink" {
+        return Err(PmError.PackageContract(f"${pkg.name} symlink ${key} must be declared explicitly"))
+      }
+
+      match elf.inspect(path_value) {
+        Ok(info) if info.type != "not-elf" => {
+          return Err(PmError.PackageContract(f"${pkg.name} ELF output ${key} must be declared as binary"))
+        }
+        Ok(_) => {}
+        Err(_) => {}
+      }
+
+      continue
+    }
+
+    if declared_kind == "tree" {
+      return Err(PmError.PackageContract(f"${pkg.name} filetree tree ${key} overlaps an output file"))
+    }
+
+    if declared_kind == "symlink" {
+      if actual_kind != "symlink" {
+        return Err(PmError.PackageContract(f"${pkg.name} declares ${key} as a symlink, found ${actual_kind}"))
+      }
+
+      continue
+    }
+
+    if actual_kind != "file" {
+      return Err(PmError.PackageContract(f"${pkg.name} declares ${key} as ${declared_kind}, found ${actual_kind}"))
+    }
+
+    match elf.inspect(path_value) {
+      Ok(info) if info.type != "not-elf" and declared_kind == "file" => {
+        return Err(PmError.PackageContract(f"${pkg.name} ELF output ${key} must be declared as binary"))
+      }
+      Ok(info) if info.type == "not-elf" and declared_kind == "binary" => {
+        return Err(PmError.PackageContract(f"${pkg.name} declares non-ELF output ${key} as binary"))
+      }
+      Ok(_) => {}
+      Err(_) if declared_kind == "binary" => {
+        return Err(PmError.PackageContract(f"${pkg.name} declares non-ELF output ${key} as binary"))
+      }
+      Err(_) => {}
+    }
+  }
+
+  for entry in pkg.filetree {
+    let key = entry.path.display()
+
+    if entry.kind != "tree" and ! (fp"${dest}/${entry.path}").exists()? {
+      return Err(PmError.PackageContract(f"${pkg.name} declares missing file ${key}"))
+    }
+  }
+
+  if pkg.nostrip or binaries.len() == 0 {
+    return
+  }
+
+  let strip = process.which("llvm-strip")?
+
+  for rel_path in binaries {
+    run $strip "--strip-unneeded" fp"${dest}/${rel_path}" ?
+  }
 }
 
 export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error] -> Result[List[Record]] {
@@ -145,6 +284,11 @@ mkdeps	${pkg.mkdeps.join(" ")}
 """
   }
 
+  for entry in pkg.filetree {
+    body = f"""${body}filetree	${entry.path.display()}	${entry.kind}
+"""
+  }
+
   for file in files {
     let path_text: Str = file.get("path")?
     let kind: Str = file.get("kind")?
@@ -173,6 +317,7 @@ export proc write_package_metadata(path_value: Path, arch: Str, item: BuiltPacka
       deps: item.pkg.deps,
       mkdeps: item.pkg.mkdeps,
       target_build_deps: item.pkg.target_build_deps,
+      filetree: [{path: entry.path.display(), kind: entry.kind} for entry in item.pkg.filetree],
       manifest,
       metadata_sha256: item.metadata_sha256,
       files: item.metadata_files,
@@ -376,6 +521,7 @@ export proc write_package_db(root: Path, pkg: Package, manifest: List[Path], etc
       deps: pkg.deps,
       mkdeps: pkg.mkdeps,
       target_build_deps: pkg.target_build_deps,
+      filetree: [{path: entry.path.display(), kind: entry.kind} for entry in pkg.filetree],
       nostrip: pkg.nostrip,
       extract_install: pkg.extract_install,
       dir: pkg.dir.display(),
@@ -428,6 +574,7 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
     let pkg_sources: List[Path] = exports.get("sources")?
     let base_checksums: List[Str] = exports.get("checksums")?
     let checksums = select_checksums(exports, base_checksums)?
+    let filetree: List[FileTreeEntry] = exports.get("filetree").context("package-load", pkgbuild.display())?
     var nostrip = false
     var extract_install = false
 
@@ -474,6 +621,7 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
       target_build_deps,
       sources: pkg_sources,
       checksums,
+      filetree,
       nostrip,
       extract_install,
     })

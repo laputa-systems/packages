@@ -106,3 +106,12 @@ export proc build(dest: Path) [fs, process, env, error] {
     } ?
   } ?
 }
+
+export let filetree = [
+  {path: p"usr/include/fcft/fcft.h", kind: "file"},
+  {path: p"usr/include/fcft/stride.h", kind: "file"},
+  {path: p"usr/lib/libfcft.so", kind: "symlink"},
+  {path: p"usr/lib/libfcft.so.4", kind: "symlink"},
+  {path: p"usr/lib/libfcft.so.4.3.3", kind: "binary"},
+  {path: p"usr/lib/pkgconfig/fcft.pc", kind: "file"},
+]
