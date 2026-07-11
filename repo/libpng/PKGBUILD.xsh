@@ -5,7 +5,7 @@ export let name = "libpng"
 
 export let ver = "1.6.50"
 
-export let rel = "2"
+export let rel = "7"
 
 export let deps = ["musl", "zlib"]
 
@@ -21,6 +21,18 @@ export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?
   let samu = process.which("samu")?
   let jobs_flag = f"-j${make.jobs()?}"
+
+  # CMake's legacy post-build symlink command fails under the XSH build root.
+  # Install the unversioned development link after CMake installs the library.
+  var cmake_lists = p"CMakeLists.txt".read_text()?
+  cmake_lists = cmake_lists.replace(
+    r"""      create_symlink(libpng${CMAKE_SHARED_LIBRARY_SUFFIX} TARGET png_shared)
+      install(FILES "$<TARGET_LINKER_FILE_DIR:png_shared>/libpng${CMAKE_SHARED_LIBRARY_SUFFIX}"
+              DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+""",
+    "",
+  )
+  fs.write(p"CMakeLists.txt", cmake_lists)?
 
   var cmake_args = [
     "-S",
@@ -57,6 +69,8 @@ export proc build(dest: Path) [fs, process, env, error] {
       run $cmake "-P" "cmake_install.cmake" ?
     }
   } ?
+
+  fs.symlink(p"libpng16.so", fp"${dest}/usr/lib/libpng.so")?
 
   fs.remove(fp"${dest}/usr/bin", missing_ok: true)?
   fs.remove(fp"${dest}/usr/share/man", missing_ok: true)?

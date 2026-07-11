@@ -5,7 +5,7 @@ export let name = "mtdev"
 
 export let ver = "1.1.7"
 
-export let rel = "3"
+export let rel = "7"
 
 export let deps = ["musl", "linux"]
 

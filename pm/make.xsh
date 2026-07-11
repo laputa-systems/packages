@@ -215,10 +215,11 @@ export proc discover_sources(
 }
 
 export proc install_header_tree(src_dir: Path, dest_dir: Path, exclude: List[Path] = []) [fs, error] {
+  let source_root = path.absolute(src_dir)?
   fs.mkdir(dest_dir)?
 
-  for entry in fs.walk(src_dir, gitignore: false)? {
-    let rel = entry.path.relative_to(src_dir)
+  for entry in fs.walk(source_root, gitignore: false)? {
+    let rel = entry.path.relative_to(source_root)
     continue when path_in_list(rel, exclude)
     let target = fp"${dest_dir}/${rel}"
 
