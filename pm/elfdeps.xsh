@@ -23,10 +23,7 @@ export pure elf_info_mentions_musl(needed: List[Str], interpreter: Str) -> Bool 
   return "libc.so" in needed
 }
 
-export pure runtime_dependency_closure(
-  initial: List[Str],
-  package_deps: Map[List[Str]],
-) -> Map[Bool] {
+export pure runtime_dependency_closure(initial: List[Str], package_deps: Map[List[Str]]) -> Map[Bool] {
   var closure: Map[Bool] = {}
   var pending = initial
   var index = 0
@@ -34,11 +31,7 @@ export pure runtime_dependency_closure(
   while index < pending.len() {
     let name = pending[index]
     index += 1
-
-    if closure.get(name, false) {
-      continue
-    }
-
+    continue when closure.get(name, false)
     closure[name] = true
 
     if package_deps.has(name) {
@@ -150,6 +143,7 @@ export proc installed_file_elf_dependency_failures(
         info.interpreter,
         providers,
       )
+
       failures = [{pkg: failure.pkg, file: rel_path, soname: failure.soname, provider: failure.provider} for failure in failures]
       failures
     }
