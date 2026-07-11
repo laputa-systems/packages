@@ -638,6 +638,7 @@ proc planned_world_packages(
   local_names: Map[Bool],
   remote_latest: Map[RemotePackage],
   state_planned_rels: Map[Str],
+  arch: Str,
 ) [error] -> Result[WorldPlanResult] {
   var planned = []
   var changed: Map[Bool] = {}
@@ -668,7 +669,7 @@ proc planned_world_packages(
             planned_pkg = package_with_rel(pkg, planned_rel)
 
             if compare_version_release(planned_pkg.ver, planned_pkg.rel, pkg.ver, pkg.rel) != 0 {
-              reasons[pkg.name] = f"carried world-state rel ${state_rel}"
+              reasons[pkg.name] = f"carried ${arch} world-state rel ${state_rel}"
             }
           } else {
             let rel_cmp = compare_version_text(planned_pkg.rel, remote_pkg.rel)
@@ -707,7 +708,7 @@ proc planned_world_packages(
 
         if compare_version_text(pkg.rel, state_rel) <= 0 {
           planned_pkg = package_with_rel(pkg, state_rel)
-          reasons[pkg.name] = f"new package carried world-state rel ${state_rel}"
+          reasons[pkg.name] = f"new package carried ${arch} world-state rel ${state_rel}"
         }
       } else {
         reasons[pkg.name] = "new package"
@@ -856,6 +857,7 @@ proc print_world_plan(
   world_jobs: Int,
   remote_latest: Map[RemotePackage],
   arch: Str,
+  staged_statuses: Map[Str],
 ) [env, error] {
   let levels = world_plan_levels(ordered, local_names)
   let max_level = world_plan_max_level(ordered, levels)
@@ -884,12 +886,20 @@ proc print_world_plan(
         suffix = f"${suffix} ${ansi(colors, "2", f"because ${reason}")}"
       }
 
-      print --flush f"  ${ansi(colors, "1;32", pkg.name)} ${world_plan_version_text(
-        pkg,
-        planned_pkg,
-        remote_latest,
-        colors,
-      )?}${suffix}"
+      var version_text = ""
+
+      if staged_statuses.has(pkg.name) {
+        let status = staged_statuses.get(pkg.name)?
+        version_text = f"${ansi(colors, "1;33", version_id(planned_pkg.ver, planned_pkg.rel))} ${ansi(
+          colors,
+          "2",
+          f"stage: ${status} (local ${version_id(pkg.ver, pkg.rel)})",
+        )}"
+      } else {
+        version_text = world_plan_version_text(pkg, planned_pkg, remote_latest, colors)?
+      }
+
+      print --flush f"  ${ansi(colors, "1;32", pkg.name)} ${version_text}${suffix}"
     }
 
     level += 1
@@ -1555,6 +1565,38 @@ proc ensure_world_state_compatible(
   state
 }
 
+proc world_staged_package_statuses(
+  repo_dir: Path,
+  fingerprint: Str,
+  root: Path,
+  build_root: Path,
+  planned: List[Package],
+  cross_build: Bool,
+) [fs, env, error] -> Result[Map[Str]] {
+  let state = ensure_world_state_compatible(repo_dir, fingerprint, planned)?
+  let built: List[Str] = state.get("built")?
+  let proofed: List[Str] = state.get("proofed")?
+  let unchanged = if state.has("unchanged") { state.get("unchanged")? } else { [] }
+  var statuses: Map[Str] = {}
+
+  for pkg in planned {
+    let id = world_package_id(pkg)
+
+    if id in unchanged and world_stage_package_present_in_roots(root, build_root, pkg.name, cross_build)? {
+      statuses[pkg.name] = "unchanged"
+    } else if id in built and id in proofed and world_stage_package_present_in_roots(
+      root,
+      build_root,
+      pkg.name,
+      cross_build,
+    )? {
+      statuses[pkg.name] = "cached"
+    }
+  }
+
+  statuses
+}
+
 proc world_state_planned_rels(repo_dir: Path, packages: List[Package]) [fs, error] -> Result[Map[Str]] {
   var rels: Map[Str] = {}
   let state_path = world_state_path(repo_dir)
@@ -1835,10 +1877,32 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   let local_names = local_package_names(packages)
   let ordered = order_world_build_packages(build_root, packages, index, target_arch, ! cross_build)?
   let state_planned_rels = world_state_planned_rels(repo_dir, packages)?
-  let plan = planned_world_packages(ordered, local_names, remote_latest, state_planned_rels)?
+  let plan = planned_world_packages(ordered, local_names, remote_latest, state_planned_rels, target_arch)?
   let planned = plan.packages
   let planned_by_name = planned_world_package_map(planned)
-  print_world_plan(ordered, planned, plan.reasons, local_names, world_jobs, remote_latest, target_arch)?
+  var staged_statuses: Map[Str] = {}
+
+  if build_requested {
+    staged_statuses = world_staged_package_statuses(
+      repo_dir,
+      fingerprint,
+      root,
+      build_root,
+      planned,
+      cross_build,
+    )?
+  }
+
+  print_world_plan(
+    ordered,
+    planned,
+    plan.reasons,
+    local_names,
+    world_jobs,
+    remote_latest,
+    target_arch,
+    staged_statuses,
+  )?
 
   if build_requested {
     let state = ensure_world_state_compatible(repo_dir, fingerprint, planned)?
@@ -2081,6 +2145,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   if upload_requested {
     verify_world_stage(repo_dir, planned, fingerprint)?
     audit_world_elf_dependencies(root, planned)?
+    print --flush "world-plan" "uploading" "repository export"
     upload_repo_export(["upload-repo-export", repo_dir.display()])?
 
     if sync_rels_requested and repo_urls.repo != "" {

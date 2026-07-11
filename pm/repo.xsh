@@ -266,18 +266,30 @@ export proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, er
   let repo_urls = require_repo_url()?
   let token = require_auth_token(root)?
   let repo = repo_urls.repo
+  print --flush "repo-export" "loading" "remote index"
   var remote_index = load_remote_index_from_repo(repo, out)?
   let export_index = load_remote_index_from(index_path)?
   fs.mkdir(work)?
   fs.mkdir(out)?
+  let export_count = export_index.len()
+  var export_number = 0
 
   for entry in export_index {
+    export_number += 1
+
     if remote_export_entry_same(remote_index, entry) {
-      print ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) "already-exported"
+      print --flush f"repo-export ${export_number}/${export_count}" ${entry.arch} ${entry.name} version_id(
+        entry.ver,
+        entry.rel,
+      ) "already-exported"
       continue
     }
 
     var uploaded = entry
+    print --flush f"repo-export ${export_number}/${export_count}" ${entry.arch} ${entry.name} version_id(
+      entry.ver,
+      entry.rel,
+    ) "uploading"
 
     if ! entry.metapackage {
       if entry.tarball == "" {
@@ -291,8 +303,9 @@ export proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, er
         return Err(PmError.PackageTarball(f"${tarball.display()} is missing"))
       }
 
-      upload_repo_export_file(repo, tarball_rel, tarball, token, work)?
       let tarball_metadata = fs.metadata(tarball)?
+      print --flush f"repo-export ${export_number}/${export_count}" ${entry.arch} ${entry.name} "uploading" "tarball" f"${tarball_metadata.size} bytes"
+      upload_repo_export_file(repo, tarball_rel, tarball, token, work)?
       uploaded = {...uploaded, sha256: hash.sha256(tarball)?.hex(), size: tarball_metadata.size}
 
       if entry.metadata != "" {
@@ -303,6 +316,8 @@ export proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, er
           return Err(PmError.PackageTarball(f"${metadata.display()} is missing"))
         }
 
+        let metadata_size = fs.metadata(metadata)?.size
+        print --flush f"repo-export ${export_number}/${export_count}" ${entry.arch} ${entry.name} "uploading" "metadata" f"${metadata_size} bytes"
         upload_repo_export_file(repo, metadata_rel, metadata, token, work)?
       }
     }
@@ -311,14 +326,17 @@ export proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, er
 
     if fs.exists(source)? {
       let source_rel = remote_source_rel_for_arch(entry.arch, entry.name, entry.ver, entry.rel)
+      let source_size = fs.metadata(source)?.size
+      print --flush f"repo-export ${export_number}/${export_count}" ${entry.arch} ${entry.name} "uploading" "source" f"${source_size} bytes"
       upload_repo_export_file(repo, source_rel, source, token, work)?
       uploaded = {...uploaded, source_sha256: hash.sha256(source)?.hex(), source_tarball: source_rel.display()}
     }
 
     remote_index = upsert_remote_package(remote_index, uploaded)?
-    print ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) "exported"
+    print --flush ${entry.arch} ${entry.name} version_id(entry.ver, entry.rel) "exported"
   }
 
+  print --flush "repo-export" "writing" "remote index"
   write_remote_index_to_repo(repo, work, out, remote_index, token)?
-  print "repo" export uploaded
+  print --flush "repo" export uploaded
 }

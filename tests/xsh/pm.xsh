@@ -934,6 +934,9 @@ proc test_pm_upload_repo_export_includes_source_mirror(ctx: TestContext) [fs, pr
   test.contains(build_out, "remote-app 1.0.0-1 stage: done")?
   test.ok(fp"${repo}/.out/source-mirrors/remote-app-1.0.0-1-${arch}.tar.gz".exists()?)?
   let export_out = run.text XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- upload-repo-export $repo ?
+  test.contains(export_out, "repo-export loading remote index")?
+  test.contains(export_out, "repo-export 1/1 aarch64 remote-app 1.0.0-1 uploading")?
+  test.contains(export_out, "repo-export 1/1 aarch64 remote-app uploading tarball")?
   test.contains(export_out, f"${arch} remote-app 1.0.0-1 exported")?
   test.contains(export_out, "repo export uploaded")?
   let source_rel = fp"sources/remote-app/remote-app-1.0.0-1-${arch}-src.tar.gz"
@@ -1122,6 +1125,9 @@ proc test_pm_world_plan_build_and_upload(ctx: TestContext) [fs, process, env, er
   let state = fp"${stage}/.world/state.json".read_text()?
   test.contains(state, "\"complete\":true")?
   test.contains(state, "\"proofed\"")?
+  let rerun = run.text HOME=$home NO_COLOR=1 XSH_PM_BUILD_CHROOT=0 XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- world-plan world_pm_dir() world_lib_dir() world_app_dir() --build --jobs 2 ?
+  test.contains(rerun, "laputa-pm 1.0.0-1 stage: cached")?
+  test.ok(! ("laputa-pm 1.0.0-1 ->" in rerun))?
 }
 
 proc test_pm_world_plan_build_to_tranche_and_resume(ctx: TestContext) [fs, process, env, error] {
