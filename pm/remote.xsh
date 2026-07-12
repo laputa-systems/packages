@@ -426,6 +426,7 @@ export proc decode_remote_package(row: Record) [error] -> Result[RemotePackage] 
   var arch = "aarch64"
   let empty_mkdeps_target = []
   let mkdeps_host = if row.has("mkdeps_host") { row.get("mkdeps_host")? } else { row.get("mkdeps")? }
+
   let mkdeps_target = if row.has("mkdeps_target") {
     row.get("mkdeps_target")?
   } else if row.has("target_build_deps") {

@@ -14,11 +14,19 @@ export let deps = ["musl"]
 export let mkdeps_host = ["llvm-toolchain"]
 
 export let upstream_sources = [
-  {source: p"https://mirrors.kernel.org/gnu/bison/bison-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "9bba0214ccf7f1079c5d59210045227bcf619519840ebfa80cd3849cff5a5bf2"}]},
-  {source: p"files/bison.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "49b349b80c55be3d10ba99688860ec05cc971096b7c5f64dda40ae6df9c1a1bc"}]}
+  {
+    source: p"https://mirrors.kernel.org/gnu/bison/bison-VERSION.tar.xz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "9bba0214ccf7f1079c5d59210045227bcf619519840ebfa80cd3849cff5a5bf2"}],
+  },
+  {
+    source: p"files/bison.xsh",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "49b349b80c55be3d10ba99688860ec05cc971096b7c5f64dda40ae6df9c1a1bc"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr/bin/bison", kind: "binary"},

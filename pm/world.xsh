@@ -343,6 +343,7 @@ proc world_package_rows(packages: List[Package]) [] -> List[Record] {
 
   for pkg in packages {
     let sources = [source.source.display() for source in pkg.upstream_sources]
+
     let upstream_sources = [
       {
         source: source.source.display(),
@@ -461,9 +462,12 @@ proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]]
         seen[key] = true
       }
     } else {
-      var children = [child.path for child in fs.children(input)? if child.kind == "dir" and fs.exists(
-        fp"${child.path}/PKGBUILD.xsh",
-      )?]
+      var children = [
+        child.path
+        for child in fs.children(input)? if child.kind == "dir" and fs.exists(
+          fp"${child.path}/PKGBUILD.xsh",
+        )?
+      ]
 
       children = children |> sort-by .display()
 

@@ -11,10 +11,13 @@ export let deps = ["musl", "hwdata"]
 export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "hwdata"]
 
 export let upstream_sources = [
-  {source: p"https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/VERSION/downloads/libdisplay-info-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "6ae77cd937f9cf7d1321d35c116062c4911e8447010a6a713ac4286f7a9d5987"}]}
+  {
+    source: p"https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/VERSION/downloads/libdisplay-info-VERSION.tar.xz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "6ae77cd937f9cf7d1321d35c116062c4911e8447010a6a713ac4286f7a9d5987"}],
+  },
 ]
-
-
 
 type PnpRecord = {id: Str, name: Str}
 
@@ -56,7 +59,12 @@ proc write_pnp_table(root: Str) [fs, error] {
   }
 
   records = records |> sort-by .id
-  var cases = [f"    if (strcmp(key, \"${c_string(entry.id)}\") == 0) return \"${c_string(entry.name)}\";" for entry in records]
+
+  var cases = [
+    f"    if (strcmp(key, \"${c_string(entry.id)}\") == 0) return \"${c_string(entry.name)}\";"
+    for entry in records
+  ]
+
   let case_text = cases.join("\n")
 
   fs.write(

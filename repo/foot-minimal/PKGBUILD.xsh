@@ -40,14 +40,37 @@ export let mkdeps_host = [
 export let mkdeps_target = ["wayland-dev", "wayland-protocols", "pixman-dev", "tllist"]
 
 export let upstream_sources = [
-  {source: p"https://codeberg.org/dnkl/foot/archive/VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "f5917cad2d7b723b99873e53d78fd10ea202923d189aed5086591fc53b70b7e3"}]},
-  {source: p"files/generated/emoji-variation-sequences.h => generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "c78138c30e2b89f2ab7f1ed95996696be12f5182b0a3037828438b26d48040ba"}]},
-  {source: p"files/generated/foot-terminfo.h => generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "a2ff78b72d3b941f05d2a690eaaba4ac7fcb62ce7c599558a4e50a89f8950f76"}]},
-  {source: p"files/generated/srgb.c => generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "c038205bf3f77953b6b1125ede9cee8df49d07dd004f9f70f6723f305a06e445"}]},
-  {source: p"files/generated/srgb.h => generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "9053596e40a895d310fa3cf74a68ae1f87828d20a3cdcc927275acaf9d2104cc"}]}
+  {
+    source: p"https://codeberg.org/dnkl/foot/archive/VERSION.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "f5917cad2d7b723b99873e53d78fd10ea202923d189aed5086591fc53b70b7e3"}],
+  },
+  {
+    source: p"files/generated/emoji-variation-sequences.h => generated",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "c78138c30e2b89f2ab7f1ed95996696be12f5182b0a3037828438b26d48040ba"}],
+  },
+  {
+    source: p"files/generated/foot-terminfo.h => generated",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "a2ff78b72d3b941f05d2a690eaaba4ac7fcb62ce7c599558a4e50a89f8950f76"}],
+  },
+  {
+    source: p"files/generated/srgb.c => generated",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "c038205bf3f77953b6b1125ede9cee8df49d07dd004f9f70f6723f305a06e445"}],
+  },
+  {
+    source: p"files/generated/srgb.h => generated",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "9053596e40a895d310fa3cf74a68ae1f87828d20a3cdcc927275acaf9d2104cc"}],
+  },
 ]
-
-
 
 export let filetree = [{path: p"etc/xdg/foot/foot.ini", kind: "file"}, {path: p"usr/bin/foot", kind: "binary"}]
 

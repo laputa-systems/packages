@@ -12,10 +12,13 @@ export let deps = ["musl", "zlib"]
 export let mkdeps_host = ["llvm-toolchain", "cmake", "samurai", "zlib"]
 
 export let upstream_sources = [
-  {source: p"https://download.sourceforge.net/libpng/libpng-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "4df396518620a7aa3651443e87d1b2862e4e88cad135a8b93423e01706232307"}]}
+  {
+    source: p"https://download.sourceforge.net/libpng/libpng-VERSION.tar.xz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "4df396518620a7aa3651443e87d1b2862e4e88cad135a8b93423e01706232307"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr/include/libpng16/png.h", kind: "file"},

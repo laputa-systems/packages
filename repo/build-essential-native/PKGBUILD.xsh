@@ -21,11 +21,7 @@ export let deps = [
 
 export let mkdeps_host = []
 
-export let upstream_sources = [
-
-]
-
-
+export let upstream_sources = []
 
 export let filetree = []
 

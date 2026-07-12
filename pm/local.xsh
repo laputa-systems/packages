@@ -557,7 +557,10 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
     let deps: List[Str] = exports.get("deps")?
     let mkdeps_host: List[Str] = exports.get("mkdeps_host")?
     var mkdeps_target = []
-    let upstream_sources: List[UpstreamSource] = exports.get("upstream_sources").context("package-load", pkgbuild.display())?
+
+    let upstream_sources: List[UpstreamSource] = exports.get("upstream_sources")
+      .context("package-load", pkgbuild.display())?
+
     let base_filetree: List[FileTreeEntry] = exports.get("filetree").context("package-load", pkgbuild.display())?
     let filetree = select_filetree(exports, base_filetree)?
     var nostrip = false
@@ -710,14 +713,17 @@ export proc collect_upgrade_names(root: Path, packages: List[Package]) [fs, erro
 }
 
 export pure collect_local_index(packages: List[Package]) -> Result[List[PackageIndex]] {
-  let index = [{
-    name: pkg.name,
-    ver: pkg.ver,
-    rel: pkg.rel,
-    deps: pkg.deps,
-    mkdeps_host: pkg.mkdeps_host,
-    mkdeps_target: pkg.mkdeps_target,
-  } for pkg in packages]
+  let index = [
+    {
+      name: pkg.name,
+      ver: pkg.ver,
+      rel: pkg.rel,
+      deps: pkg.deps,
+      mkdeps_host: pkg.mkdeps_host,
+      mkdeps_target: pkg.mkdeps_target,
+    }
+    for pkg in packages
+  ]
 
   index
 }

@@ -206,7 +206,6 @@ export proc upload_package(ctx: PmContext, pkg: Package) [fs, net, process, env,
   }
 
   verify_proof_receipt(ctx.out, pkg, tarball)?
-
   let tarball_rel = remote_binary_rel(arch, pkg.name, pkg.ver, pkg.rel)
   let tarball_metadata = fs.metadata(tarball)?
 

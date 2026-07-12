@@ -11,12 +11,25 @@ export let deps = ["musl", "xkeyboard-config"]
 export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "xkeyboard-config"]
 
 export let upstream_sources = [
-  {source: p"https://github.com/xkbcommon/libxkbcommon/archive/xkbcommon-VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "78a6b14f16e9a55025978c252e53ce9e16a02bfdb929550b9a0db5af87db7e02"}]},
-  {source: p"files/parser.c => generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "e237a6b6396515462e50c56041681c1b1ce83f8582e8ab661a48d91cdaf97a8e"}]},
-  {source: p"files/parser.h => generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "5abcf6696e29a393960b9d842a719b025fcaea2c8c41b2976b5fa5f28e763b96"}]}
+  {
+    source: p"https://github.com/xkbcommon/libxkbcommon/archive/xkbcommon-VERSION.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "78a6b14f16e9a55025978c252e53ce9e16a02bfdb929550b9a0db5af87db7e02"}],
+  },
+  {
+    source: p"files/parser.c => generated",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "e237a6b6396515462e50c56041681c1b1ce83f8582e8ab661a48d91cdaf97a8e"}],
+  },
+  {
+    source: p"files/parser.h => generated",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "5abcf6696e29a393960b9d842a719b025fcaea2c8c41b2976b5fa5f28e763b96"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr/include/xkbcommon/xkbcommon-compat.h", kind: "file"},

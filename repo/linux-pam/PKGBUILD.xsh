@@ -11,10 +11,13 @@ export let deps = ["musl"]
 export let mkdeps_host = ["llvm-toolchain", "linux", "muon", "samurai"]
 
 export let upstream_sources = [
-  {source: p"https://github.com/linux-pam/linux-pam/releases/download/vVERSION/Linux-PAM-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "3d86b6383fb5fd9eb9578d2cd47d92801191f4bf3f9bc61419bfefc8aa1e531a"}]}
+  {
+    source: p"https://github.com/linux-pam/linux-pam/releases/download/vVERSION/Linux-PAM-VERSION.tar.xz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "3d86b6383fb5fd9eb9578d2cd47d92801191f4bf3f9bc61419bfefc8aa1e531a"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"etc/pam.d/su", kind: "file"},

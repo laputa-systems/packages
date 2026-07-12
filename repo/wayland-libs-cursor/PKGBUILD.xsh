@@ -12,10 +12,13 @@ export let deps = ["musl", "wayland-libs-client"]
 export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "expat", "libffi"]
 
 export let upstream_sources = [
-  {source: p"https://gitlab.freedesktop.org/wayland/wayland/-/releases/VERSION/downloads/wayland-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536"}]}
+  {
+    source: p"https://gitlab.freedesktop.org/wayland/wayland/-/releases/VERSION/downloads/wayland-VERSION.tar.xz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr/lib/libwayland-cursor.so", kind: "symlink"},

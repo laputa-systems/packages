@@ -12,10 +12,13 @@ export let deps = ["musl", "zlib", "libpng"]
 export let mkdeps_host = ["llvm-toolchain", "cmake", "samurai", "pkgconf", "zlib", "libpng"]
 
 export let upstream_sources = [
-  {source: p"https://download-mirror.savannah.gnu.org/releases/freetype/freetype-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "32427e8c471ac095853212a37aef816c60b42052d4d9e48230bab3bdf2936ccc"}]}
+  {
+    source: p"https://download-mirror.savannah.gnu.org/releases/freetype/freetype-VERSION.tar.xz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "32427e8c471ac095853212a37aef816c60b42052d4d9e48230bab3bdf2936ccc"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr/include/freetype2/dlg/dlg.h", kind: "file"},

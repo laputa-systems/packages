@@ -12,10 +12,13 @@ export let deps = ["musl", "linux"]
 export let mkdeps_host = ["llvm-toolchain", "linux"]
 
 export let upstream_sources = [
-  {source: p"https://github.com/libffi/libffi/releases/download/vVERSION/libffi-VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc"}]}
+  {
+    source: p"https://github.com/libffi/libffi/releases/download/vVERSION/libffi-VERSION.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc"}],
+  },
 ]
-
-
 
 type LibffiTarget = {target: Str, dir: Str, sources: List[Str]}
 
@@ -116,7 +119,13 @@ ${target_defines}#define LIBFFI_GNU_SYMBOL_VERSIONING 1
 """,
   )?
 
-  let ffi_h = p"include/ffi.h.in".read_text()?.replace("@VERSION@", ver).replace("@TARGET@", target.target).replace("@HAVE_LONG_DOUBLE@", "1").replace("@HAVE_LONG_DOUBLE_VARIANT@", "0").replace("@FFI_VERSION_STRING@", ver).replace("@FFI_VERSION_NUMBER@", "30502").replace("@FFI_EXEC_TRAMPOLINE_TABLE@", "0")
+  let ffi_h = p"include/ffi.h.in".read_text()?.replace("@VERSION@", ver).replace("@TARGET@", target.target)
+    .replace("@HAVE_LONG_DOUBLE@", "1")
+    .replace("@HAVE_LONG_DOUBLE_VARIANT@", "0")
+    .replace("@FFI_VERSION_STRING@", ver)
+    .replace("@FFI_VERSION_NUMBER@", "30502")
+    .replace("@FFI_EXEC_TRAMPOLINE_TABLE@", "0")
+
   fs.write(p"include/ffi.h", ffi_h)?
   fs.install(fp"src/${target.dir}/ffitarget.h", p"include/ffitarget.h", 0o644, parents: true, overwrite: true)?
 }

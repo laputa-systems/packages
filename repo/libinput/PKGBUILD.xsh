@@ -21,10 +21,13 @@ export let mkdeps_host = [
 ]
 
 export let upstream_sources = [
-  {source: p"https://gitlab.freedesktop.org/libinput/libinput/-/archive/VERSION/libinput-VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "507a40b8a74568ed7c2bd05acf2e15ee3d9f4703102dca86d4f6a804e73bf1f6"}]}
+  {
+    source: p"https://gitlab.freedesktop.org/libinput/libinput/-/archive/VERSION/libinput-VERSION.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "507a40b8a74568ed7c2bd05acf2e15ee3d9f4703102dca86d4f6a804e73bf1f6"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr/bin/libinput", kind: "binary"},

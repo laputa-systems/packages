@@ -13,15 +13,25 @@ export let deps = ["linux-pam", "gnu-stubs", "musl"]
 export let mkdeps_host = ["cargo", "llvm-toolchain", "linux-pam", "ca-certificates"]
 
 export let upstream_sources = [
-  {source: p"https://static.crates.io/crates/sudo-rs/sudo-rs-VERSION.crate", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "3537fb3bdef870cacb354892e3fc76af7775e691570d49b402295c8fbef3656b"}, {arch: "x86_64", sha256: "3537fb3bdef870cacb354892e3fc76af7775e691570d49b402295c8fbef3656b"}]},
-  {source: p"https://static.rust-lang.org/dist/2026-04-16/rust-std-1.95.0-ARCH-unknown-linux-musl.tar.xz => rust-std", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "f6710416ed9a7d5cf2a15efa761eb79a1deeb43f9961bbe05cc97bec4ef9064a"}, {arch: "x86_64", sha256: "aee540abf132920f791ef781489851a078d69dff493fb628d49c1d573f92bb3a"}]}
+  {
+    source: p"https://static.crates.io/crates/sudo-rs/sudo-rs-VERSION.crate",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [
+      {arch: "aarch64", sha256: "3537fb3bdef870cacb354892e3fc76af7775e691570d49b402295c8fbef3656b"},
+      {arch: "x86_64", sha256: "3537fb3bdef870cacb354892e3fc76af7775e691570d49b402295c8fbef3656b"},
+    ],
+  },
+  {
+    source: p"https://static.rust-lang.org/dist/2026-04-16/rust-std-1.95.0-ARCH-unknown-linux-musl.tar.xz => rust-std",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [
+      {arch: "aarch64", sha256: "f6710416ed9a7d5cf2a15efa761eb79a1deeb43f9961bbe05cc97bec4ef9064a"},
+      {arch: "x86_64", sha256: "aee540abf132920f791ef781489851a078d69dff493fb628d49c1d573f92bb3a"},
+    ],
+  },
 ]
-
-
-
-
-
-
 
 export let filetree = [
   {path: p"usr/bin/su", kind: "binary"},

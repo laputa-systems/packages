@@ -12,10 +12,8 @@ export let mkdeps_host = ["xinit"]
 
 export let upstream_sources = [
   {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
-  {source: p"interfaces", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
+  {source: p"interfaces", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
 ]
-
-
 
 export let filetree = [
   {path: p"etc/network/if-down.d/keep", kind: "file"},

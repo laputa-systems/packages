@@ -23,10 +23,13 @@ export let mkdeps_host = [
 export let mkdeps_target = ["wayland-dev", "wayland-protocols"]
 
 export let upstream_sources = [
-  {source: p"https://github.com/bugaevc/wl-clipboard/archive/refs/tags/vVERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402"}]}
+  {
+    source: p"https://github.com/bugaevc/wl-clipboard/archive/refs/tags/vVERSION.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402"}],
+  },
 ]
-
-
 
 export let filetree = [{path: p"usr/bin/wl-copy", kind: "binary"}, {path: p"usr/bin/wl-paste", kind: "binary"}]
 

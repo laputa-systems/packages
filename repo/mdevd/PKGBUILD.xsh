@@ -14,12 +14,20 @@ export let deps = ["musl"]
 export let mkdeps_host = ["llvm-toolchain", "xinit"]
 
 export let upstream_sources = [
-  {source: p"https://skarnet.org/software/mdevd/mdevd-VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "ce1ae0149b6a57a34f608218fd6181aa6aa68135cac2f4d931b5b417b072e244"}]},
-  {source: p"https://skarnet.org/software/skalibs/skalibs-2.15.0.0.tar.gz => skalibs", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "7fde96e8afb4191593a15328883e9c7726c96891cf071222146821e8c87f8007"}]},
-  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
+  {
+    source: p"https://skarnet.org/software/mdevd/mdevd-VERSION.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "ce1ae0149b6a57a34f608218fd6181aa6aa68135cac2f4d931b5b417b072e244"}],
+  },
+  {
+    source: p"https://skarnet.org/software/skalibs/skalibs-2.15.0.0.tar.gz => skalibs",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "7fde96e8afb4191593a15328883e9c7726c96891cf071222146821e8c87f8007"}],
+  },
+  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
 ]
-
-
 
 export let filetree = [
   {path: p"usr/bin/mdevd", kind: "binary"},
@@ -28,7 +36,32 @@ export let filetree = [
 ]
 
 pure upper_ascii(text: Str) -> Str {
-  text.replace("a", "A").replace("b", "B").replace("c", "C").replace("d", "D").replace("e", "E").replace("f", "F").replace("g", "G").replace("h", "H").replace("i", "I").replace("j", "J").replace("k", "K").replace("l", "L").replace("m", "M").replace("n", "N").replace("o", "O").replace("p", "P").replace("q", "Q").replace("r", "R").replace("s", "S").replace("t", "T").replace("u", "U").replace("v", "V").replace("w", "W").replace("x", "X").replace("y", "Y").replace("z", "Z")
+  text.replace("a", "A")
+    .replace("b", "B")
+    .replace("c", "C")
+    .replace("d", "D")
+    .replace("e", "E")
+    .replace("f", "F")
+    .replace("g", "G")
+    .replace("h", "H")
+    .replace("i", "I")
+    .replace("j", "J")
+    .replace("k", "K")
+    .replace("l", "L")
+    .replace("m", "M")
+    .replace("n", "N")
+    .replace("o", "O")
+    .replace("p", "P")
+    .replace("q", "Q")
+    .replace("r", "R")
+    .replace("s", "S")
+    .replace("t", "T")
+    .replace("u", "U")
+    .replace("v", "V")
+    .replace("w", "W")
+    .replace("x", "X")
+    .replace("y", "Y")
+    .replace("z", "Z")
 }
 
 pure bytes_for_bits(bits: Int) -> Int {
@@ -36,13 +69,23 @@ pure bytes_for_bits(bits: Int) -> Int {
 }
 
 pure gen_types_internal(text: Str, type_name: Str, type_caps: Str, bits: Int) -> Str {
-  text.replace("@type@", type_name).replace("@TYPE@", type_caps).replace("@BITS@", f"${bits}").replace("@BYTES@", f"${bytes_for_bits(
-  bits,
-)}")
+  text.replace("@type@", type_name)
+    .replace("@TYPE@", type_caps)
+    .replace("@BITS@", f"${bits}")
+    .replace(
+      "@BYTES@",
+      f"${bytes_for_bits(
+        bits,
+      )}",
+    )
 }
 
 pure gen_bits_template(text: Str, bits: Int, dfmt: Str, ofmt: Str, xfmt: Str, bfmt: Str) -> Str {
-  text.replace("@BITS@", f"${bits}").replace("@DFMT@", dfmt).replace("@OFMT@", ofmt).replace("@XFMT@", xfmt).replace("@BFMT@", bfmt)
+  text.replace("@BITS@", f"${bits}")
+    .replace("@DFMT@", dfmt)
+    .replace("@OFMT@", ofmt)
+    .replace("@XFMT@", xfmt)
+    .replace("@BFMT@", bfmt)
 }
 
 proc read_sysdeps(path_value: Path) [fs, error] -> Result[Map[Str]] {

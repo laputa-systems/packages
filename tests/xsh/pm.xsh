@@ -592,7 +592,6 @@ proc test_pm_source_checksum(ctx: TestContext) [fs, process, env, error] {
   let _ = fs.copy_tree(source_pkg_dir(), pkg, parents: true, overwrite: true)?
   let pkgbuild_path = fp"${pkg}/PKGBUILD.xsh"
   let arch = fixture_arch()?
-
   let checksum_out = run.text xsh_bin() pm.xsh -- checksum $root $work $out $pkg ?
   test.contains(checksum_out, "source-pkg 6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
   let update_out = run.text xsh_bin() pm.xsh -- update-checksums $root $work $out $pkg ?
@@ -981,6 +980,7 @@ proc test_pm_upload_repo_export_includes_source_mirror(ctx: TestContext) [fs, pr
 
 proc test_pm_remote_index_decodes_legacy_dependency_fields(ctx: TestContext) [error] {
   let _ = ctx
+
   let package = pm_remote.decode_remote_package({
     arch: "aarch64",
     name: "legacy",
@@ -996,6 +996,7 @@ proc test_pm_remote_index_decodes_legacy_dependency_fields(ctx: TestContext) [er
     source_sha256: "",
     metapackage: false,
   })?
+
   test.eq(package.mkdeps_host, ["llvm-toolchain"])?
   test.eq(package.mkdeps_target, ["wayland-dev"])?
 }
@@ -1046,7 +1047,8 @@ proc test_pm_world_elf_dependency_audit_detects_missing_provider_deps(ctx: TestC
   test.eq(pm_elfdeps.missing_elf_runtime_dependencies("zlib", [], ["libz.so.1"], "", providers).len(), 0)?
 
   test.eq(
-    pm_elfdeps.missing_elf_runtime_dependencies("app", ["zlib", "openssl"], ["libz.so.1", "libssl.so.3"], "", providers).len(),
+    pm_elfdeps.missing_elf_runtime_dependencies("app", ["zlib", "openssl"], ["libz.so.1", "libssl.so.3"], "", providers)
+      .len(),
     0,
   )?
 }

@@ -11,10 +11,13 @@ export let deps = []
 export let mkdeps_host = ["muon", "pkgconf", "wayland-dev"]
 
 export let upstream_sources = [
-  {source: p"https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/VERSION/downloads/wayland-protocols-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "4d2b2a9e3e099d017dc8107bf1c334d27bb87d9e4aff19a0c8d856d17cd41ef0"}]}
+  {
+    source: p"https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/VERSION/downloads/wayland-protocols-VERSION.tar.xz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "4d2b2a9e3e099d017dc8107bf1c334d27bb87d9e4aff19a0c8d856d17cd41ef0"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr/share/pkgconfig/wayland-protocols.pc", kind: "file"},

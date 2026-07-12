@@ -23,12 +23,25 @@ export let mkdeps_host = [
 export let mkdeps_target = ["pixman-dev", "tllist"]
 
 export let upstream_sources = [
-  {source: p"https://codeberg.org/dnkl/fcft/archive/VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "b0c0f4a599f43723736c8565b8b84337c4195077f07f1bb8bb3252bb13a2306a"}]},
-  {source: p"files/generated/emoji-data.h => generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "a06764871a5ea6f2a85f62656552011243069d3d6e1b4e4148aadbf5200aab86"}]},
-  {source: p"files/generated/unicode-compose-table.h => generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "b5e24cfe476b8e5b30c37614a7f5e4479e011659b3615d92e42713bb8005679d"}]}
+  {
+    source: p"https://codeberg.org/dnkl/fcft/archive/VERSION.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "b0c0f4a599f43723736c8565b8b84337c4195077f07f1bb8bb3252bb13a2306a"}],
+  },
+  {
+    source: p"files/generated/emoji-data.h => generated",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "a06764871a5ea6f2a85f62656552011243069d3d6e1b4e4148aadbf5200aab86"}],
+  },
+  {
+    source: p"files/generated/unicode-compose-table.h => generated",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "b5e24cfe476b8e5b30c37614a7f5e4479e011659b3615d92e42713bb8005679d"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr/include/fcft/fcft.h", kind: "file"},

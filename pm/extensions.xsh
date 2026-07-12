@@ -8,8 +8,8 @@ proc command_for_script(script: Path, argv: List[Str]) [fs, env, error] -> Resul
   }
 
   let shebang = match fs.read_text(script) {
-    Ok(text_value) => text_value.split("\n").get(0, "")
-    Err(_) => ""
+    Ok(text_value) => text_value.split("\n").get(0, ""),
+    Err(_) => "",
   }
 
   if shebang != "#!/bin/xsh" {
@@ -123,6 +123,7 @@ export proc run_extension_process(
   ctx: PmContext,
 ) [fs, process, env, error] {
   let command = command_for_script(executable, argv)?
+
   let command_plan = process.command_argv(
     command.target,
     command.argv,

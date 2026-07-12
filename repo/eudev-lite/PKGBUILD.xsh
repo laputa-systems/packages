@@ -11,10 +11,13 @@ export let deps = ["musl"]
 export let mkdeps_host = ["llvm-toolchain"]
 
 export let upstream_sources = [
-  {source: p"https://github.com/eudev-project/eudev/releases/download/vVERSION/eudev-VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "8da4319102f24abbf7fff5ce9c416af848df163b29590e666d334cc1927f006f"}]}
+  {
+    source: p"https://github.com/eudev-project/eudev/releases/download/vVERSION/eudev-VERSION.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "8da4319102f24abbf7fff5ce9c416af848df163b29590e666d334cc1927f006f"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr/bin/udevadm", kind: "binary"},

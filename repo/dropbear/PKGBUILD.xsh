@@ -12,11 +12,14 @@ export let mkdeps_host = ["llvm-toolchain", "xinit"]
 
 # Source is a git commit (no VERSION substitution needed).
 export let upstream_sources = [
-  {source: p"https://github.com/mkj/dropbear/archive/f5d44406ef2952ca69a68d59c6b0f7f0ff777305.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c"}]},
-  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
+  {
+    source: p"https://github.com/mkj/dropbear/archive/f5d44406ef2952ca69a68d59c6b0f7f0ff777305.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c"}],
+  },
+  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
 ]
-
-
 
 export let filetree = [
   {path: p"usr/bin/dbclient", kind: "binary"},
@@ -261,7 +264,12 @@ ${default_options_guard}
 
   let key_stems = ["dropbearkey"]
   let convert_stems = ["dropbearconvert", "keyimport", "signkey_ossh"]
-  let all_dropbear_stems = common_stems.extend(clisvr_stems).extend(svr_stems).extend(cli_stems).extend(key_stems).extend(convert_stems)
+
+  let all_dropbear_stems = common_stems.extend(clisvr_stems)
+    .extend(svr_stems)
+    .extend(cli_stems)
+    .extend(key_stems)
+    .extend(convert_stems)
 
   let defs = [
     "-DHAVE_CONFIG_H",
@@ -279,10 +287,17 @@ ${default_options_guard}
   let ltc_root = fp"${src}/libtomcrypt/src"
   let ltm_root = fp"${src}/libtommath"
 
-  let ltc_sources = [entry.path.relative_to(ltc_root) for entry in fs.files(p"libtomcrypt/src")?
-    |> where .ext == "c" and .name != "aes_tab.c" and .name != "safer_tab.c" and .name != "twofish_tab.c" and .name != "whirltab.c" and .name != "sober128tab.c"]
+  let ltc_sources = [
+    entry.path.relative_to(ltc_root)
+    for entry in fs.files(p"libtomcrypt/src")?
+      |> where .ext == "c" and .name != "aes_tab.c" and .name != "safer_tab.c" and .name != "twofish_tab.c" and .name != "whirltab.c" and .name != "sober128tab.c"
+  ]
 
-  let ltm_sources = [entry.path.relative_to(ltm_root) for entry in fs.ls(p"libtommath")? if entry.kind == "file" and entry.ext == "c"]
+  let ltm_sources = [
+    entry.path.relative_to(ltm_root)
+    for entry in fs.ls(p"libtommath")? if entry.kind == "file" and entry.ext == "c"
+  ]
+
   let ltc_a = p"obj/libtomcrypt.a"
   let ltm_a = p"obj/libtommath.a"
 

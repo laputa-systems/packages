@@ -131,7 +131,14 @@ pure argv_text(argv: List[Any]) -> List[Str] {
 }
 
 pure object_name_for_source(src: Path, ext: Str) -> Str {
-  return src.display().replace("/", "_").replace(".cxx", ext).replace(".cpp", ext).replace(".cc", ext).replace(".c", ext).replace(".S", ext).replace(".s", ext)
+  return src.display()
+    .replace("/", "_")
+    .replace(".cxx", ext)
+    .replace(".cpp", ext)
+    .replace(".cc", ext)
+    .replace(".c", ext)
+    .replace(".S", ext)
+    .replace(".s", ext)
 }
 
 pure object_path_for_source(src: Path, out_dir: Path, ext: Str) -> Path {

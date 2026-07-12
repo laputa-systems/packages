@@ -11,10 +11,13 @@ export let deps = ["musl"]
 export let mkdeps_host = ["llvm-toolchain"]
 
 export let upstream_sources = [
-  {source: p"https://www.netfilter.org/projects/iptables/files/iptables-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2"}]}
+  {
+    source: p"https://www.netfilter.org/projects/iptables/files/iptables-VERSION.tar.xz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr/bin/ip6tables", kind: "binary"},

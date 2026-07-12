@@ -212,24 +212,25 @@ proc build_x86_vdso(cc: Path) [fs, process, env, error] {
 
   PKGBUILD_shared.run_native_command(
     [
-  "ld.lld",
-  "-shared",
-  "--hash-style=both",
-  "--build-id=sha1",
-  "--no-undefined",
-  "--eh-frame-hdr",
-  "-Bsymbolic",
-  "-z",
-  "noexecstack",
-  "-m",
-  "elf_x86_64",
-  "-soname",
-  "linux-vdso.so.1",
-  "-z",
-  "max-page-size=4096",
-  "-T",
-  lds.display(),
-].extend(linked_objects).extend(["-o", "arch/x86/entry/vdso/vdso64/vdso64.so.dbg"]),
+      "ld.lld",
+      "-shared",
+      "--hash-style=both",
+      "--build-id=sha1",
+      "--no-undefined",
+      "--eh-frame-hdr",
+      "-Bsymbolic",
+      "-z",
+      "noexecstack",
+      "-m",
+      "elf_x86_64",
+      "-soname",
+      "linux-vdso.so.1",
+      "-z",
+      "max-page-size=4096",
+      "-T",
+      lds.display(),
+    ].extend(linked_objects)
+      .extend(["-o", "arch/x86/entry/vdso/vdso64/vdso64.so.dbg"]),
   )?
 
   PKGBUILD_shared.emit_kbuild_progress("xsh-kbuild-x86-vdso strip vdso64.so")?

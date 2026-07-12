@@ -8,11 +8,7 @@ export let deps = []
 
 export let mkdeps_host = ["make"]
 
-export let upstream_sources = [
-
-]
-
-
+export let upstream_sources = []
 
 export let filetree = [{path: p"usr/share/dep.txt", kind: "file"}]
 

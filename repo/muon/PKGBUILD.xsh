@@ -11,10 +11,13 @@ export let deps = ["musl"]
 export let mkdeps_host = ["llvm-toolchain", "samurai"]
 
 export let upstream_sources = [
-  {source: p"https://github.com/muon-build/muon/archive/refs/tags/VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "565c1b6e1e58f7e90d8813fda0e2102df69fb493ddab4cf6a84ce3647466bee5"}]}
+  {
+    source: p"https://github.com/muon-build/muon/archive/refs/tags/VERSION.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "565c1b6e1e58f7e90d8813fda0e2102df69fb493ddab4cf6a84ce3647466bee5"}],
+  },
 ]
-
-
 
 export let filetree = [{path: p"usr/bin/muon", kind: "binary"}]
 

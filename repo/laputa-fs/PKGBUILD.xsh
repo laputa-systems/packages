@@ -12,10 +12,8 @@ export let upstream_sources = [
   {source: p"files/mkfs.vfat.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
   {source: p"files/mkfs.ext4.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
   {source: p"files/fsck.ext4.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
-  {source: p"files/fat-put.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
+  {source: p"files/fat-put.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
 ]
-
-
 
 export let filetree = [
   {path: p"usr/bin/fsck.ext4", kind: "file"},

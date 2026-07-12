@@ -363,6 +363,7 @@ export proc stage_package_sources(
 
   for resolved in resolved_sources {
     let checksum = source_checksum(resolved.source, arch)?
+
     stage_resolved_source(
       pkg,
       resolved.line,
@@ -503,7 +504,6 @@ export proc pack_source_mirror(out: Path, pkg: Package, src: Path) [fs, env, err
   let manifest = source_manifest_path_for_arch(out, pkg, arch)
   fs.mkdir(mirror.parent)?
   archive.tar_create(mirror, src, [p"."], compression: "bz2", overwrite: true)?
-
   var entries = []
 
   for entry in fs.walk(src) |> sort-by .path {

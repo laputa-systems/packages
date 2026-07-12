@@ -4470,16 +4470,17 @@ pure x86_setup_includes() -> List[Str] {
 
 proc preprocess_x86_boot_lds(cc: Path, source: Path, out: Path, includes: List[Str]) [process, error] {
   let argv = [
-  cc.display(),
-  "-target",
-  "x86_64-linux-gnu",
-  "-Wno-unused-command-line-argument",
-  "-D__ASSEMBLY__",
-  "-DLINKER_SCRIPT",
-  "-Ux86_64",
-  "-E",
-  "-P",
-].extend(includes).extend([source.display(), "-o", out.display()])
+    cc.display(),
+    "-target",
+    "x86_64-linux-gnu",
+    "-Wno-unused-command-line-argument",
+    "-D__ASSEMBLY__",
+    "-DLINKER_SCRIPT",
+    "-Ux86_64",
+    "-E",
+    "-P",
+  ].extend(includes)
+    .extend([source.display(), "-o", out.display()])
 
   run $cc ${argv |> drop(1)} ?
 }

@@ -9,6 +9,7 @@ use util
 export proc write_proof_receipt(out: Path, pkg: Package, tarball: Path) [fs, error] {
   let receipt = proof_receipt_path(out, pkg)
   fs.mkdir(receipt.parent)?
+
   json.write(
     receipt,
     {
@@ -251,8 +252,8 @@ main(@args)?
 
     fs.write(runner, runner_text)?
     let trace_path = fp"${pkg_dir.parent}/run-package-build.trace"
-
     let xsht = xsht_runner()?
+
     let status = process.run(
       process.command_argv(
         xsht,

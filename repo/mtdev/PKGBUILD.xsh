@@ -12,10 +12,13 @@ export let deps = ["musl", "linux"]
 export let mkdeps_host = ["llvm-toolchain", "linux"]
 
 export let upstream_sources = [
-  {source: p"http://bitmath.org/code/mtdev/mtdev-VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "a55bd02a9af4dd266c0042ec608744fff3a017577614c057da09f1f4566ea32c"}]}
+  {
+    source: p"http://bitmath.org/code/mtdev/mtdev-VERSION.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "a55bd02a9af4dd266c0042ec608744fff3a017577614c057da09f1f4566ea32c"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr/include/mtdev-mapping.h", kind: "file"},

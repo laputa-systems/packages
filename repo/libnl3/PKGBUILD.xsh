@@ -11,10 +11,13 @@ export let deps = ["musl", "linux"]
 export let mkdeps_host = ["llvm-toolchain"]
 
 export let upstream_sources = [
-  {source: p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d"}]}
+  {
+    source: p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [{arch: "all", sha256: "2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d"}],
+  },
 ]
-
-
 
 export let filetree = [
   {path: p"usr", kind: "tree"},
@@ -43,7 +46,11 @@ export proc build(dest: Path) [fs, process, env, error] {
     let major = parts[0]
     let minor = if parts.len() > 1 { parts[1] } else { "0" }
     let micro = if parts.len() > 2 { parts[2] } else { "0" }
-    let body = tmpl.replace("@MAJOR_VERSION@", major).replace("@MINOR_VERSION@", minor).replace("@MICRO_VERSION@", micro)
+
+    let body = tmpl.replace("@MAJOR_VERSION@", major)
+      .replace("@MINOR_VERSION@", minor)
+      .replace("@MICRO_VERSION@", micro)
+
     fs.write(version_h, body)?
   }
 

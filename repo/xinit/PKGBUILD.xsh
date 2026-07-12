@@ -9,14 +9,16 @@ export let deps = ["xsh"]
 export let mkdeps_host = []
 
 export let upstream_sources = [
-  {source: p"https://github.com/laputa-systems/xinit/raw/c6af71070559d01a81ee88d3c5a4afb5c54b7f16/xinit.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"}, {arch: "x86_64", sha256: "9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"}]}
+  {
+    source: p"https://github.com/laputa-systems/xinit/raw/c6af71070559d01a81ee88d3c5a4afb5c54b7f16/xinit.xsh",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [
+      {arch: "aarch64", sha256: "9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"},
+      {arch: "x86_64", sha256: "9f684b76166558872217adebca6d391b608d34dcb83ab87bf75748e6a8105f9d"},
+    ],
+  },
 ]
-
-
-
-
-
-
 
 export let nostrip = true
 
