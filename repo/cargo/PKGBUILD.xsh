@@ -4,7 +4,7 @@ export let name = "cargo"
 
 export let ver = "1.95.0"
 
-export let rel = "9"
+export let rel = "10"
 
 export let deps = ["musl", "llvm-toolchain", "gnu-stubs"]
 

@@ -62,7 +62,7 @@ main(@args)?
   fs.chmod(rustc_wrapper, 0o755)?
 
   let linker_wrapper = fp"${tmp}/linker-wrapper"
-  let linker = fp"${rootfs}/usr/lib/rustlib/${rust_triple}/bin/rust-lld"
+  let linker = fp"${rootfs}/usr/lib/llvm22/bin/ld.lld"
   fs.write(
     linker_wrapper,
     f"""#!/bin/xsh
