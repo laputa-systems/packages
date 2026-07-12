@@ -1333,6 +1333,7 @@ proc stage_world_source_mirror(repo_dir: Path, item: BuiltPackage, arch: Str) [f
   }
 
   let repo_out = fp"${repo_dir}/.out"
+  fs.mkdir(source_mirror_path_for_arch(repo_out, item.pkg, arch).parent)?
   fs.copy(source, source_mirror_path_for_arch(repo_out, item.pkg, arch), overwrite: true)?
   fs.copy(manifest, source_manifest_path_for_arch(repo_out, item.pkg, arch), overwrite: true)?
 }

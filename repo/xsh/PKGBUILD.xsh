@@ -9,15 +9,25 @@ export let deps = []
 export let mkdeps_host = []
 
 export let upstream_sources = [
-  {source: p"https://github.com/laputa-systems/xsh/releases/download/release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b/xsh-multicall-release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b-ARCH-linux-musl => xsh-multicall", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "2f442944de1caf82a52d725b86326e2fa41748eb0dffbeae9a444b6547cb4e0e"}, {arch: "x86_64", sha256: "af98604c18515c9a7ee6b9e598c5fb87aa9c8ed9490eda8e6c56f1c15daa5328"}]},
-  {source: p"https://github.com/laputa-systems/xsh/releases/download/release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b/core-release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b.tar.xz => xsh-core", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "fa6bf4212677387f4d6a97e95b13cf9b6793f4296ad1cb561357dacab039c111"}, {arch: "x86_64", sha256: "fa6bf4212677387f4d6a97e95b13cf9b6793f4296ad1cb561357dacab039c111"}]}
+  {
+    source: p"https://github.com/laputa-systems/xsh/releases/download/release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b/xsh-multicall-release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b-ARCH-linux-musl => xsh-multicall",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [
+      {arch: "aarch64", sha256: "2f442944de1caf82a52d725b86326e2fa41748eb0dffbeae9a444b6547cb4e0e"},
+      {arch: "x86_64", sha256: "af98604c18515c9a7ee6b9e598c5fb87aa9c8ed9490eda8e6c56f1c15daa5328"},
+    ],
+  },
+  {
+    source: p"https://github.com/laputa-systems/xsh/releases/download/release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b/core-release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b.tar.xz => xsh-core",
+    kind: "auto",
+    architectures: ["all"],
+    checksums: [
+      {arch: "aarch64", sha256: "fa6bf4212677387f4d6a97e95b13cf9b6793f4296ad1cb561357dacab039c111"},
+      {arch: "x86_64", sha256: "fa6bf4212677387f4d6a97e95b13cf9b6793f4296ad1cb561357dacab039c111"},
+    ],
+  },
 ]
-
-
-
-
-
-
 
 export let nostrip = true
 
@@ -150,8 +160,7 @@ export proc build(dest: Path) [fs, error] {
     return Err(XshPackageError.Source("expected one staged xsh multicall release artifact"))
   }
 
-  fs.mkdir(fp"${dest}/usr/bin", parents: true)?
-
+  fs.mkdir(fp"${dest}/usr/bin")?
   fs.install(staged[0].path, fp"${dest}/usr/bin/xsh", 0o755, parents: true, overwrite: true)?
 
   for command_name in ["xshi", "xsht"] {

@@ -255,8 +255,8 @@ export proc source_vars(source: Str, pkg: Package, arch: Str) [env, error] -> Re
   let goarch = goarch_for(arch)
   let build = build_arch()?
   let build_goarch = goarch_for(build)
-  let target_triple = f"${arch}-linux-musl"
-  let build_triple = f"${build}-linux-musl"
+  let source_target_triple = f"${arch}-linux-musl"
+  let source_build_triple = f"${build}-linux-musl"
   var expanded = source
   expanded = expanded.replace("VERSION", pkg.ver)
   expanded = expanded.replace("RELEASE", pkg.rel)
@@ -265,8 +265,8 @@ export proc source_vars(source: Str, pkg: Package, arch: Str) [env, error] -> Re
   expanded = expanded.replace("PATCH", patch_part)
   expanded = expanded.replace("IDENT", ident)
   expanded = expanded.replace("PACKAGE", pkg.name)
-  expanded = expanded.replace("TARGET_TRIPLE", target_triple)
-  expanded = expanded.replace("BUILD_TRIPLE", build_triple)
+  expanded = expanded.replace("TARGET_TRIPLE", source_target_triple)
+  expanded = expanded.replace("BUILD_TRIPLE", source_build_triple)
   expanded = expanded.replace("TARGET_GOARCH", goarch)
   expanded = expanded.replace("BUILD_GOARCH", build_goarch)
   expanded = expanded.replace("TARGET_ARCH", arch)
