@@ -10,7 +10,7 @@ export let mkdeps_host = []
 
 export let upstream_sources = [
   {
-    source: p"https://github.com/laputa-systems/xsh/releases/download/release-5723585aa63f9d88894ca0620a5b08d4dee437d4/xsh-multicall-release-5723585aa63f9d88894ca0620a5b08d4dee437d4-ARCH-linux-musl => xsh-multicall",
+    source: p"https://github.com/laputa-systems/xsh/releases/download/release-dcdfcbdf0d35724d90be04fd95d35cef2478a3ac/xsh-multicall-release-dcdfcbdf0d35724d90be04fd95d35cef2478a3ac-ARCH-linux-musl => xsh-multicall",
     kind: "auto",
     architectures: [
       "all",
@@ -27,7 +27,7 @@ export let upstream_sources = [
     ],
   },
   {
-    source: p"https://github.com/laputa-systems/xsh/releases/download/release-5723585aa63f9d88894ca0620a5b08d4dee437d4/core-release-5723585aa63f9d88894ca0620a5b08d4dee437d4.tar.xz => xsh-core",
+    source: p"https://github.com/laputa-systems/xsh/releases/download/release-dcdfcbdf0d35724d90be04fd95d35cef2478a3ac/core-release-dcdfcbdf0d35724d90be04fd95d35cef2478a3ac.tar.xz => xsh-core",
     kind: "auto",
     architectures: [
       "all",
