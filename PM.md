@@ -63,6 +63,26 @@ an archive-looking suffix. Each checksum record names either a target arch or
 false` keeps the input in the private build cache without publishing a public
 source mirror.
 
+PM materializes the selected inputs, runs the optional `prepare_sources(src)`
+hook, removes VCS administrative directories, and packs the prepared tree as a
+deterministic bzip2 tar archive. A valid source mirror is tried before upstream
+acquisition; PM verifies its `source_sha256`, extracts it, and runs
+`prepare_sources` again. A missing, corrupt, or unusable mirror falls back to
+the declared upstream inputs.
+
+Local mirrors are stored as
+`.out/source-mirrors/<name>-<ver>-<rel>-<arch>.tar.bz2` with a
+`.manifest.json` sidecar. Published mirrors use the derived path
+`sources/<name>/<name>-<ver>-<rel>-<arch>-src.tar.bz2`; the index stores the
+archive hash in `source_sha256` and does not store a source filename.
+`pm source-audit` checks local mirror and manifest presence and hashes.
+
+Source preparation and normalization are part of the package input contract.
+When either changes, bump `rel` and rebuild/prove the package before reusing or
+publishing a mirror. A mirror is staged during a build but is published only
+after the package tarball and proof succeed. Packages with `source_mirror:
+false` remain buildable but publish no source artifact.
+
 ## Service Definitions
 
 A package that provides an `xinit` service must define it in a `service.xsh`

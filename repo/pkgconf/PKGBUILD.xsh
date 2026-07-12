@@ -6,7 +6,7 @@ export let name = "pkgconf"
 
 export let ver = "2.5.1"
 
-export let rel = "11"
+export let rel = "12"
 
 export let deps = ["musl"]
 

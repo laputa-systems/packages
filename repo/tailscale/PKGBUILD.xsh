@@ -2,7 +2,7 @@ export let name = "tailscale"
 
 export let ver = "1.96.4"
 
-export let rel = "11"
+export let rel = "12"
 
 export let deps = ["iptables", "xinit"]
 

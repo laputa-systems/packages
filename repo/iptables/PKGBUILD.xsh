@@ -4,7 +4,7 @@ export let name = "iptables"
 
 export let ver = "1.8.11"
 
-export let rel = "9"
+export let rel = "10"
 
 export let deps = ["musl"]
 

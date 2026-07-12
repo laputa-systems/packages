@@ -5,7 +5,7 @@ export let name = "less"
 
 export let ver = "701"
 
-export let rel = "7"
+export let rel = "8"
 
 export let deps = ["musl"]
 

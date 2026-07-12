@@ -4,7 +4,7 @@ export let name = "mesa-minimal"
 
 export let ver = "24.2.8"
 
-export let rel = "26"
+export let rel = "27"
 
 export let deps = ["musl", "libdrm", "wayland-libs-client", "wayland-libs-server", "libffi"]
 

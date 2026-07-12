@@ -6,7 +6,7 @@ export let name = "foot-minimal"
 
 export let ver = "1.27.0"
 
-export let rel = "10"
+export let rel = "11"
 
 export let deps = [
   "musl",

@@ -5,7 +5,7 @@ export let name = "libinput"
 
 export let ver = "1.31.2"
 
-export let rel = "8"
+export let rel = "9"
 
 export let deps = ["musl", "libudev-zero", "libevdev", "mtdev"]
 

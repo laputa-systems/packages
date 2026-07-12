@@ -5,7 +5,7 @@ export let name = "tmux"
 
 export let ver = "next-3.7"
 
-export let rel = "9"
+export let rel = "10"
 
 export let deps = ["musl", "libevent", "utf8proc"]
 

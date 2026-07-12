@@ -4,7 +4,7 @@ export let name = "wayland-protocols"
 
 export let ver = "1.45"
 
-export let rel = "9"
+export let rel = "10"
 
 export let deps = []
 

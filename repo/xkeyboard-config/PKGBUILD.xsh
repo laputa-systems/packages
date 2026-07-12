@@ -2,7 +2,7 @@ export let name = "xkeyboard-config"
 
 export let ver = "2.45"
 
-export let rel = "8"
+export let rel = "9"
 
 export let deps = []
 

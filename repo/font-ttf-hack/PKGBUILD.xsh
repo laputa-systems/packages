@@ -2,7 +2,7 @@ export let name = "font-ttf-hack"
 
 export let ver = "3.003"
 
-export let rel = "8"
+export let rel = "9"
 
 export let deps = []
 

@@ -2,7 +2,7 @@ export let name = "laputa-pm"
 
 export let ver = "1"
 
-export let rel = "9"
+export let rel = "10"
 
 export let deps = ["xsh"]
 

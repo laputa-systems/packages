@@ -26,12 +26,64 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
 
   var cargo = ""
   var rustc = ""
+  let tmp = fp"${rootfs}/var/tmp/proof-cargo"
+  fs.remove(tmp, missing_ok: true)?
+  fs.mkdir(tmp)?
+  defer fs.remove(tmp, missing_ok: true)?
+
+  fs.mkdir(fp"${tmp}/src")?
+  fs.mkdir(fp"${tmp}/cargo-home")?
+  fs.write(
+    fp"${tmp}/Cargo.toml",
+    """[package]
+name = "cargo-proof-hello"
+version = "0.1.0"
+edition = "2024"
+""",
+  )?
+  fs.write(
+    fp"${tmp}/src/main.rs",
+    """fn main() {
+    println!("hello cargo");
+}
+""",
+  )?
+
+  let rustc_wrapper = fp"${tmp}/rustc-wrapper"
+  fs.write(
+    rustc_wrapper,
+    f"""#!/bin/xsh
+proc main(...args: List[Str]) [process, error] {
+  run fp"${dynlinker.display()}" fp"${rootfs}/usr/bin/rustc" @args ?
+}
+main(@args)?
+""",
+  )?
+  fs.chmod(rustc_wrapper, 0o755)?
+
+  let linker_wrapper = fp"${tmp}/linker-wrapper"
+  let linker = fp"${rootfs}/usr/lib/rustlib/${rust_triple}/bin/rust-lld"
+  fs.write(
+    linker_wrapper,
+    f"""#!/bin/xsh
+proc main(...args: List[Str]) [process, error] {
+  run fp"${dynlinker.display()}" fp"${linker.display()}" @args ?
+}
+main(@args)?
+""",
+  )?
+  fs.chmod(linker_wrapper, 0o755)?
 
   env {
     LD_LIBRARY_PATH = fp"${rootfs}/usr/lib".display()
+    PATH = f"${rootfs}/usr/bin:${env.get("PATH") ?? ""}"
+    CARGO_HOME = fp"${tmp}/cargo-home".display()
+    RUSTC = rustc_wrapper.display()
+    RUSTFLAGS = f"-L native=${rootfs}/usr/lib -C linker=${linker_wrapper.display()}"
   } {
     cargo = run.text $dynlinker fp"${rootfs}/usr/bin/cargo" "--version" ?
     rustc = run.text $dynlinker fp"${rootfs}/usr/bin/rustc" "--version" ?
+    run $dynlinker fp"${rootfs}/usr/bin/cargo" "build" "--release" "--offline" "--target" $rust_triple "--manifest-path" fp"${tmp}/Cargo.toml" ?
   } ?
 
   if ! cargo.starts_with("cargo ") {
@@ -42,7 +94,15 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
     return Err(proof.ProofError.Failed("proof-cargo", f"unexpected rustc version: ${rustc.trim()}"))
   }
 
-  print "cargo ok"
+  let hello = fp"${tmp}/target/${rust_triple}/release/cargo-proof-hello"
+  let out = run.text $dynlinker $hello ?
+  let trimmed = out.trim()
+
+  if trimmed != "hello cargo" {
+    return Err(proof.ProofError.Failed("proof-cargo", f"unexpected hello output: ${trimmed}"))
+  }
+
+  print "cargo ok: "${trimmed}
 }
 
 main(@args)?

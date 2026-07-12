@@ -2,7 +2,7 @@ export let name = "waterfox-dwl-session"
 
 export let ver = "1"
 
-export let rel = "23"
+export let rel = "24"
 
 export let deps = ["waterfox-bin", "dwl-minimal", "seatd", "mdevd", "libudev-zero", "ca-certificates", "foot-minimal"]
 

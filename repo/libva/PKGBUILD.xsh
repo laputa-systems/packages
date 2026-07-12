@@ -5,7 +5,7 @@ export let name = "libva"
 
 export let ver = "2.22.0"
 
-export let rel = "7"
+export let rel = "8"
 
 export let deps = ["musl", "libdrm", "wayland-libs-client"]
 

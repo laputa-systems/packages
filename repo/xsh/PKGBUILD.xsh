@@ -2,7 +2,7 @@ export let name = "xsh"
 
 export let ver = "0.0.0"
 
-export let rel = "10"
+export let rel = "11"
 
 export let deps = []
 
@@ -14,8 +14,8 @@ export let upstream_sources = [
     kind: "auto",
     architectures: ["all"],
     checksums: [
-      {arch: "aarch64", sha256: "2f442944de1caf82a52d725b86326e2fa41748eb0dffbeae9a444b6547cb4e0e"},
-      {arch: "x86_64", sha256: "af98604c18515c9a7ee6b9e598c5fb87aa9c8ed9490eda8e6c56f1c15daa5328"},
+      {arch: "aarch64", sha256: "a5e293868a2227b0a2378ba4c43cec204cbe6819b47324f147c8aa135b8e176f"},
+      {arch: "x86_64", sha256: "7519ff16d0b2b659f98de10e00a1ace65d474175a1ebef229a98f43bf85febc5"},
     ],
   },
   {
@@ -23,8 +23,8 @@ export let upstream_sources = [
     kind: "auto",
     architectures: ["all"],
     checksums: [
-      {arch: "aarch64", sha256: "fa6bf4212677387f4d6a97e95b13cf9b6793f4296ad1cb561357dacab039c111"},
-      {arch: "x86_64", sha256: "fa6bf4212677387f4d6a97e95b13cf9b6793f4296ad1cb561357dacab039c111"},
+      {arch: "aarch64", sha256: "ad37c386b869418a55d74a40fd4ad4179efa41300eb4ebce811fa2a554416cb9"},
+      {arch: "x86_64", sha256: "ad37c386b869418a55d74a40fd4ad4179efa41300eb4ebce811fa2a554416cb9"},
     ],
   },
 ]

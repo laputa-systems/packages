@@ -7,7 +7,7 @@ export let name = "bison"
 
 export let ver = "3.8.2"
 
-export let rel = "7"
+export let rel = "8"
 
 export let deps = ["musl"]
 

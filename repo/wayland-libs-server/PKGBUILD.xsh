@@ -5,7 +5,7 @@ export let name = "wayland-libs-server"
 
 export let ver = "1.24.0"
 
-export let rel = "8"
+export let rel = "9"
 
 export let deps = ["musl", "libffi", "expat"]
 

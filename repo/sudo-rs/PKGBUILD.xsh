@@ -6,7 +6,7 @@ export let name = "sudo-rs"
 
 export let ver = "0.2.13"
 
-export let rel = "15"
+export let rel = "16"
 
 export let deps = ["linux-pam", "gnu-stubs", "musl"]
 

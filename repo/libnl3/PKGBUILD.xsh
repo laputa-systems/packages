@@ -4,7 +4,7 @@ export let name = "libnl3"
 
 export let ver = "3.11.0"
 
-export let rel = "4"
+export let rel = "5"
 
 export let deps = ["musl", "linux"]
 

@@ -4,7 +4,7 @@ export let name = "libxkbcommon"
 
 export let ver = "1.11.0"
 
-export let rel = "7"
+export let rel = "8"
 
 export let deps = ["musl", "xkeyboard-config"]
 

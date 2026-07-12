@@ -4,7 +4,7 @@ export let name = "eudev-lite"
 
 export let ver = "3.2.14"
 
-export let rel = "8"
+export let rel = "9"
 
 export let deps = ["musl"]
 
