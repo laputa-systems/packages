@@ -425,6 +425,14 @@ export proc decode_remote_index(rows: List[Record]) [error] -> Result[List[Remot
 export proc decode_remote_package(row: Record) [error] -> Result[RemotePackage] {
   var arch = "aarch64"
   let empty_mkdeps_target = []
+  let mkdeps_host = if row.has("mkdeps_host") { row.get("mkdeps_host")? } else { row.get("mkdeps")? }
+  let mkdeps_target = if row.has("mkdeps_target") {
+    row.get("mkdeps_target")?
+  } else if row.has("target_build_deps") {
+    row.get("target_build_deps")?
+  } else {
+    empty_mkdeps_target
+  }
 
   if row.has("arch") {
     let stored_arch: Str = row.get("arch")?
@@ -437,8 +445,8 @@ export proc decode_remote_package(row: Record) [error] -> Result[RemotePackage] 
     ver: row.get("ver")?,
     rel: row.get("rel")?,
     deps: row.get("deps")?,
-    mkdeps_host: row.get("mkdeps_host")?,
-    mkdeps_target: if row.has("mkdeps_target") { row.get("mkdeps_target")? } else { empty_mkdeps_target },
+    mkdeps_host,
+    mkdeps_target,
     sha256: row.get("sha256")?,
     size: row.get("size")?,
     tarball: row.get("tarball")?,

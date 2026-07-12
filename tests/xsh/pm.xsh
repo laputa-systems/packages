@@ -3,6 +3,7 @@ use pm.configure
 use pm.elfdeps as pm_elfdeps
 use pm.local as pm_local
 use pm.make
+use pm.remote as pm_remote
 use pm.world as pm_world
 
 pure xsh_bin() -> Path {
@@ -968,6 +969,28 @@ proc test_pm_upload_repo_export_includes_source_mirror(ctx: TestContext) [fs, pr
   let missing_status = run.status XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- upload-repo-export $repo 2> $err
   test.eq(missing_status.ok, false)?
   test.contains(err.read_text()?, "remote-app-1.0.0-1.tar.gz is missing")?
+}
+
+proc test_pm_remote_index_decodes_legacy_dependency_fields(ctx: TestContext) [error] {
+  let _ = ctx
+  let package = pm_remote.decode_remote_package({
+    arch: "aarch64",
+    name: "legacy",
+    ver: "1",
+    rel: "1",
+    deps: [],
+    mkdeps: ["llvm-toolchain"],
+    target_build_deps: ["wayland-dev"],
+    sha256: "",
+    size: 0,
+    tarball: "",
+    metadata: "",
+    source_sha256: "",
+    source_tarball: "",
+    metapackage: false,
+  })?
+  test.eq(package.mkdeps_host, ["llvm-toolchain"])?
+  test.eq(package.mkdeps_target, ["wayland-dev"])?
 }
 
 proc test_pm_build_repo_requires_package_dirs(ctx: TestContext) [fs, process, error] {
