@@ -14,8 +14,8 @@ made XSH-native, or explicitly accepted as a package capability.
 - Wayland scanner native-cross recipes no longer generate `#!/bin/sh` wrapper
   scripts; generated Ninja files point directly at `wayland-scanner`.
 - Installed compatibility wrappers for `yacc` and `ldd` are generated as
-  `#!/bin/xsh --` scripts.
-- PM native-cross compiler shims are generated as `#!/bin/xsh --` scripts.
+  `#!/bin/xsh` scripts.
+- PM native-cross compiler shims are generated as `#!/bin/xsh` scripts.
 
 ## Open
 

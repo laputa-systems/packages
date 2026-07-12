@@ -1,4 +1,4 @@
-#!/bin/xsh --
+#!/bin/xsh
 error FatPutError = Failed(kind: Str, message: Str)
 
 proc ceil_div(value: Int, divisor: Int) [error] -> Int {

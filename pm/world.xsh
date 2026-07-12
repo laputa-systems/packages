@@ -1042,7 +1042,7 @@ type WorldBuildBatch = {
 pure native_cross_compiler_script(real: Path, build_root: Path, target_root: Path, target_arch: Str, cxx: Bool) -> Str {
   let cxx_text = if cxx { "true" } else { "false" }
 
-  return f"""#!/bin/xsh --
+  return f"""#!/bin/xsh
 error NativeCrossCompilerError = Failed(message: Str)
 
 proc run_compiler(argv: List[Any]) [process, error] {{

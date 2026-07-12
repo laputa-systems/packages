@@ -1,4 +1,4 @@
-#!/bin/xsh --
+#!/bin/xsh
 error FatToolError = Failed(kind: Str, message: Str)
 
 pure ceil_div(value: Int, divisor: Int) -> Int {

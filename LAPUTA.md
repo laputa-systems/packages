@@ -52,7 +52,7 @@ scripts. Build tools often encode install or generator commands as `cd ... &&
 ...` and run them through `/bin/sh -c`; those paths are not acceptable package
 interfaces. Prefer direct structured entrypoints such as `cmake -P
 cmake_install.cmake` inside an XSH `cd` block, direct compiler/tool invocations,
-or small `#!/bin/xsh --` wrapper scripts. A package may install an actual shell
+or small `#!/bin/xsh` wrapper scripts. A package may install an actual shell
 when the shell is the package capability being proved, but other packages must
 not depend on an ambient POSIX shell as build glue.
 

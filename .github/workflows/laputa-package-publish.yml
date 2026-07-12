@@ -90,6 +90,6 @@ jobs:
             -e LAPUTA_TOKEN \
             -v "$PWD:/src/packages:ro" \
             "laputa-package-publish:${{ inputs.target_arch }}-${{ github.run_id }}" \
-            /usr/local/bin/xsh /src/packages/pm.xsh -- build-upload-set \
+            /bin/xsh /src/packages/pm.xsh -- build-upload-set \
             /src/target/repo \
             "/src/packages/repo/$PKGNAME"

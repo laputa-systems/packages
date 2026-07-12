@@ -68,7 +68,7 @@ Do not rely on `/bin/sh`, `/usr/bin/sh`, or `SHELL` as a package build
 substrate. This includes indirect build-tool paths such as `samu install` or
 generated Ninja rules that execute `cd ... && ...` through a shell. Use XSH `cd`
 blocks, structured `run` argv, direct tool entrypoints such as `cmake -P
-cmake_install.cmake`, or generated `#!/bin/xsh --` wrappers instead. If a
+cmake_install.cmake`, or generated `#!/bin/xsh` wrappers instead. If a
 package truly provides a shell, prove it as that package's capability; do not
 let unrelated recipes inherit it as ambient glue.
 

@@ -1,4 +1,4 @@
-#!/bin/xsh --
+#!/bin/xsh
 error ScriptError = Failed(kind: Str, message: Str)
 
 # m4 — macro processor in pure XSH.

@@ -90,7 +90,7 @@ proc install_wrapper(dest: Path) [fs, error] {
 
   fs.write(
     fp"${dest}/usr/bin/waterfox",
-    """#!/bin/xsh --
+    """#!/bin/xsh
 proc main(...argv: List[Str]) [process, error] {
   env {
     LD_LIBRARY_PATH = "/opt/waterfox"

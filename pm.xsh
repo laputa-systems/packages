@@ -1,4 +1,4 @@
-#!/usr/bin/env -S XSH_MODULE_PATH=.:/usr/lib/pm xsh --
+#!/usr/bin/env -S XSH_MODULE_PATH=.:/usr/lib/pm /bin/xsh
 use pm.cli as pm_cli
 
 proc main(...argv: List[Str]) [fs, net, process, env, time, error] {

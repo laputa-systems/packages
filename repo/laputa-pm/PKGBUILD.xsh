@@ -43,7 +43,7 @@ export proc build(dest: Path) [fs, env, error] {
 
   fs.write(
     fp"${dest}/usr/bin/pm",
-    """#!/bin/xsh --
+    """#!/bin/xsh
 error WrapperError = Failed(message: Str)
 
 proc usage() {

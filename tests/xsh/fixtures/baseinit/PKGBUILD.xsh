@@ -41,21 +41,21 @@ export proc build(dest: Path) [fs, error] -> Result[Unit] {
 
   write_file(
     fp"${dest}/usr/lib/init/rc.boot",
-    """#!/bin/xsh --
+    """#!/bin/xsh
 print "boot"
 """,
   )?
 
   write_file(
     fp"${dest}/usr/lib/init/rc.shutdown",
-    """#!/bin/xsh --
+    """#!/bin/xsh
 print "shutdown"
 """,
   )?
 
   write_file(
     fp"${dest}/usr/lib/init/rc.lib",
-    """#!/bin/xsh --
+    """#!/bin/xsh
 export proc rc_log(...parts: List[Str]) {
   print parts.join(" ")
 }

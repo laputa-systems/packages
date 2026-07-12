@@ -898,7 +898,7 @@ proc test_pm_lifecycle_hooks(ctx: TestContext) [fs, process, error] {
 
   fs.write(
     hook,
-    r"""#!/bin/xsh --
+    r"""#!/bin/xsh
 proc main(...argv: List[Str]) [fs, env, error] {
   let _ = argv
   let log = fp"${env.get("HOOK_LOG")?}"
@@ -1426,28 +1426,28 @@ proc test_pm_extension_help_discovers_executables_in_path_order(ctx: TestContext
 
   fs.write(
     ignored,
-    """#!/bin/xsh --
+    """#!/bin/xsh
 # ignored summary
 """,
   )?
 
   fs.write(
     shadow_first,
-    """#!/bin/xsh --
+    """#!/bin/xsh
 # first summary
 """,
   )?
 
   fs.write(
     shadow_second,
-    """#!/bin/xsh --
+    """#!/bin/xsh
 # second summary
 """,
   )?
 
   fs.write(
     plain,
-    """#!/bin/xsh --
+    """#!/bin/xsh
 not a comment summary
 """,
   )?
@@ -1473,7 +1473,7 @@ proc test_pm_extension_invocation_environment(ctx: TestContext) [fs, process, en
 
   fs.write(
     extension,
-    r"""#!/bin/xsh --
+    r"""#!/bin/xsh
 proc main(...argv: List[Str]) [fs, env, error] {
   let _ = argv
   fs.write(
@@ -1806,7 +1806,7 @@ proc test_make_runner_behaviors(ctx: TestContext) [fs, process, env, time, error
 
   test.eq(fp"${header_out}/sub/private.h".exists()?, false)?
 
-  helper.write(r"""#!/bin/xsh --
+  helper.write(r"""#!/bin/xsh
 proc count_value(path: Path) [fs, error] -> Result[Int] {
   if path.exists()? {
     return path.read_text()?.parse_int()?

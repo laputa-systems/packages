@@ -67,7 +67,7 @@ proc pm_source_root() [fs, env, error] -> Result[Path] {
 }
 
 pure seeded_shell_script() -> Str {
-  return r"""#!/bin/xsh --
+  return r"""#!/bin/xsh
 error ShError = Failed(message: Str)
 
 proc run_argv(argv: List[Str]) [process, error] {

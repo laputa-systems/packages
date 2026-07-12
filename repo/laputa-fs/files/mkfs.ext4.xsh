@@ -1,4 +1,4 @@
-#!/bin/xsh --
+#!/bin/xsh
 error Ext4ToolError = Failed(kind: Str, message: Str)
 
 let BLOCK_SIZE = 4096

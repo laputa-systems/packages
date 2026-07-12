@@ -22,7 +22,7 @@ export let filetree = [
 proc install_session(dest: Path) [fs, error] {
   fs.write(
     fp"${dest}/usr/bin/waterfox-dwl-session",
-    r"""#!/bin/xsh --
+    r"""#!/bin/xsh
 error SessionError = Failed(kind: Str, message: Str)
 
 proc marker(line: Str) [fs] {
@@ -249,7 +249,7 @@ main(@args)?
 proc install_clipboard_proof(dest: Path) [fs, error] {
   fs.write(
     fp"${dest}/usr/bin/waterfox-session-clipboard-proof",
-    r"""#!/bin/xsh --
+    r"""#!/bin/xsh
 error ClipboardProofError = Failed(message: Str)
 
 proc marker(line: Str) [fs] {
