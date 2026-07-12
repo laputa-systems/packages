@@ -15,18 +15,52 @@ export let upstream_sources = [
   {
     source: p"https://github.com/mkj/dropbear/archive/f5d44406ef2952ca69a68d59c6b0f7f0ff777305.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c",
+      },
+    ],
   },
-  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
+  {
+    source: p"service.xsh",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
 ]
 
 export let filetree = [
-  {path: p"usr/bin/dbclient", kind: "binary"},
-  {path: p"usr/bin/dropbear", kind: "binary"},
-  {path: p"usr/bin/dropbearconvert", kind: "binary"},
-  {path: p"usr/bin/dropbearkey", kind: "binary"},
-  {path: p"usr/lib/xinit/services/dropbear.xsh", kind: "file"},
+  {
+    path: p"usr/bin/dbclient",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/dropbear",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/dropbearconvert",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/dropbearkey",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/xinit/services/dropbear.xsh",
+    kind: "file",
+  },
 ]
 
 proc install_manpage(source: Path, dest: Path) [fs, error] {
@@ -295,7 +329,8 @@ ${default_options_guard}
 
   let ltm_sources = [
     entry.path.relative_to(ltm_root)
-    for entry in fs.ls(p"libtommath")? if entry.kind == "file" and entry.ext == "c"
+    for entry in fs.ls(p"libtommath")?
+    if entry.kind == "file" and entry.ext == "c"
   ]
 
   let ltc_a = p"obj/libtomcrypt.a"
@@ -339,106 +374,94 @@ ${default_options_guard}
     includes,
     root: p"src",
     out_dir: p"obj/dropbear",
-    groups: [
-      {
-        name: "common",
-        cflags: [],
-        defs: [],
-        includes: [],
-        root: p"",
-        sources: [fp"${stem}.c" for stem in common_stems],
-        out_dir: p"",
-        deps: [],
-      },
-      {
-        name: "clisvr",
-        cflags: [],
-        defs: [],
-        includes: [],
-        root: p"",
-        sources: [fp"${stem}.c" for stem in clisvr_stems],
-        out_dir: p"",
-        deps: [],
-      },
-      {
-        name: "server",
-        cflags: [],
-        defs: [],
-        includes: [],
-        root: p"",
-        sources: [fp"${stem}.c" for stem in svr_stems],
-        out_dir: p"",
-        deps: [],
-      },
-      {
-        name: "client",
-        cflags: [],
-        defs: [],
-        includes: [],
-        root: p"",
-        sources: [fp"${stem}.c" for stem in cli_stems],
-        out_dir: p"",
-        deps: [],
-      },
-      {
-        name: "key",
-        cflags: [],
-        defs: [],
-        includes: [],
-        root: p"",
-        sources: [fp"${stem}.c" for stem in key_stems],
-        out_dir: p"",
-        deps: [],
-      },
-      {
-        name: "convert",
-        cflags: [],
-        defs: [],
-        includes: [],
-        root: p"",
-        sources: [fp"${stem}.c" for stem in convert_stems],
-        out_dir: p"",
-        deps: [],
-      },
-    ],
-    targets: [
-      {
-        name: "dropbear",
-        groups: ["common", "clisvr", "server"],
-        sources: [],
-        libs,
-        ldflags: link_flags,
-        out: p"dropbear",
-        deps: lib_deps,
-      },
-      {
-        name: "dbclient",
-        groups: ["common", "clisvr", "client"],
-        sources: [],
-        libs,
-        ldflags: link_flags,
-        out: p"dbclient",
-        deps: lib_deps,
-      },
-      {
-        name: "dropbearkey",
-        groups: ["common", "key"],
-        sources: [],
-        libs,
-        ldflags: link_flags,
-        out: p"dropbearkey",
-        deps: lib_deps,
-      },
-      {
-        name: "dropbearconvert",
-        groups: ["common", "convert"],
-        sources: [],
-        libs,
-        ldflags: link_flags,
-        out: p"dropbearconvert",
-        deps: lib_deps,
-      },
-    ],
+    groups: [{
+    name: "common",
+    cflags: [],
+    defs: [],
+    includes: [],
+    root: p"",
+    sources: [fp"${stem}.c" for stem in common_stems],
+    out_dir: p"",
+    deps: [],
+  }, {
+    name: "clisvr",
+    cflags: [],
+    defs: [],
+    includes: [],
+    root: p"",
+    sources: [fp"${stem}.c" for stem in clisvr_stems],
+    out_dir: p"",
+    deps: [],
+  }, {
+    name: "server",
+    cflags: [],
+    defs: [],
+    includes: [],
+    root: p"",
+    sources: [fp"${stem}.c" for stem in svr_stems],
+    out_dir: p"",
+    deps: [],
+  }, {
+    name: "client",
+    cflags: [],
+    defs: [],
+    includes: [],
+    root: p"",
+    sources: [fp"${stem}.c" for stem in cli_stems],
+    out_dir: p"",
+    deps: [],
+  }, {
+    name: "key",
+    cflags: [],
+    defs: [],
+    includes: [],
+    root: p"",
+    sources: [fp"${stem}.c" for stem in key_stems],
+    out_dir: p"",
+    deps: [],
+  }, {
+    name: "convert",
+    cflags: [],
+    defs: [],
+    includes: [],
+    root: p"",
+    sources: [fp"${stem}.c" for stem in convert_stems],
+    out_dir: p"",
+    deps: [],
+  }],
+    targets: [{
+    name: "dropbear",
+    groups: ["common", "clisvr", "server"],
+    sources: [],
+    libs,
+    ldflags: link_flags,
+    out: p"dropbear",
+    deps: lib_deps,
+  }, {
+    name: "dbclient",
+    groups: ["common", "clisvr", "client"],
+    sources: [],
+    libs,
+    ldflags: link_flags,
+    out: p"dbclient",
+    deps: lib_deps,
+  }, {
+    name: "dropbearkey",
+    groups: ["common", "key"],
+    sources: [],
+    libs,
+    ldflags: link_flags,
+    out: p"dropbearkey",
+    deps: lib_deps,
+  }, {
+    name: "dropbearconvert",
+    groups: ["common", "convert"],
+    sources: [],
+    libs,
+    ldflags: link_flags,
+    out: p"dropbearconvert",
+    deps: lib_deps,
+  }],
   })?
 
   make.run_tasks(ltc.tasks.extend(ltm.tasks).extend(multi.tasks), make.jobs()?)?

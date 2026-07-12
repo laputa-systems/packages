@@ -14,19 +14,56 @@ export let upstream_sources = [
   {
     source: p"https://github.com/kennylevinsen/seatd/archive/refs/tags/VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96",
+      },
+    ],
   },
-  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
+  {
+    source: p"service.xsh",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
 ]
 
 export let filetree = [
-  {path: p"usr/bin/seatd", kind: "binary"},
-  {path: p"usr/include/libseat.h", kind: "file"},
-  {path: p"usr/lib/libseat.so", kind: "symlink"},
-  {path: p"usr/lib/libseat.so.1", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/libseat.pc", kind: "file"},
-  {path: p"usr/lib/xinit/services/seatd.xsh", kind: "file"},
+  {
+    path: p"usr/bin/seatd",
+    kind: "binary",
+  },
+  {
+    path: p"usr/include/libseat.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libseat.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libseat.so.1",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/pkgconfig/libseat.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/xinit/services/seatd.xsh",
+    kind: "file",
+  },
 ]
 
 proc patch_linux_headers() [fs, error] {
@@ -109,12 +146,12 @@ proc patch_realtime_dependency() [fs, error] {
   fs.write(
     meson,
     text.replace(
-      """# needed for cross-compilation
+  """# needed for cross-compilation
 realtime = meson.get_compiler('c').find_library('rt')
 private_deps += realtime""",
-      """# musl provides realtime interfaces in libc; avoid recording the build-env librt.
+  """# musl provides realtime interfaces in libc; avoid recording the build-env librt.
 realtime = declare_dependency()""",
-    ),
+),
   )?
 }
 

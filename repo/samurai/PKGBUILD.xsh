@@ -14,8 +14,15 @@ export let upstream_sources = [
   {
     source: p"https://github.com/michaelforney/samurai/releases/download/VERSION/samurai-VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "3b8cf51548dfc49b7efe035e191ff5e1963ebc4fe8f6064a5eefc5343eaf78a5"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "3b8cf51548dfc49b7efe035e191ff5e1963ebc4fe8f6064a5eefc5343eaf78a5",
+      },
+    ],
   },
 ]
 
@@ -30,33 +37,35 @@ export proc build(dest: Path) [fs, process, env, error] {
   # Source list from the Makefile's OBJ variable.
   let cflags = ["-std=c99", "-Wall", "-Wextra", "-Wpedantic", "-Wno-unused-parameter"]
 
-  let samu = make.c_program({
-    cc,
-    triple,
-    cflags,
-    defs: [],
-    includes: [],
-    root: p".",
-    sources: [
-      p"build.c",
-      p"deps.c",
-      p"env.c",
-      p"graph.c",
-      p"htab.c",
-      p"log.c",
-      p"parse.c",
-      p"samu.c",
-      p"scan.c",
-      p"tool.c",
-      p"tree.c",
-      p"util.c",
-    ],
-    out_dir: p"obj",
-    out: p"obj/samu",
-    libs: [],
-    ldflags: [],
-    deps: [],
-  })
+  let samu = make.c_program(
+    {
+      cc,
+      triple,
+      cflags,
+      defs: [],
+      includes: [],
+      root: p".",
+      sources: [
+        p"build.c",
+        p"deps.c",
+        p"env.c",
+        p"graph.c",
+        p"htab.c",
+        p"log.c",
+        p"parse.c",
+        p"samu.c",
+        p"scan.c",
+        p"tool.c",
+        p"tree.c",
+        p"util.c",
+      ],
+      out_dir: p"obj",
+      out: p"obj/samu",
+      libs: [],
+      ldflags: [],
+      deps: [],
+    },
+  )
 
   make.run_tasks(samu.tasks, make.jobs()?)?
 

@@ -15,15 +15,31 @@ export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/wayland/wayland/-/releases/VERSION/downloads/wayland-VERSION.tar.xz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/lib/libwayland-cursor.so", kind: "symlink"},
-  {path: p"usr/lib/libwayland-cursor.so.0", kind: "symlink"},
-  {path: p"usr/lib/libwayland-cursor.so.0.24.0", kind: "binary"},
+  {
+    path: p"usr/lib/libwayland-cursor.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libwayland-cursor.so.0",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libwayland-cursor.so.0.24.0",
+    kind: "binary",
+  },
 ]
 
 proc write_embedded_dtd() [fs, error] {
@@ -77,7 +93,7 @@ proc patch_python_generator() [fs, error] {
   fs.write(
     root_meson,
     root_meson.read_text()?.replace(
-      """	rt_dep = []
+  """	rt_dep = []
 	if not cc.has_function('clock_gettime', prefix: '#include <time.h>')
 		rt_dep = cc.find_library('rt')
 		if not cc.has_function('clock_gettime', prefix: '#include <time.h>', dependencies: rt_dep, args: cc_args)
@@ -85,10 +101,10 @@ proc patch_python_generator() [fs, error] {
 		endif
 	endif
 """,
-      """	# musl provides realtime interfaces in libc.
+  """	# musl provides realtime interfaces in libc.
 	rt_dep = declare_dependency()
 """,
-    ),
+),
   )?
 
   fs.write(

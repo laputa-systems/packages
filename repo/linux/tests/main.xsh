@@ -342,10 +342,16 @@ proc test_kbuild_runs_archive_plan_output_from_json(ctx: TestContext) [fs, proce
       tasks: [
         {
           name: "first",
-          outputs: [first.display()],
+          outputs: [
+            first.display(),
+          ],
           inputs: no_strings,
           deps: no_strings,
-          argv: ["/bin/sh", "-c", f"printf first > ${first.display()}"],
+          argv: [
+            "/bin/sh",
+            "-c",
+            f"printf first > ${first.display()}",
+          ],
           env: {},
           cwd: root.display(),
           depfile: "",
@@ -353,10 +359,20 @@ proc test_kbuild_runs_archive_plan_output_from_json(ctx: TestContext) [fs, proce
         },
         {
           name: "second",
-          outputs: [second.display()],
-          inputs: [first.display()],
-          deps: ["first"],
-          argv: ["/bin/sh", "-c", f"cat ${first.display()} > ${second.display()}; printf second >> ${second.display()}"],
+          outputs: [
+            second.display(),
+          ],
+          inputs: [
+            first.display(),
+          ],
+          deps: [
+            "first",
+          ],
+          argv: [
+            "/bin/sh",
+            "-c",
+            f"cat ${first.display()} > ${second.display()}; printf second >> ${second.display()}",
+          ],
           env: {},
           cwd: root.display(),
           depfile: "",
@@ -381,8 +397,13 @@ proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, 
   )?
 
   let plan: kbuild.KbuildPlan = {
-    dirs: [p"."],
-    objects: [p"present.o", p"missing.o"],
+    dirs: [
+      p".",
+    ],
+    objects: [
+      p"present.o",
+      p"missing.o",
+    ],
     lib_objects: [],
     composites: [],
     unsupported: [],
@@ -409,10 +430,21 @@ int mmu(void) { return 0; }
   )?
 
   let plan: kbuild.KbuildPlan = {
-    dirs: [p"arch/x86/kvm"],
-    objects: [p"arch/x86/kvm/kvm.o"],
+    dirs: [
+      p"arch/x86/kvm",
+    ],
+    objects: [
+      p"arch/x86/kvm/kvm.o",
+    ],
     lib_objects: [],
-    composites: [{object: p"arch/x86/kvm/kvm.o", members: [p"arch/x86/kvm/mmu/mmu.o"]}],
+    composites: [
+      {
+        object: p"arch/x86/kvm/kvm.o",
+        members: [
+          p"arch/x86/kvm/mmu/mmu.o",
+        ],
+      },
+    ],
     unsupported: [],
   }
 
@@ -463,8 +495,14 @@ CFLAGS_intel.o := -I$(src)
   )?
 
   let plan: kbuild.KbuildPlan = {
-    dirs: [p"sound/hda/common", p"sound/hda/controllers"],
-    objects: [p"sound/hda/common/controller.o", p"sound/hda/controllers/intel.o"],
+    dirs: [
+      p"sound/hda/common",
+      p"sound/hda/controllers",
+    ],
+    objects: [
+      p"sound/hda/common/controller.o",
+      p"sound/hda/controllers/intel.o",
+    ],
     lib_objects: [],
     composites: [],
     unsupported: [],

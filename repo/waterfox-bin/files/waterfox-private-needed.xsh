@@ -92,7 +92,11 @@ export proc verify_private_needed(
         path: file.path.display(),
         needed: file.needed
           |> map { |item|
-            {path: item.path.display(), soname: item.soname, resolved: item.resolved.display()}
+            {
+              path: item.path.display(),
+              soname: item.soname,
+              resolved: item.resolved.display(),
+            }
           },
       }
     }

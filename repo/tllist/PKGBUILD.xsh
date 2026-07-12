@@ -12,14 +12,27 @@ export let upstream_sources = [
   {
     source: p"https://codeberg.org/dnkl/tllist/archive/VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "0e7b7094a02550dd80b7243bcffc3671550b0f1d8ba625e4dff52517827d5d23"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "0e7b7094a02550dd80b7243bcffc3671550b0f1d8ba625e4dff52517827d5d23",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/include/tllist.h", kind: "file"},
-  {path: p"usr/lib/pkgconfig/tllist.pc", kind: "file"},
+  {
+    path: p"usr/include/tllist.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pkgconfig/tllist.pc",
+    kind: "file",
+  },
 ]
 
 export proc build(dest: Path) [fs, error] {

@@ -15,26 +15,54 @@ export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/VERSION/fontconfig-VERSION.tar.xz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "9f5cae93f4fffc1fbc05ae99cdfc708cd60dfd6612ffc0512827025c026fa541"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "9f5cae93f4fffc1fbc05ae99cdfc708cd60dfd6612ffc0512827025c026fa541",
+      },
+    ],
   },
   {
     source: p"files/generated/fccase.h => generated",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "299726ec60bc7a06ce3e523c75aef6745cb94cec4450e8ad53817427a3f7c84b"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "299726ec60bc7a06ce3e523c75aef6745cb94cec4450e8ad53817427a3f7c84b",
+      },
+    ],
   },
   {
     source: p"files/generated/fclang.h => generated",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "3286b76659e4b23c34d2d133a8356253ce8eafb1f37475f7aff560ebad6d5863"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "3286b76659e4b23c34d2d133a8356253ce8eafb1f37475f7aff560ebad6d5863",
+      },
+    ],
   },
   {
     source: p"files/generated/35-lang-normalize.conf => generated",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "b89ed7c4a85f411112db8e0377a509fc68e3a1532d0b668970b766e140187c60"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "b89ed7c4a85f411112db8e0377a509fc68e3a1532d0b668970b766e140187c60",
+      },
+    ],
   },
 ]
 
@@ -66,84 +94,318 @@ let conf_links = [
 ]
 
 export let filetree = [
-  {path: p"etc/fonts/conf.d/10-hinting-slight.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/10-scale-bitmap-fonts.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/10-sub-pixel-none.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/10-yes-antialias.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/11-lcdfilter-default.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/20-unhint-small-vera.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/30-metric-aliases.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/40-nonlatin.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/45-generic.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/45-latin.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/48-spacing.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/49-sansserif.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/50-user.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/51-local.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/60-generic.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/60-latin.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/65-fonts-persian.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/65-nonlatin.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/69-unifont.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/70-no-bitmaps-except-emoji.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/80-delicious.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/90-synthetic.conf", kind: "symlink"},
-  {path: p"etc/fonts/conf.d/README", kind: "file"},
-  {path: p"etc/fonts/fonts.conf", kind: "file"},
-  {path: p"usr/bin/fc-cache", kind: "binary"},
-  {path: p"usr/bin/fc-match", kind: "binary"},
-  {path: p"usr/include/fontconfig/fcfreetype.h", kind: "file"},
-  {path: p"usr/include/fontconfig/fcprivate.h", kind: "file"},
-  {path: p"usr/include/fontconfig/fontconfig.h", kind: "file"},
-  {path: p"usr/lib/libfontconfig.so", kind: "symlink"},
-  {path: p"usr/lib/libfontconfig.so.1", kind: "symlink"},
-  {path: p"usr/lib/libfontconfig.so.1.16.0", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/fontconfig.pc", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/05-reset-dirs-sample.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/09-autohint-if-no-hinting.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-autohint.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-hinting-full.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-hinting-medium.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-hinting-none.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-hinting-slight.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-no-antialias.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-scale-bitmap-fonts.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-sub-pixel-bgr.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-sub-pixel-none.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-sub-pixel-vbgr.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-sub-pixel-vrgb.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-unhinted.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/10-yes-antialias.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/11-lcdfilter-default.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/11-lcdfilter-legacy.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/11-lcdfilter-light.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/11-lcdfilter-none.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/20-unhint-small-vera.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/25-unhint-nonlatin.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/30-metric-aliases.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/35-lang-normalize.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/40-nonlatin.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/45-generic.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/45-latin.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/48-guessfamily.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/48-spacing.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/49-sansserif.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/50-user.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/51-local.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/60-generic.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/60-latin.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/65-fonts-persian.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/65-khmer.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/65-nonlatin.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/69-unifont.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/70-no-bitmaps-and-emoji.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/70-no-bitmaps-except-emoji.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/70-no-bitmaps.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/70-yes-bitmaps.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/80-delicious.conf", kind: "file"},
-  {path: p"usr/share/fontconfig/conf.avail/90-synthetic.conf", kind: "file"},
-  {path: p"usr/share/xml/fontconfig/fonts.dtd", kind: "file"},
+  {
+    path: p"etc/fonts/conf.d/10-hinting-slight.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/10-scale-bitmap-fonts.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/10-sub-pixel-none.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/10-yes-antialias.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/11-lcdfilter-default.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/20-unhint-small-vera.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/30-metric-aliases.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/40-nonlatin.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/45-generic.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/45-latin.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/48-spacing.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/49-sansserif.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/50-user.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/51-local.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/60-generic.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/60-latin.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/65-fonts-persian.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/65-nonlatin.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/69-unifont.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/70-no-bitmaps-except-emoji.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/80-delicious.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/90-synthetic.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/fonts/conf.d/README",
+    kind: "file",
+  },
+  {
+    path: p"etc/fonts/fonts.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/bin/fc-cache",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/fc-match",
+    kind: "binary",
+  },
+  {
+    path: p"usr/include/fontconfig/fcfreetype.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/fontconfig/fcprivate.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/fontconfig/fontconfig.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libfontconfig.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libfontconfig.so.1",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libfontconfig.so.1.16.0",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/pkgconfig/fontconfig.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/05-reset-dirs-sample.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/09-autohint-if-no-hinting.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-autohint.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-hinting-full.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-hinting-medium.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-hinting-none.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-hinting-slight.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-no-antialias.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-scale-bitmap-fonts.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-sub-pixel-bgr.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-sub-pixel-none.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-sub-pixel-vbgr.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-sub-pixel-vrgb.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-unhinted.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/10-yes-antialias.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/11-lcdfilter-default.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/11-lcdfilter-legacy.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/11-lcdfilter-light.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/11-lcdfilter-none.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/20-unhint-small-vera.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/25-unhint-nonlatin.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/30-metric-aliases.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/35-lang-normalize.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/40-nonlatin.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/45-generic.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/45-latin.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/48-guessfamily.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/48-spacing.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/49-sansserif.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/50-user.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/51-local.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/60-generic.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/60-latin.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/65-fonts-persian.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/65-khmer.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/65-nonlatin.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/69-unifont.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/70-no-bitmaps-and-emoji.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/70-no-bitmaps-except-emoji.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/70-no-bitmaps.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/70-yes-bitmaps.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/80-delicious.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/fontconfig/conf.avail/90-synthetic.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/xml/fontconfig/fonts.dtd",
+    kind: "file",
+  },
 ]
 
 pure c_string(text: Str) -> Str {
@@ -370,7 +632,7 @@ ft_alias_headers = files('fcftalias.h', 'fcftaliastail.h')
   fs.write(
     src_meson,
     src_meson.read_text()?.replace(
-      """fcobjshash_h = cc.preprocess('fcobjshash.gperf.h', include_directories: incbase)
+  """fcobjshash_h = cc.preprocess('fcobjshash.gperf.h', include_directories: incbase)
 fcobjshash_gperf = custom_target(
   input: fcobjshash_h,
   output: 'fcobjshash.gperf',
@@ -384,9 +646,9 @@ fcobjshash_h = custom_target('fcobjshash.h',
   command: [gperf, '--pic', '-m', '100', '@INPUT@', '--output-file', '@OUTPUT@']
 )
 """,
-      """fcobjshash_h = files('fcobjshash.h')
+  """fcobjshash_h = files('fcobjshash.h')
 """,
-    ),
+),
   )?
 
   let fc_case_meson = p"fc-case/meson.build"
@@ -394,14 +656,14 @@ fcobjshash_h = custom_target('fcobjshash.h',
   fs.write(
     fc_case_meson,
     fc_case_meson.read_text()?.replace(
-      """fccase_h = custom_target('fccase.h',
+  """fccase_h = custom_target('fccase.h',
   output: 'fccase.h',
   input: ['CaseFolding.txt', 'fccase.tmpl.h'],
   command: [find_program('fc-case.py'), '@INPUT0@', '--template', '@INPUT1@', '--output', '@OUTPUT@'])
 """,
-      """fccase_h = files('fccase.h')
+  """fccase_h = files('fccase.h')
 """,
-    ),
+),
   )?
 
   let fc_lang_meson = p"fc-lang/meson.build"
@@ -409,16 +671,16 @@ fcobjshash_h = custom_target('fcobjshash.h',
   fs.write(
     fc_lang_meson,
     fc_lang_meson.read_text()?.replace(
-      """fclang_h = custom_target('fclang.h',
+  """fclang_h = custom_target('fclang.h',
   output: ['fclang.h'],
   input: orth_files,
   command: [find_program('fc-lang.py'), orth_files, '--template', files('fclang.tmpl.h')[0], '--output', '@OUTPUT@', '--directory', meson.current_source_dir()],
   build_by_default: true,
 )
 """,
-      """fclang_h = files('fclang.h')
+  """fclang_h = files('fclang.h')
 """,
-    ),
+),
   )?
 
   let conf_meson = p"conf.d/meson.build"

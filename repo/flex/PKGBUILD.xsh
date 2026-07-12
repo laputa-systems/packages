@@ -16,21 +16,44 @@ export let upstream_sources = [
   {
     source: p"https://github.com/westes/flex/releases/download/vVERSION/flex-VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995",
+      },
+    ],
   },
   {
     source: p"files/flex.xsh",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "554d03a029e143cca1dad6a9b9d14dfb9940ccad7dc9d28e2fc8a5602603d0ef"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "554d03a029e143cca1dad6a9b9d14dfb9940ccad7dc9d28e2fc8a5602603d0ef",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/bin/flex", kind: "binary"},
-  {path: p"usr/bin/lex", kind: "symlink"},
-  {path: p"usr/lib/pm/repo/flex/files/flex.xsh", kind: "file"},
+  {
+    path: p"usr/bin/flex",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/lex",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/pm/repo/flex/files/flex.xsh",
+    kind: "file",
+  },
 ]
 
 export proc build(dest: Path) [fs, process, env, error] {

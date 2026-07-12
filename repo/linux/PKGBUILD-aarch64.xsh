@@ -140,9 +140,18 @@ proc build_native_vdso(cc: Path) [fs, process, env, error] {
   )?
 
   for asm in [
-    {source: "note.S", object: "note.o"},
-    {source: "sigreturn.S", object: "sigreturn.o"},
-    {source: "vgetrandom-chacha.S", object: "vgetrandom-chacha.o"},
+    {
+      source: "note.S",
+      object: "note.o",
+    },
+    {
+      source: "sigreturn.S",
+      object: "sigreturn.o",
+    },
+    {
+      source: "vgetrandom-chacha.S",
+      object: "vgetrandom-chacha.o",
+    },
   ] {
     PKGBUILD_shared.run_native_command(
       base.extend(
@@ -232,49 +241,142 @@ pure native_nvhe_includes() -> List[Str] {
 
 pure native_nvhe_objects() -> List[Record] {
   return [
-    {source: p"arch/arm64/kvm/hyp/nvhe/timer-sr.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/timer-sr.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/sysreg-sr.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/sysreg-sr.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/debug-sr.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/debug-sr.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/switch.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/switch.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/tlb.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/tlb.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/hyp-init.S", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/hyp-init.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/host.S", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/host.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/hyp-main.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/hyp-main.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/hyp-smp.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/hyp-smp.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/psci-relay.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/psci-relay.nvhe.o"},
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/timer-sr.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/timer-sr.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/sysreg-sr.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/sysreg-sr.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/debug-sr.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/debug-sr.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/switch.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/switch.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/tlb.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/tlb.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/hyp-init.S",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/hyp-init.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/host.S",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/host.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/hyp-main.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/hyp-main.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/hyp-smp.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/hyp-smp.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/psci-relay.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/psci-relay.nvhe.o",
+    },
     {
       source: p"arch/arm64/kvm/hyp/nvhe/early_alloc.c",
       out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/early_alloc.nvhe.o",
     },
-    {source: p"arch/arm64/kvm/hyp/nvhe/page_alloc.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/page_alloc.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/cache.S", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/cache.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/setup.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/setup.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/mm.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/mm.nvhe.o"},
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/page_alloc.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/page_alloc.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/cache.S",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/cache.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/setup.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/setup.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/mm.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/mm.nvhe.o",
+    },
     {
       source: p"arch/arm64/kvm/hyp/nvhe/mem_protect.c",
       out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/mem_protect.nvhe.o",
     },
-    {source: p"arch/arm64/kvm/hyp/nvhe/sys_regs.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/sys_regs.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/pkvm.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/pkvm.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/stacktrace.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/stacktrace.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/ffa.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/ffa.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/nvhe/list_debug.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/list_debug.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/vgic-v3-sr.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/vgic-v3-sr.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/aarch32.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/aarch32.nvhe.o"},
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/sys_regs.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/sys_regs.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/pkvm.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/pkvm.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/stacktrace.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/stacktrace.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/ffa.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/ffa.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/nvhe/list_debug.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe/list_debug.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/vgic-v3-sr.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/vgic-v3-sr.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/aarch32.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/aarch32.nvhe.o",
+    },
     {
       source: p"arch/arm64/kvm/hyp/vgic-v2-cpuif-proxy.c",
       out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/vgic-v2-cpuif-proxy.nvhe.o",
     },
-    {source: p"arch/arm64/kvm/hyp/entry.S", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/entry.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/fpsimd.S", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/fpsimd.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/hyp-entry.S", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/hyp-entry.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/exception.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/exception.nvhe.o"},
-    {source: p"arch/arm64/kvm/hyp/pgtable.c", out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/pgtable.nvhe.o"},
-    {source: p"arch/arm64/kernel/smccc-call.S", out: p".xsh-kbuild/obj/arch/arm64/kernel/smccc-call.nvhe.o"},
-    {source: p"arch/arm64/lib/clear_page.S", out: p".xsh-kbuild/obj/arch/arm64/lib/clear_page.nvhe.o"},
-    {source: p"arch/arm64/lib/copy_page.S", out: p".xsh-kbuild/obj/arch/arm64/lib/copy_page.nvhe.o"},
-    {source: p"arch/arm64/lib/memcpy.S", out: p".xsh-kbuild/obj/arch/arm64/lib/memcpy.nvhe.o"},
-    {source: p"arch/arm64/lib/memset.S", out: p".xsh-kbuild/obj/arch/arm64/lib/memset.nvhe.o"},
+    {
+      source: p"arch/arm64/kvm/hyp/entry.S",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/entry.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/fpsimd.S",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/fpsimd.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/hyp-entry.S",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/hyp-entry.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/exception.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/exception.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kvm/hyp/pgtable.c",
+      out: p".xsh-kbuild/obj/arch/arm64/kvm/hyp/pgtable.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/kernel/smccc-call.S",
+      out: p".xsh-kbuild/obj/arch/arm64/kernel/smccc-call.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/lib/clear_page.S",
+      out: p".xsh-kbuild/obj/arch/arm64/lib/clear_page.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/lib/copy_page.S",
+      out: p".xsh-kbuild/obj/arch/arm64/lib/copy_page.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/lib/memcpy.S",
+      out: p".xsh-kbuild/obj/arch/arm64/lib/memcpy.nvhe.o",
+    },
+    {
+      source: p"arch/arm64/lib/memset.S",
+      out: p".xsh-kbuild/obj/arch/arm64/lib/memset.nvhe.o",
+    },
   ]
 }
 
@@ -337,7 +439,9 @@ proc nvhe_ld_task(
 
   return {
     name: out.display(),
-    outputs: [out],
+    outputs: [
+      out,
+    ],
     inputs: inputs,
     deps: deps,
     argv: argv,
@@ -351,10 +455,19 @@ proc nvhe_ld_task(
 proc nvhe_objcopy_task(objcopy: Path, input: Path, out: Path, deps: List[Str]) [] -> make.MakeTask {
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [input],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      input,
+    ],
     deps: deps,
-    argv: [objcopy.display(), "--prefix-symbols=__kvm_nvhe_", input.display(), out.display()],
+    argv: [
+      objcopy.display(),
+      "--prefix-symbols=__kvm_nvhe_",
+      input.display(),
+      out.display(),
+    ],
     cwd: p".",
     env: {},
     depfile: p"",

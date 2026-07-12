@@ -26,8 +26,15 @@ export let upstream_sources = [
   {
     source: p"https://github.com/bugaevc/wl-clipboard/archive/refs/tags/vVERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "b4dc560973f0cd74e02f817ffa2fd44ba645a4f1ea94b7b9614dacc9f895f402",
+      },
+    ],
   },
 ]
 

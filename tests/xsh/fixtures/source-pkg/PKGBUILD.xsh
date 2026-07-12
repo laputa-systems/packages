@@ -12,8 +12,15 @@ export let upstream_sources = [
   {
     source: p"files/data.txt",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "0000000000000000000000000000000000000000000000000000000000000000"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+      },
+    ],
   },
 ]
 

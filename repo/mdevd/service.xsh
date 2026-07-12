@@ -7,10 +7,21 @@ export let service = {
   kind: "longrun",
   command: process.command_argv(
     /usr/bin/mdevd,
-    ["mdevd", "-O", "4", "-f", "/etc/mdev.conf", "-C"],
-    env: {PATH: "/usr/local/bin:/usr/bin:/bin"},
+    [
+      "mdevd",
+      "-O",
+      "4",
+      "-f",
+      "/etc/mdev.conf",
+      "-C",
+    ],
+    env: {
+      PATH: "/usr/local/bin:/usr/bin:/bin",
+    },
   ),
-  targets: ["boot"],
+  targets: [
+    "boot",
+  ],
   restart: restart_policy(),
   logging: "append",
 }

@@ -464,7 +464,8 @@ proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]]
     } else {
       var children = [
         child.path
-        for child in fs.children(input)? if child.kind == "dir" and fs.exists(
+        for child in fs.children(input)?
+        if child.kind == "dir" and fs.exists(
           fp"${child.path}/PKGBUILD.xsh",
         )?
       ]
@@ -1615,17 +1616,39 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   let opts: WorldPlanOptions = cli.parse(
     argv |> drop(1),
     {
-      pkgdirs: {form: "...PKGDIR", repeated: true, required: true},
-      arch: {form: "--arch ARCH", default: host_world_arch()?, help: "plan for ARCH (arm64 maps to aarch64)"},
-      build: {form: "--build", default: false, help: "build all planned packages into the world staging repo"},
-      upload: {form: "--upload", default: false, help: "upload only after the world staging repo is complete"},
+      pkgdirs: {
+        form: "...PKGDIR",
+        repeated: true,
+        required: true,
+      },
+      arch: {
+        form: "--arch ARCH",
+        default: host_world_arch()?,
+        help: "plan for ARCH (arm64 maps to aarch64)",
+      },
+      build: {
+        form: "--build",
+        default: false,
+        help: "build all planned packages into the world staging repo",
+      },
+      upload: {
+        form: "--upload",
+        default: false,
+        help: "upload only after the world staging repo is complete",
+      },
       to_tranche: {
         form: "--to-tranche N",
         default: -1,
         min: -1,
         help: "with --build, stop after tranche N and leave stage resumable",
       },
-      jobs: {form: "-j --jobs N", kind: "Int", default: default_world_jobs()?, min: 1, help: "build jobs per tranche"},
+      jobs: {
+        form: "-j --jobs N",
+        kind: "Int",
+        default: default_world_jobs()?,
+        min: 1,
+        help: "build jobs per tranche",
+      },
     },
     "pm world-plan",
   )?

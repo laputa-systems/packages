@@ -14,26 +14,54 @@ export let upstream_sources = [
   {
     source: p"https://github.com/joshuarli/waterfox-musl-squashed/releases/download/initial-arm64-hermetic/waterfox-140.11.0esr.en-US.linux-musl-aarch64.stage1-minwayland-release-arm64.1.tar.xz => waterfox",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "f22e9a92b15f26a1b805d85a7a1418ede89d8c6116b65b5af1d5600771ae89f2"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "f22e9a92b15f26a1b805d85a7a1418ede89d8c6116b65b5af1d5600771ae89f2",
+      },
+    ],
   },
   {
     source: p"files/waterfox-elf-scan.xsh",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "6c422f8fff25ea1e9c0be524064bc3f95a6b47abcbca5c2c3dee02c85c2bd0c1"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "6c422f8fff25ea1e9c0be524064bc3f95a6b47abcbca5c2c3dee02c85c2bd0c1",
+      },
+    ],
   },
   {
     source: p"files/waterfox-private-needed.xsh",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "f096fda5370eb78b4e14fe5d535ab780fb3d0c61dd703856c59683264dfb550e"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "f096fda5370eb78b4e14fe5d535ab780fb3d0c61dd703856c59683264dfb550e",
+      },
+    ],
   },
   {
     source: p"files/waterfox-allowed-external.sonames",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "2190dcebd0a465fb2ed33caec377f8f9e3a0e6ab60b715e7cfa0e5bf179ef6ea"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "2190dcebd0a465fb2ed33caec377f8f9e3a0e6ab60b715e7cfa0e5bf179ef6ea",
+      },
+    ],
   },
 ]
 
@@ -50,36 +78,126 @@ type PrivateNeededModule = module {
 }
 
 export let filetree = [
-  {path: p"opt/waterfox/application.ini", kind: "file"},
-  {path: p"opt/waterfox/browser/omni.ja", kind: "file"},
-  {path: p"opt/waterfox/defaults/pref/channel-prefs.js", kind: "file"},
-  {path: p"opt/waterfox/defaults/pref/laputa-policy.js", kind: "file"},
-  {path: p"opt/waterfox/dependentlibs.list", kind: "file"},
-  {path: p"opt/waterfox/gmp-clearkey/0.1/libclearkey.so", kind: "binary"},
-  {path: p"opt/waterfox/gmp-clearkey/0.1/manifest.json", kind: "file"},
-  {path: p"opt/waterfox/libfreeblpriv3.so", kind: "binary"},
-  {path: p"opt/waterfox/libgkcodecs.so", kind: "binary"},
-  {path: p"opt/waterfox/liblgpllibs.so", kind: "binary"},
-  {path: p"opt/waterfox/libmozavcodec.so", kind: "binary"},
-  {path: p"opt/waterfox/libmozavutil.so", kind: "binary"},
-  {path: p"opt/waterfox/libmozsandbox.so", kind: "binary"},
-  {path: p"opt/waterfox/libmozsqlite3.so", kind: "binary"},
-  {path: p"opt/waterfox/libnspr4.so", kind: "binary"},
-  {path: p"opt/waterfox/libnss3.so", kind: "binary"},
-  {path: p"opt/waterfox/libnssutil3.so", kind: "binary"},
-  {path: p"opt/waterfox/libplc4.so", kind: "binary"},
-  {path: p"opt/waterfox/libplds4.so", kind: "binary"},
-  {path: p"opt/waterfox/libsmime3.so", kind: "binary"},
-  {path: p"opt/waterfox/libsoftokn3.so", kind: "binary"},
-  {path: p"opt/waterfox/libssl3.so", kind: "binary"},
-  {path: p"opt/waterfox/libxul.so", kind: "binary"},
-  {path: p"opt/waterfox/omni.ja", kind: "file"},
-  {path: p"opt/waterfox/platform.ini", kind: "file"},
-  {path: p"opt/waterfox/precomplete", kind: "file"},
-  {path: p"opt/waterfox/removed-files", kind: "file"},
-  {path: p"opt/waterfox/waterfox", kind: "file"},
-  {path: p"opt/waterfox/waterfox-bin", kind: "binary"},
-  {path: p"usr/bin/waterfox", kind: "file"},
+  {
+    path: p"opt/waterfox/application.ini",
+    kind: "file",
+  },
+  {
+    path: p"opt/waterfox/browser/omni.ja",
+    kind: "file",
+  },
+  {
+    path: p"opt/waterfox/defaults/pref/channel-prefs.js",
+    kind: "file",
+  },
+  {
+    path: p"opt/waterfox/defaults/pref/laputa-policy.js",
+    kind: "file",
+  },
+  {
+    path: p"opt/waterfox/dependentlibs.list",
+    kind: "file",
+  },
+  {
+    path: p"opt/waterfox/gmp-clearkey/0.1/libclearkey.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/gmp-clearkey/0.1/manifest.json",
+    kind: "file",
+  },
+  {
+    path: p"opt/waterfox/libfreeblpriv3.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libgkcodecs.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/liblgpllibs.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libmozavcodec.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libmozavutil.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libmozsandbox.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libmozsqlite3.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libnspr4.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libnss3.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libnssutil3.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libplc4.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libplds4.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libsmime3.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libsoftokn3.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libssl3.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/libxul.so",
+    kind: "binary",
+  },
+  {
+    path: p"opt/waterfox/omni.ja",
+    kind: "file",
+  },
+  {
+    path: p"opt/waterfox/platform.ini",
+    kind: "file",
+  },
+  {
+    path: p"opt/waterfox/precomplete",
+    kind: "file",
+  },
+  {
+    path: p"opt/waterfox/removed-files",
+    kind: "file",
+  },
+  {
+    path: p"opt/waterfox/waterfox",
+    kind: "file",
+  },
+  {
+    path: p"opt/waterfox/waterfox-bin",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/waterfox",
+    kind: "file",
+  },
 ]
 
 proc install_policy_prefs(dest: Path) [fs, error] {

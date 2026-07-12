@@ -14,32 +14,99 @@ export let upstream_sources = [
   {
     source: p"files/source-marker.txt => .",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "2f848716fcc0bb55ee07c37ab374d8b8824dd38debcc0be4711b4930f1c67381"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "2f848716fcc0bb55ee07c37ab374d8b8824dd38debcc0be4711b4930f1c67381",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/include/EGL/egl.h", kind: "file"},
-  {path: p"usr/include/EGL/eglext.h", kind: "file"},
-  {path: p"usr/include/EGL/eglplatform.h", kind: "file"},
-  {path: p"usr/include/GLES2/gl2.h", kind: "file"},
-  {path: p"usr/include/GLES2/gl2ext.h", kind: "file"},
-  {path: p"usr/include/GLES2/gl2platform.h", kind: "file"},
-  {path: p"usr/include/KHR/khrplatform.h", kind: "file"},
-  {path: p"usr/include/gbm.h", kind: "file"},
-  {path: p"usr/lib/libEGL.so", kind: "symlink"},
-  {path: p"usr/lib/libEGL.so.1", kind: "symlink"},
-  {path: p"usr/lib/libEGL.so.1.0.0", kind: "binary"},
-  {path: p"usr/lib/libGLESv2.so", kind: "symlink"},
-  {path: p"usr/lib/libGLESv2.so.2", kind: "symlink"},
-  {path: p"usr/lib/libGLESv2.so.2.0.0", kind: "binary"},
-  {path: p"usr/lib/libgbm.so", kind: "symlink"},
-  {path: p"usr/lib/libgbm.so.1", kind: "symlink"},
-  {path: p"usr/lib/libgbm.so.1.0.0", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/egl.pc", kind: "file"},
-  {path: p"usr/lib/pkgconfig/gbm.pc", kind: "file"},
-  {path: p"usr/lib/pkgconfig/glesv2.pc", kind: "file"},
+  {
+    path: p"usr/include/EGL/egl.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/EGL/eglext.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/EGL/eglplatform.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/GLES2/gl2.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/GLES2/gl2ext.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/GLES2/gl2platform.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/KHR/khrplatform.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/gbm.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libEGL.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libEGL.so.1",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libEGL.so.1.0.0",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/libGLESv2.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libGLESv2.so.2",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libGLESv2.so.2.0.0",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/libgbm.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libgbm.so.1",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libgbm.so.1.0.0",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/pkgconfig/egl.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pkgconfig/gbm.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pkgconfig/glesv2.pc",
+    kind: "file",
+  },
 ]
 
 proc write_sources() [fs, error] {
@@ -975,9 +1042,21 @@ proc install_pkg_config(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/lib/pkgconfig")?
 
   for pc in [
-    {name: "egl", desc: "Laputa minimal EGL", libs: "-lEGL"},
-    {name: "glesv2", desc: "Laputa minimal GLESv2", libs: "-lGLESv2"},
-    {name: "gbm", desc: "Laputa minimal GBM", libs: "-lgbm"},
+    {
+      name: "egl",
+      desc: "Laputa minimal EGL",
+      libs: "-lEGL",
+    },
+    {
+      name: "glesv2",
+      desc: "Laputa minimal GLESv2",
+      libs: "-lGLESv2",
+    },
+    {
+      name: "gbm",
+      desc: "Laputa minimal GBM",
+      libs: "-lgbm",
+    },
   ] {
     let pc_name: Str = pc.get("name")?
     let desc: Str = pc.get("desc")?

@@ -35,13 +35,22 @@ export proc parser_generators() [env, error] -> Result[List[ParserGen]] {
         "-l",
         "scripts/kconfig/parser.y",
       ],
-      outputs: [p"scripts/kconfig/parser.tab.c", p"scripts/kconfig/parser.tab.h"],
+      outputs: [
+        p"scripts/kconfig/parser.tab.c",
+        p"scripts/kconfig/parser.tab.h",
+      ],
     },
     {
       name: "flex-kconfig",
       tool: flex_tool()?,
-      argv: ["-oscripts/kconfig/lexer.lex.c", "-L", "scripts/kconfig/lexer.l"],
-      outputs: [p"scripts/kconfig/lexer.lex.c"],
+      argv: [
+        "-oscripts/kconfig/lexer.lex.c",
+        "-L",
+        "scripts/kconfig/lexer.l",
+      ],
+      outputs: [
+        p"scripts/kconfig/lexer.lex.c",
+      ],
     },
     {
       name: "bison-dtc",
@@ -54,13 +63,22 @@ export proc parser_generators() [env, error] -> Result[List[ParserGen]] {
         "-l",
         "scripts/dtc/dtc-parser.y",
       ],
-      outputs: [p"scripts/dtc/dtc-parser.tab.c", p"scripts/dtc/dtc-parser.tab.h"],
+      outputs: [
+        p"scripts/dtc/dtc-parser.tab.c",
+        p"scripts/dtc/dtc-parser.tab.h",
+      ],
     },
     {
       name: "flex-dtc",
       tool: flex_tool()?,
-      argv: ["-oscripts/dtc/dtc-lexer.lex.c", "-L", "scripts/dtc/dtc-lexer.l"],
-      outputs: [p"scripts/dtc/dtc-lexer.lex.c"],
+      argv: [
+        "-oscripts/dtc/dtc-lexer.lex.c",
+        "-L",
+        "scripts/dtc/dtc-lexer.l",
+      ],
+      outputs: [
+        p"scripts/dtc/dtc-lexer.lex.c",
+      ],
     },
   ]
 }

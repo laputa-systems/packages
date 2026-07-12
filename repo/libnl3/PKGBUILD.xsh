@@ -14,19 +14,47 @@ export let upstream_sources = [
   {
     source: p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "2a56e1edefa3e68a7c00879496736fdbf62fc94ed3232c0baba127ecfa76874d",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr", kind: "tree"},
-  {path: p"usr/lib/libnl-3.so", kind: "symlink"},
-  {path: p"usr/lib/libnl-3.so.200", kind: "symlink"},
-  {path: p"usr/lib/libnl-3.so.200.26.0", kind: "binary"},
-  {path: p"usr/lib/libnl-genl-3.so", kind: "symlink"},
-  {path: p"usr/lib/libnl-genl-3.so.200", kind: "symlink"},
-  {path: p"usr/lib/libnl-genl-3.so.200.26.0", kind: "binary"},
+  {
+    path: p"usr",
+    kind: "tree",
+  },
+  {
+    path: p"usr/lib/libnl-3.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libnl-3.so.200",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libnl-3.so.200.26.0",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/libnl-genl-3.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libnl-genl-3.so.200",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libnl-genl-3.so.200.26.0",
+    kind: "binary",
+  },
 ]
 
 export proc build(dest: Path) [fs, process, env, error] {

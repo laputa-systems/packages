@@ -45,129 +45,481 @@ export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/VERSION/wlroots-VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "a6ff89b64ea15e424d1b0db4a22145fccf5ec2ff2e7b8af0fa35e2ac8975986f"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "a6ff89b64ea15e424d1b0db4a22145fccf5ec2ff2e7b8af0fa35e2ac8975986f",
+      },
+    ],
   },
 ]
 
 type PnpRecord = {id: Str, vendor: Str}
 
 export let filetree = [
-  {path: p"usr/include/wlroots-0.19/wlr/backend.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/backend/drm.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/backend/headless.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/backend/interface.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/backend/libinput.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/backend/multi.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/backend/session.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/backend/wayland.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/config.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_buffer.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_ext_image_capture_source_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_keyboard.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_output.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_pointer.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_switch.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_tablet_pad.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_tablet_tool.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_touch.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/allocator.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/color.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/dmabuf.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/drm_format_set.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/drm_syncobj.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/egl.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/gles2.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/interface.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/pass.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/pixman.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/swapchain.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/wlr_renderer.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/render/wlr_texture.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_alpha_modifier_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_buffer.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_color_management_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_compositor.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_content_type_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_cursor.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_cursor_shape_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_damage_ring.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_data_control_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_data_device.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_drm.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_drm_lease_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_export_dmabuf_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_ext_data_control_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_ext_foreign_toplevel_list_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_ext_image_capture_source_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_ext_image_copy_capture_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_foreign_toplevel_management_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_fractional_scale_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_gamma_control_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_idle_inhibit_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_idle_notify_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_input_device.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_input_method_v2.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_keyboard.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_keyboard_group.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_keyboard_shortcuts_inhibit_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_layer_shell_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_linux_dmabuf_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_linux_drm_syncobj_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_output.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_output_layer.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_output_layout.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_output_management_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_output_power_management_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_output_swapchain_manager.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_pointer.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_pointer_constraints_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_pointer_gestures_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_presentation_time.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_primary_selection.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_primary_selection_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_relative_pointer_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_scene.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_screencopy_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_seat.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_security_context_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_server_decoration.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_session_lock_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_shm.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_single_pixel_buffer_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_subcompositor.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_switch.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_tablet_pad.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_tablet_tool.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_tablet_v2.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_tearing_control_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_text_input_v3.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_touch.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_transient_seat_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_viewporter.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_virtual_keyboard_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_virtual_pointer_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_xcursor_manager.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_activation_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_decoration_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_dialog_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_foreign_registry.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_foreign_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_foreign_v2.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_output_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_shell.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_system_bell_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_toplevel_icon_v1.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/util/addon.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/util/box.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/util/edges.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/util/log.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/util/region.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/util/transform.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/version.h", kind: "file"},
-  {path: p"usr/include/wlroots-0.19/wlr/xcursor.h", kind: "file"},
-  {path: p"usr/lib/libwlroots-0.19.so", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/wlroots-0.19.pc", kind: "file"},
+  {
+    path: p"usr/include/wlroots-0.19/wlr/backend.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/backend/drm.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/backend/headless.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/backend/interface.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/backend/libinput.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/backend/multi.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/backend/session.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/backend/wayland.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/config.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_buffer.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_ext_image_capture_source_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_keyboard.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_output.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_pointer.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_switch.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_tablet_pad.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_tablet_tool.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/interfaces/wlr_touch.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/allocator.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/color.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/dmabuf.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/drm_format_set.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/drm_syncobj.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/egl.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/gles2.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/interface.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/pass.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/pixman.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/swapchain.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/wlr_renderer.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/render/wlr_texture.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_alpha_modifier_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_buffer.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_color_management_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_compositor.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_content_type_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_cursor.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_cursor_shape_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_damage_ring.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_data_control_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_data_device.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_drm.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_drm_lease_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_export_dmabuf_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_ext_data_control_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_ext_foreign_toplevel_list_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_ext_image_capture_source_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_ext_image_copy_capture_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_foreign_toplevel_management_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_fractional_scale_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_gamma_control_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_idle_inhibit_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_idle_notify_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_input_device.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_input_method_v2.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_keyboard.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_keyboard_group.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_keyboard_shortcuts_inhibit_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_layer_shell_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_linux_dmabuf_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_linux_drm_syncobj_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_output.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_output_layer.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_output_layout.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_output_management_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_output_power_management_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_output_swapchain_manager.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_pointer.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_pointer_constraints_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_pointer_gestures_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_presentation_time.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_primary_selection.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_primary_selection_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_relative_pointer_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_scene.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_screencopy_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_seat.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_security_context_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_server_decoration.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_session_lock_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_shm.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_single_pixel_buffer_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_subcompositor.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_switch.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_tablet_pad.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_tablet_tool.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_tablet_v2.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_tearing_control_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_text_input_v3.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_touch.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_transient_seat_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_viewporter.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_virtual_keyboard_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_virtual_pointer_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_xcursor_manager.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_activation_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_decoration_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_dialog_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_foreign_registry.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_foreign_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_foreign_v2.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_output_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_shell.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_system_bell_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/types/wlr_xdg_toplevel_icon_v1.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/util/addon.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/util/box.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/util/edges.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/util/log.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/util/region.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/util/transform.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/version.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wlroots-0.19/wlr/xcursor.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libwlroots-0.19.so",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/pkgconfig/wlroots-0.19.pc",
+    kind: "file",
+  },
 ]
 
 pure c_string(text: Str) -> Str {
@@ -269,12 +621,12 @@ proc patch_build(root: Str) [fs, error] {
   fs.write(
     meson,
     meson.read_text()?.replace(
-      """math = cc.find_library('m')
+  """math = cc.find_library('m')
 rt = cc.find_library('rt')""",
-      """# musl packages libm as a libc symlink and provides realtime interfaces in libc.
+  """# musl packages libm as a libc symlink and provides realtime interfaces in libc.
 math = declare_dependency(link_args: ['-lm'])
 rt = declare_dependency()""",
-    ),
+),
   )?
 
   let drm_meson = p"backend/drm/meson.build"
@@ -282,7 +634,7 @@ rt = declare_dependency()""",
   fs.write(
     drm_meson,
     drm_meson.read_text()?.replace(
-      """pnpids_c = custom_target(
+  """pnpids_c = custom_target(
 	'pnpids.c',
 	output: 'pnpids.c',
 	input: files(hwdata_dir / 'pnp.ids'),
@@ -291,9 +643,9 @@ rt = declare_dependency()""",
 	command: files('gen_pnpids.sh'),
 )
 """,
-      """pnpids_c = files('pnpids.c')
+  """pnpids_c = files('pnpids.c')
 """,
-    ),
+),
   )?
 
   let protocol_meson = p"protocol/meson.build"
@@ -301,10 +653,10 @@ rt = declare_dependency()""",
   fs.write(
     protocol_meson,
     protocol_meson.read_text()?.replace(
-      """	'xwayland-shell-v1': wl_protocol_dir / 'staging/xwayland-shell/xwayland-shell-v1.xml',
+  """	'xwayland-shell-v1': wl_protocol_dir / 'staging/xwayland-shell/xwayland-shell-v1.xml',
 """,
-      "",
-    ),
+  "",
+),
   )?
 
   let renderer = p"render/gles2/renderer.c"
@@ -312,19 +664,19 @@ rt = declare_dependency()""",
   fs.write(
     renderer,
     renderer.read_text()?.replace(
-      """#include "common_vert_src.h"
+  """#include "common_vert_src.h"
 #include "quad_frag_src.h"
 #include "tex_rgba_frag_src.h"
 #include "tex_rgbx_frag_src.h"
 #include "tex_external_frag_src.h"
 """,
-      """#include "shaders/common_vert_src.h"
+  """#include "shaders/common_vert_src.h"
 #include "shaders/quad_frag_src.h"
 #include "shaders/tex_rgba_frag_src.h"
 #include "shaders/tex_rgbx_frag_src.h"
 #include "shaders/tex_external_frag_src.h"
 """,
-    ),
+),
   )?
 
   let shader_meson = p"render/gles2/shaders/meson.build"
@@ -332,12 +684,12 @@ rt = declare_dependency()""",
   fs.write(
     shader_meson,
     shader_meson.read_text()?.replace(
-      """embed = find_program('./embed.sh', native: true)
+  """embed = find_program('./embed.sh', native: true)
 
 """,
-      "",
-    ).replace(
-      """	wlr_files += custom_target(
+  "",
+).replace(
+  """	wlr_files += custom_target(
 		output,
 		command: [embed, var],
 		input: name,
@@ -346,9 +698,9 @@ rt = declare_dependency()""",
 		capture: true,
 	)
 """,
-      """	wlr_files += files(output)
+  """	wlr_files += files(output)
 """,
-    ),
+),
   )?
 }
 

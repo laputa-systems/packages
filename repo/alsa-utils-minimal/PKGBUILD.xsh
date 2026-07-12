@@ -14,15 +14,31 @@ export let upstream_sources = [
   {
     source: p"https://www.alsa-project.org/files/pub/utils/alsa-utils-VERSION.tar.bz2",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "7aaaafbfb01942113ec0c31e51f705910e81079205088ca2f8f137a3869e1a3a"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "7aaaafbfb01942113ec0c31e51f705910e81079205088ca2f8f137a3869e1a3a",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/bin/alsactl", kind: "binary"},
-  {path: p"usr/bin/amixer", kind: "binary"},
-  {path: p"usr/bin/aplay", kind: "binary"},
+  {
+    path: p"usr/bin/alsactl",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/amixer",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/aplay",
+    kind: "binary",
+  },
 ]
 
 proc write_tool_source() [fs, error] {

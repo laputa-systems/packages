@@ -15,26 +15,69 @@ export let upstream_sources = [
   {
     source: p"https://github.com/libffi/libffi/releases/download/vVERSION/libffi-VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc",
+      },
+    ],
   },
 ]
 
 type LibffiTarget = {target: Str, dir: Str, sources: List[Str]}
 
 export let filetree = [
-  {path: p"usr/include/Makefile.am", kind: "file"},
-  {path: p"usr/include/Makefile.in", kind: "file"},
-  {path: p"usr/include/ffi.h", kind: "file"},
-  {path: p"usr/include/ffi.h.in", kind: "file"},
-  {path: p"usr/include/ffi_cfi.h", kind: "file"},
-  {path: p"usr/include/ffi_common.h", kind: "file"},
-  {path: p"usr/include/ffitarget.h", kind: "file"},
-  {path: p"usr/include/tramp.h", kind: "file"},
-  {path: p"usr/lib/libffi.so", kind: "symlink"},
-  {path: p"usr/lib/libffi.so.8", kind: "symlink"},
-  {path: p"usr/lib/libffi.so.8.2.0", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/libffi.pc", kind: "file"},
+  {
+    path: p"usr/include/Makefile.am",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/Makefile.in",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/ffi.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/ffi.h.in",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/ffi_cfi.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/ffi_common.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/ffitarget.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/tramp.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libffi.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libffi.so.8",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libffi.so.8.2.0",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/pkgconfig/libffi.pc",
+    kind: "file",
+  },
 ]
 
 pure libffi_target(machine: Str) -> LibffiTarget {
@@ -42,7 +85,12 @@ pure libffi_target(machine: Str) -> LibffiTarget {
     return {
       target: "X86_64",
       dir: "x86",
-      sources: ["src/x86/ffi64.c", "src/x86/unix64.S", "src/x86/ffiw64.c", "src/x86/win64.S"],
+      sources: [
+        "src/x86/ffi64.c",
+        "src/x86/unix64.S",
+        "src/x86/ffiw64.c",
+        "src/x86/win64.S",
+      ],
     }
   }
 

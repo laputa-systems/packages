@@ -13,21 +13,45 @@ export let deps = ["musl"]
 export let mkdeps_host = ["llvm-toolchain"]
 
 export let upstream_sources = [
-  {source: p"files/.keep", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
+  {
+    source: p"files/.keep",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
 ]
 
 export let filetree = [
-  {path: p"usr/lib/crtbeginS.o", kind: "binary"},
-  {path: p"usr/lib/crtendS.o", kind: "binary"},
-  {path: p"usr/lib/libgcc_s.so", kind: "binary"},
-  {path: p"usr/lib/libgcc_s.so.1", kind: "symlink"},
+  {
+    path: p"usr/lib/crtbeginS.o",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/crtendS.o",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/libgcc_s.so",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/libgcc_s.so.1",
+    kind: "symlink",
+  },
 ]
 
 export proc build(dest: Path) [fs, process, env, error] {
   let build_arch = pm_util.build_arch()?
   let target_arch = pm_util.target_arch()?
 
-  if build_arch != target_arch or (target_arch != "aarch64" and target_arch != "x86_64") {
+  if build_arch != target_arch or target_arch != "aarch64" and target_arch != "x86_64" {
     return Err(GnuStubsError.Failed("gnu-stubs requires a native aarch64 or x86_64 build"))
   }
 
@@ -65,7 +89,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   let trunctfdf2 = fp"${builtins_dir}/trunctfdf2.c.o"
   let clear_cache = fp"${builtins_dir}/clear_cache.c.o"
   fs.write(stub_src, "")?
-  fs.write(visibility_map, """__floatunditf
+  fs.write(
+    visibility_map,
+    """__floatunditf
 __divtf3
 __clear_cache
 __unordtf2
@@ -76,12 +102,16 @@ __multf3
 __letf2
 __floatsitf
 __gttf2
-""")?
-  fs.write(export_map, """{
+""",
+  )?
+  fs.write(
+    export_map,
+    """{
   global:
     *;
 };
-""")?
+""",
+  )?
   fs.mkdir(libdir.parent)?
   fs.mkdir(libdir)?
   fs.mkdir(builtins_dir)?
@@ -94,11 +124,21 @@ __gttf2
     cd builtins_dir {
       run $llvm_ar "x" $builtins "comparetf2.c.o" "divtf3.c.o" "extendsftf2.c.o" "floatsitf.c.o" "floatunditf.c.o" "multf3.c.o" "trunctfdf2.c.o" "clear_cache.c.o" ?
     }
-    for object in [comparetf2, divtf3, extendsftf2, floatsitf, floatunditf, multf3, trunctfdf2, clear_cache] {
+    for object in [
+      comparetf2,
+      divtf3,
+      extendsftf2,
+      floatsitf,
+      floatunditf,
+      multf3,
+      trunctfdf2,
+      clear_cache,
+    ] {
       let visible = fp"${object.display()}.visible"
       run $llvm_objcopy f"--set-symbols-visibility=${visibility_map.display()}=default" $object $visible ?
       fs.rename(visible, object, overwrite: true)?
     }
+
     fs.remove(stub_src)?
     run $lld "-shared" "-o" $libgcc "-L" fp"${laputa_root}/usr/lib" "-ldl" "-lpthread" f"--version-script=${export_map.display()}" "--no-gc-sections" "-u" "__floatunditf" "-u" "__divtf3" "-u" "__clear_cache" "-u" "__unordtf2" "-u" "__extendsftf2" "-u" "__trunctfdf2" "-u" "__getf2" "-u" "__multf3" "-u" "__letf2" "-u" "__floatsitf" "-u" "__gttf2" "--whole-archive" $libunwind "--no-whole-archive" $comparetf2 $divtf3 $extendsftf2 $floatsitf $floatunditf $multf3 $trunctfdf2 $clear_cache ?
   } ?

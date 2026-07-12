@@ -14,18 +14,43 @@ export let upstream_sources = [
   {
     source: p"https://www.netfilter.org/projects/iptables/files/iptables-VERSION.tar.xz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "d87303d55ef8c92bcad4dd3f978b26d272013642b029425775f5bad1009fe7b2",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/bin/ip6tables", kind: "binary"},
-  {path: p"usr/bin/ip6tables-restore", kind: "binary"},
-  {path: p"usr/bin/ip6tables-save", kind: "binary"},
-  {path: p"usr/bin/iptables", kind: "binary"},
-  {path: p"usr/bin/iptables-restore", kind: "binary"},
-  {path: p"usr/bin/iptables-save", kind: "binary"},
+  {
+    path: p"usr/bin/ip6tables",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/ip6tables-restore",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/ip6tables-save",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/iptables",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/iptables-restore",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/iptables-save",
+    kind: "binary",
+  },
 ]
 
 proc write_iptables_stub() [fs, error] {

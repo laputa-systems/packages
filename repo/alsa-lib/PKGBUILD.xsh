@@ -14,17 +14,39 @@ export let upstream_sources = [
   {
     source: p"https://www.alsa-project.org/files/pub/lib/alsa-lib-VERSION.tar.bz2",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "7b079d614d582cade7ab8db2364e65271d0877a37df8757ac4ac0c8970be861e"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "7b079d614d582cade7ab8db2364e65271d0877a37df8757ac4ac0c8970be861e",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/include/alsa/asoundlib.h", kind: "file"},
-  {path: p"usr/lib/libasound.so", kind: "symlink"},
-  {path: p"usr/lib/libasound.so.2", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/alsa.pc", kind: "file"},
-  {path: p"usr/share/alsa/alsa.conf", kind: "file"},
+  {
+    path: p"usr/include/alsa/asoundlib.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libasound.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libasound.so.2",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/pkgconfig/alsa.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/alsa/alsa.conf",
+    kind: "file",
+  },
 ]
 
 proc write_asound_stub() [fs, error] {

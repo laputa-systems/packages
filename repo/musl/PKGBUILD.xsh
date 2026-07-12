@@ -19,32 +19,91 @@ export let upstream_sources = [
   {
     source: p"https://musl.libc.org/releases/musl-VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
+    architectures: [
+      "all",
+    ],
     checksums: [
-      {arch: "aarch64", sha256: "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"},
-      {arch: "x86_64", sha256: "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"},
+      {
+        arch: "aarch64",
+        sha256: "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+      },
+      {
+        arch: "x86_64",
+        sha256: "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a",
+      },
     ],
   },
 ]
 
 let filetree_common = [
-  {path: p"usr", kind: "tree"},
-  {path: p"usr/lib/Scrt1.o", kind: "binary"},
-  {path: p"usr/lib/crt1.o", kind: "binary"},
-  {path: p"usr/lib/crti.o", kind: "binary"},
-  {path: p"usr/lib/crtn.o", kind: "binary"},
-  {path: p"usr/lib/libc.so", kind: "binary"},
-  {path: p"usr/lib/libcrypt.a", kind: "symlink"},
-  {path: p"usr/lib/libcrypt.so", kind: "symlink"},
-  {path: p"usr/lib/libdl.a", kind: "symlink"},
-  {path: p"usr/lib/libdl.so", kind: "symlink"},
-  {path: p"usr/lib/libm.a", kind: "symlink"},
-  {path: p"usr/lib/libm.so", kind: "symlink"},
-  {path: p"usr/lib/libpthread.a", kind: "symlink"},
-  {path: p"usr/lib/libpthread.so", kind: "symlink"},
-  {path: p"usr/lib/librt.a", kind: "symlink"},
-  {path: p"usr/lib/librt.so", kind: "symlink"},
-  {path: p"usr/lib/rcrt1.o", kind: "binary"},
+  {
+    path: p"usr",
+    kind: "tree",
+  },
+  {
+    path: p"usr/lib/Scrt1.o",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/crt1.o",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/crti.o",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/crtn.o",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/libc.so",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/libcrypt.a",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libcrypt.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libdl.a",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libdl.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libm.a",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libm.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libpthread.a",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libpthread.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/librt.a",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/librt.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/rcrt1.o",
+    kind: "binary",
+  },
 ]
 
 export let filetree_aarch64 = filetree_common.push({path: p"usr/lib/ld-musl-aarch64.so.1", kind: "symlink"})

@@ -12,156 +12,595 @@ export let upstream_sources = [
   {
     source: p"https://www.alsa-project.org/files/pub/lib/alsa-ucm-conf-VERSION.tar.bz2",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "9f79e813c08fc86cfa46dd75c4fcda1a4a51b482db2607e1fcfaafb92f588a31"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "9f79e813c08fc86cfa46dd75c4fcda1a4a51b482db2607e1fcfaafb92f588a31",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr", kind: "tree"},
-  {path: p"usr/share/alsa/ucm2/conf.d/DB410c/DB410c.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/DB820c/DB820c.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/HDA-Intel/HDA-Intel.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/SC7180/sc7180-adau7002-max98357a.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/SC7180/sc7180-rt5682-max98357a-1mic.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/SOF/SOF.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/USB-Audio/USB-Audio.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/VEYRON-I2S/VEYRON-I2S.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/acp-pdm-mach/acp-pdm-mach.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/acp/acp.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/acp3x-es83xx/acp3x-es83xx.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/acp3xalc5682101/acp3xalc5682101.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/acp3xalc5682m98/acp3xalc5682m98.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/acp5x/Valve-Jupiter-1.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/acp62/acp62.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/acp63/acp63.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/acp6x/acp6x.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/acpd7219m98357/acpd7219m98357.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/amd-soundwire/amd-soundwire.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/apq8096/DB820c.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_da7219/Google-Atlas-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_da7219/Google-Coral-rev2.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/Acer-Lars-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/Google-Atlas-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/Google-Cave-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/Google-Coral-rev2.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/HP-Soraka-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/Hewlett_Packard-Chell-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_max98357a/Acer-Lars-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_max98357a/Google-Cave-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_max98357a/Google-Coral-rev2.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_max98373/Google-Atlas-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_max98927/Google-Eve-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_max98927/HP-Soraka-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_nau8825/Acer-Lars-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_nau8825/Google-Cave-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_nau8825/Hewlett_Packard-Chell-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_rt5514/Google-Eve-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_rt5663/Google-Eve-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_rt5663/HP-Soraka-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/bdw-rt5677/bdw-rt5677.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/broadwell-rt286/broadwell-rt286.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/broxton-rt298/broxton-rt298.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/bytcht-cx2072x/bytcht-cx2072x.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/bytcht-es8316/bytcht-es8316.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/bytcr-rt5640/bytcr-rt5640.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/bytcr-rt5651/bytcr-rt5651.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/bytcr-wm5102/bytcr-wm5102.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/cht-bsw-rt5672/cht-bsw-rt5672.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/chtmax98090/chtmax98090.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/chtnau8824/chtnau8824.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/chtrt5645/chtrt5645.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/chtrt5650/chtrt5650.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/fsl-asoc-card/apalis-imx6.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/fsl-asoc-card/colibri-imx6.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/gx-sound-card/GXL-P241.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/gx-sound-card/LIBRETECH-CC.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/hda-dsp/hda-dsp.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/hdaudioB0D2/hdaudioB0D2.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/kblrt5660/kblrt5660.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/mt8183_da7219_r/mt8183_da7219_r.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/mt8183_mt6358_t/mt8183_mt6358_t.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/mt8192_mt6359/mt8192_mt6359_rt1015p_rt5682.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/mt8195_demo/mt8195_demo.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/mt8365-evk/mt8365-evk.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/mt8370-evk/mt8370-evk.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/mt8390-evk/mt8390-evk.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/mt8391-evk/mt8391-evk.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/mt8395-evk/mt8395-evk.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/mtk-rt5650/mtk-rt5650.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/qcs615/TALOS-EVK.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/qcs6490/QCS6490-Radxa-Dragon-Q6A.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/qcs8300/MONACO-EVK.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/rk3399-gru-soun/rk3399-gru-soun.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/rk3588-es8316/rk3588-es8316.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/rockchip_es8316/rockchip_es8316.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sa8775p/LEMANS-EVK.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sc8280xp/sc8280xp.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sdm845/DB845c.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sdm845/LENOVO-81JL-LenovoYOGAC630_13Q50-LNVNB161216.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/Librem 5 Devkit.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/Librem 5.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/PinePhone.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/apalis-imx8.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/apalis-nau8822.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/aquila-wm8904.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/colibri-imx7.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/colibri-imx8x.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/rk817_ext.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/rk817_int.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/rockchip,es8316-codec.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/tdx-smarc-wm8904.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/verdin-nau8822.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/simple-card/verdin-wm8904.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/skylake-rt286/skylake-rt286.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sm8250/Qualcomm-RB5-WSA8815-Speakers-DMIC0.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sm8550/SM8550-HDK.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sm8650/SM8650-MTP.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sm8650/SM8650-QRD.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sm8750/SM8750-MTP.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-ehl-rt5660/sof-ehl-rt5660.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-essx8336/sof-essx8336.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-glkda7219ma/sof-glkda7219ma.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-hda-dsp/sof-hda-dsp.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-hda-dsp/sof-skl_hda_card.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-m8195_r1019/sof-m8195_r1019_5682s.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-mt8195_r101/sof-mt8195_r1019_5682.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-mt8196-nau8/sof-mt8196-nau8825.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-mt8365-evk/sof-mt8365-evk.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-mt8390-evk/sof-mt8390-evk.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-mt8395-evk/sof-mt8395-evk.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-skl_hda_card", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/sof-soundwire/sof-soundwire.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra-hda/tegra-hda.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/ASUS Google Nexus 7 ALC5642.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/Acer Iconia Tab A500 WM8903.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus EeePad Slider WM8903.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus EeePad Transformer WM8903.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus Transformer Infinity TF700T RT5631.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus Transformer Pad TF300T WM8903.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus Transformer Pad TF300TG RT5631.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus Transformer Pad TF300TL RT5631.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus Transformer Prime TF201 RT5631.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/Compal PAZ00.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/GoogleNyanBig.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/GoogleNyanBlaze.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/LG Optimus 4X HD MAX98089.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/tegra/LG Optimus Vu MAX98089.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/x1e80100/TUXEDO-TUXEDOElite14Gen1-2.0-TXEM14QX4NM.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/x1e80100/X1E001DE-DEVKIT.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/x1e80100/X1E80100-CRD.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/x1e80100/X1E80100-EVK.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/conf.d/x1e80100/x1e80100.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/module/snd_soc_apq8016_sbc.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/module/snd_soc_apq8096.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/module/snd_soc_omap_abe_twl6040.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/module/snd_soc_rk3399_gru_sound.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/module/snd_soc_rockchip_max98090.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/module/snd_soc_sdm845.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/module/snd_soc_snow.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/module/snd_soc_tegra_alc5632.conf", kind: "symlink"},
-  {path: p"usr/share/alsa/ucm2/module/snd_soc_tegra_max98090.conf", kind: "symlink"},
+  {
+    path: p"usr",
+    kind: "tree",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/DB410c/DB410c.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/DB820c/DB820c.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/HDA-Intel/HDA-Intel.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/SC7180/sc7180-adau7002-max98357a.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/SC7180/sc7180-rt5682-max98357a-1mic.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/SOF/SOF.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/USB-Audio/USB-Audio.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/VEYRON-I2S/VEYRON-I2S.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/acp-pdm-mach/acp-pdm-mach.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/acp/acp.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/acp3x-es83xx/acp3x-es83xx.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/acp3xalc5682101/acp3xalc5682101.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/acp3xalc5682m98/acp3xalc5682m98.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/acp5x/Valve-Jupiter-1.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/acp62/acp62.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/acp63/acp63.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/acp6x/acp6x.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/acpd7219m98357/acpd7219m98357.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/amd-soundwire/amd-soundwire.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/apq8096/DB820c.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_da7219/Google-Atlas-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_da7219/Google-Coral-rev2.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/Acer-Lars-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/Google-Atlas-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/Google-Cave-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/Google-Coral-rev2.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/HP-Soraka-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_dmic/Hewlett_Packard-Chell-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_max98357a/Acer-Lars-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_max98357a/Google-Cave-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_max98357a/Google-Coral-rev2.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_max98373/Google-Atlas-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_max98927/Google-Eve-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_max98927/HP-Soraka-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_nau8825/Acer-Lars-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_nau8825/Google-Cave-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_nau8825/Hewlett_Packard-Chell-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_rt5514/Google-Eve-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_rt5663/Google-Eve-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_rt5663/HP-Soraka-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/avs_ssm4567/Hewlett_Packard-Chell-1.0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/bdw-rt5677/bdw-rt5677.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/broadwell-rt286/broadwell-rt286.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/broxton-rt298/broxton-rt298.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/bytcht-cx2072x/bytcht-cx2072x.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/bytcht-es8316/bytcht-es8316.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/bytcr-rt5640/bytcr-rt5640.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/bytcr-rt5651/bytcr-rt5651.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/bytcr-wm5102/bytcr-wm5102.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/cht-bsw-rt5672/cht-bsw-rt5672.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/chtmax98090/chtmax98090.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/chtnau8824/chtnau8824.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/chtrt5645/chtrt5645.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/chtrt5650/chtrt5650.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/fsl-asoc-card/apalis-imx6.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/fsl-asoc-card/colibri-imx6.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/gx-sound-card/GXL-P241.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/gx-sound-card/LIBRETECH-CC.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/hda-dsp/hda-dsp.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/hdaudioB0D2/hdaudioB0D2.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/kblrt5660/kblrt5660.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/mt8183_da7219_r/mt8183_da7219_r.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/mt8183_mt6358_t/mt8183_mt6358_t.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/mt8192_mt6359/mt8192_mt6359_rt1015p_rt5682.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/mt8195_demo/mt8195_demo.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/mt8365-evk/mt8365-evk.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/mt8370-evk/mt8370-evk.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/mt8390-evk/mt8390-evk.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/mt8391-evk/mt8391-evk.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/mt8395-evk/mt8395-evk.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/mtk-rt5650/mtk-rt5650.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/qcs615/TALOS-EVK.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/qcs6490/QCS6490-Radxa-Dragon-Q6A.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/qcs8300/MONACO-EVK.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/rk3399-gru-soun/rk3399-gru-soun.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/rk3588-es8316/rk3588-es8316.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/rockchip_es8316/rockchip_es8316.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sa8775p/LEMANS-EVK.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sc8280xp/sc8280xp.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sdm845/DB845c.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sdm845/LENOVO-81JL-LenovoYOGAC630_13Q50-LNVNB161216.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/Librem 5 Devkit.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/Librem 5.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/PinePhone.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/apalis-imx8.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/apalis-nau8822.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/aquila-wm8904.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/colibri-imx7.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/colibri-imx8x.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/rk817_ext.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/rk817_int.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/rockchip,es8316-codec.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/tdx-smarc-wm8904.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/verdin-nau8822.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/simple-card/verdin-wm8904.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/skylake-rt286/skylake-rt286.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sm8250/Qualcomm-RB5-WSA8815-Speakers-DMIC0.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sm8550/SM8550-HDK.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sm8650/SM8650-MTP.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sm8650/SM8650-QRD.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sm8750/SM8750-MTP.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-ehl-rt5660/sof-ehl-rt5660.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-essx8336/sof-essx8336.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-glkda7219ma/sof-glkda7219ma.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-hda-dsp/sof-hda-dsp.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-hda-dsp/sof-skl_hda_card.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-m8195_r1019/sof-m8195_r1019_5682s.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-mt8195_r101/sof-mt8195_r1019_5682.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-mt8196-nau8/sof-mt8196-nau8825.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-mt8365-evk/sof-mt8365-evk.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-mt8390-evk/sof-mt8390-evk.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-mt8395-evk/sof-mt8395-evk.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-skl_hda_card",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/sof-soundwire/sof-soundwire.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra-hda/tegra-hda.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/ASUS Google Nexus 7 ALC5642.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/Acer Iconia Tab A500 WM8903.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus EeePad Slider WM8903.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus EeePad Transformer WM8903.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus Transformer Infinity TF700T RT5631.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus Transformer Pad TF300T WM8903.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus Transformer Pad TF300TG RT5631.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus Transformer Pad TF300TL RT5631.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/Asus Transformer Prime TF201 RT5631.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/Compal PAZ00.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/GoogleNyanBig.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/GoogleNyanBlaze.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/LG Optimus 4X HD MAX98089.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/tegra/LG Optimus Vu MAX98089.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/x1e80100/TUXEDO-TUXEDOElite14Gen1-2.0-TXEM14QX4NM.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/x1e80100/X1E001DE-DEVKIT.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/x1e80100/X1E80100-CRD.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/x1e80100/X1E80100-EVK.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/conf.d/x1e80100/x1e80100.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/module/snd_soc_apq8016_sbc.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/module/snd_soc_apq8096.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/module/snd_soc_omap_abe_twl6040.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/module/snd_soc_rk3399_gru_sound.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/module/snd_soc_rockchip_max98090.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/module/snd_soc_sdm845.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/module/snd_soc_snow.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/module/snd_soc_tegra_alc5632.conf",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/share/alsa/ucm2/module/snd_soc_tegra_max98090.conf",
+    kind: "symlink",
+  },
 ]
 
 export proc build(dest: Path) [fs, error] {

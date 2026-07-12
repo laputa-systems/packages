@@ -1271,9 +1271,13 @@ typedef ${kind_type} YYSTYPE;
     let s2 = mac_set(st, f"b4_percent_define_bison_variables(${varname})", "")
 
     return {
-      text: if mac_defined(s2, f"b4_percent_define(${varname})") { strip_outer_square_quotes(
-        mac_get(s2, f"b4_percent_define(${varname})"),
-      ) } else { fallback },
+      text: if mac_defined(s2, f"b4_percent_define(${varname})") {
+        strip_outer_square_quotes(
+          mac_get(s2, f"b4_percent_define(${varname})"),
+        )
+      } else {
+        fallback
+      },
       st: s2,
     }
   }
@@ -1287,9 +1291,13 @@ typedef ${kind_type} YYSTYPE;
     let varname = strip_outer_square_quotes(if margs.len() >= 1 { margs[0] } else { "" })
 
     return {
-      text: if mac_defined(st, f"b4_percent_define_kind(${varname})") { strip_outer_square_quotes(
-        mac_get(st, f"b4_percent_define_kind(${varname})"),
-      ) } else { "keyword" },
+      text: if mac_defined(st, f"b4_percent_define_kind(${varname})") {
+        strip_outer_square_quotes(
+          mac_get(st, f"b4_percent_define_kind(${varname})"),
+        )
+      } else {
+        "keyword"
+      },
       st,
     }
   }
@@ -1298,7 +1306,11 @@ typedef ${kind_type} YYSTYPE;
     let varname = strip_outer_square_quotes(if margs.len() >= 1 { margs[0] } else { "" })
 
     return {
-      text: if mac_defined(st, f"b4_percent_define_loc(${varname})") { mac_get(st, f"b4_percent_define_loc(${varname})") } else { "" },
+      text: if mac_defined(st, f"b4_percent_define_loc(${varname})") {
+        mac_get(st, f"b4_percent_define_loc(${varname})")
+      } else {
+        ""
+      },
       st,
     }
   }
@@ -1307,10 +1319,14 @@ typedef ${kind_type} YYSTYPE;
     let varname = strip_outer_square_quotes(if margs.len() >= 1 { margs[0] } else { "" })
 
     return {
-      text: if mac_defined(st, f"b4_percent_define_syncline(${varname})") { mac_get(
-        st,
-        f"b4_percent_define_syncline(${varname})",
-      ) } else { "" },
+      text: if mac_defined(st, f"b4_percent_define_syncline(${varname})") {
+        mac_get(
+          st,
+          f"b4_percent_define_syncline(${varname})",
+        )
+      } else {
+        ""
+      },
       st,
     }
   }

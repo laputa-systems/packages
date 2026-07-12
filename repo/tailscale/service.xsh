@@ -26,7 +26,9 @@ pure tailscale_service(state: Path, socket: Path, userspace_networking: Bool) ->
     command: process.command_argv(
       /usr/bin/tailscaled,
       tailscaled_argv(state, socket, userspace_networking),
-      env: {PATH: "/usr/local/bin:/usr/bin:/bin"},
+      env: {
+        PATH: "/usr/local/bin:/usr/bin:/bin",
+      },
     ),
     restart: restart_policy(),
   }
@@ -41,8 +43,14 @@ export let service = {
   name: service_record.name,
   kind: "longrun",
   command: service_record.command,
-  targets: ["boot"],
-  dependencies: {need: ["net"]},
+  targets: [
+    "boot",
+  ],
+  dependencies: {
+    need: [
+      "net",
+    ],
+  },
   restart: service_record.restart,
   logging: "append",
 }

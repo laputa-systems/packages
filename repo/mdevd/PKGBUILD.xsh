@@ -17,22 +17,57 @@ export let upstream_sources = [
   {
     source: p"https://skarnet.org/software/mdevd/mdevd-VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "ce1ae0149b6a57a34f608218fd6181aa6aa68135cac2f4d931b5b417b072e244"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "ce1ae0149b6a57a34f608218fd6181aa6aa68135cac2f4d931b5b417b072e244",
+      },
+    ],
   },
   {
     source: p"https://skarnet.org/software/skalibs/skalibs-2.15.0.0.tar.gz => skalibs",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "7fde96e8afb4191593a15328883e9c7726c96891cf071222146821e8c87f8007"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "7fde96e8afb4191593a15328883e9c7726c96891cf071222146821e8c87f8007",
+      },
+    ],
   },
-  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
+  {
+    source: p"service.xsh",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
 ]
 
 export let filetree = [
-  {path: p"usr/bin/mdevd", kind: "binary"},
-  {path: p"usr/bin/mdevd-coldplug", kind: "binary"},
-  {path: p"usr/lib/xinit/services/mdevd.xsh", kind: "file"},
+  {
+    path: p"usr/bin/mdevd",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/mdevd-coldplug",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/xinit/services/mdevd.xsh",
+    kind: "file",
+  },
 ]
 
 pure upper_ascii(text: Str) -> Str {
@@ -514,38 +549,33 @@ struct sockaddr_nl {
     includes,
     root: p"src/mdevd",
     out_dir: p"obj/objs",
-    groups: [
-      {
-        name: "helpers",
-        cflags: [],
-        defs: [],
-        includes: [],
-        root: p"",
-        sources: [p"mdevd_netlink_init.c", p"mdevd_uevent_read.c", p"mdevd_uevent_getvar.c"],
-        out_dir: p"",
-        deps: [],
-      },
-    ],
-    targets: [
-      {
-        name: "mdevd",
-        groups: ["helpers"],
-        sources: [p"mdevd.c"],
-        libs: [skarnet],
-        ldflags: ["-Wl,--gc-sections"],
-        out: p"obj/mdevd",
-        deps: [],
-      },
-      {
-        name: "mdevd-coldplug",
-        groups: ["helpers"],
-        sources: [p"mdevd-coldplug.c"],
-        libs: [skarnet],
-        ldflags: ["-Wl,--gc-sections"],
-        out: p"obj/mdevd-coldplug",
-        deps: [],
-      },
-    ],
+    groups: [{
+    name: "helpers",
+    cflags: [],
+    defs: [],
+    includes: [],
+    root: p"",
+    sources: [p"mdevd_netlink_init.c", p"mdevd_uevent_read.c", p"mdevd_uevent_getvar.c"],
+    out_dir: p"",
+    deps: [],
+  }],
+    targets: [{
+    name: "mdevd",
+    groups: ["helpers"],
+    sources: [p"mdevd.c"],
+    libs: [skarnet],
+    ldflags: ["-Wl,--gc-sections"],
+    out: p"obj/mdevd",
+    deps: [],
+  }, {
+    name: "mdevd-coldplug",
+    groups: ["helpers"],
+    sources: [p"mdevd-coldplug.c"],
+    libs: [skarnet],
+    ldflags: ["-Wl,--gc-sections"],
+    out: p"obj/mdevd-coldplug",
+    deps: [],
+  }],
   })?
 
   make.run_tasks(multi.tasks, make.jobs()?)?

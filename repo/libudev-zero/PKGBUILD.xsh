@@ -15,16 +15,35 @@ export let upstream_sources = [
   {
     source: p"https://github.com/illiliti/libudev-zero/archive/VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "0bd89b657d62d019598e6c7ed726ff8fed80e8ba092a83b484d66afb80b77da5"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "0bd89b657d62d019598e6c7ed726ff8fed80e8ba092a83b484d66afb80b77da5",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/include/libudev.h", kind: "file"},
-  {path: p"usr/lib/libudev.so", kind: "symlink"},
-  {path: p"usr/lib/libudev.so.1", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/libudev.pc", kind: "file"},
+  {
+    path: p"usr/include/libudev.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libudev.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libudev.so.1",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/pkgconfig/libudev.pc",
+    kind: "file",
+  },
 ]
 
 export proc build(dest: Path) [fs, process, env, error] {

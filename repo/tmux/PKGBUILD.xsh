@@ -16,20 +16,41 @@ export let upstream_sources = [
   {
     source: p"https://github.com/laputa-systems/tmux/archive/f83a6070f75a66d9ac6d4e897544e85302b8ec4b.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "fc47986264c2102cc0cbecd97d5d8a1e296c5ac8cb245da8af58bdd6abd313e8"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "fc47986264c2102cc0cbecd97d5d8a1e296c5ac8cb245da8af58bdd6abd313e8",
+      },
+    ],
   },
   {
     source: p"files/cmd-parse.c",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "eb2d780fa143be299bc37db68e745347214d2f8dffe64bab4befc3048573c2dc"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "eb2d780fa143be299bc37db68e745347214d2f8dffe64bab4befc3048573c2dc",
+      },
+    ],
   },
   {
     source: p"files/cmd-parse.h",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "838324384f77cd41f0d9de9ba36b980e437efdf54e136b8a1854bee58cf6882f"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "838324384f77cd41f0d9de9ba36b980e437efdf54e136b8a1854bee58cf6882f",
+      },
+    ],
   },
 ]
 

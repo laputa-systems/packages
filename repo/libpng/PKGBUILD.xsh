@@ -15,30 +15,91 @@ export let upstream_sources = [
   {
     source: p"https://download.sourceforge.net/libpng/libpng-VERSION.tar.xz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "4df396518620a7aa3651443e87d1b2862e4e88cad135a8b93423e01706232307"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "4df396518620a7aa3651443e87d1b2862e4e88cad135a8b93423e01706232307",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/include/libpng16/png.h", kind: "file"},
-  {path: p"usr/include/libpng16/pngconf.h", kind: "file"},
-  {path: p"usr/include/libpng16/pnglibconf.h", kind: "file"},
-  {path: p"usr/include/png.h", kind: "file"},
-  {path: p"usr/include/pngconf.h", kind: "file"},
-  {path: p"usr/include/pnglibconf.h", kind: "file"},
-  {path: p"usr/lib/cmake/PNG/PNGConfig.cmake", kind: "file"},
-  {path: p"usr/lib/cmake/PNG/PNGConfigVersion.cmake", kind: "file"},
-  {path: p"usr/lib/cmake/PNG/PNGTargets-release.cmake", kind: "file"},
-  {path: p"usr/lib/cmake/PNG/PNGTargets.cmake", kind: "file"},
-  {path: p"usr/lib/libpng.so", kind: "symlink"},
-  {path: p"usr/lib/libpng/libpng16-release.cmake", kind: "file"},
-  {path: p"usr/lib/libpng/libpng16.cmake", kind: "file"},
-  {path: p"usr/lib/libpng16.so", kind: "symlink"},
-  {path: p"usr/lib/libpng16.so.16", kind: "symlink"},
-  {path: p"usr/lib/libpng16.so.16.50.0", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/libpng.pc", kind: "symlink"},
-  {path: p"usr/lib/pkgconfig/libpng16.pc", kind: "file"},
+  {
+    path: p"usr/include/libpng16/png.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/libpng16/pngconf.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/libpng16/pnglibconf.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/png.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/pngconf.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/pnglibconf.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/cmake/PNG/PNGConfig.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/cmake/PNG/PNGConfigVersion.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/cmake/PNG/PNGTargets-release.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/cmake/PNG/PNGTargets.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libpng.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libpng/libpng16-release.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libpng/libpng16.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libpng16.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libpng16.so.16",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libpng16.so.16.50.0",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/pkgconfig/libpng.pc",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/pkgconfig/libpng16.pc",
+    kind: "file",
+  },
 ]
 
 export proc build(dest: Path) [fs, process, env, error] {

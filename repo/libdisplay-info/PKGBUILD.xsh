@@ -14,26 +14,69 @@ export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/VERSION/downloads/libdisplay-info-VERSION.tar.xz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "6ae77cd937f9cf7d1321d35c116062c4911e8447010a6a713ac4286f7a9d5987"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "6ae77cd937f9cf7d1321d35c116062c4911e8447010a6a713ac4286f7a9d5987",
+      },
+    ],
   },
 ]
 
 type PnpRecord = {id: Str, name: Str}
 
 export let filetree = [
-  {path: p"usr/include/libdisplay-info/cta.h", kind: "file"},
-  {path: p"usr/include/libdisplay-info/cvt.h", kind: "file"},
-  {path: p"usr/include/libdisplay-info/displayid.h", kind: "file"},
-  {path: p"usr/include/libdisplay-info/displayid2.h", kind: "file"},
-  {path: p"usr/include/libdisplay-info/dmt.h", kind: "file"},
-  {path: p"usr/include/libdisplay-info/edid.h", kind: "file"},
-  {path: p"usr/include/libdisplay-info/gtf.h", kind: "file"},
-  {path: p"usr/include/libdisplay-info/info.h", kind: "file"},
-  {path: p"usr/lib/libdisplay-info.so", kind: "symlink"},
-  {path: p"usr/lib/libdisplay-info.so.0.3.0", kind: "binary"},
-  {path: p"usr/lib/libdisplay-info.so.3", kind: "symlink"},
-  {path: p"usr/lib/pkgconfig/libdisplay-info.pc", kind: "file"},
+  {
+    path: p"usr/include/libdisplay-info/cta.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/libdisplay-info/cvt.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/libdisplay-info/displayid.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/libdisplay-info/displayid2.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/libdisplay-info/dmt.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/libdisplay-info/edid.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/libdisplay-info/gtf.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/libdisplay-info/info.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libdisplay-info.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libdisplay-info.so.0.3.0",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/libdisplay-info.so.3",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/pkgconfig/libdisplay-info.pc",
+    kind: "file",
+  },
 ]
 
 pure c_string(text: Str) -> Str {

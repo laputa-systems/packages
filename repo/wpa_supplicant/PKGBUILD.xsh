@@ -17,20 +17,78 @@ export let upstream_sources = [
   {
     source: p"https://w1.fi/releases/wpa_supplicant-2.11.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "912ea06f74e30a8e36fbb68064d6cdff218d8d591db0fc5d75dee6c81ac7fc0a"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "912ea06f74e30a8e36fbb68064d6cdff218d8d591db0fc5d75dee6c81ac7fc0a",
+      },
+    ],
   },
-  {source: p"config", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
-  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
-  {source: p"wpa_supplicant.conf", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
+  {
+    source: p"config",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
+  {
+    source: p"service.xsh",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
+  {
+    source: p"wpa_supplicant.conf",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
 ]
 
 export let filetree = [
-  {path: p"etc/wpa_supplicant/wpa_supplicant.conf", kind: "file"},
-  {path: p"usr/bin/wpa_cli", kind: "binary"},
-  {path: p"usr/bin/wpa_passphrase", kind: "binary"},
-  {path: p"usr/bin/wpa_supplicant", kind: "binary"},
-  {path: p"usr/lib/xinit/services/wpa_supplicant.xsh", kind: "file"},
+  {
+    path: p"etc/wpa_supplicant/wpa_supplicant.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/bin/wpa_cli",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/wpa_passphrase",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/wpa_supplicant",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/xinit/services/wpa_supplicant.xsh",
+    kind: "file",
+  },
 ]
 
 export proc build(dest: Path) [fs, process, env, error] {
@@ -219,35 +277,31 @@ export proc build(dest: Path) [fs, process, env, error] {
     root: src,
     out_dir: fp"${objs}/compile",
     groups: [],
-    targets: [
-      {
-        name: "wpa_supplicant",
-        groups: [],
-        sources: [p"wpa_supplicant/main.c"],
-        libs: [shared.output],
-        ldflags,
-        out: fp"${objs}/wpa_supplicant",
-        deps: shared.deps,
-      },
-      {
-        name: "wpa_cli",
-        groups: [],
-        sources: [p"wpa_supplicant/wpa_cli.c"],
-        libs: [shared.output],
-        ldflags,
-        out: fp"${objs}/wpa_cli",
-        deps: shared.deps,
-      },
-      {
-        name: "wpa_passphrase",
-        groups: [],
-        sources: [p"wpa_supplicant/wpa_passphrase.c"],
-        libs: [shared.output],
-        ldflags,
-        out: fp"${objs}/wpa_passphrase",
-        deps: shared.deps,
-      },
-    ],
+    targets: [{
+    name: "wpa_supplicant",
+    groups: [],
+    sources: [p"wpa_supplicant/main.c"],
+    libs: [shared.output],
+    ldflags,
+    out: fp"${objs}/wpa_supplicant",
+    deps: shared.deps,
+  }, {
+    name: "wpa_cli",
+    groups: [],
+    sources: [p"wpa_supplicant/wpa_cli.c"],
+    libs: [shared.output],
+    ldflags,
+    out: fp"${objs}/wpa_cli",
+    deps: shared.deps,
+  }, {
+    name: "wpa_passphrase",
+    groups: [],
+    sources: [p"wpa_supplicant/wpa_passphrase.c"],
+    libs: [shared.output],
+    ldflags,
+    out: fp"${objs}/wpa_passphrase",
+    deps: shared.deps,
+  }],
   })?
 
   make.run_tasks(shared.tasks.extend(multi.tasks), make.jobs()?)?

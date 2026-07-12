@@ -162,14 +162,26 @@ proc build_x86_vdso(cc: Path) [fs, process, env, error] {
   )?
 
   let objects = [
-    {source: p"arch/x86/entry/vdso/vdso64/note.S", object: p"arch/x86/entry/vdso/vdso64/note.o", asm: true},
+    {
+      source: p"arch/x86/entry/vdso/vdso64/note.S",
+      object: p"arch/x86/entry/vdso/vdso64/note.o",
+      asm: true,
+    },
     {
       source: p"arch/x86/entry/vdso/vdso64/vclock_gettime.c",
       object: p"arch/x86/entry/vdso/vdso64/vclock_gettime.o",
       asm: false,
     },
-    {source: p"arch/x86/entry/vdso/vdso64/vgetcpu.c", object: p"arch/x86/entry/vdso/vdso64/vgetcpu.o", asm: false},
-    {source: p"arch/x86/entry/vdso/vdso64/vgetrandom.c", object: p"arch/x86/entry/vdso/vdso64/vgetrandom.o", asm: false},
+    {
+      source: p"arch/x86/entry/vdso/vdso64/vgetcpu.c",
+      object: p"arch/x86/entry/vdso/vdso64/vgetcpu.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/entry/vdso/vdso64/vgetrandom.c",
+      object: p"arch/x86/entry/vdso/vdso64/vgetrandom.o",
+      asm: false,
+    },
     {
       source: p"arch/x86/entry/vdso/vdso64/vgetrandom-chacha.S",
       object: p"arch/x86/entry/vdso/vdso64/vgetrandom-chacha.o",
@@ -517,10 +529,22 @@ proc build_x86_realmode_payload(cc: Path) [fs, process, env, error] {
   let realmode_asm_cflags = realmode_cflags.extend(["-D__ASSEMBLY__"])
 
   for asm in [
-    {source: "header.S", object: "header.o"},
-    {source: "trampoline_64.S", object: "trampoline_64.o"},
-    {source: "stack.S", object: "stack.o"},
-    {source: "reboot.S", object: "reboot.o"},
+    {
+      source: "header.S",
+      object: "header.o",
+    },
+    {
+      source: "trampoline_64.S",
+      object: "trampoline_64.o",
+    },
+    {
+      source: "stack.S",
+      object: "stack.o",
+    },
+    {
+      source: "reboot.S",
+      object: "reboot.o",
+    },
   ] {
     PKGBUILD_shared.run_native_command(
       realmode_asm_cflags.extend(
@@ -531,9 +555,18 @@ proc build_x86_realmode_payload(cc: Path) [fs, process, env, error] {
 
   if acpi_sleep {
     for asm in [
-      {source: "wakeup_asm.S", object: "wakeup_asm.o"},
-      {source: "copy.S", object: "copy.o"},
-      {source: "bioscall.S", object: "bioscall.o"},
+      {
+        source: "wakeup_asm.S",
+        object: "wakeup_asm.o",
+      },
+      {
+        source: "copy.S",
+        object: "copy.o",
+      },
+      {
+        source: "bioscall.S",
+        object: "bioscall.o",
+      },
     ] {
       PKGBUILD_shared.run_native_command(
         realmode_asm_cflags.extend(

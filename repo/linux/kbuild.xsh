@@ -3118,12 +3118,16 @@ proc relocatable_object_task(cc: Path, inputs: List[Path], out: Path, deps: List
 
   return {
     name: out.display(),
-    outputs: [out],
+    outputs: [
+      out,
+    ],
     inputs: inputs,
     deps: deps,
     argv: argv,
     cwd: p".",
-    env: {PATH: tool_path},
+    env: {
+      PATH: tool_path,
+    },
     depfile: p"",
     stamp: fp"${out}.cmd",
   }
@@ -3142,12 +3146,18 @@ proc pi_objcopy_task(cc: Path, input: Path, out: Path, deps: List[Str] = []) [en
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [input],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      input,
+    ],
     deps: deps,
     argv: argv,
     cwd: p".",
-    env: {PATH: tool_path},
+    env: {
+      PATH: tool_path,
+    },
     depfile: p"",
     stamp: fp"${out}.cmd",
   }
@@ -3203,8 +3213,12 @@ proc pi_relacheck_build_task(cc: Path) [env] -> make.MakeTask {
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [src],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      src,
+    ],
     deps: [],
     argv: [
       host_cc.display(),
@@ -3237,10 +3251,20 @@ proc pi_relacheck_task(relacheck: Path, input: Path, original: Path, deps: List[
 
   return {
     name: f"${input.display()}:relacheck",
-    outputs: [stamp],
-    inputs: [relacheck, input, original],
+    outputs: [
+      stamp,
+    ],
+    inputs: [
+      relacheck,
+      input,
+      original,
+    ],
     deps: deps,
-    argv: [relacheck.display(), input.display(), original.display()],
+    argv: [
+      relacheck.display(),
+      input.display(),
+      original.display(),
+    ],
     cwd: p".",
     env: {},
     depfile: p"",
@@ -3707,8 +3731,12 @@ export proc image_argv_task(
 
   return {
     name: image.display(),
-    outputs: [image],
-    inputs: [vmlinux],
+    outputs: [
+      image,
+    ],
+    inputs: [
+      vmlinux,
+    ],
     deps: deps,
     argv: objcopy_argv.extend(
       [
@@ -3726,7 +3754,9 @@ export proc image_argv_task(
       ],
     ),
     cwd: p".",
-    env: {PATH: tool_path},
+    env: {
+      PATH: tool_path,
+    },
     depfile: p"",
     stamp: fp"${image}.cmd",
   }
@@ -3744,10 +3774,21 @@ proc x86_compressed_vmlinux_bin_task(
 ) [] -> make.MakeTask {
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [vmlinux],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      vmlinux,
+    ],
     deps: deps,
-    argv: [objcopy.display(), "-R", ".comment", "-S", vmlinux.display(), out.display()],
+    argv: [
+      objcopy.display(),
+      "-R",
+      ".comment",
+      "-S",
+      vmlinux.display(),
+      out.display(),
+    ],
     cwd: p".",
     env: {},
     depfile: p"",
@@ -3770,12 +3811,16 @@ export proc vmlinux_archive_argv_task(
 
   return {
     name: out.display(),
-    outputs: [out],
+    outputs: [
+      out,
+    ],
     inputs: inputs,
     deps: deps,
     argv: argv,
     cwd: p".",
-    env: {PATH: tool_path},
+    env: {
+      PATH: tool_path,
+    },
     depfile: p"",
     stamp: fp"${out}.cmd",
   }
@@ -3820,12 +3865,18 @@ export proc vmlinux_o_argv_task(
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [kernel_archive].extend(libs),
+    outputs: [
+      out,
+    ],
+    inputs: [
+      kernel_archive,
+    ].extend(libs),
     deps: deps,
     argv: argv,
     cwd: p".",
-    env: {PATH: tool_path},
+    env: {
+      PATH: tool_path,
+    },
     depfile: p"",
     stamp: fp"${out}.cmd",
   }
@@ -3893,12 +3944,21 @@ export proc vmlinux_unstripped_argv_task(
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [kernel_archive, linker_script, export_obj, version_obj].extend(libs),
+    outputs: [
+      out,
+    ],
+    inputs: [
+      kernel_archive,
+      linker_script,
+      export_obj,
+      version_obj,
+    ].extend(libs),
     deps: deps,
     argv: argv,
     cwd: p".",
-    env: {PATH: tool_path},
+    env: {
+      PATH: tool_path,
+    },
     depfile: p"",
     stamp: fp"${out}.cmd",
   }
@@ -3934,8 +3994,12 @@ export proc vmlinux_strip_argv_task(
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [unstripped],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      unstripped,
+    ],
     deps: deps,
     argv: objcopy_argv.extend(
       [
@@ -3947,7 +4011,9 @@ export proc vmlinux_strip_argv_task(
       ],
     ),
     cwd: p".",
-    env: {PATH: tool_path},
+    env: {
+      PATH: tool_path,
+    },
     depfile: p"",
     stamp: fp"${out}.cmd",
   }
@@ -3970,8 +4036,12 @@ proc x86_vmlinux_strip_argv_task(
 ) [] -> make.MakeTask {
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [unstripped],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      unstripped,
+    ],
     deps: deps,
     argv: objcopy_argv.extend(
       [
@@ -4036,8 +4106,12 @@ proc vmlinux_lds_task(cc: Path, out: Path) [] -> make.MakeTask {
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [src],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      src,
+    ],
     deps: [],
     argv: argv,
     cwd: p".",
@@ -4175,8 +4249,12 @@ proc vmlinux_x86_lds_task(cc: Path, out: Path) [] -> make.MakeTask {
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [src],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      src,
+    ],
     deps: [],
     argv: argv,
     cwd: p".",
@@ -4521,30 +4599,86 @@ proc build_x86_compressed_kernel(
   var objects: List[Path] = []
 
   for item in [
-    {source: p"arch/x86/boot/compressed/kernel_info.S", object: p"arch/x86/boot/compressed/kernel_info.o", asm: true},
-    {source: p"arch/x86/boot/compressed/head_64.S", object: p"arch/x86/boot/compressed/head_64.o", asm: true},
-    {source: p"arch/x86/boot/compressed/misc.c", object: p"arch/x86/boot/compressed/misc.o", asm: false},
-    {source: p"arch/x86/boot/compressed/string.c", object: p"arch/x86/boot/compressed/string.o", asm: false},
-    {source: p"arch/x86/boot/compressed/cmdline.c", object: p"arch/x86/boot/compressed/cmdline.o", asm: false},
-    {source: p"arch/x86/boot/compressed/error.c", object: p"arch/x86/boot/compressed/error.o", asm: false},
-    {source: p"arch/x86/boot/compressed/piggy.S", object: p"arch/x86/boot/compressed/piggy.o", asm: true},
-    {source: p"arch/x86/boot/compressed/cpuflags.c", object: p"arch/x86/boot/compressed/cpuflags.o", asm: false},
+    {
+      source: p"arch/x86/boot/compressed/kernel_info.S",
+      object: p"arch/x86/boot/compressed/kernel_info.o",
+      asm: true,
+    },
+    {
+      source: p"arch/x86/boot/compressed/head_64.S",
+      object: p"arch/x86/boot/compressed/head_64.o",
+      asm: true,
+    },
+    {
+      source: p"arch/x86/boot/compressed/misc.c",
+      object: p"arch/x86/boot/compressed/misc.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/compressed/string.c",
+      object: p"arch/x86/boot/compressed/string.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/compressed/cmdline.c",
+      object: p"arch/x86/boot/compressed/cmdline.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/compressed/error.c",
+      object: p"arch/x86/boot/compressed/error.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/compressed/piggy.S",
+      object: p"arch/x86/boot/compressed/piggy.o",
+      asm: true,
+    },
+    {
+      source: p"arch/x86/boot/compressed/cpuflags.c",
+      object: p"arch/x86/boot/compressed/cpuflags.o",
+      asm: false,
+    },
     {
       source: p"arch/x86/boot/compressed/early_serial_console.c",
       object: p"arch/x86/boot/compressed/early_serial_console.o",
       asm: false,
     },
-    {source: p"arch/x86/boot/compressed/kaslr.c", object: p"arch/x86/boot/compressed/kaslr.o", asm: false},
-    {source: p"arch/x86/boot/compressed/ident_map_64.c", object: p"arch/x86/boot/compressed/ident_map_64.o", asm: false},
-    {source: p"arch/x86/boot/compressed/idt_64.c", object: p"arch/x86/boot/compressed/idt_64.o", asm: false},
+    {
+      source: p"arch/x86/boot/compressed/kaslr.c",
+      object: p"arch/x86/boot/compressed/kaslr.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/compressed/ident_map_64.c",
+      object: p"arch/x86/boot/compressed/ident_map_64.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/compressed/idt_64.c",
+      object: p"arch/x86/boot/compressed/idt_64.o",
+      asm: false,
+    },
     {
       source: p"arch/x86/boot/compressed/idt_handlers_64.S",
       object: p"arch/x86/boot/compressed/idt_handlers_64.o",
       asm: true,
     },
-    {source: p"arch/x86/boot/compressed/pgtable_64.c", object: p"arch/x86/boot/compressed/pgtable_64.o", asm: false},
-    {source: p"arch/x86/boot/compressed/acpi.c", object: p"arch/x86/boot/compressed/acpi.o", asm: false},
-    {source: p"arch/x86/boot/compressed/efi.c", object: p"arch/x86/boot/compressed/efi.o", asm: false},
+    {
+      source: p"arch/x86/boot/compressed/pgtable_64.c",
+      object: p"arch/x86/boot/compressed/pgtable_64.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/compressed/acpi.c",
+      object: p"arch/x86/boot/compressed/acpi.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/compressed/efi.c",
+      object: p"arch/x86/boot/compressed/efi.o",
+      asm: false,
+    },
   ] {
     let item_cflags = if item.asm { base_cflags.push("-D__ASSEMBLY__") } else { base_cflags }
     let item_defs = if item.asm { ["-D__DISABLE_EXPORTS"] } else { [] }
@@ -4601,30 +4735,126 @@ proc build_x86_setup_image(cc: Path, jobs_count: Int) [fs, process, env, error] 
   var objects: List[Path] = []
 
   for item in [
-    {source: p"arch/x86/boot/a20.c", object: p"arch/x86/boot/a20.o", asm: false},
-    {source: p"arch/x86/boot/bioscall.S", object: p"arch/x86/boot/bioscall.o", asm: true},
-    {source: p"arch/x86/boot/cmdline.c", object: p"arch/x86/boot/cmdline.o", asm: false},
-    {source: p"arch/x86/boot/copy.S", object: p"arch/x86/boot/copy.o", asm: true},
-    {source: p"arch/x86/boot/cpu.c", object: p"arch/x86/boot/cpu.o", asm: false},
-    {source: p"arch/x86/boot/cpuflags.c", object: p"arch/x86/boot/cpuflags.o", asm: false},
-    {source: p"arch/x86/boot/cpucheck.c", object: p"arch/x86/boot/cpucheck.o", asm: false},
-    {source: p"arch/x86/boot/early_serial_console.c", object: p"arch/x86/boot/early_serial_console.o", asm: false},
-    {source: p"arch/x86/boot/edd.c", object: p"arch/x86/boot/edd.o", asm: false},
-    {source: p"arch/x86/boot/header.S", object: p"arch/x86/boot/header.o", asm: true},
-    {source: p"arch/x86/boot/main.c", object: p"arch/x86/boot/main.o", asm: false},
-    {source: p"arch/x86/boot/memory.c", object: p"arch/x86/boot/memory.o", asm: false},
-    {source: p"arch/x86/boot/pm.c", object: p"arch/x86/boot/pm.o", asm: false},
-    {source: p"arch/x86/boot/pmjump.S", object: p"arch/x86/boot/pmjump.o", asm: true},
-    {source: p"arch/x86/boot/printf.c", object: p"arch/x86/boot/printf.o", asm: false},
-    {source: p"arch/x86/boot/regs.c", object: p"arch/x86/boot/regs.o", asm: false},
-    {source: p"arch/x86/boot/string.c", object: p"arch/x86/boot/string.o", asm: false},
-    {source: p"arch/x86/boot/tty.c", object: p"arch/x86/boot/tty.o", asm: false},
-    {source: p"arch/x86/boot/video.c", object: p"arch/x86/boot/video.o", asm: false},
-    {source: p"arch/x86/boot/video-mode.c", object: p"arch/x86/boot/video-mode.o", asm: false},
-    {source: p"arch/x86/boot/version.c", object: p"arch/x86/boot/version.o", asm: false},
-    {source: p"arch/x86/boot/video-vga.c", object: p"arch/x86/boot/video-vga.o", asm: false},
-    {source: p"arch/x86/boot/video-vesa.c", object: p"arch/x86/boot/video-vesa.o", asm: false},
-    {source: p"arch/x86/boot/video-bios.c", object: p"arch/x86/boot/video-bios.o", asm: false},
+    {
+      source: p"arch/x86/boot/a20.c",
+      object: p"arch/x86/boot/a20.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/bioscall.S",
+      object: p"arch/x86/boot/bioscall.o",
+      asm: true,
+    },
+    {
+      source: p"arch/x86/boot/cmdline.c",
+      object: p"arch/x86/boot/cmdline.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/copy.S",
+      object: p"arch/x86/boot/copy.o",
+      asm: true,
+    },
+    {
+      source: p"arch/x86/boot/cpu.c",
+      object: p"arch/x86/boot/cpu.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/cpuflags.c",
+      object: p"arch/x86/boot/cpuflags.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/cpucheck.c",
+      object: p"arch/x86/boot/cpucheck.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/early_serial_console.c",
+      object: p"arch/x86/boot/early_serial_console.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/edd.c",
+      object: p"arch/x86/boot/edd.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/header.S",
+      object: p"arch/x86/boot/header.o",
+      asm: true,
+    },
+    {
+      source: p"arch/x86/boot/main.c",
+      object: p"arch/x86/boot/main.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/memory.c",
+      object: p"arch/x86/boot/memory.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/pm.c",
+      object: p"arch/x86/boot/pm.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/pmjump.S",
+      object: p"arch/x86/boot/pmjump.o",
+      asm: true,
+    },
+    {
+      source: p"arch/x86/boot/printf.c",
+      object: p"arch/x86/boot/printf.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/regs.c",
+      object: p"arch/x86/boot/regs.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/string.c",
+      object: p"arch/x86/boot/string.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/tty.c",
+      object: p"arch/x86/boot/tty.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/video.c",
+      object: p"arch/x86/boot/video.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/video-mode.c",
+      object: p"arch/x86/boot/video-mode.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/version.c",
+      object: p"arch/x86/boot/version.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/video-vga.c",
+      object: p"arch/x86/boot/video-vga.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/video-vesa.c",
+      object: p"arch/x86/boot/video-vesa.o",
+      asm: false,
+    },
+    {
+      source: p"arch/x86/boot/video-bios.c",
+      object: p"arch/x86/boot/video-bios.o",
+      asm: false,
+    },
   ] {
     let item_cflags = if item.asm { base_cflags.push("-D__ASSEMBLY__") } else { base_cflags }
     let item_defs = if item.asm { ["-D__DISABLE_EXPORTS", "-D_SETUP"] } else { [] }
@@ -4963,8 +5193,12 @@ proc efi_stubcopy_task(input: Path, out: Path, deps: List[Str]) [env] -> make.Ma
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [input],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      input,
+    ],
     deps: deps,
     argv: [
       "llvm-objcopy",
@@ -4975,7 +5209,9 @@ proc efi_stubcopy_task(input: Path, out: Path, deps: List[Str]) [env] -> make.Ma
       out.display(),
     ],
     cwd: p".",
-    env: {PATH: tool_path},
+    env: {
+      PATH: tool_path,
+    },
     depfile: p"",
     stamp: fp"${out}.cmd",
   }
@@ -4986,12 +5222,23 @@ proc efi_stubcopy_task_x86(input: Path, out: Path, deps: List[Str]) [env] -> mak
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [input],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      input,
+    ],
     deps: deps,
-    argv: ["llvm-objcopy", "--remove-section=.note.gnu.property", input.display(), out.display()],
+    argv: [
+      "llvm-objcopy",
+      "--remove-section=.note.gnu.property",
+      input.display(),
+      out.display(),
+    ],
     cwd: p".",
-    env: {PATH: tool_path},
+    env: {
+      PATH: tool_path,
+    },
     depfile: p"",
     stamp: fp"${out}.cmd",
   }
@@ -5012,12 +5259,16 @@ proc efi_libstub_archive_task(
 
   return {
     name: out.display(),
-    outputs: [out],
+    outputs: [
+      out,
+    ],
     inputs: inputs,
     deps: deps,
     argv: argv,
     cwd: p".",
-    env: {PATH: tool_path},
+    env: {
+      PATH: tool_path,
+    },
     depfile: p"",
     stamp: fp"${out}.cmd",
   }
@@ -5028,14 +5279,26 @@ proc vmlinux_archive_reorder_task(ar_argv: List[Str], archive_path: Path, deps: 
 
   return {
     name: f"${archive_path.display()}:head-order",
-    outputs: [fp".xsh-kbuild/${archive_path.name}.head-order"],
-    inputs: [archive_path, p".xsh-kbuild/obj/arch/arm64/kernel/head.o"],
+    outputs: [
+      fp".xsh-kbuild/${archive_path.name}.head-order",
+    ],
+    inputs: [
+      archive_path,
+      p".xsh-kbuild/obj/arch/arm64/kernel/head.o",
+    ],
     deps: deps,
     argv: ar_argv.extend(
-      ["mPiT", ".xsh-kbuild/obj/init/main.o", archive_path.display(), ".xsh-kbuild/obj/arch/arm64/kernel/head.o"],
+      [
+        "mPiT",
+        ".xsh-kbuild/obj/init/main.o",
+        archive_path.display(),
+        ".xsh-kbuild/obj/arch/arm64/kernel/head.o",
+      ],
     ),
     cwd: p".",
-    env: {PATH: tool_path},
+    env: {
+      PATH: tool_path,
+    },
     depfile: p"",
     stamp: fp".xsh-kbuild/${archive_path.name}.head-order.cmd",
   }

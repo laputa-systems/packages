@@ -7,10 +7,20 @@ export let service = {
   kind: "longrun",
   command: process.command_argv(
     /usr/bin/seatd,
-    ["seatd", "-g", "seat", "-l", "info"],
-    env: {PATH: "/usr/local/bin:/usr/bin:/bin"},
+    [
+      "seatd",
+      "-g",
+      "seat",
+      "-l",
+      "info",
+    ],
+    env: {
+      PATH: "/usr/local/bin:/usr/bin:/bin",
+    },
   ),
-  targets: ["boot"],
+  targets: [
+    "boot",
+  ],
   restart: restart_policy(),
   logging: "append",
 }

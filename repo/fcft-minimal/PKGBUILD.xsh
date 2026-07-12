@@ -26,30 +26,69 @@ export let upstream_sources = [
   {
     source: p"https://codeberg.org/dnkl/fcft/archive/VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "b0c0f4a599f43723736c8565b8b84337c4195077f07f1bb8bb3252bb13a2306a"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "b0c0f4a599f43723736c8565b8b84337c4195077f07f1bb8bb3252bb13a2306a",
+      },
+    ],
   },
   {
     source: p"files/generated/emoji-data.h => generated",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "a06764871a5ea6f2a85f62656552011243069d3d6e1b4e4148aadbf5200aab86"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "a06764871a5ea6f2a85f62656552011243069d3d6e1b4e4148aadbf5200aab86",
+      },
+    ],
   },
   {
     source: p"files/generated/unicode-compose-table.h => generated",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "b5e24cfe476b8e5b30c37614a7f5e4479e011659b3615d92e42713bb8005679d"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "b5e24cfe476b8e5b30c37614a7f5e4479e011659b3615d92e42713bb8005679d",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/include/fcft/fcft.h", kind: "file"},
-  {path: p"usr/include/fcft/stride.h", kind: "file"},
-  {path: p"usr/lib/libfcft.so", kind: "symlink"},
-  {path: p"usr/lib/libfcft.so.4", kind: "symlink"},
-  {path: p"usr/lib/libfcft.so.4.3.3", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/fcft.pc", kind: "file"},
+  {
+    path: p"usr/include/fcft/fcft.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/fcft/stride.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libfcft.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libfcft.so.4",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libfcft.so.4.3.3",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/pkgconfig/fcft.pc",
+    kind: "file",
+  },
 ]
 
 proc write_version_header() [fs, error] {

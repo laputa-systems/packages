@@ -999,8 +999,12 @@ export proc compile_lo_task(
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [src],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      src,
+    ],
     deps: deps,
     argv: argv,
     cwd: p".",
@@ -1047,8 +1051,12 @@ export proc compile_asm_lo_task(
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [src],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      src,
+    ],
     deps: deps,
     argv: argv,
     cwd: p".",
@@ -1098,8 +1106,12 @@ export proc compile_cxx_task(
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [src],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      src,
+    ],
     deps: deps,
     argv: argv,
     cwd: p".",
@@ -1150,8 +1162,12 @@ export proc compile_c_task(
 
   return {
     name: out.display(),
-    outputs: [out],
-    inputs: [src],
+    outputs: [
+      out,
+    ],
+    inputs: [
+      src,
+    ],
     deps: deps,
     argv: argv,
     cwd: p".",
@@ -1406,7 +1422,9 @@ export proc link_shared_task(
 
   return {
     name: out.display(),
-    outputs: [out],
+    outputs: [
+      out,
+    ],
     inputs: objs,
     deps: deps,
     argv: argv,
@@ -1432,7 +1450,9 @@ export proc link_executable_cxx_task(
 
   return {
     name: out.display(),
-    outputs: [out],
+    outputs: [
+      out,
+    ],
     inputs: objs.extend(libs),
     deps: deps,
     argv: argv,
@@ -1460,7 +1480,9 @@ export proc link_executable_task(
 
   return {
     name: out.display(),
-    outputs: [out],
+    outputs: [
+      out,
+    ],
     inputs: objs.extend(libs),
     deps: deps,
     argv: argv,
@@ -1478,7 +1500,9 @@ export proc link_archive_task(toolchain: Path, objs: List[Path], out: Path, deps
 
   return {
     name: out.display(),
-    outputs: [out],
+    outputs: [
+      out,
+    ],
     inputs: objs,
     deps: deps,
     argv: argv,

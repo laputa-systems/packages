@@ -9,13 +9,34 @@ export let deps = []
 export let mkdeps_host = []
 
 export let upstream_sources = [
-  {source: p"files/rootfs", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
+  {
+    source: p"files/rootfs",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
 ]
 
 export let filetree = [
-  {path: p"bin", kind: "symlink"},
-  {path: p"etc/extract-tree.conf", kind: "file"},
-  {path: p"usr/bin/extract-tree", kind: "file"},
+  {
+    path: p"bin",
+    kind: "symlink",
+  },
+  {
+    path: p"etc/extract-tree.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/bin/extract-tree",
+    kind: "file",
+  },
 ]
 
 export let extract_install = true

@@ -14,20 +14,45 @@ export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/libevdev/libevdev/-/archive/libevdev-VERSION/libevdev-libevdev-VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "54748fded25633399a8418d7c4c123fe365037c901b4389e0bf3dd7688fb1c7e"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "54748fded25633399a8418d7c4c123fe365037c901b4389e0bf3dd7688fb1c7e",
+      },
+    ],
   },
 ]
 
 type EventDef = {attr: Str, value: Int, name: Str}
 
 export let filetree = [
-  {path: p"usr/include/libevdev-1.0/libevdev/libevdev-uinput.h", kind: "file"},
-  {path: p"usr/include/libevdev-1.0/libevdev/libevdev.h", kind: "file"},
-  {path: p"usr/lib/libevdev.so", kind: "symlink"},
-  {path: p"usr/lib/libevdev.so.2", kind: "symlink"},
-  {path: p"usr/lib/libevdev.so.2.3.0", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/libevdev.pc", kind: "file"},
+  {
+    path: p"usr/include/libevdev-1.0/libevdev/libevdev-uinput.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/libevdev-1.0/libevdev/libevdev.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libevdev.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libevdev.so.2",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libevdev.so.2.3.0",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/pkgconfig/libevdev.pc",
+    kind: "file",
+  },
 ]
 
 pure event_prefixes() -> List[Str] {

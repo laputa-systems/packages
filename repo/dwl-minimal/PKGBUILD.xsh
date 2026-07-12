@@ -29,8 +29,15 @@ export let upstream_sources = [
   {
     source: p"https://codeberg.org/dwl/dwl/archive/vVERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "3080087e7f613bf6a350934231fd9ed478d04cd2a2f30da8a96cdf2066f59412"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "3080087e7f613bf6a350934231fd9ed478d04cd2a2f30da8a96cdf2066f59412",
+      },
+    ],
   },
 ]
 

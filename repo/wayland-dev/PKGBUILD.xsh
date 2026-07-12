@@ -15,35 +15,111 @@ export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/wayland/wayland/-/releases/VERSION/downloads/wayland-VERSION.tar.xz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/bin/wayland-scanner", kind: "binary"},
-  {path: p"usr/include/wayland-client-core.h", kind: "file"},
-  {path: p"usr/include/wayland-client-protocol.h", kind: "file"},
-  {path: p"usr/include/wayland-client.h", kind: "file"},
-  {path: p"usr/include/wayland-cursor.h", kind: "file"},
-  {path: p"usr/include/wayland-egl-backend.h", kind: "file"},
-  {path: p"usr/include/wayland-egl-core.h", kind: "file"},
-  {path: p"usr/include/wayland-egl.h", kind: "file"},
-  {path: p"usr/include/wayland-server-core.h", kind: "file"},
-  {path: p"usr/include/wayland-server-protocol.h", kind: "file"},
-  {path: p"usr/include/wayland-server.h", kind: "file"},
-  {path: p"usr/include/wayland-util.h", kind: "file"},
-  {path: p"usr/include/wayland-version.h", kind: "file"},
-  {path: p"usr/lib/pkgconfig/wayland-client.pc", kind: "file"},
-  {path: p"usr/lib/pkgconfig/wayland-cursor.pc", kind: "file"},
-  {path: p"usr/lib/pkgconfig/wayland-egl-backend.pc", kind: "file"},
-  {path: p"usr/lib/pkgconfig/wayland-egl.pc", kind: "file"},
-  {path: p"usr/lib/pkgconfig/wayland-scanner.pc", kind: "file"},
-  {path: p"usr/lib/pkgconfig/wayland-server.pc", kind: "file"},
-  {path: p"usr/share/aclocal/wayland-scanner.m4", kind: "file"},
-  {path: p"usr/share/wayland/wayland-scanner.mk", kind: "file"},
-  {path: p"usr/share/wayland/wayland.dtd", kind: "file"},
-  {path: p"usr/share/wayland/wayland.xml", kind: "file"},
+  {
+    path: p"usr/bin/wayland-scanner",
+    kind: "binary",
+  },
+  {
+    path: p"usr/include/wayland-client-core.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wayland-client-protocol.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wayland-client.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wayland-cursor.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wayland-egl-backend.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wayland-egl-core.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wayland-egl.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wayland-server-core.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wayland-server-protocol.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wayland-server.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wayland-util.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/wayland-version.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pkgconfig/wayland-client.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pkgconfig/wayland-cursor.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pkgconfig/wayland-egl-backend.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pkgconfig/wayland-egl.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pkgconfig/wayland-scanner.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pkgconfig/wayland-server.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/aclocal/wayland-scanner.m4",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/wayland/wayland-scanner.mk",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/wayland/wayland.dtd",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/wayland/wayland.xml",
+    kind: "file",
+  },
 ]
 
 proc write_embedded_dtd() [fs, error] {
@@ -97,7 +173,7 @@ proc patch_python_generator(native_scanner: Str) [fs, error] {
   fs.write(
     root_meson,
     root_meson.read_text()?.replace(
-      """	rt_dep = []
+  """	rt_dep = []
 	if not cc.has_function('clock_gettime', prefix: '#include <time.h>')
 		rt_dep = cc.find_library('rt')
 		if not cc.has_function('clock_gettime', prefix: '#include <time.h>', dependencies: rt_dep, args: cc_args)
@@ -105,10 +181,10 @@ proc patch_python_generator(native_scanner: Str) [fs, error] {
 		endif
 	endif
 """,
-      """	# musl provides realtime interfaces in libc.
+  """	# musl provides realtime interfaces in libc.
 	rt_dep = declare_dependency()
 """,
-    ),
+),
   )?
 
   fs.write(
@@ -123,16 +199,16 @@ proc patch_python_generator(native_scanner: Str) [fs, error] {
     fs.write(
       meson_path,
       meson_path.read_text()?.replace(
-        """if meson.is_cross_build() or not get_option('scanner')
+  """if meson.is_cross_build() or not get_option('scanner')
 scanner_dep = dependency('wayland-scanner', native: true, version: meson.project_version())
 wayland_scanner_for_build = find_program(scanner_dep.get_variable(pkgconfig: 'wayland_scanner'))
 else
 wayland_scanner_for_build = wayland_scanner
 endif
 """,
-        f"""wayland_scanner_for_build = find_program('${native_scanner}')
+  f"""wayland_scanner_for_build = find_program('${native_scanner}')
 """,
-      ),
+),
     )?
   }
 }

@@ -15,33 +15,103 @@ export let upstream_sources = [
   {
     source: p"https://zlib.net/fossils/zlib-VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/include/zconf.h", kind: "file"},
-  {path: p"usr/include/zlib.h", kind: "file"},
-  {path: p"usr/lib/cmake/zlib/ZLIB-shared-release.cmake", kind: "file"},
-  {path: p"usr/lib/cmake/zlib/ZLIB-shared.cmake", kind: "file"},
-  {path: p"usr/lib/cmake/zlib/ZLIB-static-release.cmake", kind: "file"},
-  {path: p"usr/lib/cmake/zlib/ZLIB-static.cmake", kind: "file"},
-  {path: p"usr/lib/cmake/zlib/ZLIBConfig.cmake", kind: "file"},
-  {path: p"usr/lib/cmake/zlib/ZLIBConfigVersion.cmake", kind: "file"},
-  {path: p"usr/lib/libz.a", kind: "file"},
-  {path: p"usr/lib/libz.so", kind: "symlink"},
-  {path: p"usr/lib/libz.so.1", kind: "symlink"},
-  {path: p"usr/lib/libz.so.1.3.2", kind: "binary"},
-  {path: p"usr/lib/pkgconfig/zlib.pc", kind: "file"},
-  {path: p"usr/share/doc/zlib/zlib/LICENSE", kind: "file"},
-  {path: p"usr/share/doc/zlib/zlib/algorithm.txt", kind: "file"},
-  {path: p"usr/share/doc/zlib/zlib/crc-doc.1.0.pdf", kind: "file"},
-  {path: p"usr/share/doc/zlib/zlib/rfc1950.txt", kind: "file"},
-  {path: p"usr/share/doc/zlib/zlib/rfc1951.txt", kind: "file"},
-  {path: p"usr/share/doc/zlib/zlib/rfc1952.txt", kind: "file"},
-  {path: p"usr/share/doc/zlib/zlib/txtvsbin.txt", kind: "file"},
-  {path: p"usr/share/man/man3/zlib.3", kind: "file"},
+  {
+    path: p"usr/include/zconf.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/include/zlib.h",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/cmake/zlib/ZLIB-shared-release.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/cmake/zlib/ZLIB-shared.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/cmake/zlib/ZLIB-static-release.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/cmake/zlib/ZLIB-static.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/cmake/zlib/ZLIBConfig.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/cmake/zlib/ZLIBConfigVersion.cmake",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libz.a",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/libz.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libz.so.1",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libz.so.1.3.2",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/pkgconfig/zlib.pc",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/doc/zlib/zlib/LICENSE",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/doc/zlib/zlib/algorithm.txt",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/doc/zlib/zlib/crc-doc.1.0.pdf",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/doc/zlib/zlib/rfc1950.txt",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/doc/zlib/zlib/rfc1951.txt",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/doc/zlib/zlib/rfc1952.txt",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/doc/zlib/zlib/txtvsbin.txt",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/man/man3/zlib.3",
+    kind: "file",
+  },
 ]
 
 export proc build(dest: Path) [fs, process, env, error] {

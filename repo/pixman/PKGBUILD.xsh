@@ -15,14 +15,27 @@ export let upstream_sources = [
   {
     source: p"https://xorg.freedesktop.org/releases/individual/lib/pixman-VERSION.tar.xz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "a098c33924754ad43f981b740f6d576c70f9ed1006e12221b1845431ebce1239",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/lib/libpixman-1.so.0", kind: "symlink"},
-  {path: p"usr/lib/libpixman-1.so.0.46.4", kind: "binary"},
+  {
+    path: p"usr/lib/libpixman-1.so.0",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/libpixman-1.so.0.46.4",
+    kind: "binary",
+  },
 ]
 
 export proc build(dest: Path) [fs, process, env, error] {

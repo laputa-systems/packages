@@ -12,25 +12,56 @@ export let upstream_sources = [
   {
     source: p"https://pkgs.tailscale.com/stable/tailscale_VERSION_GOARCH.tgz",
     kind: "auto",
-    architectures: ["all"],
+    architectures: [
+      "all",
+    ],
     checksums: [
-      {arch: "aarch64", sha256: "a27249bc70d7b37a68f8be7f5c4507ea5f354e592dce43cb5d4f3e742b313c3c"},
-      {arch: "x86_64", sha256: "a1cba18826b1f91cb25ef7f5b8259b5258339b42db7867af9269e21829ea78cc"},
+      {
+        arch: "aarch64",
+        sha256: "a27249bc70d7b37a68f8be7f5c4507ea5f354e592dce43cb5d4f3e742b313c3c",
+      },
+      {
+        arch: "x86_64",
+        sha256: "a1cba18826b1f91cb25ef7f5b8259b5258339b42db7867af9269e21829ea78cc",
+      },
     ],
   },
   {
     source: p"service.xsh",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "aarch64", sha256: "SKIP"}, {arch: "x86_64", sha256: "SKIP"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "aarch64",
+        sha256: "SKIP",
+      },
+      {
+        arch: "x86_64",
+        sha256: "SKIP",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/bin/tailscale", kind: "binary"},
-  {path: p"usr/bin/tailscaled", kind: "binary"},
-  {path: p"usr/lib/sysctl.d/50-tailscale-ipv6.conf", kind: "file"},
-  {path: p"usr/lib/xinit/services/tailscaled.xsh", kind: "file"},
+  {
+    path: p"usr/bin/tailscale",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/tailscaled",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/sysctl.d/50-tailscale-ipv6.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/xinit/services/tailscaled.xsh",
+    kind: "file",
+  },
 ]
 
 export proc build(dest: Path) [fs, error] {

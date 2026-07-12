@@ -9,33 +9,123 @@ export let deps = ["xsh"]
 export let mkdeps_host = []
 
 export let upstream_sources = [
-  {source: ../../pm.xsh, kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
-  {source: p"../../pm => pm", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
+  {
+    source: ../../pm.xsh,
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
+  {
+    source: p"../../pm => pm",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
 ]
 
 export let filetree = [
-  {path: p"usr/bin/pm", kind: "file"},
-  {path: p"usr/lib/pm/pm.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/build.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/buildroot.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/chroot-run.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/cli.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/configure.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/elfdeps.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/env.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/extensions.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/install.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/local.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/make.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/meson.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/proof.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/remote.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/repo.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/sources.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/target.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/types.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/util.xsh", kind: "file"},
-  {path: p"usr/lib/pm/pm/world.xsh", kind: "file"},
+  {
+    path: p"usr/bin/pm",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/build.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/buildroot.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/chroot-run.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/cli.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/configure.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/elfdeps.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/env.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/extensions.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/install.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/local.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/make.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/meson.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/proof.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/remote.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/repo.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/sources.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/target.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/types.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/util.xsh",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/pm/pm/world.xsh",
+    kind: "file",
+  },
 ]
 
 export proc build(dest: Path) [fs, env, error] {

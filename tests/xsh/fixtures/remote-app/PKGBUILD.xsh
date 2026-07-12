@@ -12,8 +12,15 @@ export let upstream_sources = [
   {
     source: p"files/payload.txt",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "00c019dc6f8b7f8ca3202a0dc05b2ed1f62294845e90555771473928e8cfb959"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "00c019dc6f8b7f8ca3202a0dc05b2ed1f62294845e90555771473928e8cfb959",
+      },
+    ],
   },
 ]
 

@@ -11,18 +11,63 @@ export let deps = ["xsh", "wpa_supplicant"]
 export let mkdeps_host = ["xinit"]
 
 export let upstream_sources = [
-  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
-  {source: p"interfaces", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
+  {
+    source: p"service.xsh",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
+  {
+    source: p"interfaces",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
 ]
 
 export let filetree = [
-  {path: p"etc/network/if-down.d/keep", kind: "file"},
-  {path: p"etc/network/if-post-down.d/keep", kind: "file"},
-  {path: p"etc/network/if-pre-down.d/keep", kind: "file"},
-  {path: p"etc/network/if-pre-up.d/keep", kind: "file"},
-  {path: p"etc/network/if-up.d/keep", kind: "file"},
-  {path: p"etc/network/interfaces", kind: "file"},
-  {path: p"usr/lib/xinit/services/net.xsh", kind: "file"},
+  {
+    path: p"etc/network/if-down.d/keep",
+    kind: "file",
+  },
+  {
+    path: p"etc/network/if-post-down.d/keep",
+    kind: "file",
+  },
+  {
+    path: p"etc/network/if-pre-down.d/keep",
+    kind: "file",
+  },
+  {
+    path: p"etc/network/if-pre-up.d/keep",
+    kind: "file",
+  },
+  {
+    path: p"etc/network/if-up.d/keep",
+    kind: "file",
+  },
+  {
+    path: p"etc/network/interfaces",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/xinit/services/net.xsh",
+    kind: "file",
+  },
 ]
 
 export proc build(dest: Path) [fs, error] {

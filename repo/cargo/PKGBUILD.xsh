@@ -14,28 +14,52 @@ export let upstream_sources = [
   {
     source: p"https://static.rust-lang.org/dist/2026-04-16/cargo-VERSION-ARCH-unknown-linux-musl.tar.xz => cargo",
     kind: "auto",
-    architectures: ["all"],
+    architectures: [
+      "all",
+    ],
     checksums: [
-      {arch: "aarch64", sha256: "3ea32cd155faeefa3f7689d74a9e515641be5163cba1b331099943b79d8680d9"},
-      {arch: "x86_64", sha256: "6abadb9c6f9113f20858a67cfb48c4065c614cb038f543e19d5bf5d768663841"},
+      {
+        arch: "aarch64",
+        sha256: "3ea32cd155faeefa3f7689d74a9e515641be5163cba1b331099943b79d8680d9",
+      },
+      {
+        arch: "x86_64",
+        sha256: "6abadb9c6f9113f20858a67cfb48c4065c614cb038f543e19d5bf5d768663841",
+      },
     ],
   },
   {
     source: p"https://static.rust-lang.org/dist/2026-04-16/rustc-VERSION-ARCH-unknown-linux-musl.tar.xz => rustc",
     kind: "auto",
-    architectures: ["all"],
+    architectures: [
+      "all",
+    ],
     checksums: [
-      {arch: "aarch64", sha256: "8d05ce001477dec7cfee8e778e15883a9b3a73a061d63e491f08429c3c2a5235"},
-      {arch: "x86_64", sha256: "1a18aabec47fd0ada35f82a8864d6319471cbc7cdf7e84e53fed1941018af92d"},
+      {
+        arch: "aarch64",
+        sha256: "8d05ce001477dec7cfee8e778e15883a9b3a73a061d63e491f08429c3c2a5235",
+      },
+      {
+        arch: "x86_64",
+        sha256: "1a18aabec47fd0ada35f82a8864d6319471cbc7cdf7e84e53fed1941018af92d",
+      },
     ],
   },
   {
     source: p"https://static.rust-lang.org/dist/2026-04-16/rust-std-VERSION-ARCH-unknown-linux-musl.tar.xz => rust-std",
     kind: "auto",
-    architectures: ["all"],
+    architectures: [
+      "all",
+    ],
     checksums: [
-      {arch: "aarch64", sha256: "f6710416ed9a7d5cf2a15efa761eb79a1deeb43f9961bbe05cc97bec4ef9064a"},
-      {arch: "x86_64", sha256: "aee540abf132920f791ef781489851a078d69dff493fb628d49c1d573f92bb3a"},
+      {
+        arch: "aarch64",
+        sha256: "f6710416ed9a7d5cf2a15efa761eb79a1deeb43f9961bbe05cc97bec4ef9064a",
+      },
+      {
+        arch: "x86_64",
+        sha256: "aee540abf132920f791ef781489851a078d69dff493fb628d49c1d573f92bb3a",
+      },
     ],
   },
 ]
@@ -43,11 +67,26 @@ export let upstream_sources = [
 export let nostrip = true
 
 let filetree_common = [
-  {path: p"usr", kind: "tree"},
-  {path: p"usr/bin/cargo", kind: "binary"},
-  {path: p"usr/bin/rustc", kind: "binary"},
-  {path: p"usr/bin/rustdoc", kind: "binary"},
-  {path: p"usr/libexec/rust-analyzer-proc-macro-srv", kind: "binary"},
+  {
+    path: p"usr",
+    kind: "tree",
+  },
+  {
+    path: p"usr/bin/cargo",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/rustc",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/rustdoc",
+    kind: "binary",
+  },
+  {
+    path: p"usr/libexec/rust-analyzer-proc-macro-srv",
+    kind: "binary",
+  },
 ]
 
 export let filetree_aarch64 = filetree_common.push(
@@ -58,9 +97,7 @@ export let filetree_aarch64 = filetree_common.push(
   .push({path: p"usr/lib/libdisplaydoc-630fca802ee793c9.so", kind: "binary"})
   .push({path: p"usr/lib/libproc_macro_hack-e91a45232ab3e1c3.so", kind: "binary"})
   .push({path: p"usr/lib/libref_cast_impl-dae3b74ea09f2c81.so", kind: "binary"})
-  .push(
-  {path: p"usr/lib/librustc_driver-e898dbc1cb8012ad.so", kind: "binary"},
-)
+  .push({path: p"usr/lib/librustc_driver-e898dbc1cb8012ad.so", kind: "binary"})
   .push({path: p"usr/lib/librustc_index_macros-89604c5bb2a94459.so", kind: "binary"})
   .push({path: p"usr/lib/librustc_macros-b193518b75be0209.so", kind: "binary"})
   .push({path: p"usr/lib/librustc_type_ir_macros-b32bc89b2b787f4f.so", kind: "binary"})

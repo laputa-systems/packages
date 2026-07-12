@@ -14,15 +14,31 @@ export let upstream_sources = [
   {
     source: p"https://github.com/eudev-project/eudev/releases/download/vVERSION/eudev-VERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "8da4319102f24abbf7fff5ce9c416af848df163b29590e666d334cc1927f006f"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "8da4319102f24abbf7fff5ce9c416af848df163b29590e666d334cc1927f006f",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/bin/udevadm", kind: "binary"},
-  {path: p"usr/bin/udevd", kind: "binary"},
-  {path: p"usr/lib/udev/systemd-udevd", kind: "binary"},
+  {
+    path: p"usr/bin/udevadm",
+    kind: "binary",
+  },
+  {
+    path: p"usr/bin/udevd",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/udev/systemd-udevd",
+    kind: "binary",
+  },
 ]
 
 proc write_udev_stub() [fs, error] {

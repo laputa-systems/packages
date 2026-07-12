@@ -12,15 +12,31 @@ export let upstream_sources = [
   {
     source: p"https://github.com/vcrhonek/hwdata/archive/refs/tags/vVERSION.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "05d96821aaae04be4e684eaf9ac22e08efe646321bc64be323b91b66e7e2095c"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "05d96821aaae04be4e684eaf9ac22e08efe646321bc64be323b91b66e7e2095c",
+      },
+    ],
   },
 ]
 
 export let filetree = [
-  {path: p"usr/share/hwdata/pci.ids", kind: "file"},
-  {path: p"usr/share/hwdata/pnp.ids", kind: "file"},
-  {path: p"usr/share/pkgconfig/hwdata.pc", kind: "file"},
+  {
+    path: p"usr/share/hwdata/pci.ids",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/hwdata/pnp.ids",
+    kind: "file",
+  },
+  {
+    path: p"usr/share/pkgconfig/hwdata.pc",
+    kind: "file",
+  },
 ]
 
 export proc build(dest: Path) [fs, error] {

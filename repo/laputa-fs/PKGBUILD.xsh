@@ -9,17 +9,77 @@ export let deps = ["xsh"]
 export let mkdeps_host = []
 
 export let upstream_sources = [
-  {source: p"files/mkfs.vfat.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
-  {source: p"files/mkfs.ext4.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
-  {source: p"files/fsck.ext4.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
-  {source: p"files/fat-put.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
+  {
+    source: p"files/mkfs.vfat.xsh",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
+  {
+    source: p"files/mkfs.ext4.xsh",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
+  {
+    source: p"files/fsck.ext4.xsh",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
+  {
+    source: p"files/fat-put.xsh",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "SKIP",
+      },
+    ],
+  },
 ]
 
 export let filetree = [
-  {path: p"usr/bin/fsck.ext4", kind: "file"},
-  {path: p"usr/bin/mkfs.ext4", kind: "file"},
-  {path: p"usr/bin/mkfs.vfat", kind: "file"},
-  {path: p"usr/lib/laputa-fs/fat-put", kind: "file"},
+  {
+    path: p"usr/bin/fsck.ext4",
+    kind: "file",
+  },
+  {
+    path: p"usr/bin/mkfs.ext4",
+    kind: "file",
+  },
+  {
+    path: p"usr/bin/mkfs.vfat",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/laputa-fs/fat-put",
+    kind: "file",
+  },
 ]
 
 export proc build(dest: Path) [fs, error] {

@@ -11,10 +11,22 @@ export let mkdeps_host = []
 export let upstream_sources = []
 
 export let filetree = [
-  {path: p"etc/asound.conf", kind: "file"},
-  {path: p"usr/bin/waterfox-dwl-session", kind: "file"},
-  {path: p"usr/bin/waterfox-session-clipboard-proof", kind: "file"},
-  {path: p"usr/lib/init/rc.d/waterfox-dwl-session.boot", kind: "file"},
+  {
+    path: p"etc/asound.conf",
+    kind: "file",
+  },
+  {
+    path: p"usr/bin/waterfox-dwl-session",
+    kind: "file",
+  },
+  {
+    path: p"usr/bin/waterfox-session-clipboard-proof",
+    kind: "file",
+  },
+  {
+    path: p"usr/lib/init/rc.d/waterfox-dwl-session.boot",
+    kind: "file",
+  },
 ]
 
 proc install_session(dest: Path) [fs, error] {

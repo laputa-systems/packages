@@ -16,8 +16,15 @@ export let upstream_sources = [
   {
     source: p"https://github.com/laputa-systems/less/archive/0f176037c66cdeb038b39b0b71d9c291363c26ec.tar.gz",
     kind: "auto",
-    architectures: ["all"],
-    checksums: [{arch: "all", sha256: "846a3b60efa6199bcab518d0934bd83bded678d97e58e8202b55ce7192377f69"}],
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "all",
+        sha256: "846a3b60efa6199bcab518d0934bd83bded678d97e58e8202b55ce7192377f69",
+      },
+    ],
   },
 ]
 
