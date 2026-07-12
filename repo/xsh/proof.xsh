@@ -2,6 +2,7 @@ use pm.proof
 
 proc main(root: Path = /rootfs) [fs, error] {
   proof.package_metadata(root, "xsh")?
+  proof.ensure(fs.exists(fp"${root}/usr/bin/sh")?, "proof-xsh", "missing sh runner")?
   proof.ensure(fs.exists(fp"${root}/bin/xsh")?, "proof-xsh", "missing xsh runner")?
   proof.ensure(fs.exists(fp"${root}/bin/xshi")?, "proof-xsh", "missing xshi runner")?
   proof.ensure(fs.exists(fp"${root}/bin/xsht")?, "proof-xsh", "missing xsht runner")?

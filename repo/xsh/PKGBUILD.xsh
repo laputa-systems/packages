@@ -2,7 +2,7 @@ export let name = "xsh"
 
 export let ver = "0.0.0"
 
-export let rel = "11"
+export let rel = "12"
 
 export let deps = []
 
@@ -90,6 +90,7 @@ export let filetree = [
   {path: p"usr/bin/uniq", kind: "symlink"},
   {path: p"usr/bin/wc", kind: "symlink"},
   {path: p"usr/bin/which", kind: "symlink"},
+  {path: p"usr/bin/sh", kind: "symlink"},
   {path: p"usr/bin/xsh", kind: "binary"},
   {path: p"usr/bin/xshi", kind: "symlink"},
   {path: p"usr/bin/xsht", kind: "symlink"},
@@ -163,7 +164,7 @@ export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/bin")?
   fs.install(staged[0].path, fp"${dest}/usr/bin/xsh", 0o755, parents: true, overwrite: true)?
 
-  for command_name in ["xshi", "xsht"] {
+  for command_name in ["sh", "xshi", "xsht"] {
     let link = fp"${dest}/usr/bin/${command_name}"
     fs.remove(link, missing_ok: true)?
     fs.symlink(p"xsh", link)?
@@ -184,7 +185,7 @@ export proc build(dest: Path) [fs, error] {
 }
 
 export proc pre_install(root: Path) [fs, error] {
-  for command_name in ["xsh", "xshi", "xsht"] {
+  for command_name in ["sh", "xsh", "xshi", "xsht"] {
     fs.remove(fp"${root}/bin/${command_name}", missing_ok: true)?
     fs.remove(fp"${root}/usr/bin/${command_name}", missing_ok: true)?
     fs.remove(fp"${root}/usr/local/bin/${command_name}", missing_ok: true)?
