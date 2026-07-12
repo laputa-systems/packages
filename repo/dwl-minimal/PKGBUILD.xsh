@@ -27,7 +27,7 @@ export let mkdeps_target = ["wayland-dev", "wayland-protocols", "pixman-dev"]
 
 export let sources = [p"https://codeberg.org/dwl/dwl/archive/vVERSION.tar.gz"]
 
-export let checksums = ["58dae5885a49731205cc6f01e7ce0e47819047b47f69dca3051998f872257c2d"]
+export let checksums = ["3080087e7f613bf6a350934231fd9ed478d04cd2a2f30da8a96cdf2066f59412"]
 
 export let filetree = [{path: p"usr/bin/dwl", kind: "binary"}]
 

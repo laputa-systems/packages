@@ -5,7 +5,7 @@ export let name = "freetype"
 
 export let ver = "2.14.1"
 
-export let rel = "7"
+export let rel = "8"
 
 export let deps = ["musl", "zlib", "libpng"]
 
