@@ -12,9 +12,11 @@ export let deps = ["musl"]
 
 export let mkdeps_host = ["llvm-toolchain"]
 
-export let sources = [p"files/.keep"]
+export let upstream_sources = [
+  {source: p"files/.keep", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
+]
 
-export let checksums = ["SKIP"]
+
 
 export let filetree = [
   {path: p"usr/lib/crtbeginS.o", kind: "binary"},

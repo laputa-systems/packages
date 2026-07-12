@@ -13,9 +13,11 @@ export let mkdeps_host = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf
 
 export let mkdeps_target = ["wayland-dev"]
 
-export let sources = [p"https://github.com/intel/libva/releases/download/VERSION/libva-VERSION.tar.bz2"]
+export let upstream_sources = [
+  {source: p"https://github.com/intel/libva/releases/download/VERSION/libva-VERSION.tar.bz2", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "e3da2250654c8d52b3f59f8cb3f3d8e7fb1a2ee64378dbc400fbc5663de7edb8"}]}
+]
 
-export let checksums = ["e3da2250654c8d52b3f59f8cb3f3d8e7fb1a2ee64378dbc400fbc5663de7edb8"]
+
 
 export let filetree = [
   {path: p"usr/include/va/va.h", kind: "file"},
@@ -63,7 +65,7 @@ export let filetree = [
   {path: p"usr/lib/pkgconfig/libva.pc", kind: "file"},
 ]
 
-export proc process_sources(src: Path) [fs, error] {
+export proc prepare_sources(src: Path) [fs, error] {
   let trace = fp"${src}/va/va_trace.c"
   fs.write(trace, trace.read_text()?.replace("syscall(__NR_gettid)", "syscall(SYS_gettid)"))?
 }

@@ -8,9 +8,7 @@ export let deps = ["world-lib"]
 
 export let mkdeps_host = []
 
-export let sources = []
-
-export let checksums = []
+export let upstream_sources = []
 
 export let filetree = [{path: p"usr/share/world-app.txt", kind: "file"}]
 

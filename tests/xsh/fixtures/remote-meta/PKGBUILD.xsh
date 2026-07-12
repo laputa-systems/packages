@@ -8,9 +8,11 @@ export let deps = ["remote-app"]
 
 export let mkdeps_host = []
 
-export let sources = []
+export let upstream_sources = [
 
-export let checksums = []
+]
+
+
 
 export let filetree = []
 

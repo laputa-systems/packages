@@ -13,17 +13,13 @@ export let deps = ["musl"]
 
 export let mkdeps_host = ["llvm-toolchain", "xinit"]
 
-export let sources = [
-  p"https://skarnet.org/software/mdevd/mdevd-VERSION.tar.gz",
-  p"https://skarnet.org/software/skalibs/skalibs-2.15.0.0.tar.gz => skalibs",
-  p"service.xsh",
+export let upstream_sources = [
+  {source: p"https://skarnet.org/software/mdevd/mdevd-VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "ce1ae0149b6a57a34f608218fd6181aa6aa68135cac2f4d931b5b417b072e244"}]},
+  {source: p"https://skarnet.org/software/skalibs/skalibs-2.15.0.0.tar.gz => skalibs", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "7fde96e8afb4191593a15328883e9c7726c96891cf071222146821e8c87f8007"}]},
+  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
 ]
 
-export let checksums = [
-  "ce1ae0149b6a57a34f608218fd6181aa6aa68135cac2f4d931b5b417b072e244",
-  "7fde96e8afb4191593a15328883e9c7726c96891cf071222146821e8c87f8007",
-  "SKIP",
-]
+
 
 export let filetree = [
   {path: p"usr/bin/mdevd", kind: "binary"},

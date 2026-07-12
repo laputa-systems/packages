@@ -72,11 +72,11 @@ export pure package_with_extract_install(pkg: Package, extract_install: Bool) ->
     deps: pkg.deps,
     mkdeps_host: pkg.mkdeps_host,
     mkdeps_target: pkg.mkdeps_target,
-    sources: pkg.sources,
-    checksums: pkg.checksums,
+    upstream_sources: pkg.upstream_sources,
     filetree: pkg.filetree,
     nostrip: pkg.nostrip,
     extract_install,
+    source_mirror: pkg.source_mirror,
   }
 }
 
@@ -557,13 +557,12 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
     let deps: List[Str] = exports.get("deps")?
     let mkdeps_host: List[Str] = exports.get("mkdeps_host")?
     var mkdeps_target = []
-    let pkg_sources: List[Path] = exports.get("sources")?
-    let base_checksums: List[Str] = exports.get("checksums")?
-    let checksums = select_checksums(exports, base_checksums)?
+    let upstream_sources: List[UpstreamSource] = exports.get("upstream_sources").context("package-load", pkgbuild.display())?
     let base_filetree: List[FileTreeEntry] = exports.get("filetree").context("package-load", pkgbuild.display())?
     let filetree = select_filetree(exports, base_filetree)?
     var nostrip = false
     var extract_install = false
+    var source_mirror = true
 
     if exports.has("mkdeps_target") {
       mkdeps_target = exports.get("mkdeps_target")?
@@ -579,6 +578,11 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
       extract_install = value
     }
 
+    if exports.has("source_mirror") {
+      let value: Bool = exports.get("source_mirror")?
+      source_mirror = value
+    }
+
     if name == "" {
       return Err(PmError.PackageContract(f"${dir.display()} exports an empty name"))
     }
@@ -587,8 +591,18 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
       return Err(PmError.PackageContract(f"${name} exports an empty version or release"))
     }
 
-    if pkg_sources.len() != checksums.len() {
-      return Err(PmError.PackageContract(f"${name} source/checksum count mismatch"))
+    for source in upstream_sources {
+      if ! source_kind_valid(source.kind) {
+        return Err(PmError.PackageContract(f"${name} has invalid upstream source kind ${source.kind}"))
+      }
+
+      if source.architectures.len() == 0 {
+        return Err(PmError.PackageContract(f"${name} has an upstream source with no target architectures"))
+      }
+
+      if source.checksums.len() == 0 {
+        return Err(PmError.PackageContract(f"${name} has an upstream source with no checksums"))
+      }
     }
 
     if seen.has(name) {
@@ -606,11 +620,11 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
       deps,
       mkdeps_host,
       mkdeps_target,
-      sources: pkg_sources,
-      checksums,
+      upstream_sources,
       filetree,
       nostrip,
       extract_install,
+      source_mirror,
     })
   }
 
@@ -743,7 +757,7 @@ export proc write_local_index(out: Path, packages: List[Package]) [fs, error] {
 
 export proc print_package_checksums(work: Path, pkg: Package) [fs, net, process, env, time, error] {
   let arch = machine_arch()?
-  let generated = generate_checksums_for(work, pkg, arch, pkg.checksums)?
+  let generated = generate_checksums_for(work, pkg, arch)?
 
   for checksum in generated {
     print ${pkg.name} $checksum

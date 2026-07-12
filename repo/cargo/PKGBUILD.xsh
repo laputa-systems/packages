@@ -10,25 +10,17 @@ export let deps = ["musl", "llvm-toolchain", "gnu-stubs"]
 
 export let mkdeps_host = []
 
-export let sources = [
-  p"https://static.rust-lang.org/dist/2026-04-16/cargo-VERSION-ARCH-unknown-linux-musl.tar.xz => cargo",
-  p"https://static.rust-lang.org/dist/2026-04-16/rustc-VERSION-ARCH-unknown-linux-musl.tar.xz => rustc",
-  p"https://static.rust-lang.org/dist/2026-04-16/rust-std-VERSION-ARCH-unknown-linux-musl.tar.xz => rust-std",
+export let upstream_sources = [
+  {source: p"https://static.rust-lang.org/dist/2026-04-16/cargo-VERSION-ARCH-unknown-linux-musl.tar.xz => cargo", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "3ea32cd155faeefa3f7689d74a9e515641be5163cba1b331099943b79d8680d9"}, {arch: "x86_64", sha256: "6abadb9c6f9113f20858a67cfb48c4065c614cb038f543e19d5bf5d768663841"}]},
+  {source: p"https://static.rust-lang.org/dist/2026-04-16/rustc-VERSION-ARCH-unknown-linux-musl.tar.xz => rustc", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "8d05ce001477dec7cfee8e778e15883a9b3a73a061d63e491f08429c3c2a5235"}, {arch: "x86_64", sha256: "1a18aabec47fd0ada35f82a8864d6319471cbc7cdf7e84e53fed1941018af92d"}]},
+  {source: p"https://static.rust-lang.org/dist/2026-04-16/rust-std-VERSION-ARCH-unknown-linux-musl.tar.xz => rust-std", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "f6710416ed9a7d5cf2a15efa761eb79a1deeb43f9961bbe05cc97bec4ef9064a"}, {arch: "x86_64", sha256: "aee540abf132920f791ef781489851a078d69dff493fb628d49c1d573f92bb3a"}]}
 ]
 
-export let checksums = ["SKIP", "SKIP", "SKIP"]
 
-export let checksums_aarch64 = [
-  "3ea32cd155faeefa3f7689d74a9e515641be5163cba1b331099943b79d8680d9",
-  "8d05ce001477dec7cfee8e778e15883a9b3a73a061d63e491f08429c3c2a5235",
-  "f6710416ed9a7d5cf2a15efa761eb79a1deeb43f9961bbe05cc97bec4ef9064a",
-]
 
-export let checksums_x86_64 = [
-  "6abadb9c6f9113f20858a67cfb48c4065c614cb038f543e19d5bf5d768663841",
-  "1a18aabec47fd0ada35f82a8864d6319471cbc7cdf7e84e53fed1941018af92d",
-  "aee540abf132920f791ef781489851a078d69dff493fb628d49c1d573f92bb3a",
-]
+
+
+
 
 export let nostrip = true
 

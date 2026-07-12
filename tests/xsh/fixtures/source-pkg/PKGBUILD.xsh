@@ -8,9 +8,11 @@ export let deps = []
 
 export let mkdeps_host = []
 
-export let sources = [p"files/data.txt"]
+export let upstream_sources = [
+  {source: p"files/data.txt", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "0000000000000000000000000000000000000000000000000000000000000000"}]}
+]
 
-export let checksums = ["0000000000000000000000000000000000000000000000000000000000000000"]
+
 
 export let filetree = [{path: p"usr/share/source-pkg/data.txt", kind: "file"}]
 

@@ -10,11 +10,11 @@ export let deps = ["musl", "hwdata"]
 
 export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "hwdata"]
 
-export let sources = [
-  p"https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/VERSION/downloads/libdisplay-info-VERSION.tar.xz",
+export let upstream_sources = [
+  {source: p"https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/VERSION/downloads/libdisplay-info-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "6ae77cd937f9cf7d1321d35c116062c4911e8447010a6a713ac4286f7a9d5987"}]}
 ]
 
-export let checksums = ["6ae77cd937f9cf7d1321d35c116062c4911e8447010a6a713ac4286f7a9d5987"]
+
 
 type PnpRecord = {id: Str, name: Str}
 

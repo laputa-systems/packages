@@ -333,8 +333,10 @@ export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
 export let mkdeps_host = []
-export let sources = [p"generated"]
-export let checksums = ["SKIP"]
+export let upstream_sources = [
+  {source: p"generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
+]
+
 export let filetree = [
   {path: p"usr/share/configured-pkg/config.h", kind: "file"},
   {path: p"usr/share/configured-pkg/message.txt", kind: "file"},
@@ -401,8 +403,10 @@ export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
 export let mkdeps_host = []
-export let sources = [p"files/upstream.tar.gz"]
-export let checksums = ["SKIP"]
+export let upstream_sources = [
+  {source: p"files/upstream.tar.gz", kind: "archive", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
+]
+
 export let filetree = [{path: p"usr/share/tar-source-pkg/data.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
@@ -459,8 +463,10 @@ export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
 export let mkdeps_host = []
-export let sources = []
-export let checksums = []
+export let upstream_sources = [
+
+]
+
 export let filetree = [{path: p"usr/share/prepared-pkg/payload.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
@@ -578,23 +584,19 @@ proc test_pm_outdated_and_upgrade(ctx: TestContext) [fs, process, error] {
   test.contains(info_out, "tool 1.1.0-1")?
 }
 
-proc test_pm_source_checksum(ctx: TestContext) [fs, process, error] {
+proc test_pm_source_checksum(ctx: TestContext) [fs, process, env, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
   let out = test.temp_dir(ctx, name: "out")?
   let pkg = test.temp_dir(ctx, name: "pkg")?
   let _ = fs.copy_tree(source_pkg_dir(), pkg, parents: true, overwrite: true)?
   let pkgbuild_path = fp"${pkg}/PKGBUILD.xsh"
-
-  fs.write(
-    pkgbuild_path,
-    pkgbuild_path.read_text()?.replace("export let checksums = [", "export let checksums: List[Str] = ["),
-  )?
+  let arch = fixture_arch()?
 
   let checksum_out = run.text xsh_bin() pm.xsh -- checksum $root $work $out $pkg ?
   test.contains(checksum_out, "source-pkg 6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
   let update_out = run.text xsh_bin() pm.xsh -- update-checksums $root $work $out $pkg ?
-  test.contains(update_out, "source-pkg checksums updated")?
+  test.contains(update_out, f"source-pkg upstream_sources:${arch} updated")?
 
   test.eq(
     pkgbuild_path.read_text()?,
@@ -608,11 +610,11 @@ export let deps = []
 
 export let mkdeps_host = []
 
-export let sources = [p"files/data.txt"]
-
-export let checksums = [
-  "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f",
+export let upstream_sources = [
+  {source: p"files/data.txt", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f"}]}
 ]
+
+
 
 export let filetree = [{path: p"usr/share/source-pkg/data.txt", kind: "file"}]
 
@@ -631,7 +633,7 @@ export proc build(dest: Path) [fs, error] -> Result[Unit] {
   fs.remove(p".root", missing_ok: true)?
   fs.remove(p".work", missing_ok: true)?
   fs.remove(p".out", missing_ok: true)?
-  test.contains(shorthand_out, "source-pkg checksums updated")?
+  test.contains(shorthand_out, f"source-pkg upstream_sources:${arch} updated")?
   let shorthand_pkgbuild = fp"${shorthand_pkg}/PKGBUILD.xsh".read_text()?
   test.contains(shorthand_pkgbuild, "6667b2d1aab6a00caa5aee5af8ad9f1465e567abf1c209d15727d57b3e8f6e5f")?
   run.text xsh_bin() pm.xsh -- install $root $work $out $pkg ?
@@ -692,8 +694,10 @@ export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
 export let mkdeps_host = []
-export let sources = []
-export let checksums = []
+export let upstream_sources = [
+
+]
+
 export let filetree = [{path: p"usr/share/laputa-pm/local.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
@@ -726,8 +730,10 @@ export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
 export let mkdeps_host = []
-export let sources = []
-export let checksums = []
+export let upstream_sources = [
+
+]
+
 export let filetree = [{path: p"usr/share/local-lib/payload.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
@@ -760,8 +766,10 @@ export let ver = "1.0.0"
 export let rel = "1"
 export let deps = ["local-lib"]
 export let mkdeps_host = []
-export let sources = []
-export let checksums = []
+export let upstream_sources = [
+
+]
+
 export let filetree = [{path: p"usr/share/local-app/dep.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, env, error] -> Result[Unit] {
@@ -810,7 +818,7 @@ proc test_pm_remote_index_rejects_traversal_paths(ctx: TestContext) [fs, process
 
   fs.write(
     fp"${repo}/index.json",
-    f"""[{"arch":"${arch}","name":"evil","ver":"1.0.0","rel":"1","deps":[],"mkdeps_host":[],"mkdeps_target":[],"sha256":"","size":1,"tarball":"../escape.tar.gz","metadata":"metadata/${arch}/evil/evil-1.0.0-1.json","source_sha256":"","source_tarball":"","metapackage":false}]
+    f"""[{"arch":"${arch}","name":"evil","ver":"1.0.0","rel":"1","deps":[],"mkdeps_host":[],"mkdeps_target":[],"sha256":"","size":1,"tarball":"../escape.tar.gz","metadata":"metadata/${arch}/evil/evil-1.0.0-1.json","source_sha256":"","metapackage":false}]
 """,
   )?
 
@@ -945,14 +953,14 @@ proc test_pm_upload_repo_export_includes_source_mirror(ctx: TestContext) [fs, pr
   let arch = fixture_arch()?
   let build_out = run.text xsh_bin() pm.xsh -- build $repo remote_app_dir() ?
   test.contains(build_out, "remote-app 1.0.0-1 stage: done")?
-  test.ok(fp"${repo}/.out/source-mirrors/remote-app-1.0.0-1-${arch}.tar.gz".exists()?)?
+  test.ok(fp"${repo}/.out/source-mirrors/remote-app-1.0.0-1-${arch}.tar.bz2".exists()?)?
   let export_out = run.text XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- upload-repo-export $repo ?
   test.contains(export_out, "repo-export loading remote index")?
-  test.contains(export_out, "repo-export aarch64 remote-app 1.0.0-1 uploading")?
-  test.contains(export_out, "repo-export aarch64 remote-app uploading tarball")?
+  test.contains(export_out, f"repo-export ${arch} remote-app 1.0.0-1 uploading")?
+  test.contains(export_out, f"repo-export ${arch} remote-app uploading tarball")?
   test.contains(export_out, f"${arch} remote-app 1.0.0-1 exported")?
   test.contains(export_out, "repo export uploaded")?
-  let source_rel = fp"sources/remote-app/remote-app-1.0.0-1-${arch}-src.tar.gz"
+  let source_rel = fp"sources/remote-app/remote-app-1.0.0-1-${arch}-src.tar.bz2"
   var remote_rows: List[Record] = json.read(fp"${remote}/index.json")?
   var legacy_rows = [{...row, mkdeps_target: []} for row in remote_rows]
   json.write(fp"${remote}/index.json", legacy_rows)?
@@ -961,10 +969,10 @@ proc test_pm_upload_repo_export_includes_source_mirror(ctx: TestContext) [fs, pr
   test.ok(! ("uploading" in repeat_out))?
   test.ok(fp"${remote}/${source_rel}".exists()?)?
   let index_text = fp"${remote}/index.json".read_text()?
-  test.contains(index_text, f"\"source_tarball\":\"${source_rel.display()}\"")?
+  test.ok(! ("source_tarball" in index_text))?
   test.contains(index_text, "\"source_sha256\":\"")?
   let err = test.temp_path(ctx, name: "export-missing.err")
-  fs.remove(fp"${repo}/.out/source-mirrors/remote-app-1.0.0-1-${arch}.tar.gz")?
+  fs.remove(fp"${repo}/.out/source-mirrors/remote-app-1.0.0-1-${arch}.tar.bz2")?
   fs.remove(fp"${repo}/packages/${arch}/remote-app/remote-app-1.0.0-1.tar.gz")?
   let missing_status = run.status XSH_PM_REPO=$repo_url LAPUTA_TOKEN=token xsh_bin() pm.xsh -- upload-repo-export $repo 2> $err
   test.eq(missing_status.ok, false)?
@@ -986,7 +994,6 @@ proc test_pm_remote_index_decodes_legacy_dependency_fields(ctx: TestContext) [er
     tarball: "",
     metadata: "",
     source_sha256: "",
-    source_tarball: "",
     metapackage: false,
   })?
   test.eq(package.mkdeps_host, ["llvm-toolchain"])?
@@ -1084,8 +1091,10 @@ export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
 export let mkdeps_host = []
-export let sources = []
-export let checksums = []
+export let upstream_sources = [
+
+]
+
 export let filetree = [{path: p"proofless.txt", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
@@ -1113,8 +1122,10 @@ export let ver = "1.0.0"
 export let rel = "1"
 export let deps = []
 export let mkdeps_host = []
-export let sources = []
-export let checksums = []
+export let upstream_sources = [
+
+]
+
 export let filetree = [{path: p"usr/lib/xinit/services/svcless.xsh", kind: "file"}]
 
 export proc build(dest: Path) [fs, error] -> Result[Unit] {
@@ -1274,7 +1285,6 @@ proc test_pm_world_plan_displays_remote_to_local_catchup(ctx: TestContext) [fs, 
         tarball: f"packages/${arch}/laputa-pm/laputa-pm-1.0.0-0.tar.gz",
         metadata: "",
         source_sha256: "",
-        source_tarball: "",
         metapackage: false,
       },
     ],
@@ -1317,7 +1327,6 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
         tarball: f"packages/${arch}/laputa-pm/laputa-pm-1.0.0-0.tar.gz",
         metadata: "",
         source_sha256: "",
-        source_tarball: "",
         metapackage: false,
       },
       {
@@ -1332,7 +1341,6 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
         tarball: f"packages/${arch}/world-lib/world-lib-1.0.0-1.tar.gz",
         metadata: "",
         source_sha256: "",
-        source_tarball: "",
         metapackage: false,
       },
       {
@@ -1347,7 +1355,6 @@ proc test_pm_world_plan_displays_dependency_rel_bumps(ctx: TestContext) [fs, pro
         tarball: f"packages/${arch}/world-app/world-app-1.0.0-1.tar.gz",
         metadata: "",
         source_sha256: "",
-        source_tarball: "",
         metapackage: false,
       },
     ],
@@ -1386,7 +1393,6 @@ proc test_pm_world_plan_rejects_declared_rel_behind_remote(ctx: TestContext) [fs
         tarball: f"packages/${arch}/laputa-pm/laputa-pm-1.0.0-2.tar.gz",
         metadata: metadata_rel.display(),
         source_sha256: "",
-        source_tarball: "",
         metapackage: false,
       },
     ],
@@ -1593,7 +1599,6 @@ proc test_pm_refresh_index_merges_primary_over_public(ctx: TestContext) [fs, pro
         tarball: "packages/public/laputa-pm.tar.gz",
         metadata: "metadata/public/laputa-pm.json",
         source_sha256: "",
-        source_tarball: "",
         metapackage: false,
       },
       {
@@ -1609,7 +1614,6 @@ proc test_pm_refresh_index_merges_primary_over_public(ctx: TestContext) [fs, pro
         tarball: "packages/public/public-only.tar.gz",
         metadata: "metadata/public/public-only.json",
         source_sha256: "",
-        source_tarball: "",
         metapackage: false,
       },
     ],
@@ -1631,7 +1635,6 @@ proc test_pm_refresh_index_merges_primary_over_public(ctx: TestContext) [fs, pro
         tarball: "packages/primary/laputa-pm.tar.gz",
         metadata: "metadata/primary/laputa-pm.json",
         source_sha256: "",
-        source_tarball: "",
         metapackage: false,
       },
     ],

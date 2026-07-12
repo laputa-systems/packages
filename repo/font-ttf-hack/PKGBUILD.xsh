@@ -8,9 +8,11 @@ export let deps = []
 
 export let mkdeps_host = []
 
-export let sources = [p"https://github.com/source-foundry/Hack/releases/download/vVERSION/Hack-vVERSION-ttf.tar.xz"]
+export let upstream_sources = [
+  {source: p"https://github.com/source-foundry/Hack/releases/download/vVERSION/Hack-vVERSION-ttf.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "d9ed5d0a07525c7e7bd587b4364e4bc41021dd668658d09864453d9bb374a78d"}]}
+]
 
-export let checksums = ["d9ed5d0a07525c7e7bd587b4364e4bc41021dd668658d09864453d9bb374a78d"]
+
 
 export let filetree = [
   {path: p"usr/share/fonts/TTF/Hack-Bold.ttf", kind: "file"},

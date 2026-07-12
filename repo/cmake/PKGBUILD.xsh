@@ -14,19 +14,14 @@ export let deps = ["musl", "llvm-toolchain"]
 
 export let mkdeps_host = ["llvm-toolchain", "samurai"]
 
-export let sources = [
-  p"https://cmake.org/files/vMAJOR.MINOR/cmake-VERSION.tar.gz",
-  p"patches/cmake-no-execinfo.patch",
-  p"patches/cmake-musl-ioctl-fallbacks.patch",
-  p"patches/cmake-libarchive-no-closefrom.patch",
+export let upstream_sources = [
+  {source: p"https://cmake.org/files/vMAJOR.MINOR/cmake-VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "0798f4be7a1a406a419ac32db90c2956936fecbf50db3057d7af47d69a2d7edb"}]},
+  {source: p"patches/cmake-no-execinfo.patch", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "d6ebd2eb89ded4e1e12afccfabc9bcac4220c920f424118d411062ea23ece2cb"}]},
+  {source: p"patches/cmake-musl-ioctl-fallbacks.patch", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "eaba0ffc090bf877775e6d94ce63fdd702477962d5366d3f0e260ea2446e4aac"}]},
+  {source: p"patches/cmake-libarchive-no-closefrom.patch", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "b334fe4e1718220cd3a0110759575a91e10028d1959959941e198ce90a0e1f4d"}]}
 ]
 
-export let checksums = [
-  "0798f4be7a1a406a419ac32db90c2956936fecbf50db3057d7af47d69a2d7edb",
-  "d6ebd2eb89ded4e1e12afccfabc9bcac4220c920f424118d411062ea23ece2cb",
-  "eaba0ffc090bf877775e6d94ce63fdd702477962d5366d3f0e260ea2446e4aac",
-  "b334fe4e1718220cd3a0110759575a91e10028d1959959941e198ce90a0e1f4d",
-]
+
 
 export let filetree = [
   {path: p"usr", kind: "tree"},

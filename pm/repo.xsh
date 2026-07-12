@@ -30,7 +30,6 @@ export proc stage_built_package(
     tarball_metadata.size,
     metadata_rel.display(),
     "",
-    "",
     false,
   )
 
@@ -96,6 +95,22 @@ proc order_repo_build_packages(
   }
 
   ordered
+}
+
+proc verify_proof_receipt(out: Path, pkg: Package, tarball: Path) [fs, error] {
+  let receipt = proof_receipt_path(out, pkg)
+
+  if ! fs.exists(receipt)? {
+    return Err(PmError.PackageTarball(f"${pkg.name} has no successful proof receipt; build and prove it before upload"))
+  }
+
+  let metadata: Record = json.read(receipt)?
+  let expected: Str = metadata.get("tarball_sha256")?
+  let actual = hash.sha256(tarball)?.hex()
+
+  if expected != actual {
+    return Err(PmError.PackageTarball(f"${pkg.name} proof receipt does not match the package tarball"))
+  }
 }
 
 export proc upload_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
@@ -175,8 +190,8 @@ export proc upload_package(ctx: PmContext, pkg: Package) [fs, net, process, env,
   let arch = machine_arch()?
   var index = load_remote_index_from_repo(repo, ctx.out)?
 
-  if pkg.sources.len() == 0 {
-    let entry = remote_entry_for(arch, pkg, "", "", 0, "", "", "", true)
+  if pkg.upstream_sources.len() == 0 {
+    let entry = remote_entry_for(arch, pkg, "", "", 0, "", "", true)
     index = upsert_remote_package(index, entry)?
     write_remote_index_to_repo(repo, ctx.work, ctx.out, index, token)?
     run_lifecycle_hooks("post-upload", pkg.name, ctx, "metapackage")?
@@ -189,6 +204,8 @@ export proc upload_package(ctx: PmContext, pkg: Package) [fs, net, process, env,
   if ! fs.exists(tarball)? {
     return Err(PmError.PackageTarball(f"${tarball.display()} is missing; build before upload"))
   }
+
+  verify_proof_receipt(ctx.out, pkg, tarball)?
 
   let tarball_rel = remote_binary_rel(arch, pkg.name, pkg.ver, pkg.rel)
   let tarball_metadata = fs.metadata(tarball)?
@@ -218,7 +235,6 @@ export proc upload_package(ctx: PmContext, pkg: Package) [fs, net, process, env,
     hash.sha256(tarball)?.hex(),
     tarball_metadata.size,
     metadata_rel.display(),
-    uploaded_source.rel,
     uploaded_source.sha256,
     false,
   )
@@ -244,20 +260,19 @@ export proc upload_repo_export_file(repo: Str, rel: Path, source: Path, token: S
 }
 
 proc export_entry_with_local_source(repo_dir: Path, entry: RemotePackage) [fs, error] -> Result[RemotePackage] {
-  let source = fp"${repo_dir}/.out/source-mirrors/${package_id(entry.name, entry.ver, entry.rel)}-${entry.arch}.tar.gz"
+  let source = fp"${repo_dir}/.out/source-mirrors/${package_id(entry.name, entry.ver, entry.rel)}-${entry.arch}.tar.bz2"
 
   if ! fs.exists(source)? {
     return entry
   }
 
-  let source_rel = remote_source_rel_for_arch(entry.arch, entry.name, entry.ver, entry.rel)
-  {...entry, source_sha256: hash.sha256(source)?.hex(), source_tarball: source_rel.display()}
+  {...entry, source_sha256: hash.sha256(source)?.hex()}
 }
 
 proc remote_export_entry_same(remote_index: List[RemotePackage], entry: RemotePackage) [] -> Bool {
   for rpkg in remote_index {
     if rpkg.arch == entry.arch and rpkg.name == entry.name {
-      return rpkg.ver == entry.ver and rpkg.rel == entry.rel and rpkg.deps == entry.deps and rpkg.mkdeps_host == entry.mkdeps_host and (rpkg.mkdeps_target.len() == 0 or rpkg.mkdeps_target == entry.mkdeps_target) and rpkg.sha256 == entry.sha256 and rpkg.size == entry.size and rpkg.tarball == entry.tarball and rpkg.metadata == entry.metadata and rpkg.source_sha256 == entry.source_sha256 and rpkg.source_tarball == entry.source_tarball and rpkg.metapackage == entry.metapackage
+      return rpkg.ver == entry.ver and rpkg.rel == entry.rel and rpkg.deps == entry.deps and rpkg.mkdeps_host == entry.mkdeps_host and (rpkg.mkdeps_target.len() == 0 or rpkg.mkdeps_target == entry.mkdeps_target) and rpkg.sha256 == entry.sha256 and rpkg.size == entry.size and rpkg.tarball == entry.tarball and rpkg.metadata == entry.metadata and rpkg.source_sha256 == entry.source_sha256 and rpkg.metapackage == entry.metapackage
     }
   }
 
@@ -330,14 +345,14 @@ export proc upload_repo_export(argv: List[Str]) [fs, net, process, env, time, er
         }
       }
 
-      let source = fp"${repo_dir}/.out/source-mirrors/${package_id(entry.name, entry.ver, entry.rel)}-${entry.arch}.tar.gz"
+      let source = fp"${repo_dir}/.out/source-mirrors/${package_id(entry.name, entry.ver, entry.rel)}-${entry.arch}.tar.bz2"
 
       if fs.exists(source)? {
         let source_rel = remote_source_rel_for_arch(entry.arch, entry.name, entry.ver, entry.rel)
         let source_size = fs.metadata(source)?.size
         print --flush f"repo-export" ${entry.arch} ${entry.name} "uploading" "source" f"${source_size} bytes"
         upload_repo_export_file(repo, source_rel, source, token, work)?
-        uploaded = {...uploaded, source_sha256: hash.sha256(source)?.hex(), source_tarball: source_rel.display()}
+        uploaded = {...uploaded, source_sha256: hash.sha256(source)?.hex()}
       }
 
       uploaded

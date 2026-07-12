@@ -11,12 +11,12 @@ export let deps = ["musl", "zlib"]
 export let mkdeps_host = ["llvm-toolchain", "xinit"]
 
 # Source is a git commit (no VERSION substitution needed).
-export let sources = [
-  p"https://github.com/mkj/dropbear/archive/f5d44406ef2952ca69a68d59c6b0f7f0ff777305.tar.gz",
-  p"service.xsh",
+export let upstream_sources = [
+  {source: p"https://github.com/mkj/dropbear/archive/f5d44406ef2952ca69a68d59c6b0f7f0ff777305.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c"}]},
+  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
 ]
 
-export let checksums = ["ca55783baa7a67e57de4c234d43711349b7b3f8c17b15a04fd58a6e88700572c", "SKIP"]
+
 
 export let filetree = [
   {path: p"usr/bin/dbclient", kind: "binary"},

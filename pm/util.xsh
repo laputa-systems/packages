@@ -29,15 +29,23 @@ export pure remote_index_cache_path(out: Path) -> Path {
 }
 
 export pure source_mirror_path_for_arch(out: Path, pkg: Package, arch: Str) -> Path {
-  fp"${out}/source-mirrors/${package_id(pkg.name, pkg.ver, pkg.rel)}-${arch}.tar.gz"
+  fp"${out}/source-mirrors/${package_id(pkg.name, pkg.ver, pkg.rel)}-${arch}.tar.bz2"
+}
+
+export pure source_manifest_path_for_arch(out: Path, pkg: Package, arch: Str) -> Path {
+  fp"${out}/source-mirrors/${package_id(pkg.name, pkg.ver, pkg.rel)}-${arch}.manifest.json"
+}
+
+export pure proof_receipt_path(out: Path, pkg: Package) -> Path {
+  fp"${out}/${package_id(pkg.name, pkg.ver, pkg.rel)}.proof.json"
 }
 
 export pure remote_tarball_name(name: Str, ver: Str, rel: Str) -> Str {
   f"${package_id(name, ver, rel)}.tar.gz"
 }
 
-export pure remote_source_tarball_name_for_arch(name: Str, ver: Str, rel: Str, arch: Str) -> Str {
-  f"${package_id(name, ver, rel)}-${arch}-src.tar.gz"
+export pure remote_source_name_for_arch(name: Str, ver: Str, rel: Str, arch: Str) -> Str {
+  f"${package_id(name, ver, rel)}-${arch}-src.tar.bz2"
 }
 
 export pure remote_binary_rel(arch: Str, name: Str, ver: Str, rel: Str) -> Path {
@@ -53,7 +61,7 @@ export pure remote_metadata_rel(arch: Str, name: Str, ver: Str, rel: Str) -> Pat
 }
 
 export pure remote_source_rel_for_arch(arch: Str, name: Str, ver: Str, rel: Str) -> Path {
-  fp"sources/${name}/${remote_source_tarball_name_for_arch(name, ver, rel, arch)}"
+  fp"sources/${name}/${remote_source_name_for_arch(name, ver, rel, arch)}"
 }
 
 export pure ensure_relative_path(path_value: Path, label: Str) -> Result[Path] {
@@ -237,7 +245,7 @@ export pure goarch_for(arch: Str) -> Str {
   return arch
 }
 
-export pure source_vars(source: Str, pkg: Package, arch: Str) -> Str {
+export proc source_vars(source: Str, pkg: Package, arch: Str) [env, error] -> Result[Str] {
   let version = pkg.ver.replace("+", ".").replace("-", ".").replace("_", ".")
   let parts = version.split(".")
   let major = parts.get(0, "")
@@ -245,13 +253,26 @@ export pure source_vars(source: Str, pkg: Package, arch: Str) -> Str {
   let patch_part = parts.get(2, "")
   let ident = parts.get(3, "")
   let goarch = goarch_for(arch)
-  return source.replace("VERSION", pkg.ver).replace("RELEASE", pkg.rel).replace("MAJOR", major).replace("MINOR", minor).replace("PATCH", patch_part).replace("IDENT", ident).replace("PACKAGE", pkg.name).replace("GOARCH", goarch).replace("ARCH", arch)
-}
-
-export pure checksum_field_line(line: Str, field: Str) -> Bool {
-  line.starts_with(f"export let ${field} ") or line.starts_with(f"export let ${field}:") or line.starts_with(
-    f"export let ${field}=",
-  ) or line.starts_with(f"let ${field} ") or line.starts_with(f"let ${field}:") or line.starts_with(f"let ${field}=")
+  let build = build_arch()?
+  let build_goarch = goarch_for(build)
+  let target_triple = f"${arch}-linux-musl"
+  let build_triple = f"${build}-linux-musl"
+  var expanded = source
+  expanded = expanded.replace("VERSION", pkg.ver)
+  expanded = expanded.replace("RELEASE", pkg.rel)
+  expanded = expanded.replace("MAJOR", major)
+  expanded = expanded.replace("MINOR", minor)
+  expanded = expanded.replace("PATCH", patch_part)
+  expanded = expanded.replace("IDENT", ident)
+  expanded = expanded.replace("PACKAGE", pkg.name)
+  expanded = expanded.replace("TARGET_TRIPLE", target_triple)
+  expanded = expanded.replace("BUILD_TRIPLE", build_triple)
+  expanded = expanded.replace("TARGET_GOARCH", goarch)
+  expanded = expanded.replace("BUILD_GOARCH", build_goarch)
+  expanded = expanded.replace("TARGET_ARCH", arch)
+  expanded = expanded.replace("BUILD_ARCH", build)
+  expanded = expanded.replace("GOARCH", goarch)
+  expanded.replace("ARCH", arch)
 }
 
 export proc paths_from_args(raw: List[Str]) [error] -> Result[List[Path]] {

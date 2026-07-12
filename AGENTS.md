@@ -109,6 +109,16 @@ falling back to the published XSH release when no local build exists. It runs
 the checkout mounted at `/src/packages`. Inspect the coverage JSON after the run
 for PM source line/proc coverage by file.
 
+For a host-native run on Linux, use the checked-out debug XSH without Docker:
+
+```sh
+make test-native XSH_ROOT=$HOME/d/laputa-systems/xsh
+```
+
+This sets `XSH_PM_BUILD_CHROOT=0`, so both package builds and package proofs
+run against host tools. It is useful on Threadripper for fast PM iteration; the
+Docker suite remains the broader Linux-runtime check.
+
 Current PM coverage baseline from `make test`: `tests/xsh/pm.xsh` covers
 1600/6914 PM source lines (23.1%) and 223/401 procs (55.6%). Treat coverage as
 a refactor aid, not a metric target. Do not add trivial tests just to raise the

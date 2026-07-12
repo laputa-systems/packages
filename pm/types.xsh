@@ -1,13 +1,10 @@
 export error PmError = Usage(message: Str) : Usage | MissingDependency(message: Str) : Dependency | DependencyCycle(message: Str) : Dependency | ExtensionFailed(message: Str) | LifecycleHook(message: Str) | PackageTarball(message: Str) : NotFound | PackageConflict(message: Str) : Conflict | DirtyFilesystem(message: Str) : Conflict | PackageContract(message: Str) : InvalidData | DependentPackage(message: Str) : Dependency | PackageNotInstalled(message: Str) : NotFound | RemoteRepo(message: Str) : Remote | Auth(message: Str) : PermissionDenied | RemoteFetch(message: Str) : Remote | RemoteUpload(message: Str) : Remote | RemoteIndex(message: Str) : Remote | RemotePackage(message: Str) : NotFound | SourceDestination(message: Str) : InvalidData | SourceName(message: Str) : InvalidData | DownloadFailed(message: Str) : Remote | DownloadTool(message: Str) : NotFound | SourceNotFound(message: Str) : NotFound | SourceChecksum(message: Str) : InvalidData | ChecksumField(message: Str) : InvalidData
 
-# Minimal module contract for functions that only access a subset of
-# let-bindings.  Avoids triggering proc/pure validation which requires
-# live proc registries not available during general argument type checks.
-export type PackageChecksumsContract = module {
-  export let checksums: List[Str]
-}
-
 export type FileTreeEntry = {path: Path, kind: Str}
+
+export type SourceChecksum = {arch: Str, sha256: Str}
+
+export type UpstreamSource = {source: Path, kind: Str, architectures: List[Str], checksums: List[SourceChecksum]}
 
 export type PackageExports = module {
   export let name: Str
@@ -16,15 +13,13 @@ export type PackageExports = module {
   export let deps: List[Str]
   export let mkdeps_host: List[Str]
   export optional let mkdeps_target: List[Str]
-  export let sources: List[Path]
-  export let checksums: List[Str]
+  export let upstream_sources: List[UpstreamSource]
   export let filetree: List[FileTreeEntry]
   export optional let nostrip: Bool
-  export optional let checksums_aarch64: List[Str]
-  export optional let checksums_x86_64: List[Str]
   export optional let filetree_aarch64: List[FileTreeEntry]
   export optional let filetree_x86_64: List[FileTreeEntry]
   export optional let extract_install: Bool
+  export optional let source_mirror: Bool
 }
 
 export type Package = {
@@ -36,11 +31,11 @@ export type Package = {
   deps: List[Str],
   mkdeps_host: List[Str],
   mkdeps_target: List[Str],
-  sources: List[Path],
-  checksums: List[Str],
+  upstream_sources: List[UpstreamSource],
   filetree: List[FileTreeEntry],
   nostrip: Bool,
   extract_install: Bool,
+  source_mirror: Bool,
 }
 
 export type EtcSum = {path: Str, sha256: Str}
@@ -77,7 +72,6 @@ export type RemotePackage = {
   tarball: Str,
   metadata: Str,
   source_sha256: Str,
-  source_tarball: Str,
   metapackage: Bool,
 }
 

@@ -1,5 +1,44 @@
 use types
 
+type ScriptCommand = {target: Path, argv: List[Str]}
+
+proc command_for_script(script: Path, argv: List[Str]) [fs, env, error] -> Result[ScriptCommand] {
+  if (env.get("XSH_PM_BUILD_CHROOT") ?? "1") != "0" {
+    return {target: script, argv}
+  }
+
+  let shebang = match fs.read_text(script) {
+    Ok(text_value) => text_value.split("\n").get(0, "")
+    Err(_) => ""
+  }
+
+  if shebang != "#!/bin/xsh" {
+    return {target: script, argv}
+  }
+
+  let host = (env.get("XSH_HOST") ?? "").trim()
+
+  if host == "" {
+    return {target: script, argv}
+  }
+
+  let target = fp"${host}"
+
+  if ! fs.exists(target)? {
+    return {target: script, argv}
+  }
+
+  var host_argv = [target.display(), script.display(), "--"]
+  var index = 1
+
+  while index < argv.len() {
+    host_argv = host_argv.push(argv[index])
+    index += 1
+  }
+
+  {target, argv: host_argv}
+}
+
 export proc read_extension_summary(candidate: Path) [fs] -> Result[Str] {
   match fs.read_text(candidate) {
     Ok(text_value) => {
@@ -82,10 +121,11 @@ export proc run_extension_process(
   argv: List[Str],
   arg_text: Str,
   ctx: PmContext,
-) [fs, process, error] {
+) [fs, process, env, error] {
+  let command = command_for_script(executable, argv)?
   let command_plan = process.command_argv(
-    executable,
-    argv,
+    command.target,
+    command.argv,
     fs.cwd()?,
     {
       XSH_PM_ROOT: ctx.root.display(),
@@ -151,11 +191,12 @@ export proc run_lifecycle_hooks(hook_name: Str, pkg_name: Str, ctx: PmContext, e
     }
 
     let argv = [hook.name, hook_name, pkg_name, extra]
+    let command = command_for_script(hook, argv)?
 
     let status = process.run(
       process.command_argv(
-        hook,
-        argv,
+        command.target,
+        command.argv,
         fs.cwd()?,
         {
           XSH_PM_ROOT: ctx.root.display(),

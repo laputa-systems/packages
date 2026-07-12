@@ -8,9 +8,12 @@ export let deps = ["xsh"]
 
 export let mkdeps_host = []
 
-export let sources = [../../pm.xsh, p"../../pm => pm"]
+export let upstream_sources = [
+  {source: ../../pm.xsh, kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
+  {source: p"../../pm => pm", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
+]
 
-export let checksums = ["SKIP", "SKIP"]
+
 
 export let filetree = [
   {path: p"usr/bin/pm", kind: "file"},

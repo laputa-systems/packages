@@ -8,9 +8,11 @@ export let deps = ["alsa-lib"]
 
 export let mkdeps_host = []
 
-export let sources = [p"https://www.alsa-project.org/files/pub/lib/alsa-ucm-conf-VERSION.tar.bz2"]
+export let upstream_sources = [
+  {source: p"https://www.alsa-project.org/files/pub/lib/alsa-ucm-conf-VERSION.tar.bz2", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "9f79e813c08fc86cfa46dd75c4fcda1a4a51b482db2607e1fcfaafb92f588a31"}]}
+]
 
-export let checksums = ["9f79e813c08fc86cfa46dd75c4fcda1a4a51b482db2607e1fcfaafb92f588a31"]
+
 
 export let filetree = [
   {path: p"usr", kind: "tree"},

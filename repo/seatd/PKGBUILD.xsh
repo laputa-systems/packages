@@ -10,9 +10,12 @@ export let deps = ["musl"]
 
 export let mkdeps_host = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "xinit"]
 
-export let sources = [p"https://github.com/kennylevinsen/seatd/archive/refs/tags/VERSION.tar.gz", p"service.xsh"]
+export let upstream_sources = [
+  {source: p"https://github.com/kennylevinsen/seatd/archive/refs/tags/VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96"}]},
+  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
+]
 
-export let checksums = ["302564d54d8e28191fadfd734f2675ecb0c9e0615a58011b89ef15dfa4dbaa96", "SKIP"]
+
 
 export let filetree = [
   {path: p"usr/bin/seatd", kind: "binary"},

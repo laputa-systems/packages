@@ -8,22 +8,16 @@ export let deps = []
 
 export let mkdeps_host = []
 
-export let sources = [
-  p"https://github.com/laputa-systems/xsh/releases/download/release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b/xsh-multicall-release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b-ARCH-linux-musl => xsh-multicall",
-  p"https://github.com/laputa-systems/xsh/releases/download/release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b/core-release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b.tar.xz => xsh-core",
+export let upstream_sources = [
+  {source: p"https://github.com/laputa-systems/xsh/releases/download/release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b/xsh-multicall-release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b-ARCH-linux-musl => xsh-multicall", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "2f442944de1caf82a52d725b86326e2fa41748eb0dffbeae9a444b6547cb4e0e"}, {arch: "x86_64", sha256: "af98604c18515c9a7ee6b9e598c5fb87aa9c8ed9490eda8e6c56f1c15daa5328"}]},
+  {source: p"https://github.com/laputa-systems/xsh/releases/download/release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b/core-release-42b26e0f97a7c15c0ad9cf611a0c09e9cb4ca21b.tar.xz => xsh-core", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "fa6bf4212677387f4d6a97e95b13cf9b6793f4296ad1cb561357dacab039c111"}, {arch: "x86_64", sha256: "fa6bf4212677387f4d6a97e95b13cf9b6793f4296ad1cb561357dacab039c111"}]}
 ]
 
-export let checksums = ["SKIP", "0bae60ddb8e15a2f03f81ccf4e5ad69e6ed2215d656ea6a6395a24d1e86dcdeb"]
 
-export let checksums_aarch64 = [
-  "2f442944de1caf82a52d725b86326e2fa41748eb0dffbeae9a444b6547cb4e0e",
-  "fa6bf4212677387f4d6a97e95b13cf9b6793f4296ad1cb561357dacab039c111",
-]
 
-export let checksums_x86_64 = [
-  "af98604c18515c9a7ee6b9e598c5fb87aa9c8ed9490eda8e6c56f1c15daa5328",
-  "fa6bf4212677387f4d6a97e95b13cf9b6793f4296ad1cb561357dacab039c111",
-]
+
+
+
 
 export let nostrip = true
 

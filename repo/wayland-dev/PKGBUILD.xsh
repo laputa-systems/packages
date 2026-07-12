@@ -11,11 +11,11 @@ export let deps = ["musl", "expat", "wayland-libs-client", "wayland-libs-server"
 
 export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "expat", "libffi"]
 
-export let sources = [
-  p"https://gitlab.freedesktop.org/wayland/wayland/-/releases/VERSION/downloads/wayland-VERSION.tar.xz",
+export let upstream_sources = [
+  {source: p"https://gitlab.freedesktop.org/wayland/wayland/-/releases/VERSION/downloads/wayland-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536"}]}
 ]
 
-export let checksums = ["82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536"]
+
 
 export let filetree = [
   {path: p"usr/bin/wayland-scanner", kind: "binary"},

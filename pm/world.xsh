@@ -342,7 +342,16 @@ proc world_package_rows(packages: List[Package]) [] -> List[Record] {
   var rows = []
 
   for pkg in packages {
-    let sources = [source.display() for source in pkg.sources]
+    let sources = [source.source.display() for source in pkg.upstream_sources]
+    let upstream_sources = [
+      {
+        source: source.source.display(),
+        kind: source.kind,
+        architectures: source.architectures,
+        checksums: source.checksums,
+      }
+      for source in pkg.upstream_sources
+    ]
 
     rows = rows.push({
       name: pkg.name,
@@ -354,7 +363,7 @@ proc world_package_rows(packages: List[Package]) [] -> List[Record] {
       mkdeps_host: pkg.mkdeps_host,
       mkdeps_target: pkg.mkdeps_target,
       sources,
-      checksums: pkg.checksums,
+      upstream_sources,
     })
   }
 
@@ -945,7 +954,6 @@ proc world_latest_remote(index: List[RemotePackage], arch: Str, name: Str) [erro
     tarball: "",
     metadata: "",
     source_sha256: "",
-    source_tarball: "",
     metapackage: false,
   }
 
@@ -1302,6 +1310,31 @@ proc install_world_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs
   if built.len() > 0 {
     install_built_packages(ctx, built)?
   }
+}
+
+proc stage_world_source_mirror(repo_dir: Path, item: BuiltPackage, arch: Str) [fs, error] {
+  if item.pkg.upstream_sources.len() == 0 or ! item.pkg.source_mirror {
+    return
+  }
+
+  let package_out = fp"${repo_dir}/.work/world-build/${world_package_id(item.pkg)}/out"
+  let source = source_mirror_path_for_arch(package_out, item.pkg, arch)
+  let manifest = source_manifest_path_for_arch(package_out, item.pkg, arch)
+
+  if ! fs.exists(source)? or ! fs.exists(manifest)? {
+    return Err(PmError.SourceNotFound(f"${item.pkg.name} world build did not produce a source mirror"))
+  }
+
+  let manifest_record: Record = json.read(manifest)?
+  let expected: Str = manifest_record.get("archive_sha256")?
+
+  if expected != hash.sha256(source)?.hex() {
+    return Err(PmError.SourceChecksum(f"${item.pkg.name} world source manifest hash mismatch"))
+  }
+
+  let repo_out = fp"${repo_dir}/.out"
+  fs.copy(source, source_mirror_path_for_arch(repo_out, item.pkg, arch), overwrite: true)?
+  fs.copy(manifest, source_manifest_path_for_arch(repo_out, item.pkg, arch), overwrite: true)?
 }
 
 proc read_world_state(repo_dir: Path) [fs, error] -> Result[Record] {
@@ -1882,6 +1915,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
 
             if ! unchanged {
               for item in built {
+                stage_world_source_mirror(repo_dir, item, target_arch)?
                 index = stage_built_package(repo_dir, upload_ctx, index, item)?
               }
 

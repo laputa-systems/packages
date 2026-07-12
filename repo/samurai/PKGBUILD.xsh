@@ -10,9 +10,11 @@ export let deps = ["musl"]
 
 export let mkdeps_host = ["llvm-toolchain"]
 
-export let sources = [p"https://github.com/michaelforney/samurai/releases/download/VERSION/samurai-VERSION.tar.gz"]
+export let upstream_sources = [
+  {source: p"https://github.com/michaelforney/samurai/releases/download/VERSION/samurai-VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "3b8cf51548dfc49b7efe035e191ff5e1963ebc4fe8f6064a5eefc5343eaf78a5"}]}
+]
 
-export let checksums = ["3b8cf51548dfc49b7efe035e191ff5e1963ebc4fe8f6064a5eefc5343eaf78a5"]
+
 
 export let filetree = [{path: p"usr/bin/ninja", kind: "symlink"}, {path: p"usr/bin/samu", kind: "binary"}]
 

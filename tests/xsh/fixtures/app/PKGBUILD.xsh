@@ -8,9 +8,11 @@ export let deps = ["dep"]
 
 export let mkdeps_host = ["llvm-toolchain"]
 
-export let sources = []
+export let upstream_sources = [
 
-export let checksums = []
+]
+
+
 
 export let filetree = [{path: p"usr/share/app.txt", kind: "file"}]
 

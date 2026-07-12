@@ -15,8 +15,7 @@ Required exports:
 - `rel: Str`
 - `deps: List[Str]`
 - `mkdeps_host: List[Str]`
-- `sources: List[Path]`
-- `checksums: List[Str]`
+- `upstream_sources: List[UpstreamSource]`
 - `filetree: List[{path: Path, kind: Str}]`
 - `build(dest: Path) -> Result[Unit]`
 
@@ -24,10 +23,9 @@ Optional exports:
 
 - `nostrip: Bool`
 - `mkdeps_target: List[Str]`
-- `checksums_aarch64: List[Str]`
-- `checksums_x86_64: List[Str]`
+- `source_mirror: Bool`
 - `prepare(src: Path) -> Result[Unit]`
-- `process_sources(src: Path) -> Result[Unit]`
+- `prepare_sources(src: Path) -> Result[Unit]`
 - `pre_install(root: Path) -> Result[Unit]`
 - `post_install(root: Path) -> Result[Unit]`
 - `pre_remove(root: Path) -> Result[Unit]`
@@ -52,8 +50,18 @@ header or documentation trees, but ELF files and symlinks inside them still
 need explicit entries. `nostrip: true` remains an escape hatch for packages
 that intentionally preserve binary symbols.
 
-Source URLs may use `VERSION` and `ARCH`. Arch-specific checksums override the
-base `checksums` list for the matching package arch.
+`upstream_sources` is an ordered list of records containing a source path or
+URL, a materialization kind, and target-architecture checksum records. Source
+URLs may use `VERSION`, `RELEASE`, `MAJOR`, `MINOR`, `PATCH`, `IDENT`,
+`PACKAGE`, `ARCH`, `GOARCH`, `TARGET_ARCH`, `TARGET_GOARCH`, and
+`TARGET_TRIPLE`. `ARCH` is the target architecture, not the build host.
+
+`kind` is `auto`, `archive`, `zip`, `cpio`, `file`, `directory`, or `git`.
+`file` is used for direct binary inputs even when the upstream filename ends in
+an archive-looking suffix. Each checksum record names either a target arch or
+`all`. A regular file without a selected checksum is invalid. `source_mirror:
+false` keeps the input in the private build cache without publishing a public
+source mirror.
 
 ## Service Definitions
 
@@ -61,7 +69,8 @@ A package that provides an `xinit` service must define it in a `service.xsh`
 file next to its `PKGBUILD.xsh`, mirroring the required `proof.xsh`. The file
 exports one `service` record using the `xinit` service contract (see the xinit
 `docs/INIT.md`); `build()` installs it under
-`/usr/lib/xinit/services/<name>.xsh`. List `p"service.xsh"` in `sources` (with a
+`/usr/lib/xinit/services/<name>.xsh`. List `p"service.xsh"` in
+`upstream_sources` (with a
 `SKIP` checksum, like other repo-local files) so it is staged for `build()`.
 
 The contract is enforced during the package proof and is bidirectional:
@@ -98,6 +107,7 @@ pm upgrade ROOT WORK OUT
 pm checksum ROOT WORK OUT PKGDIR...
 pm update-checksums ROOT WORK OUT PKGDIR...
 pm upload ROOT WORK OUT PKGDIR...
+pm source-audit ROOT WORK OUT PKGDIR...
 ```
 
 Use `make update-checksums` from the package repo to refresh checksums for all
@@ -109,6 +119,15 @@ targeted run, or `UPDATE_CHECKSUM_JOBS=4` to adjust parallelism.
 ```sh
 xsh pm.xsh -- world-plan repo --arch x86_64
 ```
+
+To run the PM suite directly on a Linux host with the checked-out debug XSH:
+
+```sh
+make test-native XSH_ROOT=$HOME/d/laputa-systems/xsh
+```
+
+This disables the package build and proof chroots. The Docker-backed `make
+test` remains the runtime-isolated suite.
 
 ## World Rebuilds
 

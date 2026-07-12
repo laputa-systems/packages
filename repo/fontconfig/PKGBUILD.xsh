@@ -11,19 +11,14 @@ export let deps = ["musl", "freetype", "expat"]
 
 export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "freetype", "expat"]
 
-export let sources = [
-  p"https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/VERSION/fontconfig-VERSION.tar.xz",
-  p"files/generated/fccase.h => generated",
-  p"files/generated/fclang.h => generated",
-  p"files/generated/35-lang-normalize.conf => generated",
+export let upstream_sources = [
+  {source: p"https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/VERSION/fontconfig-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "9f5cae93f4fffc1fbc05ae99cdfc708cd60dfd6612ffc0512827025c026fa541"}]},
+  {source: p"files/generated/fccase.h => generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "299726ec60bc7a06ce3e523c75aef6745cb94cec4450e8ad53817427a3f7c84b"}]},
+  {source: p"files/generated/fclang.h => generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "3286b76659e4b23c34d2d133a8356253ce8eafb1f37475f7aff560ebad6d5863"}]},
+  {source: p"files/generated/35-lang-normalize.conf => generated", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "b89ed7c4a85f411112db8e0377a509fc68e3a1532d0b668970b766e140187c60"}]}
 ]
 
-export let checksums = [
-  "9f5cae93f4fffc1fbc05ae99cdfc708cd60dfd6612ffc0512827025c026fa541",
-  "299726ec60bc7a06ce3e523c75aef6745cb94cec4450e8ad53817427a3f7c84b",
-  "3286b76659e4b23c34d2d133a8356253ce8eafb1f37475f7aff560ebad6d5863",
-  "b89ed7c4a85f411112db8e0377a509fc68e3a1532d0b668970b766e140187c60",
-]
+
 
 type Declaration = {name: Str, define_name: Str}
 

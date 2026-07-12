@@ -12,15 +12,12 @@ export let deps = ["musl", "m4"]
 
 export let mkdeps_host = ["llvm-toolchain"]
 
-export let sources = [
-  p"https://github.com/westes/flex/releases/download/vVERSION/flex-VERSION.tar.gz",
-  p"files/flex.xsh",
+export let upstream_sources = [
+  {source: p"https://github.com/westes/flex/releases/download/vVERSION/flex-VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995"}]},
+  {source: p"files/flex.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "554d03a029e143cca1dad6a9b9d14dfb9940ccad7dc9d28e2fc8a5602603d0ef"}]}
 ]
 
-export let checksums = [
-  "e87aae032bf07c26f85ac0ed3250998c37621d95f8bd748b31f15b33c45ee995",
-  "554d03a029e143cca1dad6a9b9d14dfb9940ccad7dc9d28e2fc8a5602603d0ef",
-]
+
 
 export let filetree = [
   {path: p"usr/bin/flex", kind: "binary"},

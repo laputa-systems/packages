@@ -6,6 +6,21 @@ use sources
 use types
 use util
 
+export proc write_proof_receipt(out: Path, pkg: Package, tarball: Path) [fs, error] {
+  let receipt = proof_receipt_path(out, pkg)
+  fs.mkdir(receipt.parent)?
+  json.write(
+    receipt,
+    {
+      format: "laputa-package-proof-1",
+      name: pkg.name,
+      ver: pkg.ver,
+      rel: pkg.rel,
+      tarball_sha256: hash.sha256(tarball)?.hex(),
+    },
+  )?
+}
+
 proc prepare_build_package_source(ctx: PmContext, pkg: Package) [fs, net, process, env, time, error] {
   let id = package_id(pkg.name, pkg.ver, pkg.rel)
   let pkg_work = fp"${ctx.work}/${id}"
@@ -20,7 +35,7 @@ proc prepare_build_package_source(ctx: PmContext, pkg: Package) [fs, net, proces
   if ! reuse_work or ! src.exists()? or ! source_ready.exists()? {
     fs.remove(src, missing_ok: true)?
 
-    if pkg.sources.len() == 0 {
+    if pkg.upstream_sources.len() == 0 {
       fs.mkdir(src)?
     }
 
@@ -168,6 +183,21 @@ proc seed_chroot_runner(root: Path) [fs, process, env, error] {
   }
 }
 
+proc xsht_runner() [fs, process, env, error] -> Result[Path] {
+  let xsh = xsh_runner()?
+  let sibling = fp"${xsh.parent}/xsht"
+
+  if fs.exists(sibling)? {
+    return sibling
+  }
+
+  if fs.exists(/bin/xsht)? {
+    return /bin/xsht
+  }
+
+  process.which("xsht")?
+}
+
 export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball: Path) [fs, process, env, error] {
   let packages = load_package_dirs([pkg_dir])?
   let pkg = packages[0]
@@ -222,11 +252,12 @@ main(@args)?
     fs.write(runner, runner_text)?
     let trace_path = fp"${pkg_dir.parent}/run-package-build.trace"
 
+    let xsht = xsht_runner()?
     let status = process.run(
       process.command_argv(
-        "/bin/xsht",
+        xsht,
         [
-          "/bin/xsht",
+          xsht.display(),
           "trace",
           "--trace-file",
           trace_path.display(),
@@ -511,6 +542,7 @@ proc build_packages_in_chroot(
     }
 
     run_package_proof(ctx, pkg, id, tarball, item.manifest, built, build_log_text, build_log)?
+    write_proof_receipt(ctx.out, pkg, tarball)?
     run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     built = built.push(item)
     let tarball_size = fs.metadata(tarball)?.size
@@ -624,6 +656,7 @@ export proc build_packages(
     fs.mkdir(ctx.out)?
     archive.tar_create(tarball, dest, archive_paths, compression: "gz", overwrite: true)?
     run_package_proof(ctx, pkg, id, tarball, manifest, built, "", fp"")?
+    write_proof_receipt(ctx.out, pkg, tarball)?
     run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     let metadata_files = collect_metadata_files(dest, manifest)?
     let metadata_sha256 = metadata_files_sha256(pkg, metadata_files)?
@@ -915,7 +948,7 @@ proc run_package_proof(
   seed_chroot_device_paths(proof_root)?
   let build_arch = util.build_arch()?
   let target_arch = util.target_arch()?
-  let native_proof = build_arch == target_arch
+  let native_proof = build_arch == target_arch and (env.get("XSH_PM_BUILD_CHROOT") ?? "1") != "0"
 
   if native_proof {
     # note: not working on macos

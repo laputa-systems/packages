@@ -8,9 +8,11 @@ export let deps = []
 
 export let mkdeps_host = []
 
-export let sources = [p"files/rootfs"]
+export let upstream_sources = [
+  {source: p"files/rootfs", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
+]
 
-export let checksums = ["SKIP"]
+
 
 export let extract_install = true
 

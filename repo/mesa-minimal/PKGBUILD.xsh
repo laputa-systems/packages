@@ -10,9 +10,11 @@ export let deps = ["musl", "libdrm", "wayland-libs-client", "wayland-libs-server
 
 export let mkdeps_host = ["llvm-toolchain", "linux", "pkgconf", "libdrm", "wayland-dev", "libffi"]
 
-export let sources = [p"files/source-marker.txt => ."]
+export let upstream_sources = [
+  {source: p"files/source-marker.txt => .", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "2f848716fcc0bb55ee07c37ab374d8b8824dd38debcc0be4711b4930f1c67381"}]}
+]
 
-export let checksums = ["2f848716fcc0bb55ee07c37ab374d8b8824dd38debcc0be4711b4930f1c67381"]
+
 
 export let filetree = [
   {path: p"usr/include/EGL/egl.h", kind: "file"},

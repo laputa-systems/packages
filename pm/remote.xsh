@@ -452,7 +452,6 @@ export proc decode_remote_package(row: Record) [error] -> Result[RemotePackage] 
     tarball: row.get("tarball")?,
     metadata: if row.has("metadata") { row.get("metadata")? } else { "" },
     source_sha256: row.get("source_sha256")?,
-    source_tarball: row.get("source_tarball")?,
     metapackage: row.get("metapackage")?,
   }
 }
@@ -785,9 +784,6 @@ export proc fetch_remote_metadata_sidecar(out: Path, pkg: RemotePackage) [fs, ne
 }
 
 export pure package_from_remote(pkg: RemotePackage) -> Result[Package] {
-  let pkg_sources = []
-  let checksums = []
-
   {
     dir: p".",
     exports: {},
@@ -797,11 +793,11 @@ export pure package_from_remote(pkg: RemotePackage) -> Result[Package] {
     deps: pkg.deps,
     mkdeps_host: pkg.mkdeps_host,
     mkdeps_target: pkg.mkdeps_target,
-    sources: pkg_sources,
-    checksums,
+    upstream_sources: [],
     filetree: [],
     nostrip: false,
     extract_install: false,
+    source_mirror: false,
   }
 }
 
@@ -826,7 +822,6 @@ export pure remote_entry_for(
   sha256: Str,
   size: Int,
   metadata_rel: Str,
-  source_rel: Str,
   source_sha256: Str,
   metapackage: Bool,
 ) -> RemotePackage {
@@ -843,7 +838,6 @@ export pure remote_entry_for(
     tarball: tarball_rel,
     metadata: metadata_rel,
     source_sha256,
-    source_tarball: source_rel,
     metapackage,
   }
 }

@@ -10,9 +10,12 @@ export let deps = ["xsh", "wpa_supplicant"]
 
 export let mkdeps_host = ["xinit"]
 
-export let sources = [p"service.xsh", p"interfaces"]
+export let upstream_sources = [
+  {source: p"service.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]},
+  {source: p"interfaces", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "SKIP"}]}
+]
 
-export let checksums = ["SKIP", "SKIP"]
+
 
 export let filetree = [
   {path: p"etc/network/if-down.d/keep", kind: "file"},

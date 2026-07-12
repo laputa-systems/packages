@@ -14,15 +14,15 @@ export let mkdeps_host = []
 
 export let nostrip = true
 
-export let sources = [
-  p"https://github.com/laputa-systems/llvm-prebuilt-musl/releases/download/llvm-musl-VERSION/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt",
+export let upstream_sources = [
+  {source: p"https://github.com/laputa-systems/llvm-prebuilt-musl/releases/download/llvm-musl-VERSION/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "675f9cf871313a5672a63882d4d30dd6dd55df0aa9caee70970542eb03a23da3"}, {arch: "x86_64", sha256: "ac0bd443a1933bbd2c0efbedf6ebc97ff8ca2469e5ba65eadb966fb75f65dd1c"}]}
 ]
 
-export let checksums = ["SKIP"]
 
-export let checksums_aarch64 = ["675f9cf871313a5672a63882d4d30dd6dd55df0aa9caee70970542eb03a23da3"]
 
-export let checksums_x86_64 = ["ac0bd443a1933bbd2c0efbedf6ebc97ff8ca2469e5ba65eadb966fb75f65dd1c"]
+
+
+
 
 export let filetree = [
   {path: p"usr", kind: "tree"},

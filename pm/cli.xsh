@@ -6,6 +6,7 @@ use local
 use pm.env as pm_env
 use remote
 use repo
+use sources
 use types
 use util
 use world
@@ -31,6 +32,7 @@ proc parse_pm_cli(argv: List[Str]) [error] -> Result[Cli] {
     checksum: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
     update_checksums: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
     download: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
+    source_audit: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
     refresh_index: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
     auth: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
     upload: {positionals: ["root", "work", "out"], types: path_types, rest: "raw"},
@@ -60,7 +62,7 @@ proc parse_pm_cli(argv: List[Str]) [error] -> Result[Cli] {
 }
 
 proc print_help() [] {
-  print "usage: pm COMMAND [ARG...]\n\ntop-level commands:\n  build REPO_DIR PKGDIR...\n  world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--to-tranche N] [-j N|--jobs N]\n  build-install ROOT BUILD_ROOT WORK OUT PKGDIR...\n  build-set REPO_DIR PKGDIR...\n  build-upload-set REPO_DIR PKGDIR...\n  upload-set REPO_DIR PKGDIR...\n  upload-repo-export REPO_DIR\n\nroot commands:\n  install [ROOT WORK OUT] PKG...\n  remove [ROOT WORK OUT] PKG...\n  list [ROOT WORK OUT]\n  info [ROOT WORK OUT] PKG...\n  tree [ROOT WORK OUT] [PKG...]\n  search [ROOT WORK OUT] QUERY [PKGDIR...]\n  outdated [ROOT WORK OUT] PKGDIR...\n  update [ROOT WORK OUT] PKGDIR...\n  upgrade [ROOT WORK OUT] PKGDIR...\n  checksum [ROOT WORK OUT] PKGDIR...\n  update-checksums [ROOT WORK OUT] PKGDIR...\n  download [ROOT WORK OUT] PKGDIR...\n  refresh-index [ROOT WORK OUT]\n  auth [ROOT WORK OUT] [TOKEN]\n  upload [ROOT WORK OUT] PKGDIR...\n  help-ext [ROOT WORK OUT]\n\nWhen run from inside this package repo, root commands default ROOT, WORK, and OUT\nto .root, .work, and .out at the repo root.\n\nworld-plan stores its staging repo under ~/.cache/laputa/world-<hash>, where\nthe hash covers the selected package set and arch. The state fingerprint covers\nselected PKGBUILD.xsh files so package edits invalidate an in-progress world.\n"
+  print "usage: pm COMMAND [ARG...]\n\ntop-level commands:\n  build REPO_DIR PKGDIR...\n  world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--to-tranche N] [-j N|--jobs N]\n  build-install ROOT BUILD_ROOT WORK OUT PKGDIR...\n  build-set REPO_DIR PKGDIR...\n  build-upload-set REPO_DIR PKGDIR...\n  upload-set REPO_DIR PKGDIR...\n  upload-repo-export REPO_DIR\n\nroot commands:\n  install [ROOT WORK OUT] PKG...\n  remove [ROOT WORK OUT] PKG...\n  list [ROOT WORK OUT]\n  info [ROOT WORK OUT] PKG...\n  tree [ROOT WORK OUT] [PKG...]\n  search [ROOT WORK OUT] QUERY [PKGDIR...]\n  outdated [ROOT WORK OUT] PKGDIR...\n  update [ROOT WORK OUT] PKGDIR...\n  upgrade [ROOT WORK OUT] PKGDIR...\n  checksum [ROOT WORK OUT] PKGDIR...\n  update-checksums [ROOT WORK OUT] PKGDIR...\n  download [ROOT WORK OUT] PKGDIR...\n  source-audit [ROOT WORK OUT] PKGDIR...\n  refresh-index [ROOT WORK OUT]\n  auth [ROOT WORK OUT] [TOKEN]\n  upload [ROOT WORK OUT] PKGDIR...\n  help-ext [ROOT WORK OUT]\n\nWhen run from inside this package repo, root commands default ROOT, WORK, and OUT\nto .root, .work, and .out at the repo root.\n\nworld-plan stores its staging repo under ~/.cache/laputa/world-<hash>, where\nthe hash covers the selected package set and arch. The state fingerprint covers\nselected PKGBUILD.xsh files so package edits invalidate an in-progress world.\n"
 }
 
 proc build_local_packages(
@@ -439,6 +441,7 @@ proc handle_cli_command(parsed: Cli) [fs, net, process, env, time, error] {
     "checksum" => command_for_each_package(ctx, parsed.raw, command)?
     "update-checksums" => command_for_each_package(ctx, parsed.raw, command)?
     "download" => command_for_each_package(ctx, parsed.raw, command)?
+    "source-audit" => sources.audit_source_mirrors(ctx.out, load_local_packages(parsed.raw)?)?
     "refresh-index" => {
       run_lifecycle_hooks("pre-update", "", ctx, "remote")?
       let _ = refresh_remote_index(ctx.out)?

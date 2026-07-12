@@ -12,9 +12,11 @@ export let deps = ["musl"]
 
 export let mkdeps_host = ["llvm-toolchain"]
 
-export let sources = [p"https://distfiles.ariadne.space/pkgconf/pkgconf-VERSION.tar.xz"]
+export let upstream_sources = [
+  {source: p"https://distfiles.ariadne.space/pkgconf/pkgconf-VERSION.tar.xz", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243"}]}
+]
 
-export let checksums = ["cd05c9589b9f86ecf044c10a2269822bc9eb001eced2582cfffd658b0a50c243"]
+
 
 export let filetree = [
   {path: p"usr/bin/bomtool", kind: "binary"},

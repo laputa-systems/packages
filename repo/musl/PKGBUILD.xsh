@@ -15,13 +15,15 @@ export let mkdeps_host = ["llvm-toolchain"]
 
 export let nostrip = true
 
-export let sources = [p"https://musl.libc.org/releases/musl-VERSION.tar.gz"]
+export let upstream_sources = [
+  {source: p"https://musl.libc.org/releases/musl-VERSION.tar.gz", kind: "auto", architectures: ["all"], checksums: [{arch: "aarch64", sha256: "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"}, {arch: "x86_64", sha256: "d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"}]}
+]
 
-export let checksums = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
-export let checksums_aarch64 = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
-export let checksums_x86_64 = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
+
+
+
 
 let filetree_common = [
   {path: p"usr", kind: "tree"},

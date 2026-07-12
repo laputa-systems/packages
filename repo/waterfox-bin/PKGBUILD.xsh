@@ -10,19 +10,14 @@ export let mkdeps_host = []
 
 export let nostrip = true
 
-export let sources = [
-  p"https://github.com/joshuarli/waterfox-musl-squashed/releases/download/initial-arm64-hermetic/waterfox-140.11.0esr.en-US.linux-musl-aarch64.stage1-minwayland-release-arm64.1.tar.xz => waterfox",
-  p"files/waterfox-elf-scan.xsh",
-  p"files/waterfox-private-needed.xsh",
-  p"files/waterfox-allowed-external.sonames",
+export let upstream_sources = [
+  {source: p"https://github.com/joshuarli/waterfox-musl-squashed/releases/download/initial-arm64-hermetic/waterfox-140.11.0esr.en-US.linux-musl-aarch64.stage1-minwayland-release-arm64.1.tar.xz => waterfox", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "f22e9a92b15f26a1b805d85a7a1418ede89d8c6116b65b5af1d5600771ae89f2"}]},
+  {source: p"files/waterfox-elf-scan.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "6c422f8fff25ea1e9c0be524064bc3f95a6b47abcbca5c2c3dee02c85c2bd0c1"}]},
+  {source: p"files/waterfox-private-needed.xsh", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "f096fda5370eb78b4e14fe5d535ab780fb3d0c61dd703856c59683264dfb550e"}]},
+  {source: p"files/waterfox-allowed-external.sonames", kind: "auto", architectures: ["all"], checksums: [{arch: "all", sha256: "2190dcebd0a465fb2ed33caec377f8f9e3a0e6ab60b715e7cfa0e5bf179ef6ea"}]}
 ]
 
-export let checksums = [
-  "f22e9a92b15f26a1b805d85a7a1418ede89d8c6116b65b5af1d5600771ae89f2",
-  "6c422f8fff25ea1e9c0be524064bc3f95a6b47abcbca5c2c3dee02c85c2bd0c1",
-  "f096fda5370eb78b4e14fe5d535ab780fb3d0c61dd703856c59683264dfb550e",
-  "2190dcebd0a465fb2ed33caec377f8f9e3a0e6ab60b715e7cfa0e5bf179ef6ea",
-]
+
 
 error WaterfoxPackageError = Package(message: Str)
 
