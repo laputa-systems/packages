@@ -17,7 +17,7 @@ export let sources = [p"https://mirrors.kernel.org/gnu/bison/bison-VERSION.tar.x
 
 export let checksums = [
   "9bba0214ccf7f1079c5d59210045227bcf619519840ebfa80cd3849cff5a5bf2",
-  "0f6f22bcd40969af45cfd50bdb5ffd78cc68c3da06354084291cffd77740e7f4",
+  "49b349b80c55be3d10ba99688860ec05cc971096b7c5f64dda40ae6df9c1a1bc",
 ]
 
 export let filetree = [

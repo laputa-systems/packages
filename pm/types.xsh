@@ -22,6 +22,8 @@ export type PackageExports = module {
   export optional let nostrip: Bool
   export optional let checksums_aarch64: List[Str]
   export optional let checksums_x86_64: List[Str]
+  export optional let filetree_aarch64: List[FileTreeEntry]
+  export optional let filetree_x86_64: List[FileTreeEntry]
   export optional let extract_install: Bool
 }
 

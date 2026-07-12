@@ -23,13 +23,12 @@ export let checksums_aarch64 = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a
 
 export let checksums_x86_64 = ["d585fd3b613c66151fc3249e8ed44f77020cb5e6c1e635a616d3f9f82460512a"]
 
-export let filetree = [
+let filetree_common = [
   {path: p"usr", kind: "tree"},
   {path: p"usr/lib/Scrt1.o", kind: "binary"},
   {path: p"usr/lib/crt1.o", kind: "binary"},
   {path: p"usr/lib/crti.o", kind: "binary"},
   {path: p"usr/lib/crtn.o", kind: "binary"},
-  {path: p"usr/lib/ld-musl-aarch64.so.1", kind: "symlink"},
   {path: p"usr/lib/libc.so", kind: "binary"},
   {path: p"usr/lib/libcrypt.a", kind: "symlink"},
   {path: p"usr/lib/libcrypt.so", kind: "symlink"},
@@ -43,6 +42,12 @@ export let filetree = [
   {path: p"usr/lib/librt.so", kind: "symlink"},
   {path: p"usr/lib/rcrt1.o", kind: "binary"},
 ]
+
+export let filetree_aarch64 = filetree_common.push({path: p"usr/lib/ld-musl-aarch64.so.1", kind: "symlink"})
+
+export let filetree_x86_64 = filetree_common.push({path: p"usr/lib/ld-musl-x86_64.so.1", kind: "symlink"})
+
+export let filetree = filetree_aarch64
 
 pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {
   let re = regex.compile(pattern)?

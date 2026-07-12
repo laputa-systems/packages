@@ -560,7 +560,8 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
     let pkg_sources: List[Path] = exports.get("sources")?
     let base_checksums: List[Str] = exports.get("checksums")?
     let checksums = select_checksums(exports, base_checksums)?
-    let filetree: List[FileTreeEntry] = exports.get("filetree").context("package-load", pkgbuild.display())?
+    let base_filetree: List[FileTreeEntry] = exports.get("filetree").context("package-load", pkgbuild.display())?
+    let filetree = select_filetree(exports, base_filetree)?
     var nostrip = false
     var extract_install = false
 

@@ -17,6 +17,22 @@ export proc select_checksums(exports: Any, fallback: List[Str]) [env, error] -> 
   fallback
 }
 
+export proc select_filetree(exports: Any, fallback: List[FileTreeEntry]) [env, error] -> Result[List[FileTreeEntry]] {
+  let arch = machine_arch()?
+
+  if arch == "x86_64" and exports.has("filetree_x86_64") {
+    let filetree: List[FileTreeEntry] = exports.get("filetree_x86_64")?
+    return filetree
+  }
+
+  if arch == "aarch64" and exports.has("filetree_aarch64") {
+    let filetree: List[FileTreeEntry] = exports.get("filetree_aarch64")?
+    return filetree
+  }
+
+  fallback
+}
+
 export pure ensure_source_dest(dest: Path) -> Result[Unit] {
   let _ = ensure_relative_path(dest, "source destination")?
 }

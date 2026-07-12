@@ -20,6 +20,7 @@ export let filetree = [
   {path: p"usr/lib/pm/pm/chroot-run.xsh", kind: "file"},
   {path: p"usr/lib/pm/pm/cli.xsh", kind: "file"},
   {path: p"usr/lib/pm/pm/configure.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/elfdeps.xsh", kind: "file"},
   {path: p"usr/lib/pm/pm/env.xsh", kind: "file"},
   {path: p"usr/lib/pm/pm/extensions.xsh", kind: "file"},
   {path: p"usr/lib/pm/pm/install.xsh", kind: "file"},
