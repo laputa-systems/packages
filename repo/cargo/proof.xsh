@@ -67,7 +67,20 @@ main(@args)?
     linker_wrapper,
     f"""#!/bin/xsh
 proc main(...args: List[Str]) [process, error] {
-  run fp"${dynlinker.display()}" fp"${linker.display()}" @args ?
+  var linker_args: List[Str] = []
+  for arg in args {
+    if arg.starts_with("-Wl,") {
+      let options = arg.split(",")
+      var index = 1
+      while index < options.len() {
+        linker_args = linker_args.push(options[index])
+        index += 1
+      }
+    } else if arg != "-nostartfiles" and arg != "-nodefaultlibs" {
+      linker_args = linker_args.push(arg)
+    }
+  }
+  run fp"${dynlinker.display()}" fp"${linker.display()}" @linker_args ?
 }
 main(@args)?
 """,
@@ -95,7 +108,7 @@ main(@args)?
   }
 
   let hello = fp"${tmp}/target/${rust_triple}/release/cargo-proof-hello"
-  let out = run.text $dynlinker $hello ?
+  let out = run.text $hello ?
   let trimmed = out.trim()
 
   if trimmed != "hello cargo" {
