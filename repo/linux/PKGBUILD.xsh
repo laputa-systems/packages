@@ -1,5 +1,6 @@
 use PKGBUILD-aarch64 as PKGBUILD_aarch64
 use PKGBUILD-x86_64 as PKGBUILD_x86_64
+use PKGBUILD-shared as PKGBUILD_shared
 use kbuild
 use linux_config
 use parser_gen
@@ -294,7 +295,7 @@ proc install_uapi_headers(dest: Path, srcarch: Str) [fs, error] {
   install_headers_from(dest, fp"arch/${srcarch}/include/generated/uapi/asm", p"usr/include/asm")?
 }
 
-proc build_native_scratch(cc: Path, srcarch: Str) [fs, process, env, error] {
+proc build_native_scratch(cc: Path, srcarch: Str) [fs, process, env, time, error] {
   if srcarch == "arm64" {
     PKGBUILD_aarch64.build_scratch(cc, srcarch, ver)?
     return
@@ -329,16 +330,26 @@ proc build_cc() [fs, process, env, error] -> Result[Path] {
   return process.which("cc")?
 }
 
-export proc build(dest: Path) [fs, process, env, error] {
+export proc build(dest: Path) [fs, process, env, time, error] {
+  let package_start = PKGBUILD_shared.timing_start("package-total")
   let cc = build_cc()?
   let arch = package_arch()?
   let srcarch = linux_srcarch(arch)?
+  let config_start = PKGBUILD_shared.timing_start("config")
   linux_config.write_resolved_config(p".", srcarch, build_kernel_config_fragments_for(arch)?, p".config")?
+  PKGBUILD_shared.timing_done("config", config_start)
+  let parser_start = PKGBUILD_shared.timing_start("parser")
   parser_gen.generate_linux_parsers()?
+  PKGBUILD_shared.timing_done("parser", parser_start)
+  let kbuild_start = PKGBUILD_shared.timing_start("kbuild")
   build_native_scratch(cc, srcarch)?
+  PKGBUILD_shared.timing_done("kbuild", kbuild_start)
+  let install_start = PKGBUILD_shared.timing_start("install")
   let image = kernel_image_for(arch)?
   fs.install(image, fp"${dest}/boot/vmlinuz-${ver}", 0o644, parents: true, overwrite: true)?
   fs.install(image, fp"${dest}/boot/vmlinuz", 0o644, parents: true, overwrite: true)?
   fs.install(p".config", fp"${dest}/usr/share/linux/config-${ver}", 0o644, parents: true, overwrite: true)?
   install_uapi_headers(dest, srcarch)?
+  PKGBUILD_shared.timing_done("install", install_start)
+  PKGBUILD_shared.timing_done("package-total", package_start)
 }

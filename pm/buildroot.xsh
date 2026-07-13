@@ -64,17 +64,21 @@ export proc install_chroot_base(
     return
   }
 
+  var names: List[Str] = []
+
   if ! local_names.get("baselayout", false) {
-    install_remote_dependency_set(ctx, ["baselayout"])?
+    names = names.push("baselayout")
   }
 
   if ! local_names.get("laputa-pm", false) and ! local_names.get("xsh", false) {
-    install_remote_dependency_set(ctx, ["laputa-pm"])?
+    names = names.push("laputa-pm")
   }
 
   if include_tool_runtime {
-    install_remote_dependency_set(ctx, ["musl", "zlib"])?
+    names = names.extend(["musl", "zlib"])
   }
+
+  install_remote_dependency_set(ctx, names)?
 }
 
 export proc install_chroot_base_for_arch(

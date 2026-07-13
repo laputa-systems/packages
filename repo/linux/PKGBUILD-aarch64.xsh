@@ -475,7 +475,7 @@ proc nvhe_objcopy_task(objcopy: Path, input: Path, out: Path, deps: List[Str]) [
   }
 }
 
-proc build_native_nvhe(cc: Path, jobs_count: Int) [fs, process, env, error] {
+proc build_native_nvhe(cc: Path, jobs_count: Int) [fs, process, env, time, error] {
   let gen = build_native_nvhe_helper(cc)?
   let nvhe_dir = p".xsh-kbuild/obj/arch/arm64/kvm/hyp/nvhe"
   let linker_script = fp"${nvhe_dir}/hyp.lds"
@@ -528,7 +528,7 @@ proc build_native_nvhe(cc: Path, jobs_count: Int) [fs, process, env, error] {
   make.run_tasks(final_tasks, jobs_count)?
 }
 
-export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, error] {
+export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, time, error] {
   if srcarch != "arm64" {
     return Err(
       ScriptError.Failed(
@@ -564,8 +564,11 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
   PKGBUILD_shared.stop_after("discover")?
   let plan_start = PKGBUILD_shared.timing_start("plan")
   let nvhe_jobs_count = PKGBUILD_shared.build_jobs()?
+  let nvhe_start = PKGBUILD_shared.timing_start("nvhe")
   build_native_nvhe(cc, nvhe_jobs_count)?
+  PKGBUILD_shared.timing_done("nvhe", nvhe_start)
 
+  let archive_plan_start = PKGBUILD_shared.timing_start("archive-plan")
   let archive_plan = PKGBUILD_shared.cached_archive_plan(
     plan,
     cc,
@@ -574,6 +577,7 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, e
     native_kbuild_cflags(),
     native_kbuild_includes(),
   )?
+  PKGBUILD_shared.timing_done("archive-plan", archive_plan_start)
 
   let only = env.get("XSH_LINUX_KBUILD_ONLY") ?? ""
 

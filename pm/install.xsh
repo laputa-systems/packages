@@ -4,13 +4,16 @@ use remote
 use types
 use util
 
-export proc install_remote_metapackage(ctx: PmContext, pkg: RemotePackage) [fs, process, env, error] {
+export proc install_remote_metapackage(ctx: PmContext, pkg: RemotePackage) [fs, process, env, time, error] {
+  let started = time.now()
   let local_pkg = package_from_remote(pkg)?
   print --flush ${pkg.name} version_id(pkg.ver, pkg.rel) "install:" "starting"
   run_lifecycle_hooks("pre-install", pkg.name, ctx, "remote-metapackage")?
   write_package_db(ctx.root, local_pkg, [], [])?
   run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-metapackage")?
   print ${pkg.name} version_id(pkg.ver, pkg.rel) "registered"
+  let elapsed = time.now() - started
+  print --flush "pm-install-package-done" $pkg.name $elapsed "ms" "metapackage"
 }
 
 proc metadata_manifest_paths(metadata: Record) [error] -> Result[List[Path]] {
@@ -52,36 +55,94 @@ proc load_remote_metadata_sidecar(path_value: Path, pkg: RemotePackage) [fs, err
   metadata
 }
 
+pure metadata_files_key(files: List[Record]) -> Result[Str] {
+  var key = ""
+
+  for file in files {
+    let path_text: Str = file.get("path")?
+    let kind: Str = file.get("kind")?
+    let mode: Int = file.get("mode")?
+    let sha256: Str = file.get("sha256")?
+    let target: Str = file.get("target")?
+    key = f"${key}${path_text}\t${kind}\t${mode}\t${sha256}\t${target}\n"
+  }
+
+  key
+}
+
+proc validate_remote_metadata_sidecar(
+  stage: Path,
+  metadata: Record,
+) [fs, error] -> Result[Bool] {
+  let stage_db = package_db_path(stage, metadata.get("name")?)
+  let staged_manifest = load_manifest(stage_db)?
+  let metadata_manifest = metadata_manifest_paths(metadata)?
+  let staged_files = collect_metadata_files(stage, staged_manifest)?
+  let metadata_files: List[Record] = metadata.get("files")?
+
+  staged_manifest == metadata_manifest and metadata_files_key(staged_files)? == metadata_files_key(metadata_files)?
+}
+
 export proc install_remote_tarball(
   ctx: PmContext,
   pkg: RemotePackage,
   tarball: Path,
   from_cache: Bool,
+  prepared_stage: Path = p"",
+  prepared_metadata: Path = p"",
+  prepared_metadata_found: Bool = false,
 ) [fs, net, process, env, time, error] {
+  let started = time.now()
   let id = package_id(pkg.name, pkg.ver, pkg.rel)
-  let install_stage = fp"${ctx.work}/${id}-remote-install"
+  let install_stage = if prepared_stage.display() == "" { fp"${ctx.work}/${id}-remote-install" } else { prepared_stage }
   let label = if from_cache { "cache-installed" } else { "remote-installed" }
   print --flush ${pkg.name} version_id(pkg.ver, pkg.rel) "install:" "starting" $label
   let db = package_db_path(ctx.root, pkg.name)
   var manifest = []
   var etcsums = []
   var local_pkg = package_from_remote(pkg)?
-  let sidecar = fetch_remote_metadata_sidecar(ctx.out, pkg)?
+  var sidecar_metadata: Record = {}
+  let sidecar = if prepared_metadata.display() == "" {
+    fetch_remote_metadata_sidecar(ctx.out, pkg)?
+  } else {
+    {found: prepared_metadata_found, path: prepared_metadata, from_cache: true}
+  }
   var have_sidecar = false
 
   if sidecar.found {
-    let metadata = load_remote_metadata_sidecar(sidecar.path, pkg)?
-    manifest = metadata_manifest_paths(metadata)?
-    etcsums = metadata_etcsums(metadata)?
+    sidecar_metadata = load_remote_metadata_sidecar(sidecar.path, pkg)?
+    manifest = metadata_manifest_paths(sidecar_metadata)?
+    etcsums = metadata_etcsums(sidecar_metadata)?
     have_sidecar = true
   } else {
-    fs.remove(install_stage, missing_ok: true)?
-    fs.mkdir(install_stage)?
-    archive.tar_extract(tarball, install_stage, 0, "auto", true)?
+    if prepared_stage.display() == "" {
+      fs.remove(install_stage, missing_ok: true)?
+      fs.mkdir(install_stage)?
+      archive.tar_extract(tarball, install_stage, 0, "auto", true)?
+    }
     let stage_db = package_db_path(install_stage, pkg.name)
     manifest = load_manifest(stage_db)?
     etcsums = json.read(fp"${stage_db}/etcsums.json")?
     local_pkg = package_with_extract_install(local_pkg, load_extract_install(stage_db)?)
+  }
+
+  if have_sidecar and prepared_stage.display() == "" {
+    fs.remove(install_stage, missing_ok: true)?
+    fs.mkdir(install_stage)?
+    archive.tar_extract(tarball, install_stage, 0, "auto", true)?
+  }
+
+  if have_sidecar {
+    let metadata_matches = validate_remote_metadata_sidecar(install_stage, sidecar_metadata)?
+
+    if ! metadata_matches {
+      let stage_db = package_db_path(install_stage, pkg.name)
+      manifest = load_manifest(stage_db)?
+      etcsums = json.read(fp"${stage_db}/etcsums.json")?
+      local_pkg = package_with_extract_install(local_pkg, load_extract_install(stage_db)?)
+      have_sidecar = false
+      print --flush "pm-install-metadata-mismatch" $pkg.name "using tarball metadata"
+    }
   }
 
   let old_manifest = load_manifest(db)?
@@ -94,6 +155,8 @@ export proc install_remote_tarball(
     direct_extract_package(ctx, local_pkg, tarball, manifest, etcsums, installed_owners)?
     run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-tarball")?
     print ${pkg.name} manifest.len() $label
+    let elapsed = time.now() - started
+    print --flush "pm-install-package-done" $pkg.name $elapsed "ms" manifest.len() $label
     return
   }
 
@@ -102,13 +165,9 @@ export proc install_remote_tarball(
     direct_extract_package(ctx, local_pkg, tarball, manifest, etcsums, installed_owners)?
     run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-tarball")?
     print ${pkg.name} manifest.len() $label
+    let elapsed = time.now() - started
+    print --flush "pm-install-package-done" $pkg.name $elapsed "ms" manifest.len() $label
     return
-  }
-
-  if have_sidecar {
-    fs.remove(install_stage, missing_ok: true)?
-    fs.mkdir(install_stage)?
-    archive.tar_extract(tarball, install_stage, 0, "auto", true)?
   }
 
   ensure_installable(ctx.root, local_pkg, manifest, installed_owners)?
@@ -123,38 +182,99 @@ export proc install_remote_tarball(
   write_package_db(ctx.root, local_pkg, manifest, etcsums)?
   run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-tarball")?
   print ${pkg.name} manifest.len() $label
+  let elapsed = time.now() - started
+  print --flush "pm-install-package-done" $pkg.name $elapsed "ms" manifest.len() $label
+}
+
+proc prepare_remote_install_stage(ctx: PmContext, pkg: RemotePackage, tarball: Path) [fs, error] -> Result[Path] {
+  let stage = fp"${ctx.work}/${package_id(pkg.name, pkg.ver, pkg.rel)}-remote-install"
+  fs.remove(stage, missing_ok: true)?
+  fs.mkdir(stage)?
+  archive.tar_extract(tarball, stage, 0, "auto", true)?
+  stage
 }
 
 export proc install_remote_packages(ctx: PmContext, names: List[Str]) [fs, net, process, env, time, error] {
+  let install_started = time.now()
   let index = ensure_remote_index(ctx.out)?
   let selected = collect_remote_packages(ctx.root, index, names)?
   let ordered = order_remote_packages(ctx.root, selected)?
   let tarball_packages = ordered |> where ! .metapackage
   var tarballs: Map[Path] = {}
   var tarball_from_cache: Map[Bool] = {}
+  var prepared_stages: Map[Path] = {}
+  var prepared_metadata: Map[Path] = {}
+  var prepared_metadata_found: Map[Bool] = {}
 
   if tarball_packages.len() > 0 {
+    let download_started = time.now()
     let downloaded = tarball_packages
       |> par-map --jobs=tarball_packages.len() { |pkg|
-        let result = download_remote_tarball(ctx.out, pkg)?
-        {name: pkg.name, tarball: result.tarball, from_cache: result.from_cache}
+        let tarball = download_remote_tarball(ctx.out, pkg)?
+        let metadata = fetch_remote_metadata_sidecar(ctx.out, pkg)?
+
+        if metadata.found {
+          load_remote_metadata_sidecar(metadata.path, pkg)?
+        }
+
+        {
+          name: pkg.name,
+          tarball: tarball.tarball,
+          from_cache: tarball.from_cache,
+          metadata: metadata.path,
+          metadata_found: metadata.found,
+        }
       }
 
     for item in downloaded {
       tarballs[item.name] = item.tarball
       tarball_from_cache[item.name] = item.from_cache
+      prepared_metadata[item.name] = item.metadata
+      prepared_metadata_found[item.name] = item.metadata_found
     }
+
+    let download_elapsed = time.now() - download_started
+    print --flush "pm-install-download-done" $download_elapsed "ms" $tarball_packages.len() packages
+
+    let staging_started = time.now()
+    let prepared = tarball_packages
+      |> par-map --jobs=tarball_packages.len() { |pkg|
+        prepare_remote_install_stage(ctx, pkg, tarballs.get(pkg.name)?)?
+      }
+
+    var prepared_index = 0
+    for pkg in tarball_packages {
+      prepared_stages[pkg.name] = prepared[prepared_index]
+      prepared_index += 1
+    }
+
+    let staging_elapsed = time.now() - staging_started
+    print --flush "pm-install-staging-done" $staging_elapsed "ms" $tarball_packages.len() packages
   }
 
+  let commit_started = time.now()
   for pkg in ordered {
     if pkg.metapackage {
       install_remote_metapackage(ctx, pkg)?
     } else {
       let tarball = tarballs.get(pkg.name)?
       let from_cache = tarball_from_cache.get(pkg.name, false)
-      install_remote_tarball(ctx, pkg, tarball, from_cache)?
+      install_remote_tarball(
+        ctx,
+        pkg,
+        tarball,
+        from_cache,
+        prepared_stages.get(pkg.name, p""),
+        prepared_metadata.get(pkg.name, p""),
+        prepared_metadata_found.get(pkg.name, false),
+      )?
     }
   }
+
+  let commit_elapsed = time.now() - commit_started
+  let install_elapsed = time.now() - install_started
+  print --flush "pm-install-commit-done" $commit_elapsed "ms" $ordered.len() packages
+  print --flush "pm-install-remote-done" $install_elapsed "ms" $ordered.len() packages
 }
 
 export proc install_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs, process, env, error] {

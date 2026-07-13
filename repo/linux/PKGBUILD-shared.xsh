@@ -59,19 +59,18 @@ export proc stop_after(stage: Str) [env, error] {
   }
 }
 
-export proc timing_start(stage: Str) [env] -> Int {
+export proc timing_start(stage: Str) [env, time] -> Int {
   if (env.get("XSH_LINUX_KBUILD_TIMING") ?? "") == "1" {
     print "linux-kbuild-timing-start" $stage
+    return time.now()
   }
 
   return 0
 }
 
-export proc timing_done(stage: Str, start: Int) [env] {
-  let _ = start
-
+export proc timing_done(stage: Str, start: Int) [env, time] {
   if (env.get("XSH_LINUX_KBUILD_TIMING") ?? "") == "1" {
-    print "linux-kbuild-timing-done" $stage
+    print "linux-kbuild-timing-done" $stage ${time.now() - start}ms
   }
 }
 

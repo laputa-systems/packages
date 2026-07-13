@@ -642,7 +642,7 @@ proc build_x86_realmode_payload(cc: Path) [fs, process, env, error] {
   )?
 }
 
-export proc build_x86_64_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, error] {
+export proc build_x86_64_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, time, error] {
   let prepare_start = PKGBUILD_shared.timing_start("prepare")
   kbuild.write_config_headers(p".config", p".", ver, srcarch)?
   kbuild.write_build_headers(p".", ver, srcarch)?
@@ -686,6 +686,7 @@ export proc build_x86_64_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process,
   PKGBUILD_shared.stop_after("discover")?
   let plan_start = PKGBUILD_shared.timing_start("plan")
 
+  let archive_plan_start = PKGBUILD_shared.timing_start("archive-plan")
   let archive_plan = PKGBUILD_shared.cached_archive_plan(
     plan,
     cc,
@@ -694,6 +695,7 @@ export proc build_x86_64_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process,
     x86_kbuild_cflags(),
     x86_kbuild_includes(),
   )?
+  PKGBUILD_shared.timing_done("archive-plan", archive_plan_start)
 
   let only = env.get("XSH_LINUX_KBUILD_ONLY") ?? ""
 

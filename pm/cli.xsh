@@ -441,6 +441,47 @@ proc build_upload_set_repo(argv: List[Str]) [fs, net, process, env, time, error]
   upload_set_repo(argv)?
 }
 
+proc build_set_dependencies(argv: List[Str]) [fs, net, process, env, time, error] {
+  if argv.len() < 3 {
+    return Err(usage("pm build-set-deps REPO_DIR PKGDIR..."))
+  }
+
+  let repo_dir = path.absolute(fp"${argv[1]}")?
+  let root = fp"${repo_dir}/.set-root"
+  let build_root = fp"${repo_dir}/.set-build-root"
+  let work = fp"${repo_dir}/.work"
+  let out = fp"${repo_dir}/.out"
+  let root_ctx: PmContext = {command: "build-set-deps", root, work, out}
+  let build_ctx: PmContext = {command: "build-set-deps", root: build_root, work, out}
+  var raw_args = []
+  var build_i = 2
+
+  while build_i < argv.len() {
+    raw_args = raw_args.push(argv[build_i])
+    build_i += 1
+  }
+
+  let packages = load_package_dirs(paths_from_args(raw_args)?)?
+  let local_names = local_package_names(packages)
+  fs.mkdir(repo_dir)?
+  fs.remove(root, missing_ok: true)?
+  fs.remove(build_root, missing_ok: true)?
+  fs.mkdir(root)?
+  fs.mkdir(build_root)?
+  fs.mkdir(work)?
+  fs.mkdir(out)?
+  let lock = fs.lock(fp"${work}/pm.lock")?
+  defer fs.unlock(lock)?
+  let started = time.now()
+
+  install_chroot_base(root_ctx, local_names, false)?
+  install_chroot_base(build_ctx, local_names, true)?
+  install_remote_dependency_set(root_ctx, missing_dependency_names(root, packages, false, local_names)?)?
+  install_remote_dependency_set(build_ctx, missing_dependency_names(build_root, packages, true, local_names)?)?
+  let elapsed = time.now() - started
+  print --flush "pm-dependencies-ready" $elapsed "ms" packages.len() "packages"
+}
+
 proc build_prepared_package_command(argv: List[Str]) [fs, process, env, error] {
   if argv.len() != 5 {
     return Err(usage("pm build-prepared-package PKGDIR SRC DEST TARBALL"))
@@ -642,6 +683,11 @@ export proc run_pm_cli(argv: List[Str]) [fs, net, process, env, time, error] {
 
   if a.len() >= 1 and a[0] == "build-set" {
     build_set_repo(a)?
+    return
+  }
+
+  if a.len() >= 1 and a[0] == "build-set-deps" {
+    build_set_dependencies(a)?
     return
   }
 
