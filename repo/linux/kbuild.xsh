@@ -231,6 +231,10 @@ pure archive_owner(plan: KbuildPlan, obj: Path) -> Path {
   return object_dir(obj)
 }
 
+pure archive_owner_key(owners: Map[Str], obj: Path) -> Path {
+  return fp"${owners.get(path_key(obj), path_key(object_dir(obj)))}"
+}
+
 pure join_rel(dir: Path, item: Str) -> Path {
   if path_key(dir) == "." {
     return normalize_rel_path(fp"${item}")
@@ -6450,6 +6454,11 @@ export proc plan_builtin_archives(
   var pi_relacheck_added = false
   let composites_by_object = composite_map(plan.composites)
   let config = load_config(p".config")?
+  var archive_owner_by_object: Map[Str] = {}
+
+  for owner in plan.archive_owners {
+    archive_owner_by_object[path_key(owner.object)] = path_key(owner.dir)
+  }
 
   let compile_flags_by_dir = cached_kbuild_compile_flags_for_dirs(
     p".",
@@ -6507,7 +6516,7 @@ export proc plan_builtin_archives(
           [task.name, pi_relacheck_path().display()],
         )
 
-        let dir_key = path_key(archive_owner(plan, obj))
+        let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
         tasks = tasks.push(base_task).push(task).push(check_task)
         link_inputs = link_inputs.push(out)
         objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
@@ -6563,7 +6572,7 @@ export proc plan_builtin_archives(
         }
 
         if member_outs.len() > 0 {
-          let dir_key = path_key(archive_owner(plan, obj))
+          let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
           link_inputs = link_inputs.extend(member_outs)
           objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).extend(member_outs)
           deps_by_dir[dir_key] = deps_by_dir.get(dir_key, []).extend(member_deps)
@@ -6584,7 +6593,7 @@ export proc plan_builtin_archives(
               out,
             )
 
-            let dir_key = path_key(archive_owner(plan, obj))
+            let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
             tasks = tasks.push(task)
             link_inputs = link_inputs.push(out)
             objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
@@ -6597,7 +6606,7 @@ export proc plan_builtin_archives(
                   let out = obj_out_path(obj)
 
                   if out.exists()? {
-                    let dir_key = path_key(archive_owner(plan, obj))
+                    let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
                     link_inputs = link_inputs.push(out)
                     objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
                   } else if is_known_generated_object(obj) {
@@ -6673,7 +6682,7 @@ export proc plan_builtin_archives(
         }
 
         if member_outs.len() > 0 {
-          let dir_key = path_key(archive_owner(plan, obj))
+          let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
           lib_link_inputs = lib_link_inputs.extend(member_outs)
           lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).extend(member_outs)
           lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, []).extend(member_deps)
@@ -6694,7 +6703,7 @@ export proc plan_builtin_archives(
               out,
             )
 
-            let dir_key = path_key(archive_owner(plan, obj))
+            let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
             tasks = tasks.push(task)
             lib_link_inputs = lib_link_inputs.push(out)
             lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).push(out)
@@ -6707,7 +6716,7 @@ export proc plan_builtin_archives(
                   let out = obj_out_path(obj)
 
                   if out.exists()? {
-                    let dir_key = path_key(archive_owner(plan, obj))
+                    let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
                     lib_link_inputs = lib_link_inputs.push(out)
                     lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).push(out)
                   } else if is_known_generated_object(obj) {
