@@ -38,7 +38,8 @@ type DirScan = {dir: Path, plan: KbuildPlan, child_dirs: List[Path], entries: Li
 
 type AggregateBarriers = {builtin_archive: Path, module_order: Path}
 
-type LocalRecordGraph = {records: Map[DirScan], barriers: Map[AggregateBarriers]}
+type LocalRecordGraph = {records: Map[DirScan], barriers: Map[AggregateBarriers], plan: KbuildPlan}
+type DiscoverScans = {records: Map[DirScan], plan: KbuildPlan}
 
 type KbuildSource = {file: Path, body: Str}
 
@@ -2388,7 +2389,7 @@ proc discover_scans(
   config: Kconfig,
   srcarch: Str,
   options: DiscoverOptions,
-) [fs, error] -> Result[Map[DirScan]] {
+) [fs, error] -> Result[DiscoverScans] {
   var scans: Map[DirScan] = {}
   var seen: Map[Bool] = {}
   var frontier = [p"."]
@@ -2412,18 +2413,18 @@ proc discover_scans(
       scan_discover_batch_serial(root, pending, config, srcarch, options)?
     }
 
-    var batch_by_dir: Map[DirScan] = {}
-
-    for scan in batch {
-      batch_by_dir[path_key(scan.dir)] = scan
-    }
+    var batch_plan = empty_plan()
+    var batch_index = 0
 
     for dir in pending {
-      let scan = batch_by_dir.get(path_key(dir))?
+      let scan = batch.get(batch_index)?
+      batch_index += 1
       scans[path_key(dir)] = scan
       visited += 1
+      if options.local_records {
+        batch_plan = merge_plan(batch_plan, scan.plan)
+      }
       if options.progress {
-        aggregate = merge_plan(aggregate, scan.plan)
         emit_discover_progress(root, options, {plan: aggregate, seen: seen, visited: visited}, dir)?
       }
 
@@ -2433,9 +2434,13 @@ proc discover_scans(
         }
       }
     }
+
+    if options.local_records {
+      aggregate = merge_plan(aggregate, batch_plan)
+    }
   }
 
-  return scans
+  return {records: scans, plan: aggregate}
 }
 
 pure aggregate_barriers(dir: Path) -> AggregateBarriers {
@@ -2460,12 +2465,14 @@ proc discover_local_record_graph(
   let scans = discover_scans(root, config, srcarch, options)?
   var barriers: Map[AggregateBarriers] = {}
 
-  for key in scans.keys() {
-    let scan = scans.get(key)?
-    barriers[key] = aggregate_barriers(scan.dir)
+  if options.local_record_cache {
+    for key in scans.records.keys() {
+      let scan = scans.records.get(key)?
+      barriers[key] = aggregate_barriers(scan.dir)
+    }
   }
 
-  return {records: scans, barriers: barriers}
+  return {records: scans.records, barriers: barriers, plan: scans.plan}
 }
 
 pure local_record_cache_path(root: Path) -> Path {
@@ -2567,7 +2574,13 @@ proc read_local_record_graph(root: Path, config: Path, srcarch: Str) [fs, error]
     barriers[dir_key] = aggregate_barriers(scan.dir)
   }
 
-  return {records: record_map, barriers: barriers}
+  var plan = empty_plan()
+
+  for key in record_map.keys() {
+    plan = merge_plan(plan, record_map.get(key)?.plan)
+  }
+
+  return {records: record_map, barriers: barriers, plan: plan}
 }
 
 proc merge_discovered_scans(
@@ -2674,7 +2687,7 @@ export proc discover_plan_with_options(
   options: DiscoverOptions,
 ) [fs, error] -> Result[KbuildPlan] {
   var scans: Map[DirScan] = {}
-  var local_graph: LocalRecordGraph = {records: {}, barriers: {}}
+  var local_graph: LocalRecordGraph = {records: {}, barriers: {}, plan: empty_plan()}
 
   if options.local_records {
     if options.local_record_cache {
@@ -2693,11 +2706,17 @@ export proc discover_plan_with_options(
 
     scans = local_graph.records
   } else {
-    scans = discover_scans(root, config, srcarch, options)?
+    scans = discover_scans(root, config, srcarch, options)?.records
   }
   emit_stage_progress(root, options, "xsh-kbuild-discover-scans complete")?
 
-  let state = if options.local_records {
+  let state = if options.local_records and !options.local_record_cache {
+    {
+      plan: local_graph.plan,
+      seen: map.empty(),
+      visited: local_graph.records.len(),
+    }
+  } else if options.local_records {
     merge_local_record_graph_with_options(
       root,
       options,
