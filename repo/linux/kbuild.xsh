@@ -719,6 +719,14 @@ pure expand_braced_config_refs(raw: Str, config: Kconfig) -> Str {
 }
 
 pure expand_vars(raw: Str, vars: Map[Str], config: Kconfig, srcarch: Str) -> Str {
+  if ! ("$(" in raw) and ! ("\${CONFIG_" in raw) {
+    return raw
+  }
+
+  if ! ("$(subst m,y,$(CONFIG_" in raw) and ! ("$(CONFIG_" in raw) and ! ("$(SRCARCH)" in raw) and ! ("\${CONFIG_" in raw) {
+    return expand_make_vars(raw, vars)
+  }
+
   var out = expand_braced_config_refs(expand_subst(raw, config).replace("$(SRCARCH)", srcarch), config)
 
   if ! ("$(" in out) {
@@ -2016,14 +2024,16 @@ proc emit_batch_progress(root: Path, options: DiscoverOptions, pending: List[Pat
   }
 }
 
-pure simple_kbuild_lines(lines: List[Str]) -> Bool {
-  for line in lines {
-    if line.starts_with("ifeq ") or line.starts_with("ifneq ") or line.starts_with("ifdef ") or line.starts_with("ifndef ") or line == "else" or line == "endif" or line.starts_with("include ") or "$(" in line {
-      return false
-    }
+pure kbuild_scanner_kind(body: Str) -> Int {
+  if "ifeq " in body or "ifneq " in body or "ifdef " in body or "ifndef " in body or "include " in body or "\nelse" in body or "\nendif" in body or body.starts_with("else") or body.starts_with("endif") {
+    return 2
   }
 
-  return true
+  if "$(" in body or "\${CONFIG_" in body {
+    return 1
+  }
+
+  return 0
 }
 
 pure maybe_plan_assignment(line: Str) -> Bool {
@@ -2103,6 +2113,84 @@ proc scan_simple_kbuild(
   return {dir: rel, plan: plan, child_dirs: child_dirs, entries: entries}
 }
 
+proc scan_flat_kbuild(
+  root: Path,
+  rel: Path,
+  config: Kconfig,
+  lines: List[Str],
+  srcarch: Str,
+  options: DiscoverOptions,
+) [fs, error] -> Result[DirScan] {
+  var plan = add_dir(empty_plan(), rel)
+  var vars = kbuild_vars_for_dir(rel, srcarch)
+  var child_dirs: List[Path] = []
+  var entries: List[Path] = []
+  var object_rhs: List[Str] = []
+  var lib_rhs: List[Str] = []
+  var line_no = 0
+
+  for line in lines {
+    if options.progress and options.progress_every == 1 {
+      line_no += 1
+      emit_line_progress(root, options, rel, line_no, line)?
+    }
+
+    if "=" in line and maybe_plan_assignment(line) and ! line.starts_with("ccflags-") and ! line.starts_with("asflags-") and ! line.starts_with("ldflags-") and ! line.starts_with("rustflags-") and ! line.starts_with("subdir-ccflags-") and ! line.starts_with("subdir-asflags-") and ! line.starts_with("subdir-rustflags-") {
+      match parse_assignment(line) {
+        Ok(assign) => {
+          let expanded_lhs = expand_vars(assign.lhs, vars, config, srcarch)
+          let lhs = active_var_lhs(expanded_lhs)
+
+          if active_obj_lhs(expanded_lhs) {
+            let rhs = expand_vars(assign.rhs, vars, config, srcarch)
+
+            if expanded_lhs == "lib-y" {
+              lib_rhs = lib_rhs.push(rhs)
+            } else if expanded_lhs == "subdir-y" {
+              for item in rhs.fields() {
+                child_dirs = child_dirs.push(join_rel(rel, item))
+              }
+            } else {
+              object_rhs = object_rhs.push(rhs)
+            }
+          } else if lhs != "" {
+            let rhs = expand_vars(assign.rhs, vars, config, srcarch)
+
+            if assign.op == "+=" {
+              vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
+            } else if assign.op != "?=" or vars.get(lhs, "") == "" {
+              vars[lhs] = rhs
+            }
+          }
+        }
+        Err(_) => {}
+      }
+    }
+  }
+
+  for rhs in object_rhs {
+    let applied = apply_words(plan, rel, rhs.fields(), vars)
+    plan = applied.plan
+    child_dirs = child_dirs.extend(applied.dirs)
+    entries = entries.extend(applied.entries)
+  }
+
+  if srcarch == "x86" {
+    for obj in extra_objects_for_dir(rel) {
+      plan = add_object(plan, obj)
+      entries = entries.push(obj)
+    }
+  }
+
+  for rhs in lib_rhs {
+    let applied = apply_words(plan, rel, rhs.fields(), vars, true)
+    plan = applied.plan
+    child_dirs = child_dirs.extend(applied.dirs)
+  }
+
+  return {dir: rel, plan: plan, child_dirs: child_dirs, entries: entries}
+}
+
 proc scan_discover_dir(
   root: Path,
   rel: Path,
@@ -2123,6 +2211,23 @@ proc scan_discover_dir(
   }
 
   let source = source_result?
+
+  if options.progress and options.progress_every == 1 {
+    emit_stage_progress(root, options, f"xsh-kbuild-scan-start current=${rel_key}")?
+  }
+
+  var lines = logical_lines(source.body)
+
+  let scanner_kind = kbuild_scanner_kind(source.body)
+
+  if scanner_kind == 0 {
+    return scan_simple_kbuild(root, rel, lines, srcarch, options)
+  }
+
+  if scanner_kind == 1 {
+    return scan_flat_kbuild(root, rel, config, lines, srcarch, options)
+  }
+
   var plan = add_dir(empty_plan(), rel)
   var vars = kbuild_vars_for_dir(rel, srcarch)
   var child_dirs: List[Path] = []
@@ -2131,17 +2236,6 @@ proc scan_discover_dir(
   var lib_rhs: List[Str] = []
   var active_stack = [true]
   var line_no = 0
-
-  if options.progress and options.progress_every == 1 {
-    emit_stage_progress(root, options, f"xsh-kbuild-scan-start current=${rel_key}")?
-  }
-
-  var lines = logical_lines(source.body)
-
-  if simple_kbuild_lines(lines) {
-    return scan_simple_kbuild(root, rel, lines, srcarch, options)
-  }
-
   var line_index = 0
 
   while line_index < lines.len() {

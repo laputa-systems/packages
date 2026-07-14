@@ -36,6 +36,16 @@ export proc discover_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuil
   return kbuild.discover_plan_with_options(p".", config, srcarch, discover_options_from_env()?)?
 }
 
+export proc write_materialized_outputs(outputs: List[Path]) [fs, error] {
+  var text = "format linux-materialized-outputs-v1\n"
+
+  for output in outputs {
+    text = f"${text}${output.display()}\n"
+  }
+
+  kbuild.write_text_if_changed(p".xsh-kbuild/materialized-outputs", text)?
+}
+
 export proc requested_stop_after() [env, error] -> Result[Str] {
   let requested = env.get("XSH_LINUX_KBUILD_STOP_AFTER") ?? ""
 

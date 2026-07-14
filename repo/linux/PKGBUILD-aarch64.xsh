@@ -566,6 +566,20 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, t
   let nvhe_jobs_count = PKGBUILD_shared.build_jobs()?
   let nvhe_start = PKGBUILD_shared.timing_start("nvhe")
   build_native_nvhe(cc, nvhe_jobs_count)?
+  var materialized_outputs = [
+    p"arch/arm64/kernel/vdso/note.o",
+    p"arch/arm64/kernel/vdso/sigreturn.o",
+    p"arch/arm64/kernel/vdso/vgetrandom-chacha.o",
+    p"arch/arm64/kernel/vdso/vgetrandom.o",
+    p"arch/arm64/kernel/vdso/vgettimeofday.o",
+    p"arch/arm64/kvm/hyp/nvhe/kvm_nvhe.o",
+  ]
+
+  for item in native_nvhe_objects() {
+    materialized_outputs = materialized_outputs.push(fp"${item.out.display().replace(".xsh-kbuild/obj/", "")}")
+  }
+
+  PKGBUILD_shared.write_materialized_outputs(materialized_outputs)?
   PKGBUILD_shared.timing_done("nvhe", nvhe_start)
 
   let archive_plan_start = PKGBUILD_shared.timing_start("archive-plan")
