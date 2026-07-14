@@ -22,11 +22,23 @@ export type BuiltinArchivePlan = {
   generated_objects: List[Path],
 }
 
-export type DiscoverOptions = {progress: Bool, progress_every: Int, jobs: Int}
+export type DiscoverOptions = {
+  progress: Bool,
+  progress_every: Int,
+  jobs: Int,
+  local_records: Bool,
+  local_record_cache: Bool,
+}
 
 type DiscoverState = {plan: KbuildPlan, seen: Map[Bool], visited: Int}
 
 type DirScan = {dir: Path, plan: KbuildPlan, child_dirs: List[Path], entries: List[Path]}
+
+type AggregateBarriers = {builtin_archive: Path, module_order: Path}
+
+type LocalRecordGraph = {records: Map[DirScan], barriers: Map[AggregateBarriers]}
+
+type KbuildSource = {file: Path, body: Str}
 
 type ActiveDirObjects = {dir: Path, objects: List[Path]}
 
@@ -63,7 +75,13 @@ pure empty_plan() -> KbuildPlan {
 }
 
 pure default_discover_options() -> DiscoverOptions {
-  return {progress: false, progress_every: 100, jobs: 1}
+  return {
+    progress: false,
+    progress_every: 100,
+    jobs: 1,
+    local_records: false,
+    local_record_cache: false,
+  }
 }
 
 export pure planner_jobs() -> Int {
@@ -679,6 +697,20 @@ pure expand_vars(raw: Str, vars: Map[Str], config: Kconfig, srcarch: Str) -> Str
 }
 
 proc logical_lines(body: Str) [] -> List[Str] {
+  if ! ("#" in body) and ! ("\\" in body) {
+    var direct: List[Str] = []
+
+    for raw in body.split("\n") {
+      let trimmed = raw.trim()
+
+      if trimmed != "" {
+        direct = direct.push(trimmed)
+      }
+    }
+
+    return direct
+  }
+
   var lines: List[Str] = []
   var current = ""
 
@@ -1867,6 +1899,22 @@ proc kbuild_file(dir_abs: Path) [fs, error] -> Result[Path] {
   return Err(ScriptError.Failed("kbuild-missing", f"missing Kbuild or Makefile in ${dir_abs.display()}"))
 }
 
+proc read_kbuild_source(dir_abs: Path) [fs, error] -> Result[KbuildSource] {
+  let kbuild = fp"${dir_abs}/Kbuild"
+
+  match kbuild.read_text() {
+    Ok(body) => return {file: kbuild, body: body}
+    Err(_) => {}
+  }
+
+  let makefile = fp"${dir_abs}/Makefile"
+
+  match makefile.read_text() {
+    Ok(body) => return {file: makefile, body: body}
+    Err(_) => return Err(ScriptError.Failed("kbuild-missing", f"missing Kbuild or Makefile in ${dir_abs.display()}"))
+  }
+}
+
 proc emit_discover_progress(root: Path, options: DiscoverOptions, state: DiscoverState, rel: Path) [fs, error] {
   if options.progress and options.progress_every > 0 {
     let count = state.visited
@@ -1935,6 +1983,89 @@ proc emit_batch_progress(root: Path, options: DiscoverOptions, pending: List[Pat
   }
 }
 
+pure simple_kbuild_lines(lines: List[Str]) -> Bool {
+  for line in lines {
+    if line.starts_with("ifeq ") or line.starts_with("ifneq ") or line.starts_with("ifdef ") or line.starts_with("ifndef ") or line == "else" or line == "endif" or line.starts_with("include ") or "$(" in line {
+      return false
+    }
+  }
+
+  return true
+}
+
+pure maybe_plan_assignment(line: Str) -> Bool {
+  return line.starts_with("obj") or line.starts_with("lib") or line.starts_with("subdir") or line.starts_with("KVM") or "-y" in line or "-objs" in line or "_files" in line
+}
+
+proc scan_simple_kbuild(
+  root: Path,
+  rel: Path,
+  lines: List[Str],
+  srcarch: Str,
+  options: DiscoverOptions,
+) [fs, error] -> Result[DirScan] {
+  var plan = add_dir(empty_plan(), rel)
+  let vars = kbuild_vars_for_dir(rel, srcarch)
+  var mutable_vars = vars
+  var child_dirs: List[Path] = []
+  var entries: List[Path] = []
+  var object_rhs: List[Str] = []
+  var lib_rhs: List[Str] = []
+  var line_no = 0
+
+  for line in lines {
+    if options.progress and options.progress_every == 1 {
+      line_no += 1
+      emit_line_progress(root, options, rel, line_no, line)?
+    }
+
+    if "=" in line and maybe_plan_assignment(line) and ! line.starts_with("ccflags-") and ! line.starts_with("asflags-") and ! line.starts_with("ldflags-") and ! line.starts_with("rustflags-") and ! line.starts_with("subdir-ccflags-") and ! line.starts_with("subdir-asflags-") and ! line.starts_with("subdir-rustflags-") {
+      match parse_assignment(line) {
+        Ok(assign) => {
+          let lhs = assign.lhs
+
+          if active_obj_lhs(lhs) {
+            if lhs == "lib-y" {
+              lib_rhs = lib_rhs.push(assign.rhs)
+            } else {
+              object_rhs = object_rhs.push(assign.rhs)
+            }
+          } else if active_var_lhs(lhs) != "" {
+            if assign.op == "+=" {
+              mutable_vars[lhs] = f"${mutable_vars.get(lhs, "")} ${assign.rhs}".trim()
+            } else if assign.op != "?=" or mutable_vars.get(lhs, "") == "" {
+              mutable_vars[lhs] = assign.rhs
+            }
+          }
+        }
+        Err(_) => {}
+      }
+    }
+  }
+
+  for rhs in object_rhs {
+    let applied = apply_words(plan, rel, rhs.fields(), mutable_vars)
+    plan = applied.plan
+    child_dirs = child_dirs.extend(applied.dirs)
+    entries = entries.extend(applied.entries)
+  }
+
+  if srcarch == "x86" {
+    for obj in extra_objects_for_dir(rel) {
+      plan = add_object(plan, obj)
+      entries = entries.push(obj)
+    }
+  }
+
+  for rhs in lib_rhs {
+    let applied = apply_words(plan, rel, rhs.fields(), mutable_vars, true)
+    plan = applied.plan
+    child_dirs = child_dirs.extend(applied.dirs)
+  }
+
+  return {dir: rel, plan: plan, child_dirs: child_dirs, entries: entries}
+}
+
 proc scan_discover_dir(
   root: Path,
   rel: Path,
@@ -1944,9 +2075,9 @@ proc scan_discover_dir(
 ) [fs, error] -> Result[DirScan] {
   let rel_key = path_key(rel)
   let dir_abs = join_root(root, rel)
-  let file_result = kbuild_file(dir_abs)
+  let source_result = read_kbuild_source(dir_abs)
 
-  match file_result {
+  match source_result {
     Err(err) => {
       let plan = add_unsupported(add_dir(empty_plan(), rel), err.message)
       return {dir: rel, plan: plan, child_dirs: [], entries: []}
@@ -1954,7 +2085,7 @@ proc scan_discover_dir(
     Ok(_) => {}
   }
 
-  let file = file_result?
+  let source = source_result?
   var plan = add_dir(empty_plan(), rel)
   var vars = kbuild_vars_for_dir(rel, srcarch)
   var child_dirs: List[Path] = []
@@ -1968,21 +2099,30 @@ proc scan_discover_dir(
     emit_stage_progress(root, options, f"xsh-kbuild-scan-start current=${rel_key}")?
   }
 
-  var lines = logical_lines(file.read_text()?)
+  var lines = logical_lines(source.body)
+
+  if simple_kbuild_lines(lines) {
+    return scan_simple_kbuild(root, rel, lines, srcarch, options)
+  }
+
   var line_index = 0
 
   while line_index < lines.len() {
     let line = lines[line_index]
     line_index += 1
-    line_no += 1
-    emit_line_progress(root, options, rel, line_no, line)?
+    if options.progress and options.progress_every == 1 {
+      line_no += 1
+      emit_line_progress(root, options, rel, line_no, line)?
+    }
 
-    match eval_conditional(line, vars, config, srcarch) {
-      Ok(active) => {
-        active_stack = active_stack.push(active_conditional(active_stack) and active)
-        continue
+    if line.starts_with("ifeq ") or line.starts_with("ifneq ") or line.starts_with("ifdef ") or line.starts_with("ifndef ") {
+      match eval_conditional(line, vars, config, srcarch) {
+        Ok(active) => {
+          active_stack = active_stack.push(active_conditional(active_stack) and active)
+          continue
+        }
+        Err(_) => {}
       }
-      Err(_) => {}
     }
 
     if line == "else" {
@@ -2008,14 +2148,22 @@ proc scan_discover_dir(
       continue
     }
 
-    if "=" in line {
+    if "=" in line and maybe_plan_assignment(line) and ! line.starts_with("ccflags-") and ! line.starts_with("asflags-") and ! line.starts_with("ldflags-") and ! line.starts_with("rustflags-") and ! line.starts_with("subdir-ccflags-") and ! line.starts_with("subdir-asflags-") and ! line.starts_with("subdir-rustflags-") {
       match parse_assignment(line) {
         Ok(assign) => {
-          let expanded_lhs = expand_vars(assign.lhs, vars, config, srcarch)
+          let expanded_lhs = if r"$(" in assign.lhs or r"${" in assign.lhs {
+            expand_vars(assign.lhs, vars, config, srcarch)
+          } else {
+            assign.lhs
+          }
           let lhs = active_var_lhs(expanded_lhs)
 
           if active_obj_lhs(expanded_lhs) {
-            let rhs = expand_vars(assign.rhs, vars, config, srcarch)
+            let rhs = if r"$(" in assign.rhs or r"${" in assign.rhs {
+              expand_vars(assign.rhs, vars, config, srcarch)
+            } else {
+              assign.rhs
+            }
 
             if expanded_lhs == "lib-y" {
               lib_rhs = lib_rhs.push(rhs)
@@ -2023,7 +2171,11 @@ proc scan_discover_dir(
               object_rhs = object_rhs.push(rhs)
             }
           } else if lhs != "" {
-            let rhs = expand_vars(assign.rhs, vars, config, srcarch)
+            let rhs = if r"$(" in assign.rhs or r"${" in assign.rhs {
+              expand_vars(assign.rhs, vars, config, srcarch)
+            } else {
+              assign.rhs
+            }
 
             if assign.op == "+=" {
               vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
@@ -2076,6 +2228,38 @@ proc unique_unseen_paths(paths: List[Path], seen: Map[Bool]) [] -> List[Path] {
   return unique
 }
 
+proc scan_discover_batch_serial(
+  root: Path,
+  pending: List[Path],
+  config: Kconfig,
+  srcarch: Str,
+  options: DiscoverOptions,
+) [fs, error] -> Result[List[DirScan]] {
+  var scans: List[DirScan] = []
+
+  for dir in pending {
+    emit_stage_progress(root, options, f"xsh-kbuild-scan ${path_key(dir)}")?
+    scans = scans.push(scan_discover_dir(root, dir, config, srcarch, options)?)
+  }
+
+  return scans
+}
+
+proc scan_discover_batch_parallel(
+  root: Path,
+  pending: List[Path],
+  config: Kconfig,
+  srcarch: Str,
+  options: DiscoverOptions,
+) [fs, error] -> Result[List[DirScan]] {
+  let scans: List[DirScan] = pending
+    |> par-map --jobs=options.jobs { |dir|
+      scan_discover_dir(root, dir, config, srcarch, options)?
+    }
+
+  return scans
+}
+
 proc discover_scans(
   root: Path,
   config: Kconfig,
@@ -2099,13 +2283,10 @@ proc discover_scans(
     }
 
     emit_batch_progress(root, options, pending)?
-    var batch: List[DirScan] = []
-
-    # Discovery is intentionally serial: parallel workers clone the large
-    # Kconfig/runtime context and were slower than one bounded scan.
-    for dir in pending {
-      emit_stage_progress(root, options, f"xsh-kbuild-scan ${path_key(dir)}")?
-      batch = batch.push(scan_discover_dir(root, dir, config, srcarch, options)?)
+    let batch = if options.local_records {
+      scan_discover_batch_parallel(root, pending, config, srcarch, options)?
+    } else {
+      scan_discover_batch_serial(root, pending, config, srcarch, options)?
     }
 
     var batch_by_dir: Map[DirScan] = {}
@@ -2117,9 +2298,11 @@ proc discover_scans(
     for dir in pending {
       let scan = batch_by_dir.get(path_key(dir))?
       scans[path_key(dir)] = scan
-      aggregate = merge_plan(aggregate, scan.plan)
       visited += 1
-      emit_discover_progress(root, options, {plan: aggregate, seen: seen, visited: visited}, dir)?
+      if options.progress {
+        aggregate = merge_plan(aggregate, scan.plan)
+        emit_discover_progress(root, options, {plan: aggregate, seen: seen, visited: visited}, dir)?
+      }
 
       for child in scan.child_dirs {
         if ! seen.get(path_key(child), false) {
@@ -2130,6 +2313,136 @@ proc discover_scans(
   }
 
   return scans
+}
+
+pure aggregate_barriers(dir: Path) -> AggregateBarriers {
+  let key = path_key(dir)
+
+  if key == "." {
+    return {builtin_archive: p"built-in.a", module_order: p"modules.order"}
+  }
+
+  return {
+    builtin_archive: fp"${key}/built-in.a",
+    module_order: fp"${key}/modules.order",
+  }
+}
+
+proc discover_local_record_graph(
+  root: Path,
+  config: Kconfig,
+  srcarch: Str,
+  options: DiscoverOptions,
+) [fs, error] -> Result[LocalRecordGraph] {
+  let scans = discover_scans(root, config, srcarch, options)?
+  var barriers: Map[AggregateBarriers] = {}
+
+  for key in scans.keys() {
+    let scan = scans.get(key)?
+    barriers[key] = aggregate_barriers(scan.dir)
+  }
+
+  return {records: scans, barriers: barriers}
+}
+
+pure local_record_cache_path(root: Path) -> Path {
+  return fp"${root}/.xsh-kbuild-local-records.json"
+}
+
+proc local_record_cache_key(config: Path, srcarch: Str) [fs, error] -> Result[Str] {
+  let config_hash = if config.exists()? { hash.sha256(config)?.hex() } else { "missing" }
+  return bytes.from_text(f"linux-local-records-v1\t${srcarch}\t${config_hash}").sha256().hex()
+}
+
+pure local_record_record(scan: DirScan, file_hash: Str) -> Record {
+  return {
+    dir: path_key(scan.dir),
+    file_hash: file_hash,
+    plan: plan_record(scan.plan),
+    child_dirs: path_strings(scan.child_dirs),
+    entries: path_strings(scan.entries),
+  }
+}
+
+proc local_record_from_record(item: Record) [error] -> Result[DirScan] {
+  let dir_key: Str = item.get("dir")?
+  let plan_value: Record = item.get("plan")?
+  let dirs: List[Str] = plan_value.get("dirs")?
+  let objects: List[Str] = plan_value.get("objects")?
+  let lib_objects: List[Str] = plan_value.get("lib_objects")?
+  let composites: List[Record] = plan_value.get("composites")?
+  let unsupported: List[Str] = plan_value.get("unsupported")?
+  let child_dirs: List[Str] = item.get("child_dirs")?
+  let entries: List[Str] = item.get("entries")?
+
+  return {
+    dir: fp"${dir_key}",
+    plan: {
+      dirs: paths_from_strings(dirs)?,
+      objects: paths_from_strings(objects)?,
+      lib_objects: paths_from_strings(lib_objects)?,
+      composites: composites_from_records(composites)?,
+      unsupported: unsupported,
+    },
+    child_dirs: paths_from_strings(child_dirs)?,
+    entries: paths_from_strings(entries)?,
+  }
+}
+
+proc write_local_record_graph(root: Path, config: Path, srcarch: Str, graph: LocalRecordGraph) [fs, error] {
+  let cache = local_record_cache_path(root)
+  let key = local_record_cache_key(config, srcarch)?
+  var records: List[Record] = []
+
+  for dir_key in graph.records.keys() {
+    let scan = graph.records.get(dir_key)?
+    let file = kbuild_file(join_root(root, scan.dir))?
+    records = records.push(local_record_record(scan, hash.sha256(file)?.hex()))
+  }
+
+  json.write(cache, {format: "linux-local-records-v1", key: key, records: records})?
+}
+
+proc read_local_record_graph(root: Path, config: Path, srcarch: Str) [fs, error] -> Result[LocalRecordGraph] {
+  let cache = local_record_cache_path(root)
+
+  if ! cache.exists()? {
+    return Err(ScriptError.Failed("local-record-cache-missing", "local-record cache does not exist"))
+  }
+
+  let stored: Record = json.read(cache)?
+  let format: Str = stored.get("format")?
+
+  if format != "linux-local-records-v1" {
+    return Err(ScriptError.Failed("local-record-cache-format", "unsupported local-record cache format"))
+  }
+
+  let expected_key = local_record_cache_key(config, srcarch)?
+  let actual_key: Str = stored.get("key")?
+
+  if actual_key != expected_key {
+    return Err(ScriptError.Failed("local-record-cache-key", "local-record cache key does not match"))
+  }
+
+  let records: List[Record] = stored.get("records")?
+  var record_map: Map[DirScan] = {}
+  var barriers: Map[AggregateBarriers] = {}
+
+  for item in records {
+    let scan = local_record_from_record(item)?
+    let file_hash: Str = item.get("file_hash")?
+    let file = kbuild_file(join_root(root, scan.dir))?
+
+    if hash.sha256(file)?.hex() != file_hash {
+      return Err(ScriptError.Failed("local-record-cache-stale", f"local-record cache is stale for ${path_key(scan.dir)}"))
+    }
+
+    let dir_key = path_key(scan.dir)
+    record_map[dir_key] = scan
+    barriers[dir_key] = aggregate_barriers(scan.dir)
+  }
+
+  return {records: record_map, barriers: barriers}
 }
 
 proc merge_discovered_scans(
@@ -2189,6 +2502,42 @@ proc merge_discovered_scans_with_options(
   return next
 }
 
+proc merge_local_record_graph_with_options(
+  root: Path,
+  options: DiscoverOptions,
+  graph: LocalRecordGraph,
+  rel: Path,
+  state: DiscoverState,
+) [fs, error] -> Result[DiscoverState] {
+  let rel_key = path_key(rel)
+
+  if state.seen.get(rel_key, false) {
+    return state
+  }
+
+  let scan = graph.records.get(rel_key)?
+  let next: DiscoverState = {
+    plan: merge_plan(state.plan, scan.plan),
+    seen: state.seen.set(rel_key, true),
+    visited: state.visited + 1,
+  }
+
+  if options.progress {
+    let barriers = graph.barriers.get(rel_key)?
+    let barrier_label = f"${path_key(barriers.builtin_archive)} ${path_key(barriers.module_order)}"
+    emit_merge_progress(root, options, next, rel)?
+    emit_stage_progress(root, options, f"xsh-kbuild-local-record ${rel_key} barriers=${barrier_label}")?
+  }
+
+  var merged = next
+
+  for child in scan.child_dirs {
+    merged = merge_local_record_graph_with_options(root, options, graph, child, merged)?
+  }
+
+  return merged
+}
+
 export proc discover_plan(root: Path, config: Kconfig, srcarch: Str = "arm64") [fs, error] -> Result[KbuildPlan] {
   return discover_plan_with_options(root, config, srcarch, default_discover_options())
 }
@@ -2199,16 +2548,47 @@ export proc discover_plan_with_options(
   srcarch: Str,
   options: DiscoverOptions,
 ) [fs, error] -> Result[KbuildPlan] {
-  let scans = discover_scans(root, config, srcarch, options)?
+  var scans: Map[DirScan] = {}
+  var local_graph: LocalRecordGraph = {records: {}, barriers: {}}
+
+  if options.local_records {
+    if options.local_record_cache {
+      match read_local_record_graph(root, fp"${root}/.config", srcarch) {
+        Ok(cached) => {
+          local_graph = cached
+        }
+        Err(_) => {
+          local_graph = discover_local_record_graph(root, config, srcarch, options)?
+          write_local_record_graph(root, fp"${root}/.config", srcarch, local_graph)?
+        }
+      }
+    } else {
+      local_graph = discover_local_record_graph(root, config, srcarch, options)?
+    }
+
+    scans = local_graph.records
+  } else {
+    scans = discover_scans(root, config, srcarch, options)?
+  }
   emit_stage_progress(root, options, "xsh-kbuild-discover-scans complete")?
 
-  let state = merge_discovered_scans_with_options(
-    root,
-    options,
-    scans,
-    p".",
-    {plan: empty_plan(), seen: map.empty(), visited: 0},
-  )?
+  let state = if options.local_records {
+    merge_local_record_graph_with_options(
+      root,
+      options,
+      local_graph,
+      p".",
+      {plan: empty_plan(), seen: map.empty(), visited: 0},
+    )?
+  } else {
+    merge_discovered_scans_with_options(
+      root,
+      options,
+      scans,
+      p".",
+      {plan: empty_plan(), seen: map.empty(), visited: 0},
+    )?
+  }
 
   let plan = normalize_plan(state.plan)
 

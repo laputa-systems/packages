@@ -26,6 +26,8 @@ export proc discover_options_from_env() [env, error] -> Result[kbuild.DiscoverOp
     progress: (env.get("XSH_LINUX_KBUILD_PROGRESS") ?? "") == "1",
     progress_every: every_text.parse_int()?,
     jobs: jobs_count,
+    local_records: (env.get("XSH_LINUX_KBUILD_LOCAL_RECORDS") ?? "") == "1",
+    local_record_cache: (env.get("XSH_LINUX_KBUILD_LOCAL_RECORD_CACHE") ?? "") == "1" and (env.get("XSH_LINUX_KBUILD_FORCE_DISCOVER") ?? "") != "1",
   }
 }
 

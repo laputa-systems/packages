@@ -110,6 +110,52 @@ proc test_kbuild_discovers_configured_obj_y_dirs_and_objects(ctx: TestContext) [
   test.eq(plan.unsupported.len(), 0)?
 }
 
+proc test_kbuild_local_record_graph_matches_default(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-kbuild-local-records")?
+  let default_out = test.temp_path(ctx, name: "linux-kbuild-default-plan")
+  let local_out = test.temp_path(ctx, name: "linux-kbuild-local-plan")
+  write_fixture(root)?
+  let config = kbuild.load_config(fp"${root}/.config")?
+  let default_plan = kbuild.discover_plan(root, config, "arm64")?
+  let local_plan = kbuild.discover_plan_with_options(
+    root,
+    config,
+    "arm64",
+    {
+      progress: false,
+      progress_every: 100,
+      jobs: 1,
+      local_records: true,
+      local_record_cache: false,
+    },
+  )?
+  kbuild.write_discovered_plan(default_plan, default_out)?
+  kbuild.write_discovered_plan(local_plan, local_out)?
+  test.eq(default_out.read_text()?, local_out.read_text()?)?
+}
+
+proc test_kbuild_local_record_cache_reuses_and_invalidates(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-kbuild-local-cache")?
+  write_fixture(root)?
+  let config = kbuild.load_config(fp"${root}/.config")?
+  let options = {
+    progress: false,
+    progress_every: 100,
+    jobs: 1,
+    local_records: true,
+    local_record_cache: true,
+  }
+  let first = kbuild.discover_plan_with_options(root, config, "arm64", options)?
+  let second = kbuild.discover_plan_with_options(root, config, "arm64", options)?
+  test.eq(first.objects.len(), second.objects.len())?
+
+  let root_kbuild = fp"${root}/Kbuild"
+  let original = root_kbuild.read_text()?
+  fs.write(root_kbuild, f"${original}obj-y += cached.o\n")?
+  let third = kbuild.discover_plan_with_options(root, config, "arm64", options)?
+  test.ok(contains_path(third.objects, "cached.o"))?
+}
+
 proc test_kbuild_writes_text_plan(ctx: TestContext) [fs, error] {
   let root = test.temp_dir(ctx, name: "linux-kbuild-text")?
   let out = test.temp_path(ctx, name: "plan.json")
