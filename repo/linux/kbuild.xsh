@@ -5,11 +5,13 @@ export error ScriptError = Failed(kind: Str, message: Str)
 export type Kconfig = {enabled: Map[Bool], values: Map[Str]}
 
 export type CompositeObject = {object: Path, members: List[Path]}
+export type ArchiveOwner = {object: Path, dir: Path}
 
 export type KbuildPlan = {
   dirs: List[Path],
   objects: List[Path],
   lib_objects: List[Path],
+  archive_owners: List[ArchiveOwner],
   composites: List[CompositeObject],
   unsupported: List[Str],
 }
@@ -71,7 +73,7 @@ pure regex_matches(text: Str, pattern: Str) -> Result[Bool] {
 }
 
 pure empty_plan() -> KbuildPlan {
-  return {dirs: [], objects: [], lib_objects: [], composites: [], unsupported: []}
+  return {dirs: [], objects: [], lib_objects: [], archive_owners: [], composites: [], unsupported: []}
 }
 
 pure default_discover_options() -> DiscoverOptions {
@@ -161,19 +163,35 @@ pure add_dir(plan: KbuildPlan, dir: Path) -> KbuildPlan {
 }
 
 pure add_object(plan: KbuildPlan, obj: Path) -> KbuildPlan {
+  return add_object_at(plan, obj, object_dir(obj))
+}
+
+pure add_object_at(plan: KbuildPlan, obj: Path, owner: Path) -> KbuildPlan {
   if has_plan_path(plan.objects, obj) {
     return plan
   }
 
-  return {...plan, objects: plan.objects.push(obj)}
+  return {
+    ...plan,
+    objects: plan.objects.push(obj),
+    archive_owners: plan.archive_owners.push({object: obj, dir: owner}),
+  }
 }
 
 pure add_lib_object(plan: KbuildPlan, obj: Path) -> KbuildPlan {
+  return add_lib_object_at(plan, obj, object_dir(obj))
+}
+
+pure add_lib_object_at(plan: KbuildPlan, obj: Path, owner: Path) -> KbuildPlan {
   if has_plan_path(plan.lib_objects, obj) {
     return plan
   }
 
-  return {...plan, lib_objects: plan.lib_objects.push(obj)}
+  return {
+    ...plan,
+    lib_objects: plan.lib_objects.push(obj),
+    archive_owners: plan.archive_owners.push({object: obj, dir: owner}),
+  }
 }
 
 pure add_composite(plan: KbuildPlan, composite: CompositeObject) -> KbuildPlan {
@@ -197,9 +215,20 @@ proc merge_plan(base: KbuildPlan, addition: KbuildPlan) [] -> KbuildPlan {
     dirs: base.dirs.extend(addition.dirs),
     objects: base.objects.extend(addition.objects),
     lib_objects: base.lib_objects.extend(addition.lib_objects),
+    archive_owners: base.archive_owners.extend(addition.archive_owners),
     composites: base.composites.extend(addition.composites),
     unsupported: base.unsupported.extend(addition.unsupported),
   }
+}
+
+pure archive_owner(plan: KbuildPlan, obj: Path) -> Path {
+  for owner in plan.archive_owners {
+    if path_key(owner.object) == path_key(obj) {
+      return owner.dir
+    }
+  }
+
+  return object_dir(obj)
 }
 
 pure join_rel(dir: Path, item: Str) -> Path {
@@ -1856,7 +1885,7 @@ proc apply_item(plan: KbuildPlan, dir: Path, item: Str, vars: Map[Str], as_lib: 
     let active_item = object_item_for_dir(dir, item, as_lib)
     let obj = join_rel(dir, active_item)
     let members = composite_members(dir, active_item, vars)
-    var next = if as_lib { add_lib_object(plan, obj) } else { add_object(plan, obj) }
+    var next = if as_lib { add_lib_object_at(plan, obj, dir) } else { add_object_at(plan, obj, dir) }
 
     if members.len() > 0 {
       next = add_composite(next, {object: obj, members: members})
@@ -1994,7 +2023,7 @@ pure simple_kbuild_lines(lines: List[Str]) -> Bool {
 }
 
 pure maybe_plan_assignment(line: Str) -> Bool {
-  return line.starts_with("obj") or line.starts_with("lib") or line.starts_with("subdir") or line.starts_with("KVM") or "-y" in line or "-objs" in line or "_files" in line
+  return line.starts_with("obj") or line.starts_with("lib") or line.starts_with("subdir") or line.starts_with("KVM") or "-y" in line or "-objs" in line or "_files" in line or "$(" in line
 }
 
 proc scan_simple_kbuild(
@@ -2027,6 +2056,10 @@ proc scan_simple_kbuild(
           if active_obj_lhs(lhs) {
             if lhs == "lib-y" {
               lib_rhs = lib_rhs.push(assign.rhs)
+            } else if lhs == "subdir-y" {
+              for item in assign.rhs.fields() {
+                child_dirs = child_dirs.push(join_rel(rel, item))
+              }
             } else {
               object_rhs = object_rhs.push(assign.rhs)
             }
@@ -2151,31 +2184,23 @@ proc scan_discover_dir(
     if "=" in line and maybe_plan_assignment(line) and ! line.starts_with("ccflags-") and ! line.starts_with("asflags-") and ! line.starts_with("ldflags-") and ! line.starts_with("rustflags-") and ! line.starts_with("subdir-ccflags-") and ! line.starts_with("subdir-asflags-") and ! line.starts_with("subdir-rustflags-") {
       match parse_assignment(line) {
         Ok(assign) => {
-          let expanded_lhs = if r"$(" in assign.lhs or r"${" in assign.lhs {
-            expand_vars(assign.lhs, vars, config, srcarch)
-          } else {
-            assign.lhs
-          }
+          let expanded_lhs = expand_vars(assign.lhs, vars, config, srcarch)
           let lhs = active_var_lhs(expanded_lhs)
 
           if active_obj_lhs(expanded_lhs) {
-            let rhs = if r"$(" in assign.rhs or r"${" in assign.rhs {
-              expand_vars(assign.rhs, vars, config, srcarch)
-            } else {
-              assign.rhs
-            }
+            let rhs = expand_vars(assign.rhs, vars, config, srcarch)
 
             if expanded_lhs == "lib-y" {
               lib_rhs = lib_rhs.push(rhs)
+            } else if expanded_lhs == "subdir-y" {
+              for item in rhs.fields() {
+                child_dirs = child_dirs.push(join_rel(rel, item))
+              }
             } else {
               object_rhs = object_rhs.push(rhs)
             }
           } else if lhs != "" {
-            let rhs = if r"$(" in assign.rhs or r"${" in assign.rhs {
-              expand_vars(assign.rhs, vars, config, srcarch)
-            } else {
-              assign.rhs
-            }
+            let rhs = expand_vars(assign.rhs, vars, config, srcarch)
 
             if assign.op == "+=" {
               vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
@@ -2372,6 +2397,7 @@ proc local_record_from_record(item: Record) [error] -> Result[DirScan] {
   let lib_objects: List[Str] = plan_value.get("lib_objects")?
   let composites: List[Record] = plan_value.get("composites")?
   let unsupported: List[Str] = plan_value.get("unsupported")?
+  let archive_owners: List[Record] = if plan_value.has("archive_owners") { plan_value.get("archive_owners")? } else { [] }
   let child_dirs: List[Str] = item.get("child_dirs")?
   let entries: List[Str] = item.get("entries")?
 
@@ -2381,6 +2407,7 @@ proc local_record_from_record(item: Record) [error] -> Result[DirScan] {
       dirs: paths_from_strings(dirs)?,
       objects: paths_from_strings(objects)?,
       lib_objects: paths_from_strings(lib_objects)?,
+      archive_owners: archive_owners_from_records(archive_owners)?,
       composites: composites_from_records(composites)?,
       unsupported: unsupported,
     },
@@ -2650,6 +2677,7 @@ proc normalize_plan(plan: KbuildPlan) [] -> KbuildPlan {
     dirs: unique_paths(plan.dirs),
     objects: unique_paths(plan.objects),
     lib_objects: unique_paths(plan.lib_objects),
+    archive_owners: plan.archive_owners,
     composites: unique_composites(plan.composites),
     unsupported: plan.unsupported,
   }
@@ -2698,11 +2726,24 @@ proc composites_from_records(items: List[Record]) [error] -> Result[List[Composi
   return composites
 }
 
+proc archive_owners_from_records(items: List[Record]) [error] -> Result[List[ArchiveOwner]] {
+  var owners: List[ArchiveOwner] = []
+
+  for item in items {
+    let object: Str = item.get("object")?
+    let dir: Str = item.get("dir")?
+    owners = owners.push({object: fp"${object}", dir: fp"${dir}"})
+  }
+
+  return owners
+}
+
 pure plan_record(plan: KbuildPlan) -> Record {
   return {
     dirs: path_strings(plan.dirs),
     objects: path_strings(plan.objects),
     lib_objects: path_strings(plan.lib_objects),
+    archive_owners: [{object: path_key(item.object), dir: path_key(item.dir)} for item in plan.archive_owners],
     composites: composite_records(plan.composites),
     unsupported: plan.unsupported,
   }
@@ -2723,6 +2764,11 @@ pure discovered_plan_text(plan: KbuildPlan) -> Str {
 
   for obj in plan.lib_objects {
     out = f"""${out}lib	${path_key(obj)}
+"""
+  }
+
+  for owner in plan.archive_owners {
+    out = f"""${out}archive	${path_key(owner.object)}	${path_key(owner.dir)}
 """
   }
 
@@ -2756,6 +2802,7 @@ export proc read_discovered_plan(path_value: Path) [fs, error] -> Result[KbuildP
   let no_composites: List[Record] = []
   let no_strings: List[Str] = []
   let lib_objects = if stored.has("lib_objects") { stored.get("lib_objects")? } else { no_strings }
+  let archive_owners = if stored.has("archive_owners") { stored.get("archive_owners")? } else { no_composites }
   let composites = if stored.has("composites") { stored.get("composites")? } else { no_composites }
   let unsupported = if stored.has("unsupported") { stored.get("unsupported")? } else { no_strings }
 
@@ -2763,6 +2810,7 @@ export proc read_discovered_plan(path_value: Path) [fs, error] -> Result[KbuildP
     dirs: unique_paths(paths_from_strings(dirs)?),
     objects: unique_paths(paths_from_strings(objects)?),
     lib_objects: unique_paths(paths_from_strings(lib_objects)?),
+    archive_owners: archive_owners_from_records(archive_owners)?,
     composites: composites_from_records(composites)?,
     unsupported: unsupported,
   }
@@ -2772,6 +2820,7 @@ export proc parse_discovered_plan_text(text: Str) [error] -> Result[KbuildPlan] 
   var dirs: List[Str] = []
   var objects: List[Str] = []
   var lib_objects: List[Str] = []
+  var archive_owners: List[ArchiveOwner] = []
   var composites: List[CompositeObject] = []
   var unsupported: List[Str] = []
 
@@ -2788,6 +2837,7 @@ export proc parse_discovered_plan_text(text: Str) [error] -> Result[KbuildPlan] 
       "obj" => objects = objects.push(parts.get(1, ""))
       "lib_objects" => lib_objects = parts |> drop(1)
       "lib" => lib_objects = lib_objects.push(parts.get(1, ""))
+      "archive" => archive_owners = archive_owners.push({object: fp"${parts.get(1, "")}", dir: fp"${parts.get(2, ".")}"})
       "composite" => composites = composites.push(
         {object: fp"${parts.get(1, "")}", members: paths_from_strings(parts |> drop(2))?},
       )
@@ -2800,6 +2850,7 @@ export proc parse_discovered_plan_text(text: Str) [error] -> Result[KbuildPlan] 
     dirs: paths_from_strings(dirs)?,
     objects: paths_from_strings(objects)?,
     lib_objects: paths_from_strings(lib_objects)?,
+    archive_owners: archive_owners,
     composites: composites,
     unsupported: unsupported,
   }
@@ -3168,6 +3219,10 @@ proc composite_for_map(composites: Map[CompositeObject], obj: Path) [error] -> R
 proc source_for_object(obj: Path) [fs, error] -> Result[Path] {
   var candidates = [obj]
   let stem = obj.name.replace(".o", "")
+
+  if path_key(obj).starts_with("drivers/firmware/efi/libstub/lib-") {
+    candidates = candidates.push(fp"lib/${stem.replace("lib-", "")}.c")
+  }
 
   if stem.ends_with("_") {
     candidates = candidates.push(join_rel(object_dir(obj), f"${stem}64.o"))
@@ -3846,6 +3901,14 @@ pure is_known_generated_object(obj: Path) -> Bool {
 
 pure is_pi_object(obj: Path) -> Bool {
   return path_key(obj).ends_with(".pi.o")
+}
+
+pure archive_object_cflags(cflags: List[Str], flags: Map[Map[List[Str]]], obj: Path) -> List[Str] {
+  let base = object_cflags(cflags, flags, obj)
+  if path_key(obj).starts_with("drivers/firmware/efi/libstub/") {
+    return efi_libstub_cflags(base)
+  }
+  return base
 }
 
 pure pi_base_name(obj: Path) -> Str {
@@ -6427,7 +6490,7 @@ export proc plan_builtin_archives(
         let base_task = compile_kbuild_task(
           cc,
           triple,
-          object_cflags(cflags, compile_flags_by_dir, pi_base_object(obj)),
+          archive_object_cflags(cflags, compile_flags_by_dir, pi_base_object(obj)),
           defs,
           includes,
           source,
@@ -6444,7 +6507,7 @@ export proc plan_builtin_archives(
           [task.name, pi_relacheck_path().display()],
         )
 
-        let dir_key = path_key(object_dir(obj))
+        let dir_key = path_key(archive_owner(plan, obj))
         tasks = tasks.push(base_task).push(task).push(check_task)
         link_inputs = link_inputs.push(out)
         objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
@@ -6469,7 +6532,7 @@ export proc plan_builtin_archives(
               let member_task = compile_kbuild_task_for_module(
                 cc,
                 triple,
-                object_cflags(cflags, compile_flags_by_dir, member),
+                archive_object_cflags(cflags, compile_flags_by_dir, member),
                 defs,
                 includes,
                 src,
@@ -6500,7 +6563,7 @@ export proc plan_builtin_archives(
         }
 
         if member_outs.len() > 0 {
-          let dir_key = path_key(object_dir(obj))
+          let dir_key = path_key(archive_owner(plan, obj))
           link_inputs = link_inputs.extend(member_outs)
           objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).extend(member_outs)
           deps_by_dir[dir_key] = deps_by_dir.get(dir_key, []).extend(member_deps)
@@ -6514,14 +6577,14 @@ export proc plan_builtin_archives(
             let task = compile_kbuild_task(
               cc,
               triple,
-              object_cflags(cflags, compile_flags_by_dir, obj),
+              archive_object_cflags(cflags, compile_flags_by_dir, obj),
               defs,
               includes,
               src,
               out,
             )
 
-            let dir_key = path_key(object_dir(obj))
+            let dir_key = path_key(archive_owner(plan, obj))
             tasks = tasks.push(task)
             link_inputs = link_inputs.push(out)
             objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
@@ -6534,7 +6597,7 @@ export proc plan_builtin_archives(
                   let out = obj_out_path(obj)
 
                   if out.exists()? {
-                    let dir_key = path_key(object_dir(obj))
+                    let dir_key = path_key(archive_owner(plan, obj))
                     link_inputs = link_inputs.push(out)
                     objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
                   } else if is_known_generated_object(obj) {
@@ -6579,7 +6642,7 @@ export proc plan_builtin_archives(
               let member_task = compile_kbuild_task_for_module(
                 cc,
                 triple,
-                object_cflags(cflags, compile_flags_by_dir, member),
+                archive_object_cflags(cflags, compile_flags_by_dir, member),
                 defs,
                 includes,
                 src,
@@ -6610,7 +6673,7 @@ export proc plan_builtin_archives(
         }
 
         if member_outs.len() > 0 {
-          let dir_key = path_key(object_dir(obj))
+          let dir_key = path_key(archive_owner(plan, obj))
           lib_link_inputs = lib_link_inputs.extend(member_outs)
           lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).extend(member_outs)
           lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, []).extend(member_deps)
@@ -6624,14 +6687,14 @@ export proc plan_builtin_archives(
             let task = compile_kbuild_task(
               cc,
               triple,
-              object_cflags(cflags, compile_flags_by_dir, obj),
+              archive_object_cflags(cflags, compile_flags_by_dir, obj),
               defs,
               includes,
               src,
               out,
             )
 
-            let dir_key = path_key(object_dir(obj))
+            let dir_key = path_key(archive_owner(plan, obj))
             tasks = tasks.push(task)
             lib_link_inputs = lib_link_inputs.push(out)
             lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).push(out)
@@ -6644,7 +6707,7 @@ export proc plan_builtin_archives(
                   let out = obj_out_path(obj)
 
                   if out.exists()? {
-                    let dir_key = path_key(object_dir(obj))
+                    let dir_key = path_key(archive_owner(plan, obj))
                     lib_link_inputs = lib_link_inputs.push(out)
                     lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).push(out)
                   } else if is_known_generated_object(obj) {
@@ -6701,6 +6764,7 @@ export proc plan_builtin_archives(
   }
 
   archive_plan_progress("xsh-kbuild-archive-plan needed-complete")?
+
   var archive_dir_count = 0
 
   for dir in plan.dirs {

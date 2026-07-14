@@ -4,6 +4,11 @@ proc write_fixture(root: Path) [fs, error] {
   fs.mkdir(fp"${root}/init/lib")?
   fs.mkdir(fp"${root}/block")?
   fs.mkdir(fp"${root}/net")?
+  fs.mkdir(fp"${root}/fs")?
+  fs.mkdir(fp"${root}/fs/proc")?
+  fs.mkdir(fp"${root}/fs/devpts")?
+  fs.mkdir(fp"${root}/fs/ramfs")?
+  fs.mkdir(fp"${root}/mm")?
   fs.mkdir(fp"${root}/arch/arm64/kernel")?
 
   fs.write(
@@ -12,6 +17,8 @@ proc write_fixture(root: Path) [fs, error] {
 CONFIG_NET=y
 CONFIG_INET=y
 CONFIG_HYPERV=m
+CONFIG_MMU=y
+CONFIG_UNIX98_PTYS=y
 # CONFIG_UNUSED is not set
 """,
   )?
@@ -20,6 +27,7 @@ CONFIG_HYPERV=m
     fp"${root}/Kbuild",
     """core-y += arch/$(SRCARCH)/kernel/
 obj-y += init/
+obj-y += fs/ mm/
 obj-y += core.o $(core-y)
 helper_files = libhelper.o
 lib-y += $(helper_files)
@@ -64,6 +72,45 @@ endif
   )?
 
   fs.write(
+    fp"${root}/fs/Kbuild",
+    """obj-y += proc/ devpts/ ramfs/
+""",
+  )?
+
+  fs.write(
+    fp"${root}/fs/devpts/Kbuild",
+    """obj-$(CONFIG_UNIX98_PTYS) += devpts.o
+devpts-$(CONFIG_UNIX98_PTYS) := inode.o
+""",
+  )?
+
+  fs.write(
+    fp"${root}/fs/proc/Makefile",
+    """obj-y += proc.o
+proc-y := nommu.o task_nommu.o
+proc-$(CONFIG_MMU) := task_mmu.o
+proc-y += inode.o
+""",
+  )?
+
+  fs.write(
+    fp"${root}/fs/ramfs/Kbuild",
+    """obj-y += ramfs.o
+file-mmu-y := file-nommu.o
+file-mmu-$(CONFIG_MMU) := file-mmu.o
+ramfs-objs += inode.o $(file-mmu-y)
+""",
+  )?
+
+  fs.write(
+    fp"${root}/mm/Kbuild",
+    """obj-y += mm.o
+mmu-y := nommu.o
+mmu-$(CONFIG_MMU) := highmem.o memory.o
+""",
+  )?
+
+  fs.write(
     fp"${root}/arch/arm64/kernel/Kbuild",
     """obj-y += head.o
 """,
@@ -74,6 +121,16 @@ pure contains_path(paths: List[Path], target: Str) -> Bool {
   for path_value in paths {
     if path_value.display() == target {
       return true
+    }
+  }
+
+  return false
+}
+
+pure composite_has_member(plan: kbuild.KbuildPlan, object: Str, member: Str) -> Bool {
+  for composite in plan.composites {
+    if composite.object.display() == object {
+      return contains_path(composite.members, member)
     }
   }
 
@@ -95,7 +152,7 @@ proc test_kbuild_discovers_configured_obj_y_dirs_and_objects(ctx: TestContext) [
   test.ok(contains_path(plan.objects, "core.o"))?
   test.ok(contains_path(plan.lib_objects, "libhelper.o"))?
   test.ok(contains_path(plan.objects, "combo.o"))?
-  test.eq(plan.composites.len(), 1)?
+  test.eq(plan.composites.len(), 4)?
   test.eq(plan.composites[0].object.display(), "combo.o")?
   test.ok(contains_path(plan.composites[0].members, "combo-a.o"))?
   test.ok(contains_path(plan.composites[0].members, "combo-b.o"))?
@@ -107,6 +164,16 @@ proc test_kbuild_discovers_configured_obj_y_dirs_and_objects(ctx: TestContext) [
   test.ok(contains_path(plan.objects, "block/blk-core.o"))?
   test.ok(contains_path(plan.objects, "net/ipv4.o"))?
   test.ok(contains_path(plan.objects, "arch/arm64/kernel/head.o"))?
+  test.ok(contains_path(plan.objects, "fs/proc/proc.o"))?
+  test.ok(contains_path(plan.objects, "fs/ramfs/ramfs.o"))?
+  test.ok(contains_path(plan.objects, "mm/mm.o"))?
+  test.eq(contains_path(plan.objects, "fs/proc/nommu.o"), false)?
+  test.eq(contains_path(plan.objects, "fs/proc/task_nommu.o"), false)?
+  test.eq(contains_path(plan.objects, "fs/ramfs/file-nommu.o"), false)?
+  test.eq(contains_path(plan.objects, "mm/nommu.o"), false)?
+  test.ok(composite_has_member(plan, "fs/proc/proc.o", "fs/proc/task_mmu.o"))?
+  test.ok(composite_has_member(plan, "fs/ramfs/ramfs.o", "fs/ramfs/file-mmu.o"))?
+  test.ok(composite_has_member(plan, "fs/devpts/devpts.o", "fs/devpts/inode.o"))?
   test.eq(plan.unsupported.len(), 0)?
 }
 
@@ -451,6 +518,7 @@ proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, 
       p"missing.o",
     ],
     lib_objects: [],
+    archive_owners: [],
     composites: [],
     unsupported: [],
   }
@@ -483,6 +551,7 @@ int mmu(void) { return 0; }
       p"arch/x86/kvm/kvm.o",
     ],
     lib_objects: [],
+    archive_owners: [],
     composites: [
       {
         object: p"arch/x86/kvm/kvm.o",
@@ -550,6 +619,7 @@ CFLAGS_intel.o := -I$(src)
       p"sound/hda/controllers/intel.o",
     ],
     lib_objects: [],
+    archive_owners: [],
     composites: [],
     unsupported: [],
   }
