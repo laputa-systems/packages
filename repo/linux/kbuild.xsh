@@ -1711,7 +1711,7 @@ export proc refresh_x86_kernel_config_objects(config: Kconfig, plan: KbuildPlan)
     dirs = dirs.push(p"drivers/input")
   }
 
-  if config_value(config, "INPUT_UINPUT") == "y" {
+  if config_value(config, "INPUT_MISC") == "y" and config_value(config, "INPUT_UINPUT") == "y" {
     dirs = dirs.push(p"drivers/input/misc")
   }
 
@@ -2790,10 +2790,12 @@ proc unique_composites(composites: List[CompositeObject]) [] -> List[CompositeOb
 }
 
 proc normalize_plan(plan: KbuildPlan) [] -> KbuildPlan {
+  let lib_objects = unique_paths(plan.lib_objects)
+
   return {
     dirs: unique_paths(plan.dirs),
-    objects: unique_paths(plan.objects),
-    lib_objects: unique_paths(plan.lib_objects),
+    objects: [obj for obj in unique_paths(plan.objects) if ! has_plan_path(lib_objects, obj)],
+    lib_objects: lib_objects,
     archive_owners: plan.archive_owners,
     composites: unique_composites(plan.composites),
     unsupported: plan.unsupported,
@@ -4003,6 +4005,14 @@ pure parent_dir(dir: Path) -> Path {
 
 pure archive_parent_dir(dir: Path) -> Path {
   let key = path_key(dir)
+
+  if key == "arch/x86/boot/startup" {
+    return p"arch/x86"
+  }
+
+  if key == "drivers/iommu/generic_pt/fmt" {
+    return p"drivers/iommu"
+  }
 
   if regex_matches(key, "^arch/[^/]+$") ?? false {
     return p"."
