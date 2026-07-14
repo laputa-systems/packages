@@ -15,6 +15,34 @@ pure usage(message: Str) -> Error {
   PmError.Usage(f"usage: ${message}")
 }
 
+proc clear_directory_contents(root: Path) [fs, error] {
+  if ! root.exists()? {
+    return
+  }
+
+  var entries = []
+
+  for entry in fs.walk(root) {
+    if entry.path != root {
+      entries = entries.push(entry)
+    }
+  }
+
+  for entry in entries {
+    if entry.kind != "dir" {
+      fs.remove(entry.path, missing_ok: true)?
+    }
+  }
+
+  let directories = entries |> where .kind == "dir" |> sort-by .path
+  var index = directories.len()
+
+  while index > 0 {
+    index -= 1
+    fs.remove(directories[index].path, missing_ok: true)?
+  }
+}
+
 proc parse_pm_cli(argv: List[Str]) [error] -> Result[Cli] {
   let path_types = {root: "Path", work: "Path", out: "Path"}
 
@@ -377,16 +405,6 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     build_i += 1
   }
 
-  fs.mkdir(repo_dir)?
-  fs.remove(root, missing_ok: true)?
-  fs.remove(build_root, missing_ok: true)?
-  fs.mkdir(root)?
-  fs.mkdir(build_root)?
-  fs.mkdir(work)?
-  fs.mkdir(out)?
-  fs.remove(remote_index_cache_path(out), missing_ok: true)?
-  let lock = fs.lock(fp"${work}/pm.lock")?
-  defer fs.unlock(lock)?
   let index_path = fp"${repo_dir}/index.json"
   var index = []
 
@@ -396,14 +414,48 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
 
   let packages = load_package_dirs(paths_from_args(raw_args)?)?
   let local_names = local_package_names(packages)
+  let reuse_set_roots = (env.get("XSH_PM_REUSE_SET_ROOTS") ?? "") == "1" and packages.len() == 1
+  let root_pkg = packages[0]
+  let root_pkgbuild = fp"${root_pkg.dir}/PKGBUILD.xsh"
+  let root_fingerprint = bytes.from_text(
+    f"${util.target_arch()?}\n${root_pkg.name}\t${root_pkg.ver}\t${root_pkg.rel}\t${hash.sha256(root_pkgbuild)?.hex()}\n",
+  ).sha256().hex()
+  let root_fingerprint_path = fp"${work}/.set-roots-fingerprint"
+  let roots_ready = reuse_set_roots and root.exists()? and build_root.exists()? and root_fingerprint_path.exists()? and root_fingerprint_path.read_text()?.trim() == root_fingerprint
+
+  fs.mkdir(repo_dir)?
+  if ! roots_ready {
+    if reuse_set_roots {
+      clear_directory_contents(root)?
+      clear_directory_contents(build_root)?
+    } else {
+      fs.remove(root, missing_ok: true)?
+      fs.remove(build_root, missing_ok: true)?
+    }
+  }
+  fs.mkdir(root)?
+  fs.mkdir(build_root)?
+  fs.mkdir(work)?
+  fs.mkdir(out)?
+  fs.remove(remote_index_cache_path(out), missing_ok: true)?
+  let lock = fs.lock(fp"${work}/pm.lock")?
+  defer fs.unlock(lock)?
   let ordered = packages
   var built_names: Map[Bool] = {}
+  var first_package = true
 
   for pkg in ordered {
-    fs.remove(root, missing_ok: true)?
-    fs.remove(build_root, missing_ok: true)?
-    fs.mkdir(root)?
-    fs.mkdir(build_root)?
+    if ! (roots_ready and first_package) {
+      if reuse_set_roots {
+        clear_directory_contents(root)?
+        clear_directory_contents(build_root)?
+      } else {
+        fs.remove(root, missing_ok: true)?
+        fs.remove(build_root, missing_ok: true)?
+      }
+      fs.mkdir(root)?
+      fs.mkdir(build_root)?
+    }
     install_chroot_base(root_ctx, local_names, false)?
     install_chroot_base(build_ctx, local_names, true)?
 
@@ -417,6 +469,10 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
       missing_world_dependencies(build_root, effective_world_dependencies(pkg, true), local_names, built_names)?,
     )?
 
+    if reuse_set_roots and first_package {
+      fs.write(root_fingerprint_path, root_fingerprint)?
+    }
+
     var built = []
 
     env {
@@ -427,8 +483,10 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     } ?
 
     for item in built {
-      index = stage_built_package(repo_dir, upload_ctx, index, item)?
-      built_names[item.pkg.name] = true
+    index = stage_built_package(repo_dir, upload_ctx, index, item)?
+    built_names[item.pkg.name] = true
+
+    first_package = false
     }
 
     json.write(index_path, index)?

@@ -683,7 +683,7 @@ proc logical_lines(body: Str) [] -> List[Str] {
   var current = ""
 
   for raw in body.split("\n") {
-    let without_comment = raw.split("#")[0]
+    let without_comment = if "#" in raw { raw.split("#")[0] } else { raw }
     let trimmed = without_comment.trim()
 
     if trimmed == "" {
@@ -938,12 +938,14 @@ proc vars_for_dir(root: Path, dir: Path, config: Kconfig, srcarch: Str) [fs, err
     let line = lines[line_index]
     line_index += 1
 
-    match eval_conditional(line, vars, config, srcarch) {
-      Ok(active) => {
-        active_stack = active_stack.push(active_conditional(active_stack) and active)
-        continue
+    if line.starts_with("ifeq ") or line.starts_with("ifneq ") or line.starts_with("ifdef ") or line.starts_with("ifndef ") {
+      match eval_conditional(line, vars, config, srcarch) {
+        Ok(active) => {
+          active_stack = active_stack.push(active_conditional(active_stack) and active)
+          continue
+        }
+        Err(_) => {}
       }
-      Err(_) => {}
     }
 
     if line == "else" {
@@ -1025,12 +1027,14 @@ proc kbuild_compile_flags_for_dir(
     let line = lines[line_index]
     line_index += 1
 
-    match eval_conditional(line, vars, config, srcarch) {
-      Ok(active) => {
-        active_stack = active_stack.push(active_conditional(active_stack) and active)
-        continue
+    if line.starts_with("ifeq ") or line.starts_with("ifneq ") or line.starts_with("ifdef ") or line.starts_with("ifndef ") {
+      match eval_conditional(line, vars, config, srcarch) {
+        Ok(active) => {
+          active_stack = active_stack.push(active_conditional(active_stack) and active)
+          continue
+        }
+        Err(_) => {}
       }
-      Err(_) => {}
     }
 
     if line == "else" {
@@ -2004,30 +2008,32 @@ proc scan_discover_dir(
       continue
     }
 
-    match parse_assignment(line) {
-      Ok(assign) => {
-        let expanded_lhs = expand_vars(assign.lhs, vars, config, srcarch)
-        let lhs = active_var_lhs(expanded_lhs)
+    if "=" in line {
+      match parse_assignment(line) {
+        Ok(assign) => {
+          let expanded_lhs = expand_vars(assign.lhs, vars, config, srcarch)
+          let lhs = active_var_lhs(expanded_lhs)
 
-        if active_obj_lhs(expanded_lhs) {
-          let rhs = expand_vars(assign.rhs, vars, config, srcarch)
+          if active_obj_lhs(expanded_lhs) {
+            let rhs = expand_vars(assign.rhs, vars, config, srcarch)
 
-          if expanded_lhs == "lib-y" {
-            lib_rhs = lib_rhs.push(rhs)
-          } else {
-            object_rhs = object_rhs.push(rhs)
-          }
-        } else if lhs != "" {
-          let rhs = expand_vars(assign.rhs, vars, config, srcarch)
+            if expanded_lhs == "lib-y" {
+              lib_rhs = lib_rhs.push(rhs)
+            } else {
+              object_rhs = object_rhs.push(rhs)
+            }
+          } else if lhs != "" {
+            let rhs = expand_vars(assign.rhs, vars, config, srcarch)
 
-          if assign.op == "+=" {
-            vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
-          } else if assign.op != "?=" or vars.get(lhs, "") == "" {
-            vars[lhs] = rhs
+            if assign.op == "+=" {
+              vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
+            } else if assign.op != "?=" or vars.get(lhs, "") == "" {
+              vars[lhs] = rhs
+            }
           }
         }
+        Err(_) => {}
       }
-      Err(_) => {}
     }
   }
 
@@ -2095,9 +2101,8 @@ proc discover_scans(
     emit_batch_progress(root, options, pending)?
     var batch: List[DirScan] = []
 
-    # Parallel discovery currently clones the large Kconfig/runtime context into
-    # each worker and can burn CPU for minutes without returning a batch. Keep
-    # compile/link parallelism, but make discovery deterministic and bounded.
+    # Discovery is intentionally serial: parallel workers clone the large
+    # Kconfig/runtime context and were slower than one bounded scan.
     for dir in pending {
       emit_stage_progress(root, options, f"xsh-kbuild-scan ${path_key(dir)}")?
       batch = batch.push(scan_discover_dir(root, dir, config, srcarch, options)?)
@@ -2205,13 +2210,15 @@ export proc discover_plan_with_options(
     {plan: empty_plan(), seen: map.empty(), visited: 0},
   )?
 
+  let plan = normalize_plan(state.plan)
+
   emit_stage_progress(
     root,
     options,
-    f"xsh-kbuild-discover-complete ${state.plan.dirs.len()} dirs ${state.plan.objects.len()} objects ${state.plan.composites.len()} composites",
+    f"xsh-kbuild-discover-complete ${plan.dirs.len()} dirs ${plan.objects.len()} objects ${plan.composites.len()} composites",
   )?
 
-  return normalize_plan(state.plan)
+  return plan
 }
 
 pure path_strings(paths: List[Path]) -> List[Str] {

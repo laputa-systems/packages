@@ -70,7 +70,8 @@ export proc timing_start(stage: Str) [env, time] -> Int {
 
 export proc timing_done(stage: Str, start: Int) [env, time] {
   if (env.get("XSH_LINUX_KBUILD_TIMING") ?? "") == "1" {
-    print "linux-kbuild-timing-done" $stage ${time.now() - start}ms
+    let elapsed = time.now() - start
+    print "linux-kbuild-timing-done" $stage $elapsed "ms"
   }
 }
 

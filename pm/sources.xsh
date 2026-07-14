@@ -552,21 +552,33 @@ export proc prepare_package_source_tree(
   pack_mirror: Bool,
 ) [fs, net, process, env, time, error] {
   if allow_mirror and pkg.source_mirror and ! force_download {
+    let mirror_fetch_started = time.now()
+    print --flush "pm-build-source-start" $pkg.name "mirror-fetch"
     try_fetch_source_mirror_from_repo(out, pkg)?
+    print --flush "pm-build-source-done" $pkg.name "mirror-fetch" ${time.now() - mirror_fetch_started} "ms"
   }
 
   var used_mirror = false
 
   if allow_mirror and pkg.source_mirror and ! force_download {
+    let mirror_stage_started = time.now()
+    print --flush "pm-build-source-start" $pkg.name "mirror-stage"
     used_mirror = use_source_mirror(out, pkg, src)?
+    print --flush "pm-build-source-done" $pkg.name "mirror-stage" ${time.now() - mirror_stage_started} "ms"
   }
 
   if ! used_mirror {
+    let stage_started = time.now()
+    print --flush "pm-build-source-start" $pkg.name "fetch-stage"
     stage_package_sources(work, pkg, src, force_download)?
+    print --flush "pm-build-source-done" $pkg.name "fetch-stage" ${time.now() - stage_started} "ms"
   }
 
+  let tree_started = time.now()
+  print --flush "pm-build-source-start" $pkg.name "prepare-tree"
   prepare_source_tree(pkg, src)?
   prune_git_dirs(src)?
+  print --flush "pm-build-source-done" $pkg.name "prepare-tree" ${time.now() - tree_started} "ms"
 
   if pack_mirror {
     pack_source_mirror(out, pkg, src)?

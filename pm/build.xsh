@@ -22,18 +22,52 @@ export proc write_proof_receipt(out: Path, pkg: Package, tarball: Path) [fs, err
   )?
 }
 
+pure source_fingerprint_input(rel: Path) -> Bool {
+  let name = rel.name
+  let key = rel.display()
+
+  if name.starts_with("PKGBUILD") {
+    return true
+  }
+
+  if key.starts_with("files/") or key.starts_with("patches/") {
+    return true
+  }
+
+  return ! name.ends_with(".xsh")
+}
+
+proc source_ready_fingerprint(pkg: Package) [fs, env, error] -> Result[Str] {
+  let arch = util.target_arch()?
+  var body = f"${pkg.name}\t${pkg.ver}\t${pkg.rel}\t${arch}\n"
+
+  for entry in fs.walk(pkg.dir) |> sort-by .path {
+    if entry.kind == "file" {
+      let rel = entry.path.strip_prefix(pkg.dir)?
+
+      if source_fingerprint_input(rel) {
+        body = f"${body}${rel.display()}\t${hash.sha256(entry.path)?.hex()}\n"
+      }
+    }
+  }
+
+  bytes.from_text(body).sha256().hex()
+}
+
 proc prepare_build_package_source(ctx: PmContext, pkg: Package) [fs, net, process, env, time, error] {
   let id = package_id(pkg.name, pkg.ver, pkg.rel)
   let pkg_work = fp"${ctx.work}/${id}"
   let src = fp"${pkg_work}/src"
   let reuse_work = (env.get("XSH_PM_REUSE_WORK") ?? "") == "1"
   let source_ready = fp"${pkg_work}/.source-ready"
+  let source_fingerprint = source_ready_fingerprint(pkg)?
+  let source_is_ready = fs.exists(source_ready)? and source_ready.read_text()?.trim() == source_fingerprint
 
   if ! reuse_work {
     fs.remove(pkg_work, missing_ok: true)?
   }
 
-  if ! reuse_work or ! src.exists()? or ! source_ready.exists()? {
+  if ! reuse_work or ! src.exists()? or ! source_is_ready {
     fs.remove(src, missing_ok: true)?
 
     if pkg.upstream_sources.len() == 0 {
@@ -42,11 +76,7 @@ proc prepare_build_package_source(ctx: PmContext, pkg: Package) [fs, net, proces
 
     prepare_package_source_tree(ctx.work, ctx.out, pkg, src, false, true, ! reuse_work)?
 
-    fs.write(
-      source_ready,
-      """ok
-""",
-    )?
+    fs.write(source_ready, source_fingerprint)?
   }
 }
 
@@ -434,7 +464,10 @@ proc build_packages_in_chroot(
   var owners: Map[Str] = {}
 
   for pkg in packages {
+    let source_started = time.now()
+    print --flush "pm-build-phase-start" $pkg.name "source"
     prepare_build_package_source(ctx, pkg)?
+    print --flush "pm-build-phase-done" $pkg.name "source" ${time.now() - source_started} "ms"
     seed_chroot_runner(ctx.root)?
     let id = package_id(pkg.name, pkg.ver, pkg.rel)
     let source_src = fp"${ctx.work}/${id}/src"
@@ -442,6 +475,8 @@ proc build_packages_in_chroot(
     let src = fp"${stage}/src"
     let pkg_dir = fp"${stage}/pkg"
     let dest = fp"${stage}/dest"
+    let source_ready_path = fp"${ctx.work}/${id}/.source-ready"
+    let source_copy_ready_path = fp"${stage}/.source-copy-ready"
     let chroot_stage = fp"/var/tmp/pm-build/${id}"
     let chroot_pkg = fp"${chroot_stage}/pkg"
     let chroot_src = fp"${chroot_stage}/src"
@@ -457,10 +492,24 @@ proc build_packages_in_chroot(
     let makeflags = env.get("MAKEFLAGS") ?? f"-s -j${cpu.count()}"
     let build_arch = util.build_arch()?
     let target_arch = util.target_arch()?
-    fs.remove(stage, missing_ok: true)?
-    fs.mkdir(stage)?
-    fs.copy_tree(source_src, src, parents: true, overwrite: true)?
-    fs.copy_tree(pkg.dir, pkg_dir, parents: true, overwrite: true)?
+    let source_copy_ready = (env.get("XSH_PM_REUSE_WORK") ?? "") == "1" and source_ready_path.exists()? and source_copy_ready_path.exists()? and source_ready_path.read_text()?.trim() == source_copy_ready_path.read_text()?.trim()
+
+    if source_copy_ready {
+      fs.remove(pkg_dir, missing_ok: true)?
+      fs.remove(dest, missing_ok: true)?
+      fs.remove(fp"${stage}/out", missing_ok: true)?
+      fs.copy_tree(pkg.dir, pkg_dir, parents: true, overwrite: true)?
+      print --flush "pm-build-phase-done" $pkg.name "source-copy" 0 "ms" "reused"
+    } else {
+      fs.remove(stage, missing_ok: true)?
+      fs.mkdir(stage)?
+      let copy_started = time.now()
+      print --flush "pm-build-phase-start" $pkg.name "source-copy"
+      fs.copy_tree(source_src, src, parents: true, overwrite: true)?
+      fs.copy_tree(pkg.dir, pkg_dir, parents: true, overwrite: true)?
+      fs.write(source_copy_ready_path, source_ready_path.read_text()?)?
+      print --flush "pm-build-phase-done" $pkg.name "source-copy" ${time.now() - copy_started} "ms"
+    }
     seed_chroot_build_cache(ctx, pkg, src)?
     run_lifecycle_hooks("pre-build", pkg.name, ctx, src.display())?
 
@@ -504,6 +553,7 @@ proc build_packages_in_chroot(
       XSH_LINUX_KBUILD_REUSE_ARCHIVE_PLAN = env.get("XSH_LINUX_KBUILD_REUSE_ARCHIVE_PLAN") ?? ""
       XSH_LINUX_KBUILD_REUSE_ARCHIVES = env.get("XSH_LINUX_KBUILD_REUSE_ARCHIVES") ?? ""
       XSH_LINUX_KBUILD_STOP_AFTER = env.get("XSH_LINUX_KBUILD_STOP_AFTER") ?? ""
+      XSH_LINUX_KBUILD_TIMING = env.get("XSH_LINUX_KBUILD_TIMING") ?? ""
       XSH_LINUX_KBUILD_TRUST_PLAN_CACHE = env.get("XSH_LINUX_KBUILD_TRUST_PLAN_CACHE") ?? ""
       XSH_LINUX_KBUILD_USE_PLAN = env.get("XSH_LINUX_KBUILD_USE_PLAN") ?? ""
       XSH_LINUX_KBUILD_USE_PLAN_TEXT = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT") ?? ""
@@ -516,7 +566,10 @@ proc build_packages_in_chroot(
       XSH_PM_IN_CHROOT = "1"
       SHELL = "/bin/xshi"
     } {
+      let chroot_started = time.now()
+      print --flush "pm-build-phase-start" $pkg.name "chroot"
       let status = run_chroot_build_command(host_xsh, chroot_argv, build_log_text, build_log)?
+      print --flush "pm-build-phase-done" $pkg.name "chroot" ${time.now() - chroot_started} "ms"
       preserve_chroot_build_cache(ctx, pkg, src)?
 
       if ! status.ok {
