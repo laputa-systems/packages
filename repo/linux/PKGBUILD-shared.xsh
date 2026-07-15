@@ -36,11 +36,9 @@ export proc discover_package_plan(srcarch: Str) [fs, env, process, time, error] 
   let config = kbuild.load_config(p".config")?
   let options = discover_options_from_env()?
 
-  if options.local_records and ! options.local_record_cache and options.jobs > 1 {
-    let module_path = env.get("XSH_MODULE_PATH") ?? ""
-    let module_root = module_path.split(":").get(0, "")
-    let xsh_bin = fp"${env.get("XSH_HOST") ?? "xsh"}"
-    let worker = fp"${module_root}/kbuild-pool-worker.xsh"
+  if ! options.local_record_cache {
+    let xsh_bin = p"/bin/xsh"
+    let worker = path.absolute(p"../pkg/kbuild-pool-worker.xsh")?
     return kbuild.discover_plan_with_process_pool(
       p".",
       p".config",
