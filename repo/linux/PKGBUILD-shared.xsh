@@ -28,12 +28,30 @@ export proc discover_options_from_env() [env, error] -> Result[kbuild.DiscoverOp
     jobs: jobs_count,
     local_records: (env.get("XSH_LINUX_KBUILD_LOCAL_RECORDS") ?? "") == "1",
     local_record_cache: (env.get("XSH_LINUX_KBUILD_LOCAL_RECORD_CACHE") ?? "") == "1" and (env.get("XSH_LINUX_KBUILD_FORCE_DISCOVER") ?? "") != "1",
+    build_plan: true,
   }
 }
 
-export proc discover_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.KbuildPlan] {
+export proc discover_package_plan(srcarch: Str) [fs, env, process, time, error] -> Result[kbuild.KbuildPlan] {
   let config = kbuild.load_config(p".config")?
-  return kbuild.discover_plan_with_options(p".", config, srcarch, discover_options_from_env()?)?
+  let options = discover_options_from_env()?
+
+  if options.local_records and ! options.local_record_cache and options.jobs > 1 {
+    let module_path = env.get("XSH_MODULE_PATH") ?? ""
+    let module_root = module_path.split(":").get(0, "")
+    let xsh_bin = fp"${env.get("XSH_HOST") ?? "xsh"}"
+    let worker = fp"${module_root}/kbuild-pool-worker.xsh"
+    return kbuild.discover_plan_with_process_pool(
+      p".",
+      p".config",
+      srcarch,
+      options,
+      xsh_bin,
+      worker,
+    )?
+  }
+
+  return kbuild.discover_plan_with_options(p".", config, srcarch, options)?
 }
 
 export proc write_materialized_outputs(outputs: List[Path]) [fs, error] {
@@ -274,7 +292,7 @@ export proc cached_archive_plan(
   return archive_plan
 }
 
-export proc cached_package_plan(srcarch: Str) [fs, env, error] -> Result[kbuild.KbuildPlan] {
+export proc cached_package_plan(srcarch: Str) [fs, env, process, time, error] -> Result[kbuild.KbuildPlan] {
   let config = kbuild.load_config(p".config")?
   let explicit_inline = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT_INLINE") ?? ""
   let explicit_text = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT") ?? ""

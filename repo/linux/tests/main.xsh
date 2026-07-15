@@ -194,6 +194,7 @@ proc test_kbuild_local_record_graph_matches_default(ctx: TestContext) [fs, error
       jobs: 1,
       local_records: true,
       local_record_cache: false,
+      build_plan: true,
     },
   )?
   kbuild.write_discovered_plan(default_plan, default_out)?
@@ -211,6 +212,7 @@ proc test_kbuild_local_record_cache_reuses_and_invalidates(ctx: TestContext) [fs
     jobs: 1,
     local_records: true,
     local_record_cache: true,
+    build_plan: true,
   }
   let first = kbuild.discover_plan_with_options(root, config, "arm64", options)?
   let second = kbuild.discover_plan_with_options(root, config, "arm64", options)?

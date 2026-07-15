@@ -30,6 +30,7 @@ export type DiscoverOptions = {
   jobs: Int,
   local_records: Bool,
   local_record_cache: Bool,
+  build_plan: Bool,
 }
 
 type DiscoverState = {plan: KbuildPlan, seen: Map[Bool], visited: Int}
@@ -84,6 +85,7 @@ pure default_discover_options() -> DiscoverOptions {
     jobs: 1,
     local_records: false,
     local_record_cache: false,
+    build_plan: true,
   }
 }
 
@@ -160,7 +162,9 @@ pure add_dir(plan: KbuildPlan, dir: Path) -> KbuildPlan {
     return plan
   }
 
-  return {...plan, dirs: plan.dirs.push(dir)}
+  var dirs = plan.dirs
+  dirs = dirs.push(dir)
+  return {...plan, dirs: dirs}
 }
 
 pure add_object(plan: KbuildPlan, obj: Path) -> KbuildPlan {
@@ -172,10 +176,14 @@ pure add_object_at(plan: KbuildPlan, obj: Path, owner: Path) -> KbuildPlan {
     return plan
   }
 
+  var objects = plan.objects
+  objects = objects.push(obj)
+  var owners = plan.archive_owners
+  owners = owners.push({object: obj, dir: owner})
   return {
     ...plan,
-    objects: plan.objects.push(obj),
-    archive_owners: plan.archive_owners.push({object: obj, dir: owner}),
+    objects: objects,
+    archive_owners: owners,
   }
 }
 
@@ -188,10 +196,14 @@ pure add_lib_object_at(plan: KbuildPlan, obj: Path, owner: Path) -> KbuildPlan {
     return plan
   }
 
+  var objects = plan.lib_objects
+  objects = objects.push(obj)
+  var owners = plan.archive_owners
+  owners = owners.push({object: obj, dir: owner})
   return {
     ...plan,
-    lib_objects: plan.lib_objects.push(obj),
-    archive_owners: plan.archive_owners.push({object: obj, dir: owner}),
+    lib_objects: objects,
+    archive_owners: owners,
   }
 }
 
@@ -204,11 +216,15 @@ pure add_composite(plan: KbuildPlan, composite: CompositeObject) -> KbuildPlan {
     }
   }
 
-  return {...plan, composites: plan.composites.push(composite)}
+  var composites = plan.composites
+  composites = composites.push(composite)
+  return {...plan, composites: composites}
 }
 
 pure add_unsupported(plan: KbuildPlan, message: Str) -> KbuildPlan {
-  return {...plan, unsupported: plan.unsupported.push(message)}
+  var unsupported = plan.unsupported
+  unsupported = unsupported.push(message)
+  return {...plan, unsupported: unsupported}
 }
 
 proc merge_plan(base: KbuildPlan, addition: KbuildPlan) [] -> KbuildPlan {
@@ -757,7 +773,8 @@ proc logical_lines(body: Str) [] -> List[Str] {
   var current = ""
 
   for raw in body.split("\n") {
-    let without_comment = if "#" in raw { raw.split("#")[0] } else { raw }
+    let comment_index = raw.find("#")
+    let without_comment = if comment_index >= 0 { raw.byte_slice(0, comment_index) } else { raw }
     let trimmed = without_comment.trim()
 
     if trimmed == "" {
@@ -811,25 +828,37 @@ proc included_kbuild_lines(
   return logical_lines(join_root(root, rel).read_text()?)
 }
 
+pure parse_assignment_at(line: Str, marker: Str, marker_len: Int, index: Int) -> ParsedAssignment {
+  return {
+    lhs: line.byte_slice(0, index).trim(),
+    op: marker,
+    rhs: line.byte_slice(index + marker_len).trim(),
+  }
+}
+
 pure parse_assignment(line: Str) -> Result[ParsedAssignment] {
-  if "+=" in line {
-    let parts = line.split("+=")
-    return {lhs: parts[0].trim(), op: "+=", rhs: parts.get(1, "").trim()}
+  let append_index = line.find("+=")
+
+  if append_index >= 0 {
+    return parse_assignment_at(line, "+=", 2, append_index)
   }
 
-  if ":=" in line {
-    let parts = line.split(":=")
-    return {lhs: parts[0].trim(), op: ":=", rhs: parts.get(1, "").trim()}
+  let simple_index = line.find(":=")
+
+  if simple_index >= 0 {
+    return parse_assignment_at(line, ":=", 2, simple_index)
   }
 
-  if "?=" in line {
-    let parts = line.split("?=")
-    return {lhs: parts[0].trim(), op: "?=", rhs: parts.get(1, "").trim()}
+  let conditional_index = line.find("?=")
+
+  if conditional_index >= 0 {
+    return parse_assignment_at(line, "?=", 2, conditional_index)
   }
 
-  if "=" in line {
-    let parts = line.split("=")
-    return {lhs: parts[0].trim(), op: "=", rhs: parts.get(1, "").trim()}
+  let assignment_index = line.find("=")
+
+  if assignment_index >= 0 {
+    return parse_assignment_at(line, "=", 1, assignment_index)
   }
 
   return Err(ScriptError.Failed("kbuild-skip-line", line))
@@ -1880,25 +1909,40 @@ export proc add_plan_objects(plan: KbuildPlan, objects: List[Path]) [] -> Kbuild
   return next
 }
 
-proc apply_item(plan: KbuildPlan, dir: Path, item: Str, vars: Map[Str], as_lib: Bool = false) [] -> ItemResult {
+proc apply_item(
+  plan: KbuildPlan,
+  dir: Path,
+  item: Str,
+  vars: Map[Str],
+  as_lib: Bool = false,
+  build_plan: Bool = true,
+) [] -> ItemResult {
   if item == "" {
     return {plan: plan, dirs: [], entries: []}
   }
 
   if "$(" in item {
-    return {plan: add_unsupported(plan, f"${path_key(dir)}: unresolved token ${item}"), dirs: [], entries: []}
+    let next = if build_plan { add_unsupported(plan, f"${path_key(dir)}: unresolved token ${item}") } else { plan }
+    return {plan: next, dirs: [], entries: []}
   }
 
   if item.ends_with("/") {
     let child = dirname_for_item(dir, item)
-    return {plan: add_dir(plan, child), dirs: [child], entries: [child]}
+    let next = if build_plan { add_dir(plan, child) } else { plan }
+    return {plan: next, dirs: [child], entries: [child]}
   }
 
   if item.ends_with(".o") {
     let active_item = object_item_for_dir(dir, item, as_lib)
     let obj = join_rel(dir, active_item)
-    let members = composite_members(dir, active_item, vars)
-    var next = if as_lib { add_lib_object_at(plan, obj, dir) } else { add_object_at(plan, obj, dir) }
+    let members = if build_plan { composite_members(dir, active_item, vars) } else { [] }
+    var next = if ! build_plan {
+      plan
+    } else if as_lib {
+      add_lib_object_at(plan, obj, dir)
+    } else {
+      add_object_at(plan, obj, dir)
+    }
 
     if members.len() > 0 {
       next = add_composite(next, {object: obj, members: members})
@@ -1907,16 +1951,34 @@ proc apply_item(plan: KbuildPlan, dir: Path, item: Str, vars: Map[Str], as_lib: 
     return {plan: next, dirs: [], entries: [obj]}
   }
 
-  return {plan: add_unsupported(plan, f"${path_key(dir)}: unsupported token ${item}"), dirs: [], entries: []}
+  let next = if build_plan { add_unsupported(plan, f"${path_key(dir)}: unsupported token ${item}") } else { plan }
+  return {plan: next, dirs: [], entries: []}
 }
 
-proc apply_words(plan: KbuildPlan, dir: Path, words: List[Str], vars: Map[Str], as_lib: Bool = false) [] -> ItemResult {
+proc apply_words(
+  plan: KbuildPlan,
+  dir: Path,
+  words: List[Str],
+  vars: Map[Str],
+  as_lib: Bool = false,
+  build_plan: Bool = true,
+) [] -> ItemResult {
   var current = plan
   var dirs: List[Path] = []
   var entries: List[Path] = []
 
+  if ! build_plan {
+    for item in words {
+      if item.ends_with("/") {
+        dirs = dirs.push(dirname_for_item(dir, item))
+      }
+    }
+
+    return {plan: plan, dirs: dirs, entries: []}
+  }
+
   for item in words {
-    let applied = apply_item(current, dir, item, vars, as_lib)
+    let applied = apply_item(current, dir, item, vars, as_lib, build_plan)
     current = applied.plan
     dirs = dirs.extend(applied.dirs)
     entries = entries.extend(applied.entries)
@@ -2092,7 +2154,7 @@ proc scan_simple_kbuild(
   }
 
   for rhs in object_rhs {
-    let applied = apply_words(plan, rel, rhs.fields(), mutable_vars)
+    let applied = apply_words(plan, rel, rhs.fields(), mutable_vars, false, options.build_plan)
     plan = applied.plan
     child_dirs = child_dirs.extend(applied.dirs)
     entries = entries.extend(applied.entries)
@@ -2100,13 +2162,15 @@ proc scan_simple_kbuild(
 
   if srcarch == "x86" {
     for obj in extra_objects_for_dir(rel) {
-      plan = add_object(plan, obj)
+      if options.build_plan {
+        plan = add_object(plan, obj)
+      }
       entries = entries.push(obj)
     }
   }
 
   for rhs in lib_rhs {
-    let applied = apply_words(plan, rel, rhs.fields(), mutable_vars, true)
+    let applied = apply_words(plan, rel, rhs.fields(), mutable_vars, true, options.build_plan)
     plan = applied.plan
     child_dirs = child_dirs.extend(applied.dirs)
   }
@@ -2170,7 +2234,7 @@ proc scan_flat_kbuild(
   }
 
   for rhs in object_rhs {
-    let applied = apply_words(plan, rel, rhs.fields(), vars)
+    let applied = apply_words(plan, rel, rhs.fields(), vars, false, options.build_plan)
     plan = applied.plan
     child_dirs = child_dirs.extend(applied.dirs)
     entries = entries.extend(applied.entries)
@@ -2178,13 +2242,15 @@ proc scan_flat_kbuild(
 
   if srcarch == "x86" {
     for obj in extra_objects_for_dir(rel) {
-      plan = add_object(plan, obj)
+      if options.build_plan {
+        plan = add_object(plan, obj)
+      }
       entries = entries.push(obj)
     }
   }
 
   for rhs in lib_rhs {
-    let applied = apply_words(plan, rel, rhs.fields(), vars, true)
+    let applied = apply_words(plan, rel, rhs.fields(), vars, true, options.build_plan)
     plan = applied.plan
     child_dirs = child_dirs.extend(applied.dirs)
   }
@@ -2314,7 +2380,7 @@ proc scan_discover_dir(
   }
 
   for rhs in object_rhs {
-    let applied = apply_words(plan, rel, rhs.fields(), vars)
+    let applied = apply_words(plan, rel, rhs.fields(), vars, false, options.build_plan)
     plan = applied.plan
     child_dirs = child_dirs.extend(applied.dirs)
     entries = entries.extend(applied.entries)
@@ -2322,13 +2388,15 @@ proc scan_discover_dir(
 
   if srcarch == "x86" {
     for obj in extra_objects_for_dir(rel) {
-      plan = add_object(plan, obj)
+      if options.build_plan {
+        plan = add_object(plan, obj)
+      }
       entries = entries.push(obj)
     }
   }
 
   for rhs in lib_rhs {
-    let applied = apply_words(plan, rel, rhs.fields(), vars, true)
+    let applied = apply_words(plan, rel, rhs.fields(), vars, true, options.build_plan)
     plan = applied.plan
     child_dirs = child_dirs.extend(applied.dirs)
   }
@@ -2384,6 +2452,124 @@ proc scan_discover_batch_parallel(
   return scans
 }
 
+export proc scan_record_for_dir(
+  root: Path,
+  config: Kconfig,
+  srcarch: Str,
+  dir: Path,
+) [fs, error] -> Result[Record] {
+  let scan = scan_discover_dir(root, dir, config, srcarch, default_discover_options())?
+  return local_record_record(scan, "")
+}
+
+export proc plan_from_record_values(records: List[Record]) [error] -> Result[KbuildPlan] {
+  var scan_by_dir: Map[DirScan] = {}
+
+  for item in records {
+    let scan = local_record_from_record(item)?
+    scan_by_dir[path_key(scan.dir)] = scan
+  }
+
+  var seen: Map[Bool] = {}
+  var frontier = [p"."]
+  var plan = empty_plan()
+
+  while frontier.len() > 0 {
+    let pending = unique_unseen_paths(frontier, seen)
+    frontier = []
+
+    for dir in pending {
+      let scan = scan_by_dir.get(path_key(dir))?
+      plan = merge_plan(plan, scan.plan)
+
+      for child in scan.child_dirs {
+        if ! seen.get(path_key(child), false) {
+          frontier = frontier.push(child)
+        }
+      }
+    }
+  }
+
+  return normalize_plan(plan)
+}
+
+proc discover_records_process_pool(
+  root: Path,
+  config: Path,
+  srcarch: Str,
+  options: DiscoverOptions,
+  xsh_bin: Path,
+  worker: Path,
+) [fs, process, time, error] -> Result[KbuildPlan] {
+  let prefix = f"/tmp/xsh-kbuild-pool-${time.now()}"
+  let state_path = fp"${prefix}-state.json"
+  let lock_path = fp"${prefix}-lock"
+  defer fs.remove(state_path, missing_ok: true)?
+  defer fs.remove(lock_path, missing_ok: true)?
+
+  json.write(
+    state_path,
+    {pending: ["."], active: 0, done: false, seen: ["."], error: ""},
+  )?
+
+  let worker_count = if options.jobs < 1 { 1 } else if options.jobs > 16 { 16 } else { options.jobs }
+  var handles = []
+  var output_paths: List[Path] = []
+
+  for index in range(worker_count) {
+    let output_path = fp"${prefix}-output-${index}.json"
+    output_paths = output_paths.push(output_path)
+    defer fs.remove(output_path, missing_ok: true)?
+    let command = process.command_argv(
+      xsh_bin,
+      [
+        xsh_bin.display(),
+        worker.display(),
+        "--",
+        root.display(),
+        config.display(),
+        srcarch,
+        state_path.display(),
+        lock_path.display(),
+        output_path.display(),
+      ],
+    )
+    handles = handles.push(spawn command?)
+  }
+
+  let statuses = wait handles?
+  for status in statuses {
+    if ! status.exited_with(0) {
+      return Err(ScriptError.Failed("kbuild-process-pool", "a discovery worker failed"))
+    }
+  }
+
+  let state: Record = json.read(state_path)?
+  let error_message: Str = state.get("error")?
+
+  if error_message != "" {
+    return Err(ScriptError.Failed("kbuild-process-pool", error_message))
+  }
+
+  var records: List[Record] = []
+  for output_path in output_paths {
+    let batch: List[Record] = json.read(output_path)?
+    records = records.extend(batch)
+  }
+  return plan_from_record_values(records)
+}
+
+export proc discover_plan_with_process_pool(
+  root: Path,
+  config: Path,
+  srcarch: Str,
+  options: DiscoverOptions,
+  xsh_bin: Path,
+  worker: Path,
+) [fs, process, time, error] -> Result[KbuildPlan] {
+  return discover_records_process_pool(root, config, srcarch, options, xsh_bin, worker)?
+}
+
 proc discover_scans(
   root: Path,
   config: Kconfig,
@@ -2407,7 +2593,7 @@ proc discover_scans(
     }
 
     emit_batch_progress(root, options, pending)?
-    let batch = if options.local_records {
+    let batch = if options.local_records and options.jobs > 1 {
       scan_discover_batch_parallel(root, pending, config, srcarch, options)?
     } else {
       scan_discover_batch_serial(root, pending, config, srcarch, options)?
