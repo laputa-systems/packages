@@ -220,7 +220,11 @@ proc test_kbuild_local_record_cache_reuses_and_invalidates(ctx: TestContext) [fs
 
   let root_kbuild = fp"${root}/Kbuild"
   let original = root_kbuild.read_text()?
-  fs.write(root_kbuild, f"${original}obj-y += cached.o\n")?
+  fs.write(
+    root_kbuild,
+    f"""${original}obj-y += cached.o
+""",
+  )?
   let third = kbuild.discover_plan_with_options(root, config, "arm64", options)?
   test.ok(contains_path(third.objects, "cached.o"))?
 }

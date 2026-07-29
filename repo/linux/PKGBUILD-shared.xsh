@@ -27,18 +27,20 @@ export proc discover_options_from_env() [env, error] -> Result[kbuild.DiscoverOp
     progress_every: every_text.parse_int()?,
     jobs: jobs_count,
     local_records: (env.get("XSH_LINUX_KBUILD_LOCAL_RECORDS") ?? "") == "1",
-    local_record_cache: (env.get("XSH_LINUX_KBUILD_LOCAL_RECORD_CACHE") ?? "") == "1" and (env.get("XSH_LINUX_KBUILD_FORCE_DISCOVER") ?? "") != "1",
+    local_record_cache: (env.get("XSH_LINUX_KBUILD_LOCAL_RECORD_CACHE") ?? "") == "1" and (env.get(
+      "XSH_LINUX_KBUILD_FORCE_DISCOVER",
+    ) ?? "") != "1",
     build_plan: true,
   }
 }
 
-export proc discover_package_plan(srcarch: Str) [fs, env, process, time, error] -> Result[kbuild.KbuildPlan] {
+export proc discover_package_plan(srcarch: Str) [fs, process, env, time, error] -> Result[kbuild.KbuildPlan] {
   let config = kbuild.load_config(p".config")?
   let options = discover_options_from_env()?
 
   if ! options.local_record_cache {
-    let xsh_bin = p"/bin/xsh"
-    let worker = path.absolute(p"../pkg/kbuild-pool-worker.xsh")?
+    let xsh_bin = /bin/xsh
+    let worker = path.absolute(../pkg/kbuild-pool-worker.xsh)?
     return kbuild.discover_plan_with_process_pool(
       p".",
       p".config",
@@ -53,10 +55,12 @@ export proc discover_package_plan(srcarch: Str) [fs, env, process, time, error] 
 }
 
 export proc write_materialized_outputs(outputs: List[Path]) [fs, error] {
-  var text = "format linux-materialized-outputs-v1\n"
+  var text = """format linux-materialized-outputs-v1
+"""
 
   for output in outputs {
-    text = f"${text}${output.display()}\n"
+    text = f"""${text}${output.display()}
+"""
   }
 
   kbuild.write_text_if_changed(p".xsh-kbuild/materialized-outputs", text)?
@@ -290,7 +294,7 @@ export proc cached_archive_plan(
   return archive_plan
 }
 
-export proc cached_package_plan(srcarch: Str) [fs, env, process, time, error] -> Result[kbuild.KbuildPlan] {
+export proc cached_package_plan(srcarch: Str) [fs, process, env, time, error] -> Result[kbuild.KbuildPlan] {
   let config = kbuild.load_config(p".config")?
   let explicit_inline = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT_INLINE") ?? ""
   let explicit_text = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT") ?? ""

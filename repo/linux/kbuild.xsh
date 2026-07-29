@@ -5,6 +5,7 @@ export error ScriptError = Failed(kind: Str, message: Str)
 export type Kconfig = {enabled: Map[Bool], values: Map[Str]}
 
 export type CompositeObject = {object: Path, members: List[Path]}
+
 export type ArchiveOwner = {object: Path, dir: Path}
 
 export type KbuildPlan = {
@@ -40,6 +41,7 @@ type DirScan = {dir: Path, plan: KbuildPlan, child_dirs: List[Path], entries: Li
 type AggregateBarriers = {builtin_archive: Path, module_order: Path}
 
 type LocalRecordGraph = {records: Map[DirScan], barriers: Map[AggregateBarriers], plan: KbuildPlan}
+
 type DiscoverScans = {records: Map[DirScan], plan: KbuildPlan}
 
 type KbuildSource = {file: Path, body: Str}
@@ -75,7 +77,14 @@ pure regex_matches(text: Str, pattern: Str) -> Result[Bool] {
 }
 
 pure empty_plan() -> KbuildPlan {
-  return {dirs: [], objects: [], lib_objects: [], archive_owners: [], composites: [], unsupported: []}
+  return {
+    dirs: [],
+    objects: [],
+    lib_objects: [],
+    archive_owners: [],
+    composites: [],
+    unsupported: [],
+  }
 }
 
 pure default_discover_options() -> DiscoverOptions {
@@ -1041,7 +1050,9 @@ proc vars_for_dir(root: Path, dir: Path, config: Kconfig, srcarch: Str) [fs, err
     let line = lines[line_index]
     line_index += 1
 
-    if line.starts_with("ifeq ") or line.starts_with("ifneq ") or line.starts_with("ifdef ") or line.starts_with("ifndef ") {
+    if line.starts_with("ifeq ") or line.starts_with("ifneq ") or line.starts_with("ifdef ") or line.starts_with(
+      "ifndef ",
+    ) {
       match eval_conditional(line, vars, config, srcarch) {
         Ok(active) => {
           active_stack = active_stack.push(active_conditional(active_stack) and active)
@@ -1130,7 +1141,9 @@ proc kbuild_compile_flags_for_dir(
     let line = lines[line_index]
     line_index += 1
 
-    if line.starts_with("ifeq ") or line.starts_with("ifneq ") or line.starts_with("ifdef ") or line.starts_with("ifndef ") {
+    if line.starts_with("ifeq ") or line.starts_with("ifneq ") or line.starts_with("ifdef ") or line.starts_with(
+      "ifndef ",
+    ) {
       match eval_conditional(line, vars, config, srcarch) {
         Ok(active) => {
           active_stack = active_stack.push(active_conditional(active_stack) and active)
@@ -2088,7 +2101,9 @@ proc emit_batch_progress(root: Path, options: DiscoverOptions, pending: List[Pat
 }
 
 pure kbuild_scanner_kind(body: Str) -> Int {
-  if "ifeq " in body or "ifneq " in body or "ifdef " in body or "ifndef " in body or "include " in body or "\nelse" in body or "\nendif" in body or body.starts_with("else") or body.starts_with("endif") {
+  if "ifeq " in body or "ifneq " in body or "ifdef " in body or "ifndef " in body or "include " in body or """
+else""" in body or """
+endif""" in body or body.starts_with("else") or body.starts_with("endif") {
     return 2
   }
 
@@ -2125,7 +2140,11 @@ proc scan_simple_kbuild(
       emit_line_progress(root, options, rel, line_no, line)?
     }
 
-    if "=" in line and maybe_plan_assignment(line) and ! line.starts_with("ccflags-") and ! line.starts_with("asflags-") and ! line.starts_with("ldflags-") and ! line.starts_with("rustflags-") and ! line.starts_with("subdir-ccflags-") and ! line.starts_with("subdir-asflags-") and ! line.starts_with("subdir-rustflags-") {
+    if "=" in line and maybe_plan_assignment(line) and ! line.starts_with("ccflags-") and ! line.starts_with("asflags-") and ! line.starts_with(
+      "ldflags-",
+    ) and ! line.starts_with("rustflags-") and ! line.starts_with("subdir-ccflags-") and ! line.starts_with(
+      "subdir-asflags-",
+    ) and ! line.starts_with("subdir-rustflags-") {
       match parse_assignment(line) {
         Ok(assign) => {
           let lhs = assign.lhs
@@ -2165,6 +2184,7 @@ proc scan_simple_kbuild(
       if options.build_plan {
         plan = add_object(plan, obj)
       }
+
       entries = entries.push(obj)
     }
   }
@@ -2200,7 +2220,11 @@ proc scan_flat_kbuild(
       emit_line_progress(root, options, rel, line_no, line)?
     }
 
-    if "=" in line and maybe_plan_assignment(line) and ! line.starts_with("ccflags-") and ! line.starts_with("asflags-") and ! line.starts_with("ldflags-") and ! line.starts_with("rustflags-") and ! line.starts_with("subdir-ccflags-") and ! line.starts_with("subdir-asflags-") and ! line.starts_with("subdir-rustflags-") {
+    if "=" in line and maybe_plan_assignment(line) and ! line.starts_with("ccflags-") and ! line.starts_with("asflags-") and ! line.starts_with(
+      "ldflags-",
+    ) and ! line.starts_with("rustflags-") and ! line.starts_with("subdir-ccflags-") and ! line.starts_with(
+      "subdir-asflags-",
+    ) and ! line.starts_with("subdir-rustflags-") {
       match parse_assignment(line) {
         Ok(assign) => {
           let expanded_lhs = expand_vars(assign.lhs, vars, config, srcarch)
@@ -2245,6 +2269,7 @@ proc scan_flat_kbuild(
       if options.build_plan {
         plan = add_object(plan, obj)
       }
+
       entries = entries.push(obj)
     }
   }
@@ -2313,7 +2338,9 @@ proc scan_discover_dir(
       emit_line_progress(root, options, rel, line_no, line)?
     }
 
-    if line.starts_with("ifeq ") or line.starts_with("ifneq ") or line.starts_with("ifdef ") or line.starts_with("ifndef ") {
+    if line.starts_with("ifeq ") or line.starts_with("ifneq ") or line.starts_with("ifdef ") or line.starts_with(
+      "ifndef ",
+    ) {
       match eval_conditional(line, vars, config, srcarch) {
         Ok(active) => {
           active_stack = active_stack.push(active_conditional(active_stack) and active)
@@ -2346,7 +2373,11 @@ proc scan_discover_dir(
       continue
     }
 
-    if "=" in line and maybe_plan_assignment(line) and ! line.starts_with("ccflags-") and ! line.starts_with("asflags-") and ! line.starts_with("ldflags-") and ! line.starts_with("rustflags-") and ! line.starts_with("subdir-ccflags-") and ! line.starts_with("subdir-asflags-") and ! line.starts_with("subdir-rustflags-") {
+    if "=" in line and maybe_plan_assignment(line) and ! line.starts_with("ccflags-") and ! line.starts_with("asflags-") and ! line.starts_with(
+      "ldflags-",
+    ) and ! line.starts_with("rustflags-") and ! line.starts_with("subdir-ccflags-") and ! line.starts_with(
+      "subdir-asflags-",
+    ) and ! line.starts_with("subdir-rustflags-") {
       match parse_assignment(line) {
         Ok(assign) => {
           let expanded_lhs = expand_vars(assign.lhs, vars, config, srcarch)
@@ -2391,6 +2422,7 @@ proc scan_discover_dir(
       if options.build_plan {
         plan = add_object(plan, obj)
       }
+
       entries = entries.push(obj)
     }
   }
@@ -2444,20 +2476,13 @@ proc scan_discover_batch_parallel(
   srcarch: Str,
   options: DiscoverOptions,
 ) [fs, error] -> Result[List[DirScan]] {
-  let scans: List[DirScan] = pending
+  pending
     |> par-map --jobs=options.jobs { |dir|
       scan_discover_dir(root, dir, config, srcarch, options)?
     }
-
-  return scans
 }
 
-export proc scan_record_for_dir(
-  root: Path,
-  config: Kconfig,
-  srcarch: Str,
-  dir: Path,
-) [fs, error] -> Result[Record] {
+export proc scan_record_for_dir(root: Path, config: Kconfig, srcarch: Str, dir: Path) [fs, error] -> Result[Record] {
   let scan = scan_discover_dir(root, dir, config, srcarch, default_discover_options())?
   return local_record_record(scan, "")
 }
@@ -2556,6 +2581,7 @@ proc discover_records_process_pool(
     let batch: List[Record] = json.read(output_path)?
     records = records.extend(batch)
   }
+
   return plan_from_record_values(records)
 }
 
@@ -2610,6 +2636,7 @@ proc discover_scans(
       if options.local_records {
         batch_plan = merge_plan(batch_plan, scan.plan)
       }
+
       if options.progress {
         emit_discover_progress(root, options, {plan: aggregate, seen: seen, visited: visited}, dir)?
       }
@@ -2688,7 +2715,11 @@ proc local_record_from_record(item: Record) [error] -> Result[DirScan] {
   let lib_objects: List[Str] = plan_value.get("lib_objects")?
   let composites: List[Record] = plan_value.get("composites")?
   let unsupported: List[Str] = plan_value.get("unsupported")?
-  let archive_owners: List[Record] = if plan_value.has("archive_owners") { plan_value.get("archive_owners")? } else { [] }
+  let archive_owners = if plan_value.has("archive_owners") {
+    plan_value.get("archive_owners")?
+  } else {
+    []
+  }
   let child_dirs: List[Str] = item.get("child_dirs")?
   let entries: List[Str] = item.get("entries")?
 
@@ -2752,7 +2783,9 @@ proc read_local_record_graph(root: Path, config: Path, srcarch: Str) [fs, error]
     let file = kbuild_file(join_root(root, scan.dir))?
 
     if hash.sha256(file)?.hex() != file_hash {
-      return Err(ScriptError.Failed("local-record-cache-stale", f"local-record cache is stale for ${path_key(scan.dir)}"))
+      return Err(
+        ScriptError.Failed("local-record-cache-stale", f"local-record cache is stale for ${path_key(scan.dir)}"),
+      )
     }
 
     let dir_key = path_key(scan.dir)
@@ -2878,9 +2911,7 @@ export proc discover_plan_with_options(
   if options.local_records {
     if options.local_record_cache {
       match read_local_record_graph(root, fp"${root}/.config", srcarch) {
-        Ok(cached) => {
-          local_graph = cached
-        }
+        Ok(cached) => local_graph = cached
         Err(_) => {
           local_graph = discover_local_record_graph(root, config, srcarch, options)?
           write_local_record_graph(root, fp"${root}/.config", srcarch, local_graph)?
@@ -2894,9 +2925,10 @@ export proc discover_plan_with_options(
   } else {
     scans = discover_scans(root, config, srcarch, options)?.records
   }
+
   emit_stage_progress(root, options, "xsh-kbuild-discover-scans complete")?
 
-  let state = if options.local_records and !options.local_record_cache {
+  let state = if options.local_records and ! options.local_record_cache {
     {
       plan: local_graph.plan,
       seen: map.empty(),
@@ -3142,7 +3174,9 @@ export proc parse_discovered_plan_text(text: Str) [error] -> Result[KbuildPlan] 
       "obj" => objects = objects.push(parts.get(1, ""))
       "lib_objects" => lib_objects = parts |> drop(1)
       "lib" => lib_objects = lib_objects.push(parts.get(1, ""))
-      "archive" => archive_owners = archive_owners.push({object: fp"${parts.get(1, "")}", dir: fp"${parts.get(2, ".")}"})
+      "archive" => archive_owners = archive_owners.push(
+        {object: fp"${parts.get(1, "")}", dir: fp"${parts.get(2, ".")}"},
+      )
       "composite" => composites = composites.push(
         {object: fp"${parts.get(1, "")}", members: paths_from_strings(parts |> drop(2))?},
       )
@@ -4221,6 +4255,7 @@ pure archive_object_cflags(cflags: List[Str], flags: Map[Map[List[Str]]], obj: P
   if path_key(obj).starts_with("drivers/firmware/efi/libstub/") {
     return efi_libstub_cflags(base)
   }
+
   return base
 }
 

@@ -1,6 +1,6 @@
 use PKGBUILD-aarch64 as PKGBUILD_aarch64
-use PKGBUILD-x86_64 as PKGBUILD_x86_64
 use PKGBUILD-shared as PKGBUILD_shared
+use PKGBUILD-x86_64 as PKGBUILD_x86_64
 use kbuild
 use linux_config
 use parser_gen

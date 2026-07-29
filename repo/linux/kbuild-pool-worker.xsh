@@ -1,5 +1,4 @@
 #!/bin/xsh
-
 use kbuild
 
 proc main(...argv: List[Str]) [fs, time, error] {

@@ -20,21 +20,16 @@ proc clear_directory_contents(root: Path) [fs, error] {
     return
   }
 
-  var entries = []
-
-  for entry in fs.walk(root) {
-    if entry.path != root {
-      entries = entries.push(entry)
-    }
-  }
-
+  var entries = [entry for entry in fs.walk(root) if entry.path != root]
   for entry in entries {
     if entry.kind != "dir" {
       fs.remove(entry.path, missing_ok: true)?
     }
   }
 
-  let directories = entries |> where .kind == "dir" |> sort-by .path
+  let directories = entries
+    |> where .kind == "dir"
+    |> sort-by .path
   var index = directories.len()
 
   while index > 0 {
@@ -417,9 +412,11 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let reuse_set_roots = (env.get("XSH_PM_REUSE_SET_ROOTS") ?? "") == "1" and packages.len() == 1
   let root_pkg = packages[0]
   let root_pkgbuild = fp"${root_pkg.dir}/PKGBUILD.xsh"
-  let root_fingerprint = bytes.from_text(
-    f"${util.target_arch()?}\n${root_pkg.name}\t${root_pkg.ver}\t${root_pkg.rel}\t${hash.sha256(root_pkgbuild)?.hex()}\n",
-  ).sha256().hex()
+  let root_fingerprint = bytes.from_text(f"""${util.target_arch()?}
+${root_pkg.name}	${root_pkg.ver}	${root_pkg.rel}	${hash.sha256(root_pkgbuild)?.hex()}
+""")
+    .sha256()
+    .hex()
   let root_fingerprint_path = fp"${work}/.set-roots-fingerprint"
   let roots_ready = reuse_set_roots and root.exists()? and build_root.exists()? and root_fingerprint_path.exists()? and root_fingerprint_path.read_text()?.trim() == root_fingerprint
 
@@ -433,6 +430,7 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
       fs.remove(build_root, missing_ok: true)?
     }
   }
+
   fs.mkdir(root)?
   fs.mkdir(build_root)?
   fs.mkdir(work)?
@@ -453,9 +451,11 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
         fs.remove(root, missing_ok: true)?
         fs.remove(build_root, missing_ok: true)?
       }
+
       fs.mkdir(root)?
       fs.mkdir(build_root)?
     }
+
     install_chroot_base(root_ctx, local_names, false)?
     install_chroot_base(build_ctx, local_names, true)?
 
@@ -483,10 +483,10 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
     } ?
 
     for item in built {
-    index = stage_built_package(repo_dir, upload_ctx, index, item)?
-    built_names[item.pkg.name] = true
+      index = stage_built_package(repo_dir, upload_ctx, index, item)?
+      built_names[item.pkg.name] = true
 
-    first_package = false
+      first_package = false
     }
 
     json.write(index_path, index)?

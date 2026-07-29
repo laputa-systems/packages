@@ -64,16 +64,14 @@ pure metadata_files_key(files: List[Record]) -> Result[Str] {
     let mode: Int = file.get("mode")?
     let sha256: Str = file.get("sha256")?
     let target: Str = file.get("target")?
-    key = f"${key}${path_text}\t${kind}\t${mode}\t${sha256}\t${target}\n"
+    key = f"""${key}${path_text}	${kind}	${mode}	${sha256}	${target}
+"""
   }
 
   key
 }
 
-proc validate_remote_metadata_sidecar(
-  stage: Path,
-  metadata: Record,
-) [fs, error] -> Result[Bool] {
+proc validate_remote_metadata_sidecar(stage: Path, metadata: Record) [fs, error] -> Result[Bool] {
   let stage_db = package_db_path(stage, metadata.get("name")?)
   let staged_manifest = load_manifest(stage_db)?
   let metadata_manifest = metadata_manifest_paths(metadata)?
@@ -120,6 +118,7 @@ export proc install_remote_tarball(
       fs.mkdir(install_stage)?
       archive.tar_extract(tarball, install_stage, 0, "auto", true)?
     }
+
     let stage_db = package_db_path(install_stage, pkg.name)
     manifest = load_manifest(stage_db)?
     etcsums = json.read(fp"${stage_db}/etcsums.json")?
@@ -234,7 +233,7 @@ export proc install_remote_packages(ctx: PmContext, names: List[Str]) [fs, net, 
     }
 
     let download_elapsed = time.now() - download_started
-    print --flush "pm-install-download-done" $download_elapsed "ms" $tarball_packages.len() packages
+    print --flush "pm-install-download-done" $download_elapsed "ms" tarball_packages.len() packages
 
     let staging_started = time.now()
     let prepared = tarball_packages
@@ -249,7 +248,7 @@ export proc install_remote_packages(ctx: PmContext, names: List[Str]) [fs, net, 
     }
 
     let staging_elapsed = time.now() - staging_started
-    print --flush "pm-install-staging-done" $staging_elapsed "ms" $tarball_packages.len() packages
+    print --flush "pm-install-staging-done" $staging_elapsed "ms" tarball_packages.len() packages
   }
 
   let commit_started = time.now()
@@ -273,8 +272,8 @@ export proc install_remote_packages(ctx: PmContext, names: List[Str]) [fs, net, 
 
   let commit_elapsed = time.now() - commit_started
   let install_elapsed = time.now() - install_started
-  print --flush "pm-install-commit-done" $commit_elapsed "ms" $ordered.len() packages
-  print --flush "pm-install-remote-done" $install_elapsed "ms" $ordered.len() packages
+  print --flush "pm-install-commit-done" $commit_elapsed "ms" ordered.len() packages
+  print --flush "pm-install-remote-done" $install_elapsed "ms" ordered.len() packages
 }
 
 export proc install_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs, process, env, error] {
@@ -295,7 +294,7 @@ export proc install_built_packages(ctx: PmContext, built: List[BuiltPackage]) [f
       direct_extract_package(ctx, item.pkg, item.tarball, item.manifest, item.etcsums, installed_owners)?
       call_pkg_hook(item.pkg, "post_install", ctx.root)?
       run_lifecycle_hooks("post-install", item.pkg.name, ctx, "local")?
-      print ${item.pkg.name} item.manifest.len() archive.tar_list(item.tarball)?.len() installed
+      print ${item.pkg.name} item.manifest.len() archive.tar_list(item.tarball)?.collect().len() installed
       continue
     }
 
@@ -308,7 +307,7 @@ export proc install_built_packages(ctx: PmContext, built: List[BuiltPackage]) [f
     write_package_db(ctx.root, item.pkg, item.manifest, item.etcsums)?
     call_pkg_hook(item.pkg, "post_install", ctx.root)?
     run_lifecycle_hooks("post-install", item.pkg.name, ctx, "local")?
-    print ${item.pkg.name} item.manifest.len() archive.tar_list(item.tarball)?.len() installed
+    print ${item.pkg.name} item.manifest.len() archive.tar_list(item.tarball)?.collect().len() installed
   }
 }
 

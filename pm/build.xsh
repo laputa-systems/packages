@@ -39,14 +39,16 @@ pure source_fingerprint_input(rel: Path) -> Bool {
 
 proc source_ready_fingerprint(pkg: Package) [fs, env, error] -> Result[Str] {
   let arch = util.target_arch()?
-  var body = f"${pkg.name}\t${pkg.ver}\t${pkg.rel}\t${arch}\n"
+  var body = f"""${pkg.name}	${pkg.ver}	${pkg.rel}	${arch}
+"""
 
   for entry in fs.walk(pkg.dir) |> sort-by .path {
     if entry.kind == "file" {
       let rel = entry.path.strip_prefix(pkg.dir)?
 
       if source_fingerprint_input(rel) {
-        body = f"${body}${rel.display()}\t${hash.sha256(entry.path)?.hex()}\n"
+        body = f"""${body}${rel.display()}	${hash.sha256(entry.path)?.hex()}
+"""
       }
     }
   }
@@ -510,6 +512,7 @@ proc build_packages_in_chroot(
       fs.write(source_copy_ready_path, source_ready_path.read_text()?)?
       print --flush "pm-build-phase-done" $pkg.name "source-copy" ${time.now() - copy_started} "ms"
     }
+
     seed_chroot_build_cache(ctx, pkg, src)?
     run_lifecycle_hooks("pre-build", pkg.name, ctx, src.display())?
 
