@@ -929,46 +929,49 @@ proc format_ext_image(image: Path, source_root: Path, label: Str) [fs, error] {
   write_headers(image, entries, next, groups, total_blocks, label)?
 }
 
+type MkfsExt4Options = {label: Str, source_root: Str, features: Str, image: List[Str]}
+
 proc main(...argv: List[Str]) [fs, error] {
-  var label = "LAPUTA_ROOT"
-  var source_root = p""
-  var image = ""
-  var index = 0
+  let opts: MkfsExt4Options = cli.applet(
+    argv,
+    {
+      label: {
+        form: "-L LABEL",
+        default: "LAPUTA_ROOT",
+      },
+      source_root: {
+        form: "-d ROOT",
+        default: "",
+      },
+      features: {
+        form: "-O FEATURES",
+        default: "",
+      },
+      ignored: {
+        form: "-q -F",
+        default: false,
+      },
+      ignored_value: {
+        form: "-E OPTIONS",
+        default: "",
+      },
+      image: {
+        form: "...IMAGE",
+      },
+    },
+  )?
 
-  while index < argv.len() {
-    let arg = argv[index]
-
-    if arg == "-q" or arg == "-F" {
-      index += 1
-    } else if arg == "-L" or arg == "-d" or arg == "-O" or arg == "-E" {
-      if index + 1 >= argv.len() {
-        return Err(Ext4ToolError.Failed("usage", f"${arg} requires an argument"))
-      }
-
-      let value = argv[index + 1]
-
-      if arg == "-L" {
-        label = value
-      } else if arg == "-d" {
-        source_root = fp"${value}"
-      } else if arg == "-O" {
-        if value != "^64bit,^metadata_csum" and value != "^metadata_csum,^64bit" {
-          return Err(Ext4ToolError.Failed("unsupported-feature", value))
-        }
-      }
-
-      index += 2
-    } else if arg.starts_with("-") {
-      return Err(Ext4ToolError.Failed("unsupported-option", arg))
-    } else {
-      image = arg
-      index += 1
-    }
-  }
-
-  if image == "" {
+  if opts.image.len() != 1 {
     return Err(Ext4ToolError.Failed("usage", "usage: mkfs.ext4 [-L LABEL] [-d ROOT] IMAGE"))
   }
+
+  if opts.features != "" and opts.features != "^64bit,^metadata_csum" and opts.features != "^metadata_csum,^64bit" {
+    return Err(Ext4ToolError.Failed("unsupported-feature", opts.features))
+  }
+
+  let image = opts.image[0]
+  let label = opts.label
+  var source_root = if opts.source_root == "" { p"" } else { fp"${opts.source_root}" }
 
   if source_root.display() == "" {
     let empty_dir = /tmp/mkfs-ext4-empty

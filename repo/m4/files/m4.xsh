@@ -2292,49 +2292,28 @@ proc main(margs: List[Str] = []) [fs, process, env, error, io] {
   var defines: List[List[Str]] = []
   var files: List[Str] = []
   var prefix = false
-  var i = 0
+  let tokens = cli.tokens(margs, ["I", "D"])?
 
-  while i < margs.len() {
-    let a = margs[i]
-
-    if a == "--version" {
+  for token in tokens {
+    if token.kind == "operand" {
+      files = files.push(token.value)
+    } else if token.name == "version" {
       io.write_stdout("""m4.xsh 1.0
 """)?
-
       return
-    } else if a == "--help" or a == "-h" {
+    } else if token.name == "help" or token.name == "h" {
       io.write_stdout("""usage: m4 [OPTION]... [FILE]...
 """)?
-
       return
-    } else if a == "-P" or a == "--prefix-builtins" {
+    } else if token.name == "P" or token.name == "prefix-builtins" {
       prefix = true
-    } else if a == "--" {
-      i = i + 1
-
-      while i < margs.len() {
-        files = files.push(margs[i])
-        i = i + 1
-      }
-    } else if a == "-I" and i + 1 < margs.len() {
-      i = i + 1
-      include_paths = include_paths.push(margs[i])
-    } else if a.starts_with("-I") {
-      include_paths = include_paths.push(a.replace("-I", ""))
-    } else if a == "-D" and i + 1 < margs.len() {
-      i = i + 1
-      defines = defines.push(parse_define_arg(margs[i])?)
-    } else if a.starts_with("-D") {
-      let def = a.replace("-D", "")
-      defines = defines.push(parse_define_arg(def)?)
-    } else if a == "-" {
-      files = files.push(a)
-    } else if a.starts_with("-") {} else {
-      # ignore unknown flags
-      files = files.push(a)
+    } else if token.name == "I" {
+      include_paths = include_paths.push(token.value)
+    } else if token.name == "D" {
+      defines = defines.push(parse_define_arg(token.value)?)
+    } else {
+      let _ = token.value
     }
-
-    i = i + 1
   }
 
   var st: Map[Str] = {}

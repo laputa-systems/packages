@@ -111,28 +111,27 @@ proc check_image(image: Path) [error] {
   expect_int("bad-free-inode-total", free_inodes, counted_free_inodes)?
 }
 
+type Ext4FsckOptions = {image: List[Str]}
+
 proc main(...argv: List[Str]) [error] {
-  var image = ""
-  var index = 0
+  let opts: Ext4FsckOptions = cli.applet(
+    argv,
+    {
+      ignored: {
+        form: "-n -p -a -f",
+        default: false,
+      },
+      image: {
+        form: "...IMAGE",
+      },
+    },
+  )?
 
-  while index < argv.len() {
-    let arg = argv[index]
-
-    if arg == "-n" or arg == "-p" or arg == "-a" or arg == "-f" {
-      index += 1
-    } else if arg.starts_with("-") {
-      return Err(Ext4FsckError.Failed("unsupported-option", arg))
-    } else {
-      image = arg
-      index += 1
-    }
-  }
-
-  if image == "" {
+  if opts.image.len() != 1 {
     return Err(Ext4FsckError.Failed("usage", "usage: fsck.ext4 [-n|-p] IMAGE"))
   }
 
-  check_image(fp"${image}")?
+  check_image(fp"${opts.image[0]}")?
 }
 
 main(@args)?

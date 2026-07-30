@@ -78,14 +78,17 @@ pure fallback_fat_name(path_value: Str) -> Result[Str] {
   return Err(FatPutError.Failed("unsupported-path", path_value))
 }
 
+type FatPutOptions = {operands: List[Str]}
+
 proc main(...argv: List[Str]) [fs, error] {
-  if argv.len() != 3 {
+  let opts: FatPutOptions = cli.applet(argv, {operands: {form: "...ARG"}})?
+  if opts.operands.len() != 3 {
     return Err(FatPutError.Failed("usage", "usage: fat-put IMAGE SOURCE EFI/BOOT/{BOOTAA64.EFI,BOOTX64.EFI}"))
   }
 
-  let fat_name = fallback_fat_name(argv[2])?
-  let image = fp"${argv[0]}"
-  let source = fp"${argv[1]}"
+  let fat_name = fallback_fat_name(opts.operands[2])?
+  let image = fp"${opts.operands[0]}"
+  let source = fp"${opts.operands[1]}"
   let data = source.read_bytes()?
   let boot = bytes.read_at(image, 0, 512)?
   let bytes_per_sector = bytes.unpack_le(boot, 2, offset: 11)?

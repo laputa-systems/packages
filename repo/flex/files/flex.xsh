@@ -758,37 +758,32 @@ proc parse_options(argv: List[Str]) [error, io] -> Result[LexOptions] {
   var verbose = false
   var delegate = false
   var delegate_reason = ""
-  var i = 0
+  let tokens = cli.tokens(argv, ["outfile"])?
 
-  while i < argv.len() {
-    let a = argv[i]
-
-    if a == "--help" {
-      usage()?
-      abort(0)
-    } else if a == "--version" {
-      io.write_stdout("""flex.xsh 0.1
-""")?
-
-      abort(0)
-    } else if a == "-t" or a == "--stdout" {
-      to_stdout = true
-    } else if a == "-L" or a == "--noline" {} else if a == "-n" or a == "--nounput" or a == "--noyywrap" {} else if a == "-v" or a == "--verbose" {
-      verbose = true
-    } else if (a == "-o" or a == "--outfile") and i + 1 < argv.len() {
-      i = i + 1
-      output = argv[i]
-    } else if a.starts_with("-o") and a != "-o" {
-      output = drop_prefix(a, "-o")?
-    } else if a.starts_with("--outfile=") {
-      output = drop_prefix(a, "--outfile=")?
-    } else if a.starts_with("-") {
-      return Err(ToolError.Failed("usage", f"unsupported option: ${a}"))
-    } else {
-      input = a
+  for token in tokens {
+    if token.kind == "operand" {
+      input = token.value
+      continue
     }
 
-    i = i + 1
+    if token.kind == "long" and token.name == "help" {
+      usage()?
+      abort(0)
+    } else if token.kind == "long" and token.name == "version" {
+      io.write_stdout("""flex.xsh 0.1
+""")?
+      abort(0)
+    } else if token.name == "t" or token.name == "stdout" {
+      to_stdout = true
+    } else if token.name == "L" or token.name == "noline" or token.name == "n" or token.name == "nounput" or token.name == "noyywrap" {
+      let _ = token.value
+    } else if token.name == "v" or token.name == "verbose" {
+      verbose = true
+    } else if token.name == "o" or token.name == "outfile" {
+      output = token.value
+    } else {
+      return Err(ToolError.Failed("usage", f"unsupported option: ${token.name}"))
+    }
   }
 
   return {

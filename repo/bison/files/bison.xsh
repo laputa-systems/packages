@@ -1466,64 +1466,45 @@ proc parse_options(argv: List[Str]) [error, io] -> Result[YaccOptions] {
   var verbose = false
   var prefix = "y"
   var output_set = false
-  var i = 0
+  let tokens = cli.tokens(argv, ["output", "file-prefix", "name-prefix"])?
 
-  while i < argv.len() {
-    let a = argv[i]
-
-    if a == "--help" {
-      usage()?
-      abort(0)
-    } else if a == "--version" {
-      io.write_stdout("""bison.xsh 0.1
-""")?
-
-      abort(0)
-    } else if a == "-d" or a == "--defines" {
-      defines = true
-    } else if a.starts_with("--defines=") {
-      defines = true
-      defines_file = drop_prefix(a, "--defines=")?
-    } else if (a == "-o" or a == "--output") and i + 1 < argv.len() {
-      i = i + 1
-      output = argv[i]
-      output_set = true
-    } else if a.starts_with("-o") and a != "-o" {
-      output = drop_prefix(a, "-o")?
-      output_set = true
-    } else if a.starts_with("--output=") {
-      output = drop_prefix(a, "--output=")?
-      output_set = true
-    } else if (a == "-b" or a == "--file-prefix") and i + 1 < argv.len() {
-      i = i + 1
-      prefix = argv[i]
-
-      if ! output_set {
-        output = f"${prefix}.tab.c"
-      }
-    } else if a.starts_with("-b") and a != "-b" {
-      prefix = drop_prefix(a, "-b")?
-
-      if ! output_set {
-        output = f"${prefix}.tab.c"
-      }
-    } else if a.starts_with("--file-prefix=") {
-      prefix = drop_prefix(a, "--file-prefix=")?
-
-      if ! output_set {
-        output = f"${prefix}.tab.c"
-      }
-    } else if (a == "-p" or a == "--name-prefix") and i + 1 < argv.len() {
-      i = i + 1
-    } else if a.starts_with("-p") and a != "-p" {} else if a.starts_with("--name-prefix=") {} else if a == "-l" or a == "-t" or a == "-y" or a == "--debug" or a == "--yacc" or a == "--locations" {} else if a == "-v" or a == "--verbose" {
-      verbose = true
-    } else if a.starts_with("-") {
-      return Err(ToolError.Failed("usage", f"unsupported option: ${a}"))
-    } else {
-      input = a
+  for token in tokens {
+    if token.kind == "operand" {
+      input = token.value
+      continue
     }
 
-    i = i + 1
+    if token.kind == "long" and token.name == "help" {
+      usage()?
+      abort(0)
+    } else if token.kind == "long" and token.name == "version" {
+      io.write_stdout("""bison.xsh 0.1
+""")?
+      abort(0)
+    } else if token.name == "d" or token.name == "defines" {
+      defines = true
+
+      if token.value != "" {
+        defines_file = token.value
+      }
+    } else if token.name == "o" or token.name == "output" {
+      output = token.value
+      output_set = true
+    } else if token.name == "b" or token.name == "file-prefix" {
+      prefix = token.value
+
+      if ! output_set {
+        output = f"${prefix}.tab.c"
+      }
+    } else if token.name == "p" or token.name == "name-prefix" {
+      let _ = token.value
+    } else if token.name == "l" or token.name == "t" or token.name == "y" or token.name == "debug" or token.name == "yacc" or token.name == "locations" {
+      let _ = token.value
+    } else if token.name == "v" or token.name == "verbose" {
+      verbose = true
+    } else {
+      return Err(ToolError.Failed("usage", f"unsupported option: ${token.name}"))
+    }
   }
 
   if input == "" {

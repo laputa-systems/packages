@@ -141,37 +141,31 @@ proc format_fat16(image: Path, label: Str) [fs, error] {
   let _ = [cleared, boot_written, fat0_written, fat1_written]
 }
 
+type MkfsVfatOptions = {label: Str, image: List[Str]}
+
 proc main(...argv: List[Str]) [fs, error] {
-  var label = "NO NAME"
-  var image = ""
-  var index = 0
+  let opts: MkfsVfatOptions = cli.applet(
+    argv,
+    {
+      label: {
+        form: "-n LABEL",
+        default: "NO NAME",
+      },
+      ignored_value: {
+        form: "-F TYPE",
+        default: "",
+      },
+      image: {
+        form: "...IMAGE",
+      },
+    },
+  )?
 
-  while index < argv.len() {
-    let arg = argv[index]
-
-    if arg == "-n" or arg == "-F" {
-      if index + 1 >= argv.len() {
-        return Err(FatToolError.Failed("usage", "option requires an argument"))
-      }
-
-      if arg == "-n" {
-        label = argv[index + 1]
-      }
-
-      index += 2
-    } else if arg.starts_with("-") {
-      return Err(FatToolError.Failed("unsupported-option", arg))
-    } else {
-      image = arg
-      index += 1
-    }
-  }
-
-  if image == "" {
+  if opts.image.len() != 1 {
     return Err(FatToolError.Failed("usage", "usage: mkfs.vfat [-n LABEL] IMAGE"))
   }
 
-  format_fat16(fp"${image}", label)?
+  format_fat16(fp"${opts.image[0]}", opts.label)?
 }
 
 main(@args)?
