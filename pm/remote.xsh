@@ -332,19 +332,30 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
 
   let upload_id = f"pm-${time.now()}-${data.sha256().hex()}"
   var chunk_index = 0
+  var requests = []
 
   for chunk in chunks {
-    let response = net.request({
+    requests = requests.push({
       method: "PUT",
       url: repo_url_for(repo, fp"_uploads/${upload_id}/${chunk_index}")?,
       body: chunk,
       headers: [{name: "Authorization", value: f"Bearer ${token}"}],
       pool: "pm",
       fail_status: true,
-    })?
+    })
 
-    if response.status < 200 or response.status >= 300 {
-      return Err(PmError.RemoteUpload(f"failed to upload chunk ${chunk_index} for ${source.name}"))
+    chunk_index += 1
+  }
+
+  # Chunk paths are independent, and request_many keeps result order so errors
+  # still identify the source chunk without evaluator worker threads.
+  let responses = net.request_many({requests, concurrency: 8, pool: "pm"})?
+  chunk_index = 0
+
+  for response in responses {
+    match response {
+      Ok(_) => {}
+      Err(_) => return Err(PmError.RemoteUpload(f"failed to upload chunk ${chunk_index} for ${source.name}"))
     }
 
     chunk_index += 1

@@ -212,6 +212,11 @@ the default mirror `https://laputa.17166969.xyz`. Public package URLs use
 Authenticated uploads use `LAPUTA_TOKEN`. A repo-local `.env` is loaded by the
 Makefile publish path when the variable is not already present.
 
+Large uploads are split into indexed chunks. Independent chunks are sent in
+bounded batches of eight through `net.request_many`, so PM does not need XSH
+worker threads to overlap their HTTP requests; PM only sends the completion
+request after every ordered chunk result succeeds.
+
 The remote index records package metadata and a sidecar metadata hash. PM uses
 that hash to detect local package metadata changes even when `ver-rel` has not
 changed.
