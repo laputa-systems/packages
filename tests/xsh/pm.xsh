@@ -2097,3 +2097,63 @@ proc test_make_runner_rejects_invalid_graphs(ctx: TestContext) [fs, process, env
 
   expect_make_error(make.run_tasks([cycle_a, cycle_b], 1))?
 }
+
+proc test_make_runner_reports_scheduler_occupancy(ctx: TestContext) [fs, process, env, error] {
+  let output = test.run_xsh(
+    ctx,
+    r"""use pm.make
+
+let first = {
+  name: "first",
+  outputs: [],
+  inputs: [],
+  deps: [],
+  argv: ["/usr/bin/true"],
+  cwd: p".",
+  env: {},
+  depfile: p"",
+  stamp: p"",
+}
+
+let second = {
+  name: "second",
+  outputs: [],
+  inputs: [],
+  deps: ["first"],
+  argv: ["/usr/bin/true"],
+  cwd: p".",
+  env: {},
+  depfile: p"",
+  stamp: p"",
+}
+
+let third = {
+  name: "third",
+  outputs: [],
+  inputs: [],
+  deps: ["first"],
+  argv: ["/usr/bin/true"],
+  cwd: p".",
+  env: {},
+  depfile: p"",
+  stamp: p"",
+}
+
+proc main() [fs, process, env, time, error] {
+  make.run_tasks([first, second, third], 2)?
+}
+
+main()?
+""",
+    [],
+    [],
+    {XSH_LINUX_KBUILD_PROGRESS: "1"},
+    b"",
+    "make-scheduler-occupancy.xsh",
+  )?
+
+  test.ok(output.success, output.stderr)?
+  test.contains(output.stdout, "event=summary tasks=3 completed=3")?
+  test.contains(output.stdout, "slots=2 peak-running=2")?
+  test.contains(output.stdout, "idle-intervals=1")?
+}

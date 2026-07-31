@@ -47,6 +47,12 @@ endif
   )?
 
   fs.write(
+    fp"${root}/Makefile",
+    """obj-y += wrong-precedence.o
+""",
+  )?
+
+  fs.write(
     fp"${root}/init/Kbuild",
     """obj-y += main.o \\
   lib/
@@ -150,6 +156,7 @@ proc test_kbuild_discovers_configured_obj_y_dirs_and_objects(ctx: TestContext) [
   test.ok(contains_path(plan.dirs, "arch/arm64/kernel"))?
   test.eq(contains_path(plan.dirs, "unused"), false)?
   test.ok(contains_path(plan.objects, "core.o"))?
+  test.eq(contains_path(plan.objects, "wrong-precedence.o"), false)?
   test.ok(contains_path(plan.lib_objects, "libhelper.o"))?
   test.ok(contains_path(plan.objects, "combo.o"))?
   test.eq(plan.composites.len(), 4)?

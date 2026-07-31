@@ -2001,35 +2001,28 @@ proc apply_words(
 }
 
 proc kbuild_file(dir_abs: Path) [fs, error] -> Result[Path] {
-  let kbuild = fp"${dir_abs}/Kbuild"
+  var has_makefile = false
 
-  if kbuild.exists()? {
-    return kbuild
+  for entry in fs.ls(dir_abs, stat: false, ordered: false)? {
+    if entry.name == "Kbuild" {
+      return fp"${dir_abs}/Kbuild"
+    }
+
+    if entry.name == "Makefile" {
+      has_makefile = true
+    }
   }
 
-  let makefile = fp"${dir_abs}/Makefile"
-
-  if makefile.exists()? {
-    return makefile
+  if has_makefile {
+    return fp"${dir_abs}/Makefile"
   }
 
   return Err(ScriptError.Failed("kbuild-missing", f"missing Kbuild or Makefile in ${dir_abs.display()}"))
 }
 
 proc read_kbuild_source(dir_abs: Path) [fs, error] -> Result[KbuildSource] {
-  let kbuild = fp"${dir_abs}/Kbuild"
-
-  match kbuild.read_text() {
-    Ok(body) => return {file: kbuild, body: body}
-    Err(_) => {}
-  }
-
-  let makefile = fp"${dir_abs}/Makefile"
-
-  match makefile.read_text() {
-    Ok(body) => return {file: makefile, body: body}
-    Err(_) => return Err(ScriptError.Failed("kbuild-missing", f"missing Kbuild or Makefile in ${dir_abs.display()}"))
-  }
+  let file = kbuild_file(dir_abs)?
+  return {file: file, body: file.read_text()?}
 }
 
 proc emit_discover_progress(root: Path, options: DiscoverOptions, state: DiscoverState, rel: Path) [fs, error] {

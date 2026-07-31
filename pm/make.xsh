@@ -797,6 +797,23 @@ proc make_progress(message: Str) [env] {
   }
 }
 
+proc emit_dynamic_state(
+  event: Str,
+  task_count: Int,
+  completed_count: Int,
+  ready_count: Int,
+  running_count: Int,
+  jobs_count: Int,
+  peak_running: Int,
+  idle_intervals: Int,
+  task: Str = "",
+) [env] {
+  let task_suffix = if task == "" { "" } else { f" task=${task}" }
+  make_progress(
+    f"xsh-make-dynamic-state event=${event} tasks=${task_count} completed=${completed_count} ready=${ready_count} running=${running_count} slots=${jobs_count} peak-running=${peak_running} idle-intervals=${idle_intervals}${task_suffix}",
+  )
+}
+
 pure should_log_dynamic_progress(tasks_count: Int, event_count: Int, running_count: Int, jobs_count: Int) -> Bool {
   if tasks_count <= 100 {
     return true
@@ -824,6 +841,8 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
   var done_count = 0
   var spawn_count = 0
   var skip_count = 0
+  var peak_running = 0
+  var idle_intervals = 0
 
   for task in tasks {
     task_by_name[task.name] = task
@@ -852,10 +871,21 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
         if should_run(task)? {
           running = running.push(spawn_task(task)?)
           spawn_count += 1
+          if running.len() > peak_running {
+            peak_running = running.len()
+          }
 
           if should_log_dynamic_progress(tasks.len(), spawn_count, running.len(), jobs_count) {
-            make_progress(
-              f"xsh-make-dynamic-spawn done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} spawned ${spawn_count} task ${task.name}",
+            emit_dynamic_state(
+              "spawn",
+              tasks.len(),
+              done_count,
+              ready.len() - ready_index,
+              running.len(),
+              jobs_count,
+              peak_running,
+              idle_intervals,
+              task.name,
             )
           }
         } else {
@@ -864,8 +894,16 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
           skip_count += 1
 
           if should_log_dynamic_progress(tasks.len(), skip_count, running.len(), jobs_count) {
-            make_progress(
-              f"xsh-make-dynamic-skip done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} skipped ${skip_count} task ${task.name}",
+            emit_dynamic_state(
+              "skip",
+              tasks.len(),
+              done_count,
+              ready.len() - ready_index,
+              running.len(),
+              jobs_count,
+              peak_running,
+              idle_intervals,
+              task.name,
             )
           }
 
@@ -887,11 +925,22 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
       return Err(MakeError.DependencyCycle(message: "cycle in make task graph"))
     }
 
-    make_progress(
-      f"xsh-make-dynamic-wait done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} jobs ${jobs_count}",
+    let wait_is_idle = running.len() < jobs_count and ready_index >= ready.len()
+    emit_dynamic_state(
+      "wait",
+      tasks.len(),
+      done_count,
+      ready.len() - ready_index,
+      running.len(),
+      jobs_count,
+      peak_running,
+      idle_intervals,
     )
 
     let completed_rows = process.wait_ready([row.handle for row in running])?
+    if wait_is_idle {
+      idle_intervals += 1
+    }
     var completed_indices: Map[Bool] = {}
     var completed_tasks = []
 
@@ -935,10 +984,21 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
           if should_run(task)? {
             running = running.push(spawn_task(task)?)
             spawn_count += 1
+            if running.len() > peak_running {
+              peak_running = running.len()
+            }
 
             if should_log_dynamic_progress(tasks.len(), spawn_count, running.len(), jobs_count) {
-              make_progress(
-                f"xsh-make-dynamic-spawn done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} spawned ${spawn_count} task ${task.name}",
+              emit_dynamic_state(
+                "spawn",
+                tasks.len(),
+                done_count,
+                ready.len() - ready_index,
+                running.len(),
+                jobs_count,
+                peak_running,
+                idle_intervals,
+                task.name,
               )
             }
           } else {
@@ -947,8 +1007,16 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
             skip_count += 1
 
             if should_log_dynamic_progress(tasks.len(), skip_count, running.len(), jobs_count) {
-              make_progress(
-                f"xsh-make-dynamic-skip done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} skipped ${skip_count} task ${task.name}",
+              emit_dynamic_state(
+                "skip",
+                tasks.len(),
+                done_count,
+                ready.len() - ready_index,
+                running.len(),
+                jobs_count,
+                peak_running,
+                idle_intervals,
+                task.name,
               )
             }
 
@@ -966,11 +1034,29 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
     }
 
     if should_log_dynamic_progress(tasks.len(), done_count, running.len(), jobs_count) {
-      make_progress(
-        f"xsh-make-dynamic-complete done ${done_count}/${tasks.len()} running ${running.len()} ready ${ready.len() - ready_index} batch ${completed_rows.len()}",
+      emit_dynamic_state(
+        "complete",
+        tasks.len(),
+        done_count,
+        ready.len() - ready_index,
+        running.len(),
+        jobs_count,
+        peak_running,
+        idle_intervals,
       )
     }
   }
+
+  emit_dynamic_state(
+    "summary",
+    tasks.len(),
+    done_count,
+    ready.len() - ready_index,
+    running.len(),
+    jobs_count,
+    peak_running,
+    idle_intervals,
+  )
 
   for row in pending_stamps {
     if has_path(row.task.stamp) {
