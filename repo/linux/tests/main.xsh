@@ -545,6 +545,135 @@ proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, 
   } ?
 }
 
+proc test_kbuild_archive_analysis_preserves_item_order(ctx: TestContext) [fs, error] {
+  let root = test.temp_dir(ctx, name: "linux-archive-analysis")?
+  fs.write(
+    fp"${root}/first.c",
+    """int first(void) { return 0; }
+""",
+  )?
+  fs.write(
+    fp"${root}/second.c",
+    """int second(void) { return 0; }
+""",
+  )?
+
+  cd root {
+    let results = kbuild.analyze_archive_items(
+      [
+        {
+          object: "first.o",
+          owner: ".",
+          library: false,
+          pi: false,
+          composite: "",
+          members: [],
+          flags: [
+            "-DFIRST",
+          ],
+        },
+        {
+          object: "second.o",
+          owner: "lib",
+          library: true,
+          pi: false,
+          composite: "",
+          members: [],
+          flags: [
+            "-DSECOND",
+          ],
+        },
+      ],
+    )?
+    test.eq(results.len(), 2)?
+    test.eq(results[0].get("object")?, "first.o")?
+    test.eq(results[1].get("object")?, "second.o")?
+
+    let first_tasks: List[Record] = results[0].get("tasks")?
+    let second_tasks: List[Record] = results[1].get("tasks")?
+    test.eq(first_tasks[0].get("source")?, "first.c")?
+    test.eq(second_tasks[0].get("source")?, "second.c")?
+    test.eq(first_tasks[0].get("flags")?, ["-DFIRST"])?
+    test.eq(second_tasks[0].get("flags")?, ["-DSECOND"])?
+  } ?
+}
+
+proc test_kbuild_parallel_archive_analysis_matches_serial(ctx: TestContext) [fs, process, env, time, error] {
+  let root = test.temp_dir(ctx, name: "linux-archive-analysis-pool")?
+  let worker = path.absolute(p"kbuild-archive-analysis-worker.xsh")?
+  let xsh_bin = process.which("xsh")?
+  fs.write(fp"${root}/.config", "")?
+  fs.write(fp"${root}/Kbuild", "")?
+  fs.write(
+    fp"${root}/first.c",
+    """int first(void) { return 0; }
+""",
+  )?
+  fs.write(
+    fp"${root}/second.c",
+    """int second(void) { return 0; }
+""",
+  )?
+
+  let plan: kbuild.KbuildPlan = {
+    dirs: [
+      p".",
+    ],
+    objects: [
+      p"first.o",
+      p"second.o",
+    ],
+    lib_objects: [],
+    archive_owners: [
+      {
+        object: p"first.o",
+        dir: p".",
+      },
+      {
+        object: p"second.o",
+        dir: p".",
+      },
+    ],
+    composites: [],
+    unsupported: [],
+  }
+
+  cd root {
+    let serial = kbuild.plan_builtin_archives(plan, /usr/bin/cc, "aarch64-linux-gnu", [], [], [])?
+    let parallel = kbuild.plan_builtin_archives_with_analysis_workers(
+      plan,
+      /usr/bin/cc,
+      "aarch64-linux-gnu",
+      [],
+      [],
+      [],
+      2,
+      xsh_bin,
+      worker,
+    )?
+    test.eq(parallel.archives, serial.archives)?
+    test.eq(parallel.link_inputs, serial.link_inputs)?
+    test.eq(parallel.generated_objects, serial.generated_objects)?
+    test.eq(parallel.missing_sources, serial.missing_sources)?
+    test.eq(parallel.tasks.len(), serial.tasks.len())?
+
+    for index in range(serial.tasks.len()) {
+      test.eq(parallel.tasks[index].name, serial.tasks[index].name)?
+      test.eq(
+        [
+          f"${arg}"
+          for arg in parallel.tasks[index].argv
+        ],
+        [
+          f"${arg}"
+          for arg in serial.tasks[index].argv
+        ],
+      )?
+      test.eq(parallel.tasks[index].deps, serial.tasks[index].deps)?
+    }
+  } ?
+}
+
 proc test_kbuild_adds_x86_kvm_local_include(ctx: TestContext) [fs, env, error] {
   let root = test.temp_dir(ctx, name: "linux-x86-kvm-include")?
   fs.mkdir(fp"${root}/arch/x86/kvm/mmu")?

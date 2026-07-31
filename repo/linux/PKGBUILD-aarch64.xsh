@@ -538,6 +538,29 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, t
     )
   }
 
+  if (env.get("XSH_LINUX_KBUILD_ARCHIVE_ONLY") ?? "") == "1" {
+    let plan_start = PKGBUILD_shared.timing_start("plan")
+    let plan = PKGBUILD_shared.cached_package_plan(srcarch)?
+    let archive_plan_start = PKGBUILD_shared.timing_start("archive-plan")
+    let archive_plan = PKGBUILD_shared.cached_archive_plan(
+      plan,
+      cc,
+      srcarch,
+      "aarch64-linux-gnu",
+      native_kbuild_cflags(),
+      native_kbuild_includes(),
+    )?
+    PKGBUILD_shared.timing_done("archive-plan", archive_plan_start)
+    PKGBUILD_shared.timing_done("plan", plan_start)
+    PKGBUILD_shared.stop_after("plan")?
+    return Err(
+      ScriptError.Failed(
+        "linux-kbuild-archive-only",
+        f"archive-only loop planned ${archive_plan.tasks.len()} tasks",
+      ),
+    )
+  }
+
   let prepare_start = PKGBUILD_shared.timing_start("prepare")
   kbuild.write_config_headers(p".config", p".", ver, srcarch)?
   kbuild.write_build_headers(p".", ver)?

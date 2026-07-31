@@ -17,6 +17,27 @@ export proc build_jobs() [env, error] -> Result[Int] {
   return make.jobs()
 }
 
+export proc archive_analysis_jobs() [env, error] -> Result[Int] {
+  let raw = env.get("XSH_LINUX_KBUILD_ARCHIVE_ANALYSIS_JOBS") ?? ""
+
+  if raw == "" {
+    return build_jobs()?
+  }
+
+  let parsed = raw.parse_int()?
+
+  if parsed <= 0 {
+    return Err(
+      ScriptError.Failed(
+        "linux-kbuild-archive-analysis-jobs",
+        "XSH_LINUX_KBUILD_ARCHIVE_ANALYSIS_JOBS must be a positive integer",
+      ),
+    )
+  }
+
+  return parsed
+}
+
 export proc discover_options_from_env() [env, error] -> Result[kbuild.DiscoverOptions] {
   let every_text = env.get("XSH_LINUX_KBUILD_PROGRESS_EVERY") ?? "100"
   let jobs_text = env.get("XSH_LINUX_KBUILD_DISCOVER_JOBS") ?? ""
@@ -187,7 +208,7 @@ export proc cached_archive_plan(
   triple: Str,
   cflags: List[Str],
   includes: List[Str],
-) [fs, env, error] -> Result[Record] {
+) [fs, process, env, time, error] -> Result[Record] {
   if srcarch != "arm64" and srcarch != "x86" {
     return Err(
       ScriptError.Failed(
@@ -280,7 +301,19 @@ export proc cached_archive_plan(
     f"xsh-kbuild-archive-plan-start $plan.dirs.len() dirs $plan.objects.len() objects $plan.composites.len() composites",
   )?
 
-  let archive_plan = kbuild.plan_builtin_archives(plan, cc, triple, cflags, [], includes)?
+  let analysis_jobs = archive_analysis_jobs()?
+  let worker = path.absolute(../pkg/kbuild-archive-analysis-worker.xsh)?
+  let archive_plan = kbuild.plan_builtin_archives_with_analysis_workers(
+    plan,
+    cc,
+    triple,
+    cflags,
+    [],
+    includes,
+    analysis_jobs,
+    /bin/xsh,
+    worker,
+  )?
   kbuild.write_archive_plan_report(archive_plan, archive_report)?
   write_archive_plan_fingerprint(archive_fingerprint, fingerprint)?
   stable_cache_dir.mkdir()?

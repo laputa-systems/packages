@@ -4243,13 +4243,17 @@ pure is_pi_object(obj: Path) -> Bool {
   return path_key(obj).ends_with(".pi.o")
 }
 
-pure archive_object_cflags(cflags: List[Str], flags: Map[Map[List[Str]]], obj: Path) -> List[Str] {
-  let base = object_cflags(cflags, flags, obj)
+pure archive_object_cflags_from_extra(cflags: List[Str], extra_flags: List[Str], obj: Path) -> List[Str] {
+  let base = cflags.extend(extra_flags)
   if path_key(obj).starts_with("drivers/firmware/efi/libstub/") {
     return efi_libstub_cflags(base)
   }
 
   return base
+}
+
+pure archive_object_cflags(cflags: List[Str], flags: Map[Map[List[Str]]], obj: Path) -> List[Str] {
+  return archive_object_cflags_from_extra(cflags, kbuild_compile_flags_for_object(flags, obj), obj)
 }
 
 pure pi_base_name(obj: Path) -> Str {
@@ -6771,32 +6775,96 @@ pure skip_planned_object(config: Kconfig, obj: Path) -> Bool {
   return false
 }
 
-export proc plan_builtin_archives(
+pure archive_analysis_record_for_object(
+  obj: Path,
+  owner: Path,
+  library: Bool,
+  pi: Bool,
+  composites_by_object: Map[CompositeObject],
+  compile_flags_by_dir: Map[Map[List[Str]]],
+) -> Record {
+  let key = path_key(obj)
+
+  if composites_by_object.has(key) {
+    let composite = composites_by_object.get(key, {object: obj, members: []})
+    return {
+      object: key,
+      owner: path_key(owner),
+      library: library,
+      pi: pi,
+      composite: path_key(composite.object),
+      members: [
+        {
+          object: path_key(member),
+          flags: kbuild_compile_flags_for_object(compile_flags_by_dir, member),
+        }
+        for member in composite.members
+      ],
+      flags: [],
+    }
+  }
+
+  let flags_object = if pi { pi_base_object(obj) } else { obj }
+  return {
+    object: key,
+    owner: path_key(owner),
+    library: library,
+    pi: pi,
+    composite: "",
+    members: [],
+    flags: kbuild_compile_flags_for_object(compile_flags_by_dir, flags_object),
+  }
+}
+
+proc archive_analysis_items(
   plan: KbuildPlan,
-  cc: Path,
-  triple: Str,
-  cflags: List[Str],
-  defs: List[Str],
-  includes: List[Str],
-) [fs, env, error] -> Result[BuiltinArchivePlan] {
-  var tasks: List[make.MakeTask] = []
-  var objects_by_dir: Map[List[Path]] = {}
-  var deps_by_dir: Map[List[Str]] = {}
-  var lib_objects_by_dir: Map[List[Path]] = {}
-  var lib_deps_by_dir: Map[List[Str]] = {}
-  var missing_sources: List[Path] = []
-  var generated_objects: List[Path] = []
-  var link_inputs: List[Path] = []
-  var lib_link_inputs: List[Path] = []
-  var pi_relacheck_added = false
+  config: Kconfig,
+  compile_flags_by_dir: Map[Map[List[Str]]],
+) [error] -> Result[List[Record]] {
   let composites_by_object = composite_map(plan.composites)
-  let config = load_config(p".config")?
+  let composite_members_by_object = composite_member_map(plan.composites)
   var archive_owner_by_object: Map[Str] = {}
 
   for owner in plan.archive_owners {
     archive_owner_by_object[path_key(owner.object)] = path_key(owner.dir)
   }
 
+  var items: List[Record] = []
+
+  for obj in plan.objects {
+    continue when skip_planned_object(config, obj)
+    continue when composite_members_by_object.has(path_key(obj))
+    items = items.push(
+      archive_analysis_record_for_object(
+        obj,
+        archive_owner_key(archive_owner_by_object, obj),
+        false,
+        is_pi_object(obj),
+        composites_by_object,
+        compile_flags_by_dir,
+      ),
+    )
+  }
+
+  for obj in plan.lib_objects {
+    continue when composite_members_by_object.has(path_key(obj))
+    items = items.push(
+      archive_analysis_record_for_object(
+        obj,
+        archive_owner_key(archive_owner_by_object, obj),
+        true,
+        false,
+        composites_by_object,
+        compile_flags_by_dir,
+      ),
+    )
+  }
+
+  return items
+}
+
+proc archive_analysis_items_for_plan(plan: KbuildPlan, triple: Str) [fs, env, error] -> Result[List[Record]] {
+  let config = load_config(p".config")?
   let compile_flags_by_dir = cached_kbuild_compile_flags_for_dirs(
     p".",
     plan.dirs,
@@ -6807,272 +6875,466 @@ export proc plan_builtin_archives(
       "arm64"
     },
   )?
+  return archive_analysis_items(plan, config, compile_flags_by_dir)?
+}
 
-  let composite_members_by_object = composite_member_map(plan.composites)
-  var object_count = 0
+pure archive_analysis_result(
+  object: Str,
+  owner: Str,
+  library: Bool,
+  tasks: List[Record],
+  link_inputs: List[Path],
+  generated_objects: List[Path],
+  missing_sources: List[Path],
+) -> Record {
+  return {
+    object: object,
+    owner: owner,
+    library: library,
+    tasks: tasks,
+    link_inputs: path_strings(link_inputs),
+    generated_objects: path_strings(generated_objects),
+    missing_sources: path_strings(missing_sources),
+  }
+}
 
-  for obj in plan.objects {
-    object_count += 1
-    continue when skip_planned_object(config, obj)
-    continue when composite_members_by_object.has(path_key(obj))
+pure compact_archive_compile_task(
+  task: make.MakeTask,
+  object: Path,
+  source: Path,
+  out: Path,
+  module_out: Path,
+) -> Record {
+  return {
+    kind: "compile",
+    object: path_key(object),
+    source: source.display(),
+    output: out.display(),
+    module: module_out.display(),
+    argv: argv_strings(task.argv),
+    depfile: task.depfile.display(),
+    stamp: task.stamp.display(),
+  }
+}
 
-    if object_count % 100 == 0 {
-      archive_plan_progress(
-        f"xsh-kbuild-archive-plan objects ${object_count}/${plan.objects.len()} tasks=${tasks.len()}",
-      )?
-    }
+proc archive_compile_task_spec(
+  object: Path,
+  source: Path,
+  out: Path,
+  module_out: Path,
+  extra_flags: List[Str],
+  cc: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  emit_task_specs: Bool,
+) [error] -> Result[Record] {
+  if emit_task_specs {
+    let task = compile_kbuild_task_for_module(
+      cc,
+      triple,
+      archive_object_cflags_from_extra(cflags, extra_flags, object),
+      defs,
+      includes,
+      source,
+      out,
+      module_out,
+    )
+    return compact_archive_compile_task(task, object, source, out, module_out)
+  }
 
-    if is_pi_object(obj) {
+  return {
+    kind: "compile",
+    object: path_key(object),
+    source: source.display(),
+    output: out.display(),
+    module: module_out.display(),
+    flags: extra_flags,
+  }
+}
+
+proc analyze_archive_items_impl(
+  items: List[Record],
+  cc: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  emit_task_specs: Bool,
+) [fs, error] -> Result[List[Record]] {
+  var results: List[Record] = []
+
+  for item in items {
+    let object_key: Str = item.get("object")?
+    let owner_key: Str = item.get("owner")?
+    let library: Bool = item.get("library")?
+    let pi: Bool = item.get("pi")?
+    let composite_key: Str = item.get("composite")?
+    let flags: List[Str] = item.get("flags")?
+    let obj = fp"${object_key}"
+    var task_specs: List[Record] = []
+    var link_inputs: List[Path] = []
+    var generated_objects: List[Path] = []
+    var missing_sources: List[Path] = []
+
+    if composite_key != "" {
+      let member_records: List[Record] = item.get("members")?
+      let composite_out = obj_out_path(fp"${composite_key}")
+
+      for member_record in member_records {
+        let member_key: Str = member_record.get("object")?
+        let member_flags: List[Str] = member_record.get("flags")?
+        let member = fp"${member_key}"
+
+        match source_for_object(member) {
+          Ok(source) => {
+            let member_out = obj_out_path(member)
+            task_specs = task_specs.push(
+              archive_compile_task_spec(
+                member,
+                source,
+                member_out,
+                composite_out,
+                member_flags,
+                cc,
+                triple,
+                cflags,
+                defs,
+                includes,
+                emit_task_specs,
+              )?,
+            )
+            link_inputs = link_inputs.push(member_out)
+          }
+          Err(err) => {
+            match err {
+              ScriptError.Failed {kind: kind, message: _} => {
+                if kind == "kbuild-missing-source" {
+                  if is_known_generated_object(member) {
+                    generated_objects = generated_objects.push(member)
+                  } else {
+                    missing_sources = missing_sources.push(member)
+                  }
+                } else {
+                  return Err(err)
+                }
+              }
+            }
+          }
+        }
+      }
+    } else if pi {
       let source = pi_source(obj)
 
       if source.exists()? {
+        let base_out = obj_out_path(pi_base_object(obj))
+        let out = obj_out_path(obj)
+        let base_task_spec = archive_compile_task_spec(
+          pi_base_object(obj),
+          source,
+          base_out,
+          base_out,
+          flags,
+          cc,
+          triple,
+          cflags,
+          defs,
+          includes,
+          emit_task_specs,
+        )?
+        task_specs = task_specs.push({
+          kind: "pi",
+          object: object_key,
+          source: source.display(),
+          base: base_out.display(),
+          output: out.display(),
+          base_task: base_task_spec,
+        })
+        link_inputs = link_inputs.push(out)
+      } else {
+        generated_objects = generated_objects.push(obj)
+      }
+    } else {
+      match source_for_object(obj) {
+        Ok(source) => {
+          let out = obj_out_path(obj)
+          task_specs = task_specs.push(
+            archive_compile_task_spec(
+              obj,
+              source,
+              out,
+              out,
+              flags,
+              cc,
+              triple,
+              cflags,
+              defs,
+              includes,
+              emit_task_specs,
+            )?,
+          )
+          link_inputs = link_inputs.push(out)
+        }
+        Err(err) => {
+          match err {
+            ScriptError.Failed {kind: kind, message: _} => {
+              if kind == "kbuild-missing-source" {
+                let out = obj_out_path(obj)
+
+                if out.exists()? {
+                  link_inputs = link_inputs.push(out)
+                } else if is_known_generated_object(obj) {
+                  generated_objects = generated_objects.push(obj)
+                } else {
+                  missing_sources = missing_sources.push(obj)
+                }
+              } else {
+                return Err(err)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    results = results.push(
+      archive_analysis_result(
+        object_key,
+        owner_key,
+        library,
+        task_specs,
+        link_inputs,
+        generated_objects,
+        missing_sources,
+      ),
+    )
+  }
+
+  return results
+}
+
+export proc analyze_archive_items(items: List[Record]) [fs, error] -> Result[List[Record]] {
+  return analyze_archive_items_impl(items, p".", "", [], [], [], false)?
+}
+
+export proc analyze_archive_items_with_task_specs(
+  items: List[Record],
+  cc: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+) [fs, error] -> Result[List[Record]] {
+  return analyze_archive_items_impl(items, cc, triple, cflags, defs, includes, true)?
+}
+
+pure archive_analysis_worker_count(requested: Int, item_count: Int) -> Int {
+  if item_count == 0 {
+    return 0
+  }
+
+  let bounded = if requested < 1 { 1 } else if requested > 16 { 16 } else { requested }
+  return if bounded > item_count { item_count } else { bounded }
+}
+
+proc archive_analysis_process_pool(
+  items: List[Record],
+  requested_jobs: Int,
+  xsh_bin: Path,
+  worker: Path,
+  cc: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+) [fs, process, time, error] -> Result[List[Record]] {
+  let worker_count = archive_analysis_worker_count(requested_jobs, items.len())
+
+  if worker_count <= 1 {
+    return analyze_archive_items_with_task_specs(items, cc, triple, cflags, defs, includes)?
+  }
+
+  let prefix = f"/tmp/xsh-kbuild-archive-analysis-${time.now()}"
+  var handles = []
+  var output_paths: List[Path] = []
+
+  for index in range(worker_count) {
+    let start = index * items.len() / worker_count
+    let end = (index + 1) * items.len() / worker_count
+    let input_path = fp"${prefix}-input-${index}.json"
+    let output_path = fp"${prefix}-output-${index}.json"
+    let slice = items
+      |> drop(start)
+      |> take(end - start)
+    json.write(
+      input_path,
+      {
+        items: slice,
+        cc: cc.display(),
+        triple: triple,
+        cflags: cflags,
+        defs: defs,
+        includes: includes,
+      },
+    )?
+    defer fs.remove(input_path, missing_ok: true)?
+    defer fs.remove(output_path, missing_ok: true)?
+    output_paths = output_paths.push(output_path)
+
+    let command = process.command_argv(
+      xsh_bin,
+      [
+        xsh_bin.display(),
+        worker.display(),
+        "--",
+        input_path.display(),
+        output_path.display(),
+      ],
+    )
+    handles = handles.push(spawn command?)
+  }
+
+  let statuses = wait handles?
+  for status in statuses {
+    if ! status.exited_with(0) {
+      return Err(ScriptError.Failed("kbuild-archive-analysis-pool", "an archive-analysis worker failed"))
+    }
+  }
+
+  var results: List[Record] = []
+  for output_path in output_paths {
+    let worker_results: List[Record] = json.read(output_path)?
+    results = results.extend(worker_results)
+  }
+
+  return results
+}
+
+proc archive_compile_task_from_spec(spec: Record) [error] -> Result[make.MakeTask] {
+  let source = fp"${spec.get("source")?}"
+  let output = fp"${spec.get("output")?}"
+  let argv: List[Any] = spec.get("argv")?
+
+  return {
+    name: output.display(),
+    outputs: [
+      output,
+    ],
+    inputs: [
+      source,
+    ],
+    deps: [],
+    argv: argv,
+    cwd: p".",
+    env: {},
+    depfile: fp"${spec.get("depfile")?}",
+    stamp: fp"${spec.get("stamp")?}",
+  }
+}
+
+proc assemble_builtin_archive_plan(
+  plan: KbuildPlan,
+  cc: Path,
+  analysis_results: List[Record],
+) [fs, env, error] -> Result[BuiltinArchivePlan] {
+  var tasks: List[make.MakeTask] = []
+  var objects_by_dir: Map[List[Path]] = {}
+  var deps_by_dir: Map[List[Str]] = {}
+  var lib_objects_by_dir: Map[List[Path]] = {}
+  var lib_deps_by_dir: Map[List[Str]] = {}
+  var missing_sources: List[Path] = []
+  var generated_objects: List[Path] = []
+  var link_inputs: List[Path] = []
+  var pi_relacheck_added = false
+
+  for result in analysis_results {
+    let owner_key: Str = result.get("owner")?
+    let library: Bool = result.get("library")?
+    let result_tasks: List[Record] = result.get("tasks")?
+    let result_link_inputs: List[Str] = result.get("link_inputs")?
+    var task_outputs: Map[Bool] = {}
+
+    for spec in result_tasks {
+      let kind: Str = spec.get("kind")?
+
+      if kind == "pi" {
+        let out = fp"${spec.get("output")?}"
+        let base_task_spec: Record = spec.get("base_task")?
+        let base_task = archive_compile_task_from_spec(base_task_spec)?
+        let base_out = fp"${spec.get("base")?}"
+
         if ! pi_relacheck_added {
           tasks = tasks.push(pi_relacheck_build_task(cc))
           pi_relacheck_added = true
         }
 
-        let base_out = obj_out_path(pi_base_object(obj))
-
-        let base_task = compile_kbuild_task(
-          cc,
-          triple,
-          archive_object_cflags(cflags, compile_flags_by_dir, pi_base_object(obj)),
-          defs,
-          includes,
-          source,
-          base_out,
-        )
-
-        let out = obj_out_path(obj)
-        let task = pi_objcopy_task(cc, base_out, out, [base_task.name])
-
+        let objcopy_task = pi_objcopy_task(cc, base_out, out, [base_task.name])
         let check_task = pi_relacheck_task(
           pi_relacheck_path(),
           out,
           base_out,
-          [task.name, pi_relacheck_path().display()],
+          [objcopy_task.name, pi_relacheck_path().display()],
         )
 
-        let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
-        tasks = tasks.push(base_task).push(task).push(check_task)
+        tasks = tasks.push(base_task).push(objcopy_task).push(check_task)
+        task_outputs[path_key(out)] = true
         link_inputs = link_inputs.push(out)
-        objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
-        deps_by_dir[dir_key] = deps_by_dir.get(dir_key, []).push(check_task.name)
+        let dir_objects = objects_by_dir.get(owner_key, [])
+        objects_by_dir[owner_key] = dir_objects.push(out)
+        let dir_deps = deps_by_dir.get(owner_key, [])
+        deps_by_dir[owner_key] = dir_deps.push(check_task.name)
+      } else if kind == "compile" {
+        let out = fp"${spec.get("output")?}"
+        let task = archive_compile_task_from_spec(spec)?
+
+        tasks = tasks.push(task)
+        task_outputs[path_key(out)] = true
+        link_inputs = link_inputs.push(out)
+
+        if library {
+          let dir_objects = lib_objects_by_dir.get(owner_key, [])
+          lib_objects_by_dir[owner_key] = dir_objects.push(out)
+          let dir_deps = lib_deps_by_dir.get(owner_key, [])
+          lib_deps_by_dir[owner_key] = dir_deps.push(task.name)
+        } else {
+          let dir_objects = objects_by_dir.get(owner_key, [])
+          objects_by_dir[owner_key] = dir_objects.push(out)
+          let dir_deps = deps_by_dir.get(owner_key, [])
+          deps_by_dir[owner_key] = dir_deps.push(task.name)
+        }
       } else {
-        generated_objects = generated_objects.push(obj)
+        return Err(ScriptError.Failed("kbuild-archive-analysis", f"unknown archive-analysis task kind ${kind}"))
       }
-
-      continue
     }
 
-    match composite_for_map(composites_by_object, obj) {
-      Ok(composite) => {
-        var member_outs: List[Path] = []
-        var member_deps: List[Str] = []
+    for input in result_link_inputs {
+      let input_path = fp"${input}"
+      let input_key = path_key(input_path)
+      continue when task_outputs.get(input_key, false)
+      link_inputs = link_inputs.push(input_path)
 
-        for member in composite.members {
-          match source_for_object(member) {
-            Ok(src) => {
-              let member_out = obj_out_path(member)
-
-              let member_task = compile_kbuild_task_for_module(
-                cc,
-                triple,
-                archive_object_cflags(cflags, compile_flags_by_dir, member),
-                defs,
-                includes,
-                src,
-                member_out,
-                obj_out_path(composite.object),
-              )
-
-              tasks = tasks.push(member_task)
-              member_outs = member_outs.push(member_out)
-              member_deps = member_deps.push(member_task.name)
-            }
-            Err(err) => {
-              match err {
-                ScriptError.Failed {kind: kind, message: _} => {
-                  if kind == "kbuild-missing-source" {
-                    if is_known_generated_object(member) {
-                      generated_objects = generated_objects.push(member)
-                    } else {
-                      missing_sources = missing_sources.push(member)
-                    }
-                  } else {
-                    return Err(err)
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        if member_outs.len() > 0 {
-          let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
-          link_inputs = link_inputs.extend(member_outs)
-          objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).extend(member_outs)
-          deps_by_dir[dir_key] = deps_by_dir.get(dir_key, []).extend(member_deps)
-        }
+      if library {
+        lib_objects_by_dir[owner_key] = lib_objects_by_dir.get(owner_key, []).push(input_path)
+      } else {
+        objects_by_dir[owner_key] = objects_by_dir.get(owner_key, []).push(input_path)
       }
-      Err(_) => {
-        match source_for_object(obj) {
-          Ok(src) => {
-            let out = obj_out_path(obj)
+    }
 
-            let task = compile_kbuild_task(
-              cc,
-              triple,
-              archive_object_cflags(cflags, compile_flags_by_dir, obj),
-              defs,
-              includes,
-              src,
-              out,
-            )
+    let result_generated: List[Str] = result.get("generated_objects")?
+    for item in result_generated {
+      generated_objects = generated_objects.push(fp"${item}")
+    }
 
-            let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
-            tasks = tasks.push(task)
-            link_inputs = link_inputs.push(out)
-            objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
-            deps_by_dir[dir_key] = deps_by_dir.get(dir_key, []).push(task.name)
-          }
-          Err(err) => {
-            match err {
-              ScriptError.Failed {kind: kind, message: _} => {
-                if kind == "kbuild-missing-source" {
-                  let out = obj_out_path(obj)
-
-                  if out.exists()? {
-                    let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
-                    link_inputs = link_inputs.push(out)
-                    objects_by_dir[dir_key] = objects_by_dir.get(dir_key, []).push(out)
-                  } else if is_known_generated_object(obj) {
-                    generated_objects = generated_objects.push(obj)
-                  } else {
-                    missing_sources = missing_sources.push(obj)
-                  }
-                } else {
-                  return Err(err)
-                }
-              }
-            }
-          }
-        }
-      }
+    let result_missing: List[Str] = result.get("missing_sources")?
+    for item in result_missing {
+      missing_sources = missing_sources.push(fp"${item}")
     }
   }
 
-  archive_plan_progress(f"xsh-kbuild-archive-plan objects-complete ${tasks.len()} tasks")?
-  var lib_object_count = 0
-
-  for obj in plan.lib_objects {
-    lib_object_count += 1
-    continue when composite_members_by_object.has(path_key(obj))
-
-    if lib_object_count % 50 == 0 {
-      archive_plan_progress(
-        f"xsh-kbuild-archive-plan lib-objects ${lib_object_count}/${plan.lib_objects.len()} tasks=${tasks.len()}",
-      )?
-    }
-
-    match composite_for_map(composites_by_object, obj) {
-      Ok(composite) => {
-        var member_outs: List[Path] = []
-        var member_deps: List[Str] = []
-
-        for member in composite.members {
-          match source_for_object(member) {
-            Ok(src) => {
-              let member_out = obj_out_path(member)
-
-              let member_task = compile_kbuild_task_for_module(
-                cc,
-                triple,
-                archive_object_cflags(cflags, compile_flags_by_dir, member),
-                defs,
-                includes,
-                src,
-                member_out,
-                obj_out_path(composite.object),
-              )
-
-              tasks = tasks.push(member_task)
-              member_outs = member_outs.push(member_out)
-              member_deps = member_deps.push(member_task.name)
-            }
-            Err(err) => {
-              match err {
-                ScriptError.Failed {kind: kind, message: _} => {
-                  if kind == "kbuild-missing-source" {
-                    if is_known_generated_object(member) {
-                      generated_objects = generated_objects.push(member)
-                    } else {
-                      missing_sources = missing_sources.push(member)
-                    }
-                  } else {
-                    return Err(err)
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        if member_outs.len() > 0 {
-          let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
-          lib_link_inputs = lib_link_inputs.extend(member_outs)
-          lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).extend(member_outs)
-          lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, []).extend(member_deps)
-        }
-      }
-      Err(_) => {
-        match source_for_object(obj) {
-          Ok(src) => {
-            let out = obj_out_path(obj)
-
-            let task = compile_kbuild_task(
-              cc,
-              triple,
-              archive_object_cflags(cflags, compile_flags_by_dir, obj),
-              defs,
-              includes,
-              src,
-              out,
-            )
-
-            let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
-            tasks = tasks.push(task)
-            lib_link_inputs = lib_link_inputs.push(out)
-            lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).push(out)
-            lib_deps_by_dir[dir_key] = lib_deps_by_dir.get(dir_key, []).push(task.name)
-          }
-          Err(err) => {
-            match err {
-              ScriptError.Failed {kind: kind, message: _} => {
-                if kind == "kbuild-missing-source" {
-                  let out = obj_out_path(obj)
-
-                  if out.exists()? {
-                    let dir_key = path_key(archive_owner_key(archive_owner_by_object, obj))
-                    lib_link_inputs = lib_link_inputs.push(out)
-                    lib_objects_by_dir[dir_key] = lib_objects_by_dir.get(dir_key, []).push(out)
-                  } else if is_known_generated_object(obj) {
-                    generated_objects = generated_objects.push(obj)
-                  } else {
-                    missing_sources = missing_sources.push(obj)
-                  }
-                } else {
-                  return Err(err)
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  archive_plan_progress(f"xsh-kbuild-archive-plan lib-objects-complete ${tasks.len()} tasks")?
+  archive_plan_progress(
+    f"xsh-kbuild-archive-plan analysis-complete ${analysis_results.len()} items ${tasks.len()} tasks",
+  )?
   var archives: List[Path] = []
   var children_by_dir: Map[List[Path]] = {}
   var dir_count = 0
@@ -7174,8 +7436,66 @@ export proc plan_builtin_archives(
   return {
     tasks: unique_tasks,
     archives: archives,
-    link_inputs: unique_paths(link_inputs.extend(lib_link_inputs)),
+    link_inputs: unique_paths(link_inputs),
     missing_sources: missing_sources,
     generated_objects: generated_objects,
   }
+}
+
+export proc plan_builtin_archives(
+  plan: KbuildPlan,
+  cc: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+) [fs, env, error] -> Result[BuiltinArchivePlan] {
+  let items = archive_analysis_items_for_plan(plan, triple)?
+  let results = analyze_archive_items_with_task_specs(
+    items,
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+  )?
+  return assemble_builtin_archive_plan(plan, cc, results)
+}
+
+# Archive analysis is isolated at a process boundary because source probes and
+# task-spec construction dominate cold planning on the mounted kernel tree.
+# The serial planner remains the fallback for callers that do not request
+# workers; parallel results are merged in the original object order above the
+# archive dependency barriers.
+export proc plan_builtin_archives_with_analysis_workers(
+  plan: KbuildPlan,
+  cc: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+  analysis_jobs: Int,
+  xsh_bin: Path,
+  worker: Path,
+) [fs, process, env, time, error] -> Result[BuiltinArchivePlan] {
+  if analysis_jobs <= 1 {
+    return plan_builtin_archives(plan, cc, triple, cflags, defs, includes)?
+  }
+
+  let items = archive_analysis_items_for_plan(plan, triple)?
+  archive_plan_progress(
+    f"xsh-kbuild-archive-plan analysis-start ${items.len()} items ${analysis_jobs} requested-workers",
+  )?
+  let results = archive_analysis_process_pool(
+    items,
+    analysis_jobs,
+    xsh_bin,
+    worker,
+    cc,
+    triple,
+    cflags,
+    defs,
+    includes,
+  )?
+  return assemble_builtin_archive_plan(plan, cc, results)
 }
