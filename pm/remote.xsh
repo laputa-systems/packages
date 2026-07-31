@@ -560,7 +560,7 @@ export proc upsert_remote_package(
   }
 
   let sorted = updated |> sort-by .name
-  sorted
+  return Ok(sorted)
 }
 
 export proc find_remote_package(index: List[RemotePackage], name: Str) [env, error] -> Result[RemotePackage] {

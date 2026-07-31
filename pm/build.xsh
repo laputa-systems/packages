@@ -613,7 +613,7 @@ proc build_packages_in_chroot(
     )?
   }
 
-  built
+  return Ok(built)
 }
 
 export proc build_packages(
@@ -738,7 +738,7 @@ export proc build_packages(
     )?
   }
 
-  built
+  return Ok(built)
 }
 
 proc xsh_runner() [fs, process, env, error] -> Result[Path] {

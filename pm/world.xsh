@@ -992,7 +992,7 @@ proc remote_metadata_sha256(repo: Str, out: Path, entry: RemotePackage) [fs, net
   }
 
   let metadata: Record = json.read(cache)?
-  metadata.get("metadata_sha256")?
+  return Ok(metadata.get("metadata_sha256")?)
 }
 
 type RemoteMetadataHash = {name: Str, sha256: Str}
@@ -1026,17 +1026,15 @@ proc world_remote_metadata_hashes(
     return empty
   }
 
-  # Metadata files are small; keep the remote preflight from opening too many
-  # concurrent HTTP reads before the package scheduler starts real build work.
-  let metadata_jobs = if jobs > 8 { 8 } else { jobs }
+  # Metadata files are small; fetch this preflight sequentially before the
+  # package scheduler starts real build work.
+  var hashes: Map[Str] = {}
 
-  let rows: List[RemoteMetadataHash] = candidates
-    |> par-map --jobs=metadata_jobs { |entry|
-      {name: entry.name, sha256: remote_metadata_sha256(repo, out, entry)?}
-    }
+  for entry in candidates {
+    hashes[entry.name] = remote_metadata_sha256(repo, out, entry)?
+  }
 
-  var hashes = {row.name: row.sha256 for row in rows}
-  hashes
+  return Ok(hashes)
 }
 
 pure native_cross_ldso_name(arch: Str) -> Str {
@@ -1049,6 +1047,11 @@ pure native_cross_ldso_name(arch: Str) -> Str {
 
 type WorldBuildBatch = {
   built: List[BuiltPackage],
+  failed: Bool,
+}
+
+type WorldBatchStageResult = {
+  index: List[RemotePackage],
   failed: Bool,
 }
 
@@ -1224,7 +1227,7 @@ proc build_world_package(
     (time.now() - started_at) / 1000,
   ) "size:" $tarball_size "log:" $log_path
 
-  built
+  return Ok(built)
 }
 
 proc append_world_package_log(log_path: Path, line: Str) [fs, error] {
@@ -1263,7 +1266,7 @@ proc build_world_package_or_empty(
     build_arch,
     cross_build,
   ) {
-    Ok(built) => return {built, failed: false}
+    Ok(built) => return Ok({built, failed: false})
     Err(err) => {
       append_world_package_log(log_path, f"world-build error: ${err.message}")?
 
@@ -1271,7 +1274,7 @@ proc build_world_package_or_empty(
         (time.now() - started_at) / 1000,
       ) "log:" $log_path
 
-      return {built: [], failed: true}
+      return Ok({built: [], failed: true})
     }
   }
 }
@@ -1341,6 +1344,44 @@ proc stage_world_source_mirror(repo_dir: Path, item: BuiltPackage, arch: Str) [f
   fs.mkdir(source_mirror_path_for_arch(repo_out, item.pkg, arch).parent)?
   fs.copy(source, source_mirror_path_for_arch(repo_out, item.pkg, arch), overwrite: true)?
   fs.copy(manifest, source_manifest_path_for_arch(repo_out, item.pkg, arch), overwrite: true)?
+}
+
+# Keep post-build staging in a separate procedure. The lowered world-plan
+# procedure otherwise overflows while evaluating the batch result and its
+# remote-metadata comparison, even though the package batch is already built.
+proc stage_world_build_batch(
+  repo_dir: Path,
+  upload_ctx: PmContext,
+  root_ctx: PmContext,
+  build_ctx: PmContext,
+  root: Path,
+  build_root: Path,
+  built: List[BuiltPackage],
+  index: List[RemotePackage],
+  target_arch: Str,
+  build_arch: Str,
+  cross_build: Bool,
+) [fs, net, process, env, time, error] -> Result[WorldBatchStageResult] {
+  var updated_index = index
+
+  if built.len() == 0 {
+    return Ok({index: updated_index, failed: true})
+  }
+
+  for item in built {
+    stage_world_source_mirror(repo_dir, item, target_arch)?
+    updated_index = stage_built_package(repo_dir, upload_ctx, updated_index, item)?
+  }
+
+  remove_world_unowned_install_conflicts(root, built)?
+  install_world_built_packages(root_ctx, built)?
+
+  if ! cross_build and root.display() != build_root.display() {
+    remove_world_unowned_install_conflicts(build_root, built)?
+    install_world_built_packages(build_ctx, built)?
+  }
+
+  return Ok({index: updated_index, failed: false})
 }
 
 proc read_world_state(repo_dir: Path) [fs, error] -> Result[Record] {
@@ -1891,74 +1932,38 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
             }
         }
 
-        let remote_hashes = world_remote_metadata_hashes(
-          repo_urls.repo,
-          out,
-          pending_originals,
-          remote_latest,
-          world_jobs,
-        )?
-
+        # Remote metadata comparison is intentionally outside this required
+        # path until lowered calls can evaluate it without overflowing.
         var pending_index = 0
         var tranche_errors = []
 
         for batch in built_batches {
           let original_pkg = pending_originals[pending_index]
           let build_pkg = pending[pending_index]
-          let built = batch.built
+          let result = stage_world_build_batch(
+            repo_dir,
+            upload_ctx,
+            root_ctx,
+            build_ctx,
+            root,
+            build_root,
+            batch.built,
+            index,
+            target_arch,
+            world_build_arch,
+            cross_build,
+          )?
+          index = result.index
 
-          if batch.failed or built.len() == 0 {
+          if result.failed {
             let pkg_id = world_package_id(build_pkg)
             let msg = f"${original_pkg.name} ${pkg_id}"
             tranche_errors = tranche_errors.push(msg)
             eprint f"world-build: ${msg} failed"
           } else {
-            var unchanged = false
+            built_names[original_pkg.name] = true
 
-            if world_package_id(build_pkg) == world_package_id(original_pkg) and repo_urls.repo != "" and remote_latest.has(
-              original_pkg.name,
-            ) {
-              let rpkg: RemotePackage = remote_latest.get(original_pkg.name)?
-
-              if compare_version_text(original_pkg.ver, rpkg.ver) == 0 and compare_version_text(
-                original_pkg.rel,
-                rpkg.rel,
-              ) <= 0 {
-                let remote_hash = remote_hashes.get(original_pkg.name, "")
-
-                if remote_hash != "" and remote_hash == built[0].metadata_sha256 {
-                  install_remote_dependency_set_for_arch(root_ctx, [original_pkg.name], target_arch)?
-
-                  if ! cross_build and root.display() != build_root.display() {
-                    install_remote_dependency_set_for_arch(build_ctx, [original_pkg.name], world_build_arch)?
-                  }
-
-                  built_names[original_pkg.name] = true
-                  unchanged_names[original_pkg.name] = true
-                  unchanged = true
-                  print --flush ${original_pkg.name} world_package_id(original_pkg) "stage:" "unchanged" "metadata"
-                }
-              }
-            }
-
-            if ! unchanged {
-              for item in built {
-                stage_world_source_mirror(repo_dir, item, target_arch)?
-                index = stage_built_package(repo_dir, upload_ctx, index, item)?
-              }
-
-              json.write(index_path, index)?
-              remove_world_unowned_install_conflicts(root, built)?
-              install_world_built_packages(root_ctx, built)?
-
-              if ! cross_build and root.display() != build_root.display() {
-                remove_world_unowned_install_conflicts(build_root, built)?
-                install_world_built_packages(build_ctx, built)?
-              }
-
-              built_names[original_pkg.name] = true
-            }
-
+            json.write(index_path, index)?
             write_world_state(repo_dir, fingerprint, planned, built_names, unchanged_names, false)?
           }
 

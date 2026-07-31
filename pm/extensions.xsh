@@ -155,7 +155,7 @@ export proc invoke_extension(action: Str, ctx: PmContext, raw: List[Str]) [fs, p
   run_extension_process(action, extension.path, argv, raw.join("\n"), ctx)?
 }
 
-export stream hook_paths() [env, error] -> Stream[Path] {
+proc hook_paths() [env, error] -> Result[List[Path]] {
   var hook_var = ""
 
   if (env.get("XSH_PM_HOOKS") ?? "").trim() != "" {
@@ -164,25 +164,29 @@ export stream hook_paths() [env, error] -> Stream[Path] {
     hook_var = "LAPUTA_HOOK"
   }
 
-  if hook_var == "" {
-    return
-  }
+  var paths = []
 
-  for entry in env.path_entries(hook_var)? {
-    let trimmed = entry.raw.trim()
+  if hook_var != "" {
+    for entry in env.path_entries(hook_var)? {
+      let trimmed = entry.raw.trim()
 
-    if trimmed != "" {
-      yield fp"${trimmed}"
+      if trimmed != "" {
+        paths = paths.push(fp"${trimmed}")
+      }
     }
   }
+
+  return Ok(paths)
 }
 
 export proc load_hook_paths() [env, error] -> Result[List[Path]] {
-  hook_paths().collect()
+  hook_paths()
 }
 
 export proc run_lifecycle_hooks(hook_name: Str, pkg_name: Str, ctx: PmContext, extra: Str) [fs, process, env, error] {
-  for hook in hook_paths() {
+  let hooks = hook_paths()?
+
+  for hook in hooks {
     if ! fs.exists(hook)? {
       return Err(PmError.LifecycleHook(f"${hook_name} hook not found: ${hook.display()}"))
     }

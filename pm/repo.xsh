@@ -36,7 +36,7 @@ export proc stage_built_package(
   let updated = upsert_remote_package(index, entry)?
   run_lifecycle_hooks("post-upload", item.pkg.name, upload_ctx, "")?
   print --flush ${item.pkg.name} version_id(item.pkg.ver, item.pkg.rel) "stage:" "done"
-  updated
+  return Ok(updated)
 }
 
 proc order_repo_build_packages(
@@ -94,7 +94,7 @@ proc order_repo_build_packages(
     }
   }
 
-  ordered
+  return Ok(ordered)
 }
 
 proc verify_proof_receipt(out: Path, pkg: Package, tarball: Path) [fs, error] {
