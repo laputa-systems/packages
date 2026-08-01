@@ -157,13 +157,12 @@ proc c_lookup_lines(
   include_button_aliases: Bool,
   max_codes: Map[Int],
 ) [] -> Result[List[Str]] {
-  var lookups = [
-    {name: item.name, value: item.name}
-    for item in defs
-      |> where .attr == attr
-      |> sort-by .name
-  ]
-
+  var lookups = []
+  for item in defs {
+    if item.attr == attr {
+      lookups = lookups.push({name: item.name, value: item.name})
+    }
+  }
   if include_button_aliases {
     lookups = lookups.push({name: "BTN_A", value: "BTN_A"})
     lookups = lookups.push({name: "BTN_B", value: "BTN_B"})
@@ -171,26 +170,45 @@ proc c_lookup_lines(
     lookups = lookups.push({name: "BTN_Y", value: "BTN_Y"})
   }
 
-  let max_name = f"${attr.replace("input_prop", "INPUT_PROP")
-    .replace("mt_tool", "MT_TOOL")
-    .replace("ev", "EV")
-    .replace("rel", "REL")
-    .replace("abs", "ABS")
-    .replace("key", "KEY")
-    .replace("btn", "BTN")
-    .replace("led", "LED")
-    .replace("snd", "SND")
-    .replace("msc", "MSC")
-    .replace("sw", "SW")
-    .replace("ff", "FF")
-    .replace("syn", "SYN")
-    .replace("rep", "REP")}_MAX"
+  let max_name = if attr == "input_prop" {
+    "INPUT_PROP_MAX"
+  } else if attr == "mt_tool" {
+    "MT_TOOL_MAX"
+  } else if attr == "ev" {
+    "EV_MAX"
+  } else if attr == "rel" {
+    "REL_MAX"
+  } else if attr == "abs" {
+    "ABS_MAX"
+  } else if attr == "key" {
+    "KEY_MAX"
+  } else if attr == "btn" {
+    "BTN_MAX"
+  } else if attr == "led" {
+    "LED_MAX"
+  } else if attr == "snd" {
+    "SND_MAX"
+  } else if attr == "msc" {
+    "MSC_MAX"
+  } else if attr == "sw" {
+    "SW_MAX"
+  } else if attr == "ff" {
+    "FF_MAX"
+  } else if attr == "syn" {
+    "SYN_MAX"
+  } else {
+    "REP_MAX"
+  }
 
   if max_name in duplicate_defines() and max_codes.has(max_name) {
     lookups = lookups.push({name: max_name, value: max_name})
   }
 
-  [f"    { .name = \"${item.name}\", .value = ${item.value} }," for item in lookups |> sort-by .name]
+  var lines = []
+  for item in lookups {
+    lines = lines.push(f"    { .name = \"${item.name}\", .value = ${item.value} },")
+  }
+  lines
 }
 
 proc collect_event_defs(path_value: Path) [fs, error] -> Result[Record] {
