@@ -556,7 +556,7 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, t
     return Err(
       ScriptError.Failed(
         "linux-kbuild-archive-only",
-        f"archive-only loop planned ${archive_plan.tasks.len()} tasks",
+        f"archive-only loop planned ${archive_plan.task_count} tasks",
       ),
     )
   }

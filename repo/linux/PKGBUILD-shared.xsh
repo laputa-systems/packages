@@ -21,7 +21,7 @@ export proc archive_analysis_jobs() [env, error] -> Result[Int] {
   let raw = env.get("XSH_LINUX_KBUILD_ARCHIVE_ANALYSIS_JOBS") ?? ""
 
   if raw == "" {
-    return build_jobs()?
+    return 8
   }
 
   let parsed = raw.parse_int()?
@@ -223,8 +223,11 @@ export proc cached_archive_plan(
   let stable_cache_dir = fp"${env.get("XSH_LINUX_KBUILD_PLAN_CACHE_DIR") ?? "/var/cache/laputa/linux-kbuild"}"
   let stable_archive_report = fp"${stable_cache_dir.display()}/linux-${srcarch}.archive-plan.json"
   let stable_archive_fingerprint = fp"${stable_cache_dir.display()}/linux-${srcarch}.archive-plan.fingerprint"
+  let fingerprint_start = timing_start("archive-fingerprint")
   let fingerprint = archive_plan_cache_fingerprint(plan, srcarch, triple, cflags, includes)?
+  timing_done("archive-fingerprint", fingerprint_start)
   let reuse_archive_plan = (env.get("XSH_LINUX_KBUILD_REUSE_ARCHIVE_PLAN") ?? "") == "1"
+  let archive_only = (env.get("XSH_LINUX_KBUILD_ARCHIVE_ONLY") ?? "") == "1"
   let plan_only = requested_stop_after()? == "plan" and (env.get("XSH_LINUX_KBUILD_ONLY") ?? "") == ""
 
   if reuse_archive_plan and (env.get("XSH_LINUX_KBUILD_FORCE_ARCHIVES") ?? "") != "1" {
@@ -314,14 +317,24 @@ export proc cached_archive_plan(
     /bin/xsh,
     worker,
   )?
+
+  if archive_only {
+    emit_kbuild_progress(
+      f"xsh-kbuild-archive-plan ${archive_plan.task_count} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs ${archive_plan.generated_objects.len()} generated ${archive_plan.missing_sources.len()} missing",
+    )?
+    return archive_plan
+  }
+
+  let report_start = timing_start("archive-report")
   kbuild.write_archive_plan_report(archive_plan, archive_report)?
   write_archive_plan_fingerprint(archive_fingerprint, fingerprint)?
   stable_cache_dir.mkdir()?
   copy_archive_plan_cache(archive_report, stable_archive_report)?
   write_archive_plan_fingerprint(stable_archive_fingerprint, fingerprint)?
+  timing_done("archive-report", report_start)
 
   emit_kbuild_progress(
-    f"xsh-kbuild-archive-plan ${archive_plan.tasks.len()} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs ${archive_plan.generated_objects.len()} generated ${archive_plan.missing_sources.len()} missing",
+    f"xsh-kbuild-archive-plan ${archive_plan.task_count} tasks ${archive_plan.archives.len()} archives ${archive_plan.link_inputs.len()} link-inputs ${archive_plan.generated_objects.len()} generated ${archive_plan.missing_sources.len()} missing",
   )?
 
   return archive_plan
@@ -585,7 +598,7 @@ proc parse_kbuild_only_outputs(raw: Str) [error] -> Result[List[Path]] {
   return outputs
 }
 
-export proc run_targeted_kbuild_outputs(archive_plan: Record, only: Str) [fs, process, env, error] {
+export proc run_targeted_kbuild_outputs(archive_plan: Record, only: Str) [fs, process, env, time, error] {
   let outputs = parse_kbuild_only_outputs(only)?
   let jobs_count = build_jobs()?
   let selected = kbuild.select_archive_tasks_outputs(archive_plan.tasks, outputs)?

@@ -19,6 +19,8 @@ export type KbuildPlan = {
 
 export type BuiltinArchivePlan = {
   tasks: List[make.MakeTask],
+  task_specs: List[Record],
+  task_count: Int,
   archives: List[Path],
   link_inputs: List[Path],
   missing_sources: List[Path],
@@ -374,6 +376,20 @@ export proc load_config(path_value: Path) [fs, error] -> Result[Kconfig] {
   }
 
   return {enabled: enabled, values: values}
+}
+
+pure empty_kconfig() -> Kconfig {
+  let enabled: Map[Bool] = {}
+  let values: Map[Str] = {}
+  return {enabled: enabled, values: values}
+}
+
+proc load_config_if_present(path_value: Path) [fs, error] -> Result[Kconfig] {
+  if path_value.exists()? {
+    return load_config(path_value)?
+  }
+
+  return empty_kconfig()
 }
 
 export proc write_config_headers(config_path: Path, root: Path, release: Str, arch: Str = "arm64") [fs, error] {
@@ -1129,8 +1145,28 @@ proc kbuild_compile_flags_for_dir(
   config: Kconfig,
   srcarch: Str,
 ) [fs, error] -> Result[Map[List[Str]]] {
-  let file = kbuild_file(join_root(root, dir))?
+  var file = p""
+
+  match kbuild_file(join_root(root, dir)) {
+    Ok(value) => file = value
+    Err(err) => {
+      match err {
+        ScriptError.Failed {kind: kind, message: _} => {
+          if kind == "kbuild-missing" {
+            return map.empty()
+          }
+
+          return Err(err)
+        }
+      }
+    }
+  }
+
   var vars = kbuild_vars_for_dir(dir, srcarch)
+  let dir_key = path_key(dir)
+  let local_dir = if dir_key == "." { "." } else { f"./${dir_key}" }
+  vars["src"] = local_dir
+  vars["obj"] = local_dir
   var flags: Map[List[Str]] = {}
   var subdir_flags: List[Str] = []
   var active_stack = [true]
@@ -1291,11 +1327,13 @@ proc compile_flags_fingerprint(
   config_path: Path,
   srcarch: Str,
 ) [fs, error] -> Result[Str] {
-  var dir_fingerprints = [fingerprint_dir_line(root, dir)? for dir in dirs]
+  let dir_fingerprints: List[Str] = dirs
+    |> par-map --jobs=planner_jobs() { |dir| fingerprint_dir_line(root, dir)? }
+  let config_hash = if config_path.exists()? { hash.sha256(config_path)?.hex() } else { "missing" }
 
   return f"""format ${compile_flags_cache_format()}
 srcarch ${srcarch}
-config ${hash.sha256(config_path)?.hex()}
+config ${config_hash}
 dirs ${dirs.len()}
 ${path_strings(dirs).join("\n")}
 kbuild-files
@@ -1313,7 +1351,7 @@ proc read_compile_flags_cache(path_value: Path, fingerprint: Str) [fs, error] ->
 
   let cached_fingerprint: Str = stored.get("fingerprint")?
 
-  if cached_fingerprint.trim() != fingerprint.trim() {
+  if fingerprint != "" and cached_fingerprint.trim() != fingerprint.trim() {
     return Err(ScriptError.Failed("kbuild-compile-flags-cache-stale", "compile flags cache fingerprint mismatch"))
   }
 
@@ -1339,7 +1377,12 @@ proc cached_kbuild_compile_flags_for_dirs(
   let cache_dir = fp"${env.get("XSH_LINUX_KBUILD_COMPILE_FLAGS_CACHE_DIR") ?? env.get("XSH_LINUX_KBUILD_PLAN_CACHE_DIR") ?? "/var/cache/laputa/linux-kbuild"}"
   let stable_cache_path = fp"${cache_dir.display()}/linux-${srcarch}.compile-flags.json"
   let local_cache_path = fp"${root}/.xsh-kbuild-compile-flags.json"
-  let fingerprint = compile_flags_fingerprint(root, dirs, fp"${root}/.config", srcarch)?
+  let trust_cache = (env.get("XSH_LINUX_KBUILD_TRUST_COMPILE_FLAGS_CACHE") ?? "") == "1"
+  let fingerprint = if trust_cache {
+    ""
+  } else {
+    compile_flags_fingerprint(root, dirs, fp"${root}/.config", srcarch)?
+  }
 
   if stable_cache_path.exists()? {
     match read_compile_flags_cache(stable_cache_path, fingerprint) {
@@ -2481,34 +2524,87 @@ export proc scan_record_for_dir(root: Path, config: Kconfig, srcarch: Str, dir: 
 }
 
 export proc plan_from_record_values(records: List[Record]) [error] -> Result[KbuildPlan] {
-  var scan_by_dir: Map[DirScan] = {}
+  var scan_by_dir: Map[Record] = {}
 
   for item in records {
-    let scan = local_record_from_record(item)?
-    scan_by_dir[path_key(scan.dir)] = scan
+    let dir_key: Str = item.get("dir")?
+    scan_by_dir[dir_key] = item
   }
 
   var seen: Map[Bool] = {}
   var frontier = [p"."]
-  var plan = empty_plan()
+  var plan_dirs: List[Path] = []
+  var plan_objects: List[Path] = []
+  var plan_lib_objects: List[Path] = []
+  var plan_archive_owners: List[Record] = []
+  var plan_composites: List[Record] = []
+  var plan_unsupported: List[Str] = []
 
   while frontier.len() > 0 {
     let pending = unique_unseen_paths(frontier, seen)
     frontier = []
 
     for dir in pending {
-      let scan = scan_by_dir.get(path_key(dir))?
-      plan = merge_plan(plan, scan.plan)
+      let scan: Record = scan_by_dir.get(path_key(dir))?
+      let plan_value: Record = scan.get("plan")?
+      let dirs: List[Str] = plan_value.get("dirs")?
+      let objects: List[Str] = plan_value.get("objects")?
+      let lib_objects: List[Str] = plan_value.get("lib_objects")?
+      let archive_owners: List[Record] = if plan_value.has("archive_owners") {
+        plan_value.get("archive_owners")?
+      } else {
+        []
+      }
+      let composites: List[Record] = plan_value.get("composites")?
+      let unsupported: List[Str] = plan_value.get("unsupported")?
 
-      for child in scan.child_dirs {
-        if ! seen.get(path_key(child), false) {
-          frontier = frontier.push(child)
+      for item in dirs {
+        plan_dirs = plan_dirs.push(fp"${item}")
+      }
+
+      for item in objects {
+        plan_objects = plan_objects.push(fp"${item}")
+      }
+
+      for item in lib_objects {
+        plan_lib_objects = plan_lib_objects.push(fp"${item}")
+      }
+
+      for owner in archive_owners {
+        plan_archive_owners = plan_archive_owners.push(owner)
+      }
+
+      for composite in composites {
+        plan_composites = plan_composites.push(composite)
+      }
+
+      for item in unsupported {
+        plan_unsupported = plan_unsupported.push(item)
+      }
+
+      let child_dirs: List[Str] = scan.get("child_dirs")?
+      for child in child_dirs {
+        let child_path = fp"${child}"
+        if ! seen.get(path_key(child_path), false) {
+          frontier = frontier.push(child_path)
         }
       }
     }
   }
 
-  return normalize_plan(plan)
+  let archive_owners = archive_owners_from_records(plan_archive_owners)?
+  let composites = composites_from_records(plan_composites)?
+  let plan = normalize_plan(
+    {
+      dirs: plan_dirs,
+      objects: plan_objects,
+      lib_objects: plan_lib_objects,
+      archive_owners: archive_owners,
+      composites: composites,
+      unsupported: plan_unsupported,
+    },
+  )
+  return plan
 }
 
 proc discover_records_process_pool(
@@ -2574,8 +2670,7 @@ proc discover_records_process_pool(
     let batch: List[Record] = json.read(output_path)?
     records = records.extend(batch)
   }
-
-  return plan_from_record_values(records)
+  return plan_from_record_values(records)?
 }
 
 export proc discover_plan_with_process_pool(
@@ -2671,11 +2766,9 @@ proc discover_local_record_graph(
   let scans = discover_scans(root, config, srcarch, options)?
   var barriers: Map[AggregateBarriers] = {}
 
-  if options.local_record_cache {
-    for key in scans.records.keys() {
-      let scan = scans.records.get(key)?
-      barriers[key] = aggregate_barriers(scan.dir)
-    }
+  for key in scans.records.keys() {
+    let scan = scans.records.get(key)?
+    barriers[key] = aggregate_barriers(scan.dir)
   }
 
   return {records: scans.records, barriers: barriers, plan: scans.plan}
@@ -2921,13 +3014,7 @@ export proc discover_plan_with_options(
 
   emit_stage_progress(root, options, "xsh-kbuild-discover-scans complete")?
 
-  let state = if options.local_records and ! options.local_record_cache {
-    {
-      plan: local_graph.plan,
-      seen: map.empty(),
-      visited: local_graph.records.len(),
-    }
-  } else if options.local_records {
+  let state = if options.local_records {
     merge_local_record_graph_with_options(
       root,
       options,
@@ -3002,10 +3089,15 @@ proc unique_composites(composites: List[CompositeObject]) [] -> List[CompositeOb
 
 proc normalize_plan(plan: KbuildPlan) [] -> KbuildPlan {
   let lib_objects = unique_paths(plan.lib_objects)
+  var lib_object_seen: Map[Bool] = {}
+
+  for obj in lib_objects {
+    lib_object_seen[path_key(obj)] = true
+  }
 
   return {
     dirs: unique_paths(plan.dirs),
-    objects: [obj for obj in unique_paths(plan.objects) if ! has_plan_path(lib_objects, obj)],
+    objects: [obj for obj in unique_paths(plan.objects) if ! lib_object_seen.get(path_key(obj), false)],
     lib_objects: lib_objects,
     archive_owners: plan.archive_owners,
     composites: unique_composites(plan.composites),
@@ -3014,30 +3106,7 @@ proc normalize_plan(plan: KbuildPlan) [] -> KbuildPlan {
 }
 
 proc sorted_paths(paths: List[Path]) [] -> List[Path] {
-  var sorted: List[Path] = []
-
-  for path_value in paths {
-    var next: List[Path] = []
-    var inserted = false
-    let key = path_key(path_value)
-
-    for item in sorted {
-      if ! inserted and key < path_key(item) {
-        next = next.push(path_value)
-        inserted = true
-      }
-
-      next = next.push(item)
-    }
-
-    if ! inserted {
-      next = next.push(path_value)
-    }
-
-    sorted = next
-  }
-
-  return sorted
+  return paths |> sort-by .display()
 }
 
 pure composite_records(composites: List[CompositeObject]) -> List[Record] {
@@ -3266,35 +3335,42 @@ pure duplicate_task_outputs(tasks: List[make.MakeTask]) -> List[Path] {
   return duplicates
 }
 
-export proc write_archive_plan_summary(archive_plan: Record, out: Path) [fs, error] {
-  write_text_if_changed(
-    out,
-    json.encode({
-      format: archive_plan_report_format(),
-      archives: path_strings(archive_plan.archives),
-      link_inputs: path_strings(archive_plan.link_inputs),
-      generated_objects: path_strings(archive_plan.generated_objects),
-      missing_sources: path_strings(archive_plan.missing_sources),
-      duplicate_outputs: path_strings(duplicate_task_outputs(archive_plan.tasks)),
-      task_count: archive_plan.tasks.len(),
-    })?,
-  )?
+export proc write_archive_plan_summary(archive_plan: Record, out: Path) [fs, env, time, error] {
+  let encode_start = archive_plan_timing_start("report-summary-encode")
+  let summary = json.encode({
+    format: archive_plan_report_format(),
+    archives: path_strings(archive_plan.archives),
+    link_inputs: path_strings(archive_plan.link_inputs),
+    generated_objects: path_strings(archive_plan.generated_objects),
+    missing_sources: path_strings(archive_plan.missing_sources),
+    duplicate_outputs: path_strings(duplicate_task_outputs(archive_plan.tasks)),
+    task_count: archive_plan.tasks.len(),
+  })?
+  archive_plan_timing_done("report-summary-encode", encode_start)
+  write_text_if_changed(out, summary)?
 }
 
-export proc write_archive_plan_report(archive_plan: Record, out: Path) [fs, error] {
-  write_text_if_changed(
-    out,
-    json.encode({
-      format: archive_plan_report_format(),
-      archives: path_strings(archive_plan.archives),
-      link_inputs: path_strings(archive_plan.link_inputs),
-      generated_objects: path_strings(archive_plan.generated_objects),
-      missing_sources: path_strings(archive_plan.missing_sources),
-      duplicate_outputs: path_strings(duplicate_task_outputs(archive_plan.tasks)),
-      task_count: archive_plan.tasks.len(),
-      tasks: task_records(archive_plan.tasks),
-    })?,
-  )?
+export proc write_archive_plan_report(archive_plan: Record, out: Path) [fs, env, time, error] {
+  let records_start = archive_plan_timing_start("report-task-records")
+  let task_rows = task_records(archive_plan.tasks)
+  archive_plan_timing_done("report-task-records", records_start)
+
+  let encode_start = archive_plan_timing_start("report-encode")
+  let report = json.encode({
+    format: archive_plan_report_format(),
+    archives: path_strings(archive_plan.archives),
+    link_inputs: path_strings(archive_plan.link_inputs),
+    generated_objects: path_strings(archive_plan.generated_objects),
+    missing_sources: path_strings(archive_plan.missing_sources),
+    duplicate_outputs: path_strings(duplicate_task_outputs(archive_plan.tasks)),
+    task_count: archive_plan.tasks.len(),
+    tasks: task_rows,
+  })?
+  archive_plan_timing_done("report-encode", encode_start)
+
+  let write_start = archive_plan_timing_start("report-write")
+  write_text_if_changed(out, report)?
+  archive_plan_timing_done("report-write", write_start)
 
   write_archive_plan_summary(archive_plan, archive_plan_summary_path(out))?
 }
@@ -4216,22 +4292,25 @@ pure parent_dir(dir: Path) -> Path {
   return dir.parent
 }
 
-pure archive_parent_dir(dir: Path) -> Path {
-  let key = path_key(dir)
-
+pure archive_parent_key(key: Str) -> Str {
   if key == "arch/x86/boot/startup" {
-    return p"arch/x86"
+    return "arch/x86"
   }
 
   if key == "drivers/iommu/generic_pt/fmt" {
-    return p"drivers/iommu"
+    return "drivers/iommu"
   }
 
-  if regex_matches(key, "^arch/[^/]+$") ?? false {
-    return p"."
+  if key == "." or ! ("/" in key) or key.starts_with("arch/") and key.split("/").len() == 2 {
+    return "."
   }
 
-  return parent_dir(dir)
+  let parts = key.split("/")
+  return (parts |> take(parts.len() - 1)).join("/")
+}
+
+pure archive_parent_dir(dir: Path) -> Path {
+  return fp"${archive_parent_key(path_key(dir))}"
 }
 
 pure is_known_generated_object(obj: Path) -> Bool {
@@ -6296,7 +6375,7 @@ export proc build_builtin_archives(
   defs: List[Str],
   includes: List[Str],
   jobs_count: Int,
-) [fs, process, env, error] -> Result[List[Path]] {
+) [fs, process, env, time, error] -> Result[List[Path]] {
   let archive_plan = plan_builtin_archives(plan, cc, triple, cflags, defs, includes)?
   return run_builtin_archive_plan(archive_plan, jobs_count)
 }
@@ -6761,6 +6840,21 @@ proc archive_plan_progress(message: Str) [fs, error] {
   )?
 }
 
+proc archive_plan_timing_start(stage: Str) [env, time] -> Int {
+  if (env.get("XSH_LINUX_KBUILD_TIMING") ?? "") == "1" {
+    print "linux-kbuild-archive-timing-start" $stage
+    return time.now()
+  }
+
+  return 0
+}
+
+proc archive_plan_timing_done(stage: Str, start: Int) [env, time] {
+  if (env.get("XSH_LINUX_KBUILD_TIMING") ?? "") == "1" {
+    print "linux-kbuild-archive-timing-done" $stage ${time.now() - start} "ms"
+  }
+}
+
 pure skip_planned_object(config: Kconfig, obj: Path) -> Bool {
   let key = path_key(obj)
 
@@ -6793,11 +6887,9 @@ pure archive_analysis_record_for_object(
       library: library,
       pi: pi,
       composite: path_key(composite.object),
-      members: [
-        {
-          object: path_key(member),
-          flags: kbuild_compile_flags_for_object(compile_flags_by_dir, member),
-        }
+      member_objects: [path_key(member) for member in composite.members],
+      member_flags: [
+        kbuild_compile_flags_for_object(compile_flags_by_dir, member)
         for member in composite.members
       ],
       flags: [],
@@ -6811,15 +6903,160 @@ pure archive_analysis_record_for_object(
     library: library,
     pi: pi,
     composite: "",
-    members: [],
+    member_objects: [],
+    member_flags: [],
     flags: kbuild_compile_flags_for_object(compile_flags_by_dir, flags_object),
   }
 }
 
-proc archive_analysis_items(
+pure archive_analysis_plan_context(plan: KbuildPlan) -> Record {
+  return {
+    dirs: path_strings(plan.dirs),
+    objects: path_strings(plan.objects),
+    lib_objects: path_strings(plan.lib_objects),
+    archive_owners: [
+      {
+        object: path_key(owner.object),
+        dir: path_key(owner.dir),
+      }
+      for owner in plan.archive_owners
+    ],
+    composites: [
+      {
+        object: path_key(composite.object),
+        members: path_strings(composite.members),
+      }
+      for composite in plan.composites
+    ],
+  }
+}
+
+proc archive_analysis_plan_context_slice(context: Record, start: Int, end: Int) [error] -> Result[Record] {
+  let object_values: List[Str] = context.get("objects")?
+  let lib_object_values: List[Str] = context.get("lib_objects")?
+  let owner_values: List[Record] = context.get("archive_owners")?
+  let composite_values: List[Record] = context.get("composites")?
+  let object_count = object_values.len()
+  let object_start = if start < object_count { start } else { object_count }
+  let object_end = if end < object_count { end } else { object_count }
+  let lib_start = if start > object_count { start - object_count } else { 0 }
+  let lib_end = if end > object_count { end - object_count } else { 0 }
+  let objects = object_values |> drop(object_start) |> take(object_end - object_start)
+  let lib_objects = lib_object_values |> drop(lib_start) |> take(lib_end - lib_start)
+  var selected: Map[Bool] = {}
+
+  for obj in objects {
+    selected[obj] = true
+  }
+
+  for obj in lib_objects {
+    selected[obj] = true
+  }
+
+  var archive_owners: List[Record] = []
+  for owner in owner_values {
+    let object: Str = owner.get("object")?
+    if selected.get(object, false) {
+      archive_owners = archive_owners.push(owner)
+    }
+  }
+
+  var composites: List[Record] = []
+  for composite in composite_values {
+    let object: Str = composite.get("object")?
+    let members: List[Str] = composite.get("members")?
+    var selected_member = selected.get(object, false)
+    for member in members {
+      if selected.get(member, false) {
+        selected_member = true
+      }
+    }
+
+    if selected_member {
+      composites = composites.push(composite)
+    }
+  }
+
+  return {
+    dirs: [],
+    objects: objects,
+    lib_objects: lib_objects,
+    archive_owners: archive_owners,
+    composites: composites,
+  }
+}
+
+proc archive_analysis_plan_from_context(context: Record) [error] -> Result[KbuildPlan] {
+  let owner_records: List[Record] = context.get("archive_owners")?
+  let composite_records: List[Record] = context.get("composites")?
+  var archive_owners: List[ArchiveOwner] = []
+  var composites: List[CompositeObject] = []
+
+  for owner in owner_records {
+    archive_owners = archive_owners.push({
+      object: fp"${owner.get("object")?}",
+      dir: fp"${owner.get("dir")?}",
+    })
+  }
+
+  for composite in composite_records {
+    let member_strings: List[Str] = composite.get("members")?
+    composites = composites.push({
+      object: fp"${composite.get("object")?}",
+      members: paths_from_strings(member_strings)?,
+    })
+  }
+
+  return {
+    dirs: paths_from_strings(context.get("dirs")?)?,
+    objects: paths_from_strings(context.get("objects")?)?,
+    lib_objects: paths_from_strings(context.get("lib_objects")?)?,
+    archive_owners: archive_owners,
+    composites: composites,
+    unsupported: [],
+  }
+}
+
+pure archive_analysis_raw_item(
+  obj: Path,
+  owner: Path,
+  library: Bool,
+  pi: Bool,
+  composites_by_object: Map[CompositeObject],
+) -> Record {
+  let key = path_key(obj)
+
+  if composites_by_object.has(key) {
+    let composite = composites_by_object.get(key, {object: obj, members: []})
+    return {
+      object: key,
+      owner: path_key(owner),
+      library: library,
+      pi: pi,
+      composite: path_key(composite.object),
+      member_objects: [path_key(member) for member in composite.members],
+      member_flags: [],
+      flags: [],
+    }
+  }
+
+  return {
+    object: key,
+    owner: path_key(owner),
+    library: library,
+    pi: pi,
+    composite: "",
+    member_objects: [],
+    member_flags: [],
+    flags: [],
+  }
+}
+
+proc archive_analysis_slice_items(
   plan: KbuildPlan,
   config: Kconfig,
-  compile_flags_by_dir: Map[Map[List[Str]]],
+  start: Int,
+  end: Int,
 ) [error] -> Result[List[Record]] {
   let composites_by_object = composite_map(plan.composites)
   let composite_members_by_object = composite_member_map(plan.composites)
@@ -6829,6 +7066,156 @@ proc archive_analysis_items(
     archive_owner_by_object[path_key(owner.object)] = path_key(owner.dir)
   }
 
+  let object_count = plan.objects.len()
+  var items: List[Record] = []
+  var index = start
+
+  while index < end {
+    let library = index >= object_count
+    let object_index = if library { index - object_count } else { index }
+    let obj = if library {
+      plan.lib_objects.get(object_index, p".")
+    } else {
+      plan.objects.get(object_index, p".")
+    }
+
+    if ! skip_planned_object(config, obj) and ! composite_members_by_object.has(path_key(obj)) {
+      items = items.push(
+        archive_analysis_raw_item(
+          obj,
+          archive_owner_key(archive_owner_by_object, obj),
+          library,
+          if library {
+            false
+          } else {
+            is_pi_object(obj)
+          },
+          composites_by_object,
+        ),
+      )
+    }
+
+    index += 1
+  }
+
+  return items
+}
+
+proc archive_analysis_items_with_compile_flags(
+  items: List[Record],
+  compile_flags_by_dir: Map[Map[List[Str]]],
+) [error] -> Result[List[Record]] {
+  var enriched: List[Record] = []
+
+  for item in items {
+    let object = fp"${item.get("object")?}"
+    let pi: Bool = item.get("pi")?
+    let composite: Str = item.get("composite")?
+    let flags_object = if pi { pi_base_object(object) } else { object }
+    let member_objects: List[Str] = item.get("member_objects")?
+    let member_flags = [
+      kbuild_compile_flags_for_object(compile_flags_by_dir, fp"${member}")
+      for member in member_objects
+    ]
+
+    enriched = enriched.push({
+      ...item,
+      flags: if composite == "" { kbuild_compile_flags_for_object(compile_flags_by_dir, flags_object) } else { [] },
+      member_flags: member_flags,
+    })
+  }
+
+  return enriched
+}
+
+proc archive_analysis_flag_entries_for_plan_range(
+  plan: KbuildPlan,
+  start: Int,
+  end: Int,
+  flag_entries: List[Record],
+) [error] -> Result[List[Record]] {
+  var dirs: Map[Bool] = {}
+  var objects: Map[Bool] = {}
+  let object_count = plan.objects.len()
+  let composites_by_object = composite_map(plan.composites)
+  var index = start
+
+  while index < end {
+    let library = index >= object_count
+    let object_index = if library { index - object_count } else { index }
+    let obj = if library {
+      plan.lib_objects.get(object_index, p".")
+    } else {
+      plan.objects.get(object_index, p".")
+    }
+    let flags_object = if ! library and is_pi_object(obj) { pi_base_object(obj) } else { obj }
+    let flags_key = path_key(flags_object)
+    dirs[path_key(object_dir(flags_object))] = true
+    objects[flags_key] = true
+
+    if composites_by_object.has(path_key(obj)) {
+      let composite = composites_by_object.get(path_key(obj), {object: obj, members: []})
+      for member in composite.members {
+        dirs[path_key(object_dir(member))] = true
+        objects[path_key(member)] = true
+      }
+    }
+
+    index += 1
+  }
+
+  var filtered: List[Record] = []
+
+  for entry in flag_entries {
+    let dir: Str = entry.get("dir")?
+    let object: Str = entry.get("object")?
+    if object == "*" and dirs.get(dir, false) or objects.get(object, false) {
+      filtered = filtered.push(entry)
+    }
+  }
+
+  return filtered
+}
+
+export proc analyze_archive_plan_slice(
+  context: Record,
+  start: Int,
+  end: Int,
+  flag_entries: List[Record],
+  emit_task_specs: Bool,
+  cc: Path,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+) [fs, error] -> Result[List[Record]] {
+  let slice_context = archive_analysis_plan_context_slice(context, start, end)?
+  let plan = archive_analysis_plan_from_context(slice_context)?
+  let config = load_config_if_present(p".config")?
+  let relevant_flags = archive_analysis_flag_entries_for_plan_range(plan, 0, end - start, flag_entries)?
+  let compile_flags_by_dir = compile_flags_from_cache_entries(relevant_flags)?
+  let items = archive_analysis_slice_items(plan, config, 0, end - start)?
+  let enriched = archive_analysis_items_with_compile_flags(items, compile_flags_by_dir)?
+  return analyze_archive_items_impl(enriched, cc, triple, cflags, defs, includes, emit_task_specs)?
+}
+
+proc archive_analysis_items(
+  plan: KbuildPlan,
+  config: Kconfig,
+  compile_flags_by_dir: Map[Map[List[Str]]],
+) [env, time, error] -> Result[List[Record]] {
+  let maps_start = archive_plan_timing_start("item-maps")
+  let composites_by_object = composite_map(plan.composites)
+  let composite_members_by_object = composite_member_map(plan.composites)
+  var archive_owner_by_object: Map[Str] = {}
+
+  for owner in plan.archive_owners {
+    archive_owner_by_object[path_key(owner.object)] = path_key(owner.dir)
+  }
+
+  archive_plan_timing_done("item-maps", maps_start)
+
+  let object_items_start = archive_plan_timing_start("item-objects")
   var items: List[Record] = []
 
   for obj in plan.objects {
@@ -6860,11 +7247,13 @@ proc archive_analysis_items(
     )
   }
 
+  archive_plan_timing_done("item-objects", object_items_start)
+
   return items
 }
 
-proc archive_analysis_items_for_plan(plan: KbuildPlan, triple: Str) [fs, env, error] -> Result[List[Record]] {
-  let config = load_config(p".config")?
+proc archive_analysis_items_for_plan(plan: KbuildPlan, triple: Str) [fs, env, time, error] -> Result[List[Record]] {
+  let config = load_config_if_present(p".config")?
   let compile_flags_by_dir = cached_kbuild_compile_flags_for_dirs(
     p".",
     plan.dirs,
@@ -6883,6 +7272,10 @@ pure archive_analysis_result(
   owner: Str,
   library: Bool,
   tasks: List[Record],
+  task_count: Int,
+  archive_outputs: List[Path],
+  archive_deps: List[Str],
+  has_pi: Bool,
   link_inputs: List[Path],
   generated_objects: List[Path],
   missing_sources: List[Path],
@@ -6892,6 +7285,10 @@ pure archive_analysis_result(
     owner: owner,
     library: library,
     tasks: tasks,
+    task_count: task_count,
+    archive_outputs: path_strings(archive_outputs),
+    archive_deps: archive_deps,
+    has_pi: has_pi,
     link_inputs: path_strings(link_inputs),
     generated_objects: path_strings(generated_objects),
     missing_sources: path_strings(missing_sources),
@@ -6931,17 +7328,34 @@ proc archive_compile_task_spec(
   emit_task_specs: Bool,
 ) [error] -> Result[Record] {
   if emit_task_specs {
-    let task = compile_kbuild_task_for_module(
-      cc,
-      triple,
-      archive_object_cflags_from_extra(cflags, extra_flags, object),
-      defs,
-      includes,
-      source,
+    let compile_cflags = object_compile_cflags(
+      pi_compile_cflags(archive_object_cflags_from_extra(cflags, extra_flags, object), out),
       out,
-      module_out,
     )
-    return compact_archive_compile_task(task, object, source, out, module_out)
+    let object_includes = arch_local_compile_includes(
+      trace_compile_includes(
+        version_compile_includes(libfdt_compile_includes(pi_compile_includes(includes, out), out), out),
+        source,
+      ),
+      source,
+      triple,
+    )
+    let task_cflags = if is_asm_source(source) { asm_cflags(compile_cflags) } else { compile_cflags }
+    let task_defs = defs.extend(kbuild_object_defs_for_module(out, module_out))
+    let task_includes = if is_asm_source(source) { asm_includes(object_includes) } else { object_includes }
+    let depfile = fp"${out}.d"
+    var argv: List[Str] = [cc.display(), "-target", triple, "-c"]
+    argv = argv.extend(task_cflags).extend(task_defs).extend(task_includes)
+    argv = argv.extend([source.display(), "-o", out.display(), "-MMD", "-MP", "-MF", depfile.display()])
+
+    return {
+      kind: "compile",
+      source: source.display(),
+      output: out.display(),
+      argv: argv,
+      depfile: depfile.display(),
+      stamp: fp"${out}.cmd".display(),
+    }
   }
 
   return {
@@ -6974,38 +7388,52 @@ proc analyze_archive_items_impl(
     let flags: List[Str] = item.get("flags")?
     let obj = fp"${object_key}"
     var task_specs: List[Record] = []
+    var task_count = 0
+    var archive_outputs: List[Path] = []
+    var archive_deps: List[Str] = []
+    var has_pi = false
     var link_inputs: List[Path] = []
     var generated_objects: List[Path] = []
     var missing_sources: List[Path] = []
 
     if composite_key != "" {
-      let member_records: List[Record] = item.get("members")?
+      let member_objects: List[Str] = if item.has("member_objects") {
+        item.get("member_objects")?
+      } else {
+        [member.get("object")? for member in item.get("members")?]
+      }
+      let member_flags: List[List[Str]] = if item.has("member_flags") {
+        item.get("member_flags")?
+      } else {
+        [member.get("flags")? for member in item.get("members")?]
+      }
       let composite_out = obj_out_path(fp"${composite_key}")
 
-      for member_record in member_records {
-        let member_key: Str = member_record.get("object")?
-        let member_flags: List[Str] = member_record.get("flags")?
+      var member_index = 0
+      for member_key in member_objects {
+        let flags = member_flags.get(member_index, [])
         let member = fp"${member_key}"
 
         match source_for_object(member) {
           Ok(source) => {
             let member_out = obj_out_path(member)
-            task_specs = task_specs.push(
-              archive_compile_task_spec(
-                member,
-                source,
-                member_out,
-                composite_out,
-                member_flags,
-                cc,
-                triple,
-                cflags,
-                defs,
-                includes,
-                emit_task_specs,
-              )?,
-            )
-            link_inputs = link_inputs.push(member_out)
+            let task_spec = archive_compile_task_spec(
+              member,
+              source,
+              member_out,
+              composite_out,
+              flags,
+              cc,
+              triple,
+              cflags,
+              defs,
+              includes,
+              emit_task_specs,
+            )?
+            task_specs = task_specs.push(task_spec)
+            task_count += 1
+            archive_outputs = archive_outputs.push(member_out)
+            archive_deps = archive_deps.push(member_out.display())
           }
           Err(err) => {
             match err {
@@ -7023,6 +7451,8 @@ proc analyze_archive_items_impl(
             }
           }
         }
+
+        member_index += 1
       }
     } else if pi {
       let source = pi_source(obj)
@@ -7043,6 +7473,10 @@ proc analyze_archive_items_impl(
           includes,
           emit_task_specs,
         )?
+        has_pi = true
+        task_count += 3
+        archive_outputs = archive_outputs.push(out)
+        archive_deps = archive_deps.push(f"${out.display()}:relacheck")
         task_specs = task_specs.push({
           kind: "pi",
           object: object_key,
@@ -7051,7 +7485,6 @@ proc analyze_archive_items_impl(
           output: out.display(),
           base_task: base_task_spec,
         })
-        link_inputs = link_inputs.push(out)
       } else {
         generated_objects = generated_objects.push(obj)
       }
@@ -7059,22 +7492,23 @@ proc analyze_archive_items_impl(
       match source_for_object(obj) {
         Ok(source) => {
           let out = obj_out_path(obj)
-          task_specs = task_specs.push(
-            archive_compile_task_spec(
-              obj,
-              source,
-              out,
-              out,
-              flags,
-              cc,
-              triple,
-              cflags,
-              defs,
-              includes,
-              emit_task_specs,
-            )?,
-          )
-          link_inputs = link_inputs.push(out)
+          let task_spec = archive_compile_task_spec(
+            obj,
+            source,
+            out,
+            out,
+            flags,
+            cc,
+            triple,
+            cflags,
+            defs,
+            includes,
+            emit_task_specs,
+          )?
+          task_specs = task_specs.push(task_spec)
+          task_count += 1
+          archive_outputs = archive_outputs.push(out)
+          archive_deps = archive_deps.push(out.display())
         }
         Err(err) => {
           match err {
@@ -7104,6 +7538,10 @@ proc analyze_archive_items_impl(
         owner_key,
         library,
         task_specs,
+        task_count,
+        archive_outputs,
+        archive_deps,
+        has_pi,
         link_inputs,
         generated_objects,
         missing_sources,
@@ -7139,7 +7577,8 @@ pure archive_analysis_worker_count(requested: Int, item_count: Int) -> Int {
 }
 
 proc archive_analysis_process_pool(
-  items: List[Record],
+  plan: KbuildPlan,
+  compile_flags_by_dir: Map[Map[List[Str]]],
   requested_jobs: Int,
   xsh_bin: Path,
   worker: Path,
@@ -7148,29 +7587,41 @@ proc archive_analysis_process_pool(
   cflags: List[Str],
   defs: List[Str],
   includes: List[Str],
-) [fs, process, time, error] -> Result[List[Record]] {
-  let worker_count = archive_analysis_worker_count(requested_jobs, items.len())
+) [fs, process, env, time, error] -> Result[List[Record]] {
+  let item_count = plan.objects.len() + plan.lib_objects.len()
+  let flag_entries = compile_flags_cache_entries(compile_flags_by_dir)
+  let worker_count = archive_analysis_worker_count(requested_jobs, item_count)
+  let emit_task_specs = (env.get("XSH_LINUX_KBUILD_ARCHIVE_ONLY") ?? "") != "1"
 
   if worker_count <= 1 {
-    return analyze_archive_items_with_task_specs(items, cc, triple, cflags, defs, includes)?
+    let config = load_config_if_present(p".config")?
+    let items = archive_analysis_items(plan, config, compile_flags_by_dir)?
+    return analyze_archive_items_impl(items, cc, triple, cflags, defs, includes, emit_task_specs)?
   }
 
   let prefix = f"/tmp/xsh-kbuild-archive-analysis-${time.now()}"
+  let context_path = fp"${prefix}-context.json"
+  json.write(context_path, archive_analysis_plan_context(plan))?
+  defer fs.remove(context_path, missing_ok: true)?
+  let flags_path = fp"${prefix}-flags.json"
+  json.write(flags_path, {flags: flag_entries})?
+  defer fs.remove(flags_path, missing_ok: true)?
   var handles = []
   var output_paths: List[Path] = []
 
   for index in range(worker_count) {
-    let start = index * items.len() / worker_count
-    let end = (index + 1) * items.len() / worker_count
+    let start = index * item_count / worker_count
+    let end = (index + 1) * item_count / worker_count
     let input_path = fp"${prefix}-input-${index}.json"
     let output_path = fp"${prefix}-output-${index}.json"
-    let slice = items
-      |> drop(start)
-      |> take(end - start)
     json.write(
       input_path,
       {
-        items: slice,
+        context: context_path.display(),
+        start: start,
+        end: end,
+        flags: flags_path.display(),
+        emit_task_specs: emit_task_specs,
         cc: cc.display(),
         triple: triple,
         cflags: cflags,
@@ -7237,8 +7688,12 @@ proc assemble_builtin_archive_plan(
   plan: KbuildPlan,
   cc: Path,
   analysis_results: List[Record],
-) [fs, env, error] -> Result[BuiltinArchivePlan] {
+) [fs, env, time, error] -> Result[BuiltinArchivePlan] {
+  let materialize_tasks = (env.get("XSH_LINUX_KBUILD_ARCHIVE_ONLY") ?? "") != "1"
+  let result_merge_start = archive_plan_timing_start("merge-results")
   var tasks: List[make.MakeTask] = []
+  var deferred_task_specs: List[Record] = []
+  var task_count = 0
   var objects_by_dir: Map[List[Path]] = {}
   var deps_by_dir: Map[List[Str]] = {}
   var lib_objects_by_dir: Map[List[Path]] = {}
@@ -7246,78 +7701,130 @@ proc assemble_builtin_archive_plan(
   var missing_sources: List[Path] = []
   var generated_objects: List[Path] = []
   var link_inputs: List[Path] = []
+  var link_input_seen: Map[Bool] = {}
   var pi_relacheck_added = false
 
   for result in analysis_results {
     let owner_key: Str = result.get("owner")?
     let library: Bool = result.get("library")?
     let result_tasks: List[Record] = result.get("tasks")?
+    let result_task_count: Int = result.get("task_count")?
+    let result_archive_outputs: List[Str] = result.get("archive_outputs")?
+    let result_archive_deps: List[Str] = result.get("archive_deps")?
+    let result_has_pi: Bool = result.get("has_pi")?
     let result_link_inputs: List[Str] = result.get("link_inputs")?
-    var task_outputs: Map[Bool] = {}
 
-    for spec in result_tasks {
-      let kind: Str = spec.get("kind")?
+    if ! materialize_tasks {
+      deferred_task_specs = deferred_task_specs.extend(result_tasks)
+    }
 
-      if kind == "pi" {
-        let out = fp"${spec.get("output")?}"
-        let base_task_spec: Record = spec.get("base_task")?
-        let base_task = archive_compile_task_from_spec(base_task_spec)?
-        let base_out = fp"${spec.get("base")?}"
+    if materialize_tasks {
+      for spec in result_tasks {
+        let kind: Str = spec.get("kind")?
 
-        if ! pi_relacheck_added {
-          tasks = tasks.push(pi_relacheck_build_task(cc))
-          pi_relacheck_added = true
+        if kind == "pi" {
+          let out = fp"${spec.get("output")?}"
+          let base_task_spec: Record = spec.get("base_task")?
+          let base_out = fp"${spec.get("base")?}"
+          let check_task_name = f"${out.display()}:relacheck"
+
+          if ! pi_relacheck_added {
+            if materialize_tasks {
+              tasks = tasks.push(pi_relacheck_build_task(cc))
+            }
+
+            task_count += 1
+            pi_relacheck_added = true
+          }
+
+          if materialize_tasks {
+            let base_task = archive_compile_task_from_spec(base_task_spec)?
+            let objcopy_task = pi_objcopy_task(cc, base_out, out, [base_task.name])
+            let check_task = pi_relacheck_task(
+              pi_relacheck_path(),
+              out,
+              base_out,
+              [objcopy_task.name, pi_relacheck_path().display()],
+            )
+
+            tasks = tasks.push(base_task).push(objcopy_task).push(check_task)
+          }
+
+          task_count += 3
+          let input_key = path_key(out)
+          if ! link_input_seen.get(input_key, false) {
+            link_input_seen[input_key] = true
+            link_inputs = link_inputs.push(out)
+          }
+
+          objects_by_dir = objects_by_dir.push(owner_key, out)
+          deps_by_dir = deps_by_dir.push(owner_key, check_task_name)
+        } else if kind == "compile" {
+          let out = fp"${spec.get("output")?}"
+
+          if materialize_tasks {
+            tasks = tasks.push(archive_compile_task_from_spec(spec)?)
+          }
+
+          task_count += 1
+          let input_key = path_key(out)
+          if ! link_input_seen.get(input_key, false) {
+            link_input_seen[input_key] = true
+            link_inputs = link_inputs.push(out)
+          }
+
+          if library {
+            lib_objects_by_dir = lib_objects_by_dir.push(owner_key, out)
+            lib_deps_by_dir = lib_deps_by_dir.push(owner_key, out.display())
+          } else {
+            objects_by_dir = objects_by_dir.push(owner_key, out)
+            deps_by_dir = deps_by_dir.push(owner_key, out.display())
+          }
+        } else {
+          return Err(ScriptError.Failed("kbuild-archive-analysis", f"unknown archive-analysis task kind ${kind}"))
         }
+      }
+    } else {
+      if result_has_pi and ! pi_relacheck_added {
+        task_count += 1
+        pi_relacheck_added = true
+      }
 
-        let objcopy_task = pi_objcopy_task(cc, base_out, out, [base_task.name])
-        let check_task = pi_relacheck_task(
-          pi_relacheck_path(),
-          out,
-          base_out,
-          [objcopy_task.name, pi_relacheck_path().display()],
-        )
-
-        tasks = tasks.push(base_task).push(objcopy_task).push(check_task)
-        task_outputs[path_key(out)] = true
-        link_inputs = link_inputs.push(out)
-        let dir_objects = objects_by_dir.get(owner_key, [])
-        objects_by_dir[owner_key] = dir_objects.push(out)
-        let dir_deps = deps_by_dir.get(owner_key, [])
-        deps_by_dir[owner_key] = dir_deps.push(check_task.name)
-      } else if kind == "compile" {
-        let out = fp"${spec.get("output")?}"
-        let task = archive_compile_task_from_spec(spec)?
-
-        tasks = tasks.push(task)
-        task_outputs[path_key(out)] = true
-        link_inputs = link_inputs.push(out)
+      task_count += result_task_count
+      var output_index = 0
+      for output in result_archive_outputs {
+        let output_path = fp"${output}"
+        link_inputs = link_inputs.push(output_path)
+        let dep = result_archive_deps.get(output_index, "")
 
         if library {
-          let dir_objects = lib_objects_by_dir.get(owner_key, [])
-          lib_objects_by_dir[owner_key] = dir_objects.push(out)
-          let dir_deps = lib_deps_by_dir.get(owner_key, [])
-          lib_deps_by_dir[owner_key] = dir_deps.push(task.name)
+          lib_objects_by_dir = lib_objects_by_dir.push(owner_key, output_path)
+          if dep != "" {
+            lib_deps_by_dir = lib_deps_by_dir.push(owner_key, dep)
+          }
         } else {
-          let dir_objects = objects_by_dir.get(owner_key, [])
-          objects_by_dir[owner_key] = dir_objects.push(out)
-          let dir_deps = deps_by_dir.get(owner_key, [])
-          deps_by_dir[owner_key] = dir_deps.push(task.name)
+          objects_by_dir = objects_by_dir.push(owner_key, output_path)
+          if dep != "" {
+            deps_by_dir = deps_by_dir.push(owner_key, dep)
+          }
         }
-      } else {
-        return Err(ScriptError.Failed("kbuild-archive-analysis", f"unknown archive-analysis task kind ${kind}"))
+
+        output_index += 1
       }
     }
 
     for input in result_link_inputs {
       let input_path = fp"${input}"
       let input_key = path_key(input_path)
-      continue when task_outputs.get(input_key, false)
-      link_inputs = link_inputs.push(input_path)
+      if ! link_input_seen.get(input_key, false) {
+        link_input_seen[input_key] = true
+        link_inputs = link_inputs.push(input_path)
+      }
 
       if library {
-        lib_objects_by_dir[owner_key] = lib_objects_by_dir.get(owner_key, []).push(input_path)
+        lib_objects_by_dir = lib_objects_by_dir.push(owner_key, input_path)
       } else {
-        objects_by_dir[owner_key] = objects_by_dir.get(owner_key, []).push(input_path)
+        objects_by_dir = objects_by_dir.push(owner_key, input_path)
       }
     }
 
@@ -7333,10 +7840,14 @@ proc assemble_builtin_archive_plan(
   }
 
   archive_plan_progress(
-    f"xsh-kbuild-archive-plan analysis-complete ${analysis_results.len()} items ${tasks.len()} tasks",
+    f"xsh-kbuild-archive-plan analysis-complete ${analysis_results.len()} items ${task_count} tasks",
   )?
+  archive_plan_timing_done("merge-results", result_merge_start)
+  let barrier_merge_start = archive_plan_timing_start("merge-barriers")
   var archives: List[Path] = []
+  let children_start = archive_plan_timing_start("merge-children")
   var children_by_dir: Map[List[Path]] = {}
+  var parent_by_dir: Map[Str] = {}
   var dir_count = 0
 
   for dir in plan.dirs {
@@ -7347,12 +7858,16 @@ proc assemble_builtin_archive_plan(
     }
 
     if path_key(dir) != "." {
-      let parent = archive_parent_dir(dir)
-      let parent_key = path_key(parent)
-      children_by_dir[parent_key] = children_by_dir.get(parent_key, []).push(dir)
+      let dir_key = path_key(dir)
+      let parent_key = archive_parent_key(dir_key)
+      parent_by_dir[dir_key] = parent_key
+      children_by_dir = children_by_dir.push(parent_key, dir)
     }
   }
 
+  archive_plan_timing_done("merge-children", children_start)
+
+  let needed_start = archive_plan_timing_start("merge-needed")
   var archive_needed: Map[Bool] = {}
   var dir_index = plan.dirs.len()
 
@@ -7360,19 +7875,24 @@ proc assemble_builtin_archive_plan(
     dir_index -= 1
     let dir = plan.dirs[dir_index]
     let dir_key = path_key(dir)
-    var needed = objects_by_dir.get(dir_key, []).len() > 0
-
-    for child in children_by_dir.get(dir_key, []) {
-      if archive_needed.get(path_key(child), false) {
-        needed = true
-      }
-    }
+    let needed = objects_by_dir.get(dir_key, []).len() > 0 or archive_needed.get(dir_key, false)
 
     archive_needed[dir_key] = needed
+
+    if needed {
+      let parent_key = parent_by_dir.get(dir_key, "")
+      if parent_key != "" {
+        archive_needed[parent_key] = true
+      }
+    }
   }
 
-  archive_plan_progress("xsh-kbuild-archive-plan needed-complete")?
+  archive_plan_timing_done("merge-needed", needed_start)
 
+  archive_plan_progress("xsh-kbuild-archive-plan needed-complete")?
+  archive_plan_timing_done("merge-barriers", barrier_merge_start)
+
+  let archive_merge_start = archive_plan_timing_start("merge-archives")
   var archive_dir_count = 0
 
   for dir in plan.dirs {
@@ -7391,52 +7911,73 @@ proc assemble_builtin_archive_plan(
       let sorted_lib_objs = sorted_paths(lib_objs)
       let lib_archive = dir_lib_archive(dir)
       let lib_deps = lib_deps_by_dir.get(dir_key, [])
-      tasks = tasks.push(vmlinux_archive_argv_task(["llvm-ar"], sorted_lib_objs, lib_archive, lib_deps))
+      if materialize_tasks {
+        tasks = tasks.push(vmlinux_archive_argv_task(["llvm-ar"], sorted_lib_objs, lib_archive, lib_deps))
+      }
+
+      task_count += 1
       archives = archives.push(lib_archive)
     }
 
     var objs = objects_by_dir.get(dir_key, [])
     var deps = deps_by_dir.get(dir_key, [])
+    var child_archives: List[Path] = []
+    var marker_archive = p""
+    var marker_dep = ""
+    var has_marker_archive = false
 
     for child in children_by_dir.get(dir_key, []) {
       if archive_needed.get(path_key(child), false) {
         let child_archive = dir_archive(child)
 
-        let marker = if dir_key == "arch/arm64/kernel" and path_key(child) == "arch/arm64/kernel/pi" {
-          p".xsh-kbuild/obj/arch/arm64/kernel/rsi.o"
+        if dir_key == "arch/arm64/kernel" and path_key(child) == "arch/arm64/kernel/pi" {
+          marker_archive = child_archive
+          marker_dep = child_archive.display()
+          has_marker_archive = true
         } else {
-          p"."
+          child_archives = child_archives.push(child_archive)
         }
-
-        let inserted = insert_archive_before(objs, deps, child_archive, child_archive.display(), marker)
-        objs = inserted.objs
-        deps = inserted.deps
       }
+    }
+
+    if has_marker_archive {
+      let inserted = insert_archive_before(
+        objs,
+        deps,
+        marker_archive,
+        marker_dep,
+        p".xsh-kbuild/obj/arch/arm64/kernel/rsi.o",
+      )
+      objs = inserted.objs
+      deps = inserted.deps
+    }
+
+    for child_archive in child_archives {
+      objs = objs.push(child_archive)
+      deps = deps.push(child_archive.display())
     }
 
     if archive_needed.get(dir_key, false) {
       let built_archive = dir_archive(dir)
-      tasks = tasks.push(vmlinux_archive_argv_task(["llvm-ar"], objs, built_archive, deps))
+      if materialize_tasks {
+        tasks = tasks.push(vmlinux_archive_argv_task(["llvm-ar"], objs, built_archive, deps))
+      }
+
+      task_count += 1
       archives = archives.push(built_archive)
     }
   }
 
-  var unique_tasks: List[make.MakeTask] = []
-  var task_names: Map[Bool] = {}
+  archive_plan_timing_done("merge-archives", archive_merge_start)
 
-  for task in tasks {
-    if ! task_names.get(task.name, false) {
-      unique_tasks = unique_tasks.push(task)
-      task_names[task.name] = true
-    }
-  }
-
-  archive_plan_progress(f"xsh-kbuild-archive-plan complete ${unique_tasks.len()} tasks ${archives.len()} archives")?
+  archive_plan_progress(f"xsh-kbuild-archive-plan complete ${task_count} tasks ${archives.len()} archives")?
 
   return {
-    tasks: unique_tasks,
+    tasks: if materialize_tasks { tasks } else { [] },
+    task_specs: if materialize_tasks { [] } else { deferred_task_specs },
+    task_count: task_count,
     archives: archives,
-    link_inputs: unique_paths(link_inputs),
+    link_inputs: link_inputs,
     missing_sources: missing_sources,
     generated_objects: generated_objects,
   }
@@ -7449,15 +7990,17 @@ export proc plan_builtin_archives(
   cflags: List[Str],
   defs: List[Str],
   includes: List[Str],
-) [fs, env, error] -> Result[BuiltinArchivePlan] {
+) [fs, env, time, error] -> Result[BuiltinArchivePlan] {
   let items = archive_analysis_items_for_plan(plan, triple)?
-  let results = analyze_archive_items_with_task_specs(
+  let emit_task_specs = (env.get("XSH_LINUX_KBUILD_ARCHIVE_ONLY") ?? "") != "1"
+  let results = analyze_archive_items_impl(
     items,
     cc,
     triple,
     cflags,
     defs,
     includes,
+    emit_task_specs,
   )?
   return assemble_builtin_archive_plan(plan, cc, results)
 }
@@ -7482,12 +8025,26 @@ export proc plan_builtin_archives_with_analysis_workers(
     return plan_builtin_archives(plan, cc, triple, cflags, defs, includes)?
   }
 
-  let items = archive_analysis_items_for_plan(plan, triple)?
-  archive_plan_progress(
-    f"xsh-kbuild-archive-plan analysis-start ${items.len()} items ${analysis_jobs} requested-workers",
+  let config = load_config_if_present(p".config")?
+  let flags_start = archive_plan_timing_start("item-flags")
+  let compile_flags_by_dir = cached_kbuild_compile_flags_for_dirs(
+    p".",
+    plan.dirs,
+    config,
+    if triple == "x86_64-linux-gnu" {
+      "x86"
+    } else {
+      "arm64"
+    },
   )?
+  archive_plan_timing_done("item-flags", flags_start)
+  archive_plan_progress(
+    f"xsh-kbuild-archive-plan analysis-start ${plan.objects.len() + plan.lib_objects.len()} items ${analysis_jobs} requested-workers",
+  )?
+  let analysis_start = archive_plan_timing_start("analysis")
   let results = archive_analysis_process_pool(
-    items,
+    plan,
+    compile_flags_by_dir,
     analysis_jobs,
     xsh_bin,
     worker,
@@ -7497,5 +8054,9 @@ export proc plan_builtin_archives_with_analysis_workers(
     defs,
     includes,
   )?
-  return assemble_builtin_archive_plan(plan, cc, results)
+  archive_plan_timing_done("analysis", analysis_start)
+  let merge_start = archive_plan_timing_start("merge")
+  let archive_plan = assemble_builtin_archive_plan(plan, cc, results)?
+  archive_plan_timing_done("merge", merge_start)
+  return archive_plan
 }

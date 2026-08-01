@@ -248,7 +248,7 @@ proc test_kbuild_writes_text_plan(ctx: TestContext) [fs, error] {
   test.ok(contains_path(loaded.objects, "init/main.o"))?
 }
 
-proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, error] {
+proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, time, error] {
   let root = test.temp_dir(ctx, name: "linux-archive-tasks")?
   write_fixture(root)?
 
@@ -301,6 +301,42 @@ proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, er
   )?
 
   fs.write(
+    fp"${root}/fs/proc/task_mmu.c",
+    """int task_mmu(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/fs/proc/inode.c",
+    """int proc_inode(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/fs/devpts/inode.c",
+    """int devpts_inode(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/fs/ramfs/inode.c",
+    """int ramfs_inode(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/fs/ramfs/file-mmu.c",
+    """int ramfs_file_mmu(void) { return 0; }
+""",
+  )?
+
+  fs.write(
+    fp"${root}/mm/mm.c",
+    """int mm(void) { return 0; }
+""",
+  )?
+
+  fs.write(
     fp"${root}/block/blk-core.c",
     """int blk_core(void) { return 0; }
 """,
@@ -344,7 +380,7 @@ proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, er
 
     test.eq(archive_plan.missing_sources.len(), 0)?
     test.eq(archive_plan.generated_objects.len(), 0)?
-    test.eq(archive_plan.tasks.len(), 18)?
+    test.eq(archive_plan.tasks.len(), 29)?
     test.ok(contains_path(archive_plan.archives, ".xsh-kbuild/built-in.a"))?
     test.ok(contains_path(archive_plan.archives, ".xsh-kbuild/lib.a"))?
     test.ok(contains_path(archive_plan.archives, ".xsh-kbuild/init/built-in.a"))?
@@ -361,23 +397,31 @@ proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, er
     let outputs: List[Str] = first.get("outputs")?
     test.ok(argv.len() > 0)?
     test.ok(outputs.len() > 0)?
-    let asm_task = tasks[7]
-    let asm_argv: List[Str] = asm_task.get("argv")?
-    test.ok("-D__ASSEMBLY__" in asm_argv)?
-    test.ok("-fno-PIE" in asm_argv)?
-    test.ok("-DKASAN_SHADOW_SCALE_SHIFT=" in asm_argv)?
-    test.ok("-nostdinc" in asm_argv)?
-    test.ok("include/linux/compiler-version.h" in asm_argv)?
-    test.ok("include/linux/kconfig.h" in asm_argv)?
-    test.eq("-O2" in asm_argv, false)?
-    test.eq("-mgeneral-regs-only" in asm_argv, false)?
-    test.eq("-mbranch-protection=pac-ret" in asm_argv, false)?
-    test.eq("include/generated/utsversion.h" in asm_argv, false)?
-    test.eq("include/linux/compiler_types.h" in asm_argv, false)?
+    var saw_asm = false
+
+    for task in archive_plan.tasks {
+      if task.name == ".xsh-kbuild/obj/init/lib/helper.o" {
+        saw_asm = true
+        let asm_argv = [f"${arg}" for arg in task.argv]
+        test.ok("-D__ASSEMBLY__" in asm_argv)?
+        test.ok("-fno-PIE" in asm_argv)?
+        test.ok("-DKASAN_SHADOW_SCALE_SHIFT=" in asm_argv)?
+        test.ok("-nostdinc" in asm_argv)?
+        test.ok("include/linux/compiler-version.h" in asm_argv)?
+        test.ok("include/linux/kconfig.h" in asm_argv)?
+        test.eq("-O2" in asm_argv, false)?
+        test.eq("-mgeneral-regs-only" in asm_argv, false)?
+        test.eq("-mbranch-protection=pac-ret" in asm_argv, false)?
+        test.eq("include/generated/utsversion.h" in asm_argv, false)?
+        test.ok("include/linux/compiler_types.h" in asm_argv)?
+      }
+    }
+
+    test.ok(saw_asm)?
   } ?
 }
 
-proc test_kbuild_plans_pi_relacheck_after_objcopy(ctx: TestContext) [fs, env, error] {
+proc test_kbuild_plans_pi_relacheck_after_objcopy(ctx: TestContext) [fs, env, time, error] {
   let root = test.temp_dir(ctx, name: "linux-pi-relacheck")?
   fs.mkdir(fp"${root}/arch/arm64/kernel/pi")?
   fs.write(fp"${root}/.config", "")?
@@ -513,7 +557,7 @@ proc test_kbuild_runs_archive_plan_output_from_json(ctx: TestContext) [fs, proce
   test.eq(second.read_text()?, "firstsecond")?
 }
 
-proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, env, error] {
+proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, env, time, error] {
   let root = test.temp_dir(ctx, name: "linux-archive-missing")?
 
   fs.write(
@@ -671,10 +715,36 @@ proc test_kbuild_parallel_archive_analysis_matches_serial(ctx: TestContext) [fs,
       )?
       test.eq(parallel.tasks[index].deps, serial.tasks[index].deps)?
     }
+
+    env {
+      XSH_LINUX_KBUILD_ARCHIVE_ONLY = "1"
+    } {
+      let compact_serial = kbuild.plan_builtin_archives(plan, /usr/bin/cc, "aarch64-linux-gnu", [], [], [])?
+      let compact_parallel = kbuild.plan_builtin_archives_with_analysis_workers(
+        plan,
+        /usr/bin/cc,
+        "aarch64-linux-gnu",
+        [],
+        [],
+        [],
+        2,
+        xsh_bin,
+        worker,
+      )?
+      test.eq(compact_parallel.archives, compact_serial.archives)?
+      test.eq(compact_parallel.link_inputs, compact_serial.link_inputs)?
+      test.eq(compact_parallel.generated_objects, compact_serial.generated_objects)?
+      test.eq(compact_parallel.missing_sources, compact_serial.missing_sources)?
+      test.eq(compact_parallel.task_count, compact_serial.task_count)?
+      test.eq(compact_parallel.task_specs, compact_serial.task_specs)?
+      test.eq(compact_parallel.tasks.len(), 0)?
+      test.eq(compact_serial.tasks.len(), 0)?
+      test.ok(compact_parallel.task_specs.len() > 0)?
+    } ?
   } ?
 }
 
-proc test_kbuild_adds_x86_kvm_local_include(ctx: TestContext) [fs, env, error] {
+proc test_kbuild_adds_x86_kvm_local_include(ctx: TestContext) [fs, env, time, error] {
   let root = test.temp_dir(ctx, name: "linux-x86-kvm-include")?
   fs.mkdir(fp"${root}/arch/x86/kvm/mmu")?
 
@@ -720,7 +790,7 @@ int mmu(void) { return 0; }
   } ?
 }
 
-proc test_kbuild_applies_object_and_subdir_cflags(ctx: TestContext) [fs, env, error] {
+proc test_kbuild_applies_object_and_subdir_cflags(ctx: TestContext) [fs, env, time, error] {
   let root = test.temp_dir(ctx, name: "linux-cflags")?
   fs.mkdir(fp"${root}/sound/hda/common")?
   fs.mkdir(fp"${root}/sound/hda/controllers")?
