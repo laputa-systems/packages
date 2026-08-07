@@ -2,7 +2,7 @@ export let name = "xsh"
 
 export let ver = "0.0.0"
 
-export let rel = "12"
+export let rel = "13"
 
 export let deps = []
 
@@ -10,7 +10,7 @@ export let mkdeps_host = []
 
 export let upstream_sources = [
   {
-    source: p"https://github.com/laputa-systems/xsh/releases/download/release-435af27be8b4a6eaf3a1ef9748e5397806dea9d6/xsh-multicall-release-435af27be8b4a6eaf3a1ef9748e5397806dea9d6-ARCH-linux-musl => xsh-multicall",
+    source: p"https://github.com/laputa-systems/xsh/releases/download/release-d09c6c3305ab8c650043bd8d32e03f2db6509e97/xsh-release-d09c6c3305ab8c650043bd8d32e03f2db6509e97-ARCH-linux-musl => xsh-bin",
     kind: "auto",
     architectures: [
       "all",
@@ -18,16 +18,16 @@ export let upstream_sources = [
     checksums: [
       {
         arch: "aarch64",
-        sha256: "a5e293868a2227b0a2378ba4c43cec204cbe6819b47324f147c8aa135b8e176f",
+        sha256: "bc9117b8ac70c726002835e7ab1eaff0d45ede7b067bc85ddba7971eb8b8ffbb",
       },
       {
         arch: "x86_64",
-        sha256: "7519ff16d0b2b659f98de10e00a1ace65d474175a1ebef229a98f43bf85febc5",
+        sha256: "03e190c8ee15020b04b27e2066a7e53665452c9dce821bd0af80378ef664c746",
       },
     ],
   },
   {
-    source: p"https://github.com/laputa-systems/xsh/releases/download/release-435af27be8b4a6eaf3a1ef9748e5397806dea9d6/core-release-435af27be8b4a6eaf3a1ef9748e5397806dea9d6.tar.xz => xsh-core",
+    source: p"https://github.com/laputa-systems/xsh/releases/download/release-d09c6c3305ab8c650043bd8d32e03f2db6509e97/xshi-release-d09c6c3305ab8c650043bd8d32e03f2db6509e97-ARCH-linux-musl => xshi-bin",
     kind: "auto",
     architectures: [
       "all",
@@ -35,11 +35,45 @@ export let upstream_sources = [
     checksums: [
       {
         arch: "aarch64",
-        sha256: "ad37c386b869418a55d74a40fd4ad4179efa41300eb4ebce811fa2a554416cb9",
+        sha256: "5cf2f028fd0f0e6cbae213d7037e28e1aa92ca74768c5fce5e300d9725014bb6",
       },
       {
         arch: "x86_64",
-        sha256: "ad37c386b869418a55d74a40fd4ad4179efa41300eb4ebce811fa2a554416cb9",
+        sha256: "897b22cae065625179f8b2cb18c48828464eb1cd135f32da0e9358b237f3e195",
+      },
+    ],
+  },
+  {
+    source: p"https://github.com/laputa-systems/xsh/releases/download/release-d09c6c3305ab8c650043bd8d32e03f2db6509e97/xsht-release-d09c6c3305ab8c650043bd8d32e03f2db6509e97-ARCH-linux-musl => xsht-bin",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "aarch64",
+        sha256: "86c2d1ac329702c0def779adb47640f84cdda9466630e2c98681750fc037a2e2",
+      },
+      {
+        arch: "x86_64",
+        sha256: "83ea617d6fc1a9f9e7908b292d51d8b263df15904d67d17b7c7f04d825a98a20",
+      },
+    ],
+  },
+  {
+    source: p"https://github.com/laputa-systems/xsh/releases/download/release-d09c6c3305ab8c650043bd8d32e03f2db6509e97/core-release-d09c6c3305ab8c650043bd8d32e03f2db6509e97.tar.xz => xsh-core",
+    kind: "auto",
+    architectures: [
+      "all",
+    ],
+    checksums: [
+      {
+        arch: "aarch64",
+        sha256: "7040377b294b165fde676f6b808d32ee5d5dc0f2cc84dd6d1350974d22989c95",
+      },
+      {
+        arch: "x86_64",
+        sha256: "7040377b294b165fde676f6b808d32ee5d5dc0f2cc84dd6d1350974d22989c95",
       },
     ],
   },
@@ -284,11 +318,11 @@ export let filetree = [
   },
   {
     path: p"usr/bin/xshi",
-    kind: "symlink",
+    kind: "binary",
   },
   {
     path: p"usr/bin/xsht",
-    kind: "symlink",
+    kind: "binary",
   },
   {
     path: p"usr/lib/xsh/core/basename",
@@ -525,20 +559,22 @@ export let filetree = [
 ]
 
 export proc build(dest: Path) [fs, error] {
-  let staged = fs.children(p"xsh-multicall")? |> where .kind == "file"
-
-  if staged.len() != 1 {
-    return Err(XshPackageError.Source("expected one staged xsh multicall release artifact"))
-  }
-
   fs.mkdir(fp"${dest}/usr/bin")?
-  fs.install(staged[0].path, fp"${dest}/usr/bin/xsh", 0o755, parents: true, overwrite: true)?
-
-  for command_name in ["sh", "xshi", "xsht"] {
-    let link = fp"${dest}/usr/bin/${command_name}"
-    fs.remove(link, missing_ok: true)?
-    fs.symlink(p"xsh", link)?
+  for pair in [
+    {source: "xsh-bin", dest: "xsh"},
+    {source: "xshi-bin", dest: "xshi"},
+    {source: "xsht-bin", dest: "xsht"},
+  ] {
+    let staged = fs.children(fp"${pair.source}")? |> where .kind == "file"
+    if staged.len() != 1 {
+      return Err(XshPackageError.Source(f"expected one staged ${pair.source} release artifact"))
+    }
+    fs.install(staged[0].path, fp"${dest}/usr/bin/${pair.dest}", 0o755, parents: true, overwrite: true)?
   }
+
+  let shell = fp"${dest}/usr/bin/sh"
+  fs.remove(shell, missing_ok: true)?
+  fs.symlink(p"xshi", shell)?
 
   let _ = fs.copy_tree(p"xsh-core", fp"${dest}/usr/lib/xsh/core", parents: true, overwrite: true)?
 

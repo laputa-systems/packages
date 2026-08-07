@@ -162,7 +162,7 @@ main(@args)?
 
 proc seed_chroot_runner(root: Path) [fs, process, env, error] {
   let xsh = xsh_runner()?
-  seed_xsh_multicall(root, xsh)?
+  seed_xsh_runners(root, xsh)?
 
   if fs.exists(/usr/lib/xsh)? {
     let _ = fs.copy_tree(/usr/lib/xsh, fp"${root}/usr/lib/xsh", parents: true, overwrite: true)?
@@ -781,22 +781,32 @@ proc regular_xsh_source(xsh: Path) [fs, error] -> Result[Path] {
   return Err(PmError.PackageContract(f"${xsh.display()} has too many symlink levels"))
 }
 
-proc seed_xsh_multicall(root: Path, xsh: Path) [fs, error] {
+proc direct_xsh_source(xsh: Path, name: Str) [fs, error] -> Result[Path] {
+  if name == "xsh" {
+    return regular_xsh_source(xsh)
+  }
+
+  let sibling = fp"${xsh.parent}/${name}"
+  if ! fs.exists(sibling)? {
+    return Err(PmError.PackageContract(f"missing direct XSH release binary ${sibling}"))
+  }
+  return regular_xsh_source(sibling)
+}
+
+proc seed_xsh_runners(root: Path, xsh: Path) [fs, error] {
   let bin = fp"${root}/bin"
-  let multicall = fp"${bin}/xsh-multicall"
   fs.mkdir(bin)?
-  fs.remove(multicall, missing_ok: true)?
-  fs.install(regular_xsh_source(xsh)?, multicall, 0o755, parents: true, overwrite: true)?
 
   for name in ["xsh", "xshi", "xsht"] {
+    let source = direct_xsh_source(xsh, name)?
     let dest = fp"${bin}/${name}"
     fs.remove(dest, missing_ok: true)?
-    fs.symlink(p"xsh-multicall", dest)?
+    fs.install(source, dest, 0o755, parents: true, overwrite: true)?
   }
 }
 
 proc seed_package_proof_shell(proof_root: Path, xsh: Path) [fs, process, env, error] {
-  seed_xsh_multicall(proof_root, xsh)?
+  seed_xsh_runners(proof_root, xsh)?
 
   for proof_sh in [fp"${proof_root}/usr/bin/sh", fp"${proof_root}/bin/sh"] {
     fs.mkdir(proof_sh.parent)?

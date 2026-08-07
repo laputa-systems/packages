@@ -1,15 +1,20 @@
 FROM alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d AS xsh-unpack
 
-ARG XSH_RELEASE=release-e12de8c8ce6388bcbf80df96bf57ebd8afc2d0df
+ARG XSH_RELEASE=release-d09c6c3305ab8c650043bd8d32e03f2db6509e97
 ARG XSH_RELEASE_ARCH=aarch64
-ARG XSH_RELEASE_SHA256=0874226398877b375ce2a8453f7b587d75ec6a40a601fddcf33fd80dbdf08a27
+ARG XSH_RELEASE_XSH_SHA256=bc9117b8ac70c726002835e7ab1eaff0d45ede7b067bc85ddba7971eb8b8ffbb
+ARG XSH_RELEASE_XSHI_SHA256=5cf2f028fd0f0e6cbae213d7037e28e1aa92ca74768c5fce5e300d9725014bb6
+ARG XSH_RELEASE_XSHT_SHA256=86c2d1ac329702c0def779adb47640f84cdda9466630e2c98681750fc037a2e2
 
-ADD --checksum=sha256:${XSH_RELEASE_SHA256} https://github.com/laputa-systems/xsh/releases/download/${XSH_RELEASE}/xsh-multicall-${XSH_RELEASE}-${XSH_RELEASE_ARCH}-linux-musl /tmp/xsh-multicall
+ADD --checksum=sha256:${XSH_RELEASE_XSH_SHA256} https://github.com/laputa-systems/xsh/releases/download/${XSH_RELEASE}/xsh-${XSH_RELEASE}-${XSH_RELEASE_ARCH}-linux-musl /tmp/xsh
+ADD --checksum=sha256:${XSH_RELEASE_XSHI_SHA256} https://github.com/laputa-systems/xsh/releases/download/${XSH_RELEASE}/xshi-${XSH_RELEASE}-${XSH_RELEASE_ARCH}-linux-musl /tmp/xshi
+ADD --checksum=sha256:${XSH_RELEASE_XSHT_SHA256} https://github.com/laputa-systems/xsh/releases/download/${XSH_RELEASE}/xsht-${XSH_RELEASE}-${XSH_RELEASE_ARCH}-linux-musl /tmp/xsht
 
 RUN mkdir -p /image/usr/bin /image/bin /image/tmp /image/var/tmp && \
-    cp /tmp/xsh-multicall /image/bin/xsh-multicall && \
-    chmod 0755 /image/bin/xsh-multicall && \
-    for command_name in xsh xshi xsht; do ln -s xsh-multicall /image/bin/"${command_name}"; done && \
+    cp /tmp/xsh /image/bin/xsh && \
+    cp /tmp/xshi /image/bin/xshi && \
+    cp /tmp/xsht /image/bin/xsht && \
+    chmod 0755 /image/bin/xsh /image/bin/xshi /image/bin/xsht && \
     printf '#!/bin/xsh\nrun /bin/xshi @args ?\n' > /image/usr/bin/sh && \
     cp /image/usr/bin/sh /image/bin/sh && \
     chmod 0755 /image/usr/bin/sh /image/bin/sh && \

@@ -102,12 +102,10 @@ Most PM tests need Linux filesystem/process behavior. From this repo, run:
 make test
 ```
 
-`make test` builds a scratch-runtime test image, preferring the local sibling
-XSH Linux build under `../xsh/target/<arch>-unknown-linux-musl/debug` and
-falling back to the published XSH release when no local build exists. It runs
-`xsht test --cov --cov-json target/coverage/pm.json tests/xsh/pm.xsh` against
-the checkout mounted at `/src/packages`. Inspect the coverage JSON after the run
-for PM source line/proc coverage by file.
+`make test` builds a scratch-runtime test image from pinned published XSH
+release binaries. It runs `xsht test --cov --cov-json target/coverage/pm.json
+tests/xsh/pm.xsh` against the checkout mounted at `/src/packages`. Inspect the
+coverage JSON after the run for PM source line/proc coverage by file.
 
 For a host-native run on Linux, use the checked-out debug XSH without Docker:
 
