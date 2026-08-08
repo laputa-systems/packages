@@ -40,7 +40,7 @@ proc cross_cc(default_cc: Path, build_arch: Str, target_arch: Str) [env, error] 
   }
 
   let build_root = build_root_path()?
-  return fp"${build_root}/usr/lib/llvm22/bin/clang-22"
+  return fp"${build_root}/usr/lib/llvm23/bin/clang-23"
 }
 
 proc compile_hello(
@@ -64,7 +64,7 @@ proc compile_hello(
   let build_root = build_root_path()?
 
   env {
-    LD_LIBRARY_PATH = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
+    LD_LIBRARY_PATH = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib"
     PATH = f"${build_root}/usr/lib/llvm-toolchain/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}"
   } {
     run $cc f"--target=${triple}" f"--sysroot=${rootfs.display()}" "-fuse-ld=lld" "-nostdlib" fp"${lib_dir}/Scrt1.o" fp"${lib_dir}/crti.o" $hello_src f"-L${lib_dir.display()}" "-lc" fp"${lib_dir}/crtn.o" f"-Wl,-rpath,${lib_dir.display()}" f"-Wl,-dynamic-linker,${dynlinker.display()}" "-o" $hello ?

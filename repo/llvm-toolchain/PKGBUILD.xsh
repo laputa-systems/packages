@@ -4,7 +4,7 @@ error LlvmToolchainError = Failed(message: Str)
 
 export let name = "llvm-toolchain"
 
-export let ver = "22.1.8"
+export let ver = "23.1.0-rc2"
 
 export let rel = "13"
 
@@ -16,7 +16,7 @@ export let nostrip = true
 
 export let upstream_sources = [
   {
-    source: p"https://github.com/laputa-systems/llvm-prebuilt-musl/releases/download/llvm-musl-VERSION/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt",
+    source: p"https://github.com/laputa-systems/llvm-prebuilt-musl/releases/download/llvm-musl-VERSION-6eb5fb9/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt",
     kind: "auto",
     architectures: [
       "all",
@@ -24,11 +24,11 @@ export let upstream_sources = [
     checksums: [
       {
         arch: "aarch64",
-        sha256: "675f9cf871313a5672a63882d4d30dd6dd55df0aa9caee70970542eb03a23da3",
+        sha256: "0c9bd6f0fefa26dbdb7d6ed568f3799b558428b1ce1264656aa328fc6fd9e32d",
       },
       {
         arch: "x86_64",
-        sha256: "ac0bd443a1933bbd2c0efbedf6ebc97ff8ca2469e5ba65eadb966fb75f65dd1c",
+        sha256: "36647cca0bf57d206a6ce757d07a9d8489ef6ccf283a2cc7f740d1cba99a088b",
       },
     ],
   },
@@ -40,95 +40,107 @@ export let filetree = [
     kind: "tree",
   },
   {
-    path: p"usr/lib/llvm22/bin/clang",
+    path: p"usr/lib/llvm23/bin/clang",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/bin/clang++",
+    path: p"usr/lib/llvm23/bin/clang++",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/bin/clang-22",
+    path: p"usr/lib/llvm23/bin/clang-23",
     kind: "binary",
   },
   {
-    path: p"usr/lib/llvm22/bin/clang-cl",
+    path: p"usr/lib/llvm23/bin/clang-cl",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/bin/clang-cpp",
+    path: p"usr/lib/llvm23/bin/clang-cpp",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/bin/ld.lld",
+    path: p"usr/lib/llvm23/bin/ld.lld",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/bin/ld64.lld",
+    path: p"usr/lib/llvm23/bin/ld64.lld",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/bin/lld",
+    path: p"usr/lib/llvm23/bin/lld",
     kind: "binary",
   },
   {
-    path: p"usr/lib/llvm22/bin/lld-link",
+    path: p"usr/lib/llvm23/bin/lld-link",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/bin/llvm-ar",
+    path: p"usr/lib/llvm23/bin/llvm-ar",
     kind: "binary",
   },
   {
-    path: p"usr/lib/llvm22/bin/llvm-nm",
+    path: p"usr/lib/llvm23/bin/llvm-nm",
     kind: "binary",
   },
   {
-    path: p"usr/lib/llvm22/bin/llvm-objcopy",
+    path: p"usr/lib/llvm23/bin/llvm-objcopy",
     kind: "binary",
   },
   {
-    path: p"usr/lib/llvm22/bin/llvm-objdump",
+    path: p"usr/lib/llvm23/bin/llvm-objdump",
     kind: "binary",
   },
   {
-    path: p"usr/lib/llvm22/bin/llvm-ranlib",
+    path: p"usr/lib/llvm23/bin/llvm-ranlib",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/bin/llvm-readelf",
+    path: p"usr/lib/llvm23/bin/llvm-readelf",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/bin/llvm-readobj",
+    path: p"usr/lib/llvm23/bin/llvm-readobj",
     kind: "binary",
   },
   {
-    path: p"usr/lib/llvm22/bin/llvm-size",
+    path: p"usr/lib/llvm23/bin/llvm-size",
     kind: "binary",
   },
   {
-    path: p"usr/lib/llvm22/bin/llvm-strings",
+    path: p"usr/lib/llvm23/bin/llvm-strings",
     kind: "binary",
   },
   {
-    path: p"usr/lib/llvm22/bin/llvm-strip",
+    path: p"usr/lib/llvm23/bin/llvm-strip",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/bin/llvm-symbolizer",
+    path: p"usr/lib/llvm23/bin/llvm-symbolizer",
     kind: "binary",
   },
   {
-    path: p"usr/lib/llvm22/bin/wasm-ld",
+    path: p"usr/lib/llvm23/bin/wasm-ld",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/lib/libLTO.so",
+    path: p"usr/lib/llvm23/lib/libLTO.so",
     kind: "symlink",
   },
   {
-    path: p"usr/lib/llvm22/lib/libLTO.so.22.1",
+    path: p"usr/lib/llvm23/lib/libLTO.so.23.1-rc2",
+    kind: "binary",
+  },
+  {
+    path: p"usr/lib/llvm23/lib/libclang.so",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/llvm23/lib/libclang.so.23.1-rc2",
+    kind: "symlink",
+  },
+  {
+    path: p"usr/lib/llvm23/lib/libclang.so.23.1.0-rc2",
     kind: "binary",
   },
 ]
@@ -321,7 +333,7 @@ proc main(...argv: List[Str]) [fs, process, env, error] {
 
   if ! is_clang {
 env {
-      LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm22/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}"
+      LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm23/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}"
     } {
       run $real @argv ?
     } ?
@@ -339,22 +351,22 @@ env {
     f"--target=\${arch}-linux-musl",
     "--sysroot=/",
     "-resource-dir",
-    "/usr/lib/llvm22/lib/clang/22",
+    "/usr/lib/llvm23/lib/clang/23",
   ]
 
   if frontend and ! include_controlled(argv) {
     exec_args = exec_args.push("-nostdinc")
 
     if is_cxx {
-      exec_args = exec_args.extend(["-isystem", "/usr/lib/llvm22/include/c++/v1"])
-      let cxx_target = fp"/usr/lib/llvm22/include/\${arch}-linux-musl/c++/v1"
+      exec_args = exec_args.extend(["-isystem", "/usr/lib/llvm23/include/c++/v1"])
+      let cxx_target = fp"/usr/lib/llvm23/include/\${arch}-linux-musl/c++/v1"
 
       if fs.exists(cxx_target)? {
         exec_args = exec_args.extend(["-isystem", cxx_target.display()])
       }
     }
 
-    exec_args = exec_args.extend(["-isystem", "/usr/lib/llvm22/lib/clang/22/include", "-isystem", "/usr/include"])
+    exec_args = exec_args.extend(["-isystem", "/usr/lib/llvm23/lib/clang/23/include", "-isystem", "/usr/include"])
   }
 
   if frontend {
@@ -372,7 +384,7 @@ env {
       "-L",
       rooted(sysroot, "usr/lib").display(),
       "-L",
-      rooted(sysroot, "usr/lib/llvm22/lib").display(),
+      rooted(sysroot, "usr/lib/llvm23/lib").display(),
     ])
 
     if runtime {
@@ -394,7 +406,7 @@ env {
 
   if linking and is_cxx and runtime {
     exec_args = exec_args.extend(["-lc++", "-lc++abi"])
-    let unwind = rooted(sysroot, "usr/lib/llvm22/lib/libunwind.a")
+    let unwind = rooted(sysroot, "usr/lib/llvm23/lib/libunwind.a")
 
     if fs.exists(unwind)? {
       exec_args = exec_args.push(unwind.display())
@@ -407,7 +419,7 @@ env {
     exec_args = exec_args.push("-lc")
   }
 
-  let builtins = rooted(sysroot, f"usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-\${arch}.a")
+  let builtins = rooted(sysroot, f"usr/lib/llvm23/lib/clang/23/lib/linux/libclang_rt.builtins-\${arch}.a")
 
   if linking and runtime and fs.exists(builtins)? {
     exec_args = exec_args.push(builtins.display())
@@ -418,7 +430,7 @@ env {
   }
 
   env {
-    LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm22/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}"
+    LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm23/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}"
   } {
     run $real @exec_args ?
   } ?
@@ -484,7 +496,7 @@ proc install_tool_alias(bin: Path, tool_name: Str, target: Str) [fs, error] {
 proc install_prebuilt_tree(dest: Path) [fs, env, error] {
   let arch = pm_util.target_arch()?
   let source = p"llvm-prebuilt"
-  let target = fp"${dest}/usr/lib/llvm22"
+  let target = fp"${dest}/usr/lib/llvm23"
 
   if ! fs.exists(source)? {
     return Err(LlvmToolchainError.Failed("missing staged LLVM prebuilt tree"))
@@ -493,7 +505,7 @@ proc install_prebuilt_tree(dest: Path) [fs, env, error] {
   fs.remove(target, missing_ok: true)?
   let _ = fs.copy_tree(source, target, parents: true, overwrite: true)?
   let bin = fp"${target}/bin"
-  install_tool_alias(bin, "clang-22", "clang")?
+  install_tool_alias(bin, "clang-23", "clang")?
   install_tool_alias(bin, "clang++", "clang")?
   install_tool_alias(bin, "ld.lld", "lld")?
   install_tool_alias(bin, "llvm-readelf", "llvm-readobj")?
@@ -513,27 +525,27 @@ proc install_prebuilt_tree(dest: Path) [fs, env, error] {
     require_executable(fp"${bin}/${tool}", tool)?
   }
 
-  require_file(fp"${target}/lib/clang/22/include/stddef.h", "Clang resource headers")?
-  require_file(fp"${target}/lib/clang/22/lib/linux/libclang_rt.builtins-${arch}.a", "compiler-rt builtins")?
+  require_file(fp"${target}/lib/clang/23/include/stddef.h", "Clang resource headers")?
+  require_file(fp"${target}/lib/clang/23/lib/linux/libclang_rt.builtins-${arch}.a", "compiler-rt builtins")?
 }
 
 export proc install_wrappers(dest: Path) [fs, error] {
-  write_wrapper(dest, "cc", /usr/lib/llvm22/bin/clang, clang: true)?
-  write_wrapper(dest, "clang", /usr/lib/llvm22/bin/clang, clang: true)?
-  write_wrapper(dest, "c++", /usr/lib/llvm22/bin/clang++, clang: true, cxx: true)?
-  write_wrapper(dest, "clang++", /usr/lib/llvm22/bin/clang++, clang: true, cxx: true)?
-  write_wrapper(dest, "ld", /usr/lib/llvm22/bin/ld.lld)?
-  write_wrapper(dest, "ld.lld", /usr/lib/llvm22/bin/ld.lld)?
-  write_wrapper(dest, "ar", /usr/lib/llvm22/bin/llvm-ar)?
-  write_wrapper(dest, "ranlib", /usr/lib/llvm22/bin/llvm-ranlib)?
-  write_wrapper(dest, "nm", /usr/lib/llvm22/bin/llvm-nm)?
-  write_wrapper(dest, "objcopy", /usr/lib/llvm22/bin/llvm-objcopy)?
-  write_wrapper(dest, "objdump", /usr/lib/llvm22/bin/llvm-objdump)?
-  write_wrapper(dest, "readelf", /usr/lib/llvm22/bin/llvm-readelf)?
-  write_wrapper(dest, "strip", /usr/lib/llvm22/bin/llvm-strip)?
+  write_wrapper(dest, "cc", /usr/lib/llvm23/bin/clang, clang: true)?
+  write_wrapper(dest, "clang", /usr/lib/llvm23/bin/clang, clang: true)?
+  write_wrapper(dest, "c++", /usr/lib/llvm23/bin/clang++, clang: true, cxx: true)?
+  write_wrapper(dest, "clang++", /usr/lib/llvm23/bin/clang++, clang: true, cxx: true)?
+  write_wrapper(dest, "ld", /usr/lib/llvm23/bin/ld.lld)?
+  write_wrapper(dest, "ld.lld", /usr/lib/llvm23/bin/ld.lld)?
+  write_wrapper(dest, "ar", /usr/lib/llvm23/bin/llvm-ar)?
+  write_wrapper(dest, "ranlib", /usr/lib/llvm23/bin/llvm-ranlib)?
+  write_wrapper(dest, "nm", /usr/lib/llvm23/bin/llvm-nm)?
+  write_wrapper(dest, "objcopy", /usr/lib/llvm23/bin/llvm-objcopy)?
+  write_wrapper(dest, "objdump", /usr/lib/llvm23/bin/llvm-objdump)?
+  write_wrapper(dest, "readelf", /usr/lib/llvm23/bin/llvm-readelf)?
+  write_wrapper(dest, "strip", /usr/lib/llvm23/bin/llvm-strip)?
 
   for tool in ["ar", "ranlib", "nm", "objcopy", "objdump", "readelf", "strip"] {
-    write_wrapper(dest, f"llvm-${tool}", fp"/usr/lib/llvm22/bin/llvm-${tool}")?
+    write_wrapper(dest, f"llvm-${tool}", fp"/usr/lib/llvm23/bin/llvm-${tool}")?
   }
 }
 

@@ -53,7 +53,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let native_scanner = pm_util.build_arch()? != pm_util.target_arch()? and build_root != ""
 
   let native_tools_ld = if native_scanner {
-    f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib:${pc.ld_library_path}"
+    f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib:${pc.ld_library_path}"
   } else {
     pc.ld_library_path
   }

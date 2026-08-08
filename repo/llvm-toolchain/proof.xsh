@@ -77,7 +77,7 @@ proc prove_tool_linkage(readelf: Path, tool: Path) [fs, process, error] {
 
 proc prove_public_surface(root: Path, arch: Str) [fs, process, env, error] {
   let readelf = proof_readelf_path(root)?
-  let bin = fp"${root}/usr/lib/llvm22/bin"
+  let bin = fp"${root}/usr/lib/llvm23/bin"
 
   for wrapper in [
     "cc",
@@ -119,8 +119,8 @@ proc prove_public_surface(root: Path, arch: Str) [fs, process, env, error] {
     prove_tool_linkage(readelf, fp"${bin}/${tool}")?
   }
 
-  ensure_file(fp"${root}/usr/lib/llvm22/lib/clang/22/include/stddef.h", "Clang resource headers")?
-  ensure_file(fp"${root}/usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-${arch}.a", "compiler-rt builtins")?
+  ensure_file(fp"${root}/usr/lib/llvm23/lib/clang/23/include/stddef.h", "Clang resource headers")?
+  ensure_file(fp"${root}/usr/lib/llvm23/lib/clang/23/lib/linux/libclang_rt.builtins-${arch}.a", "compiler-rt builtins")?
 }
 
 proc prove_default_compile(root: Path, arch: Str) [fs, process, env, error] {
@@ -255,7 +255,7 @@ proc prove_target_tools(root: Path, arch: Str) [fs, process, env, error] {
   let readelf = proof_readelf_path(root)?
   let machine = elf_machine_name(arch)
   let cc = fp"${root}/usr/bin/cc"
-  let clang = fp"${root}/usr/lib/llvm22/bin/clang"
+  let clang = fp"${root}/usr/lib/llvm23/bin/clang"
   let clang_header = run.text $readelf "-h" $clang ?
   ensure(machine in clang_header, "proof-llvm-toolchain", f"clang is not ${arch}")?
   let cc_text = fs.read_text(cc)?

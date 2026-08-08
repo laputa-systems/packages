@@ -214,7 +214,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   let cross_build = pm_util.build_arch()? != pm_util.target_arch()? and build_root != ""
 
   let native_tools_ld = if cross_build {
-    f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
+    f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib"
   } else {
     pc.ld_library_path
   }

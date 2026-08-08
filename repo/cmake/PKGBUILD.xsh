@@ -106,12 +106,12 @@ export proc build(dest: Path) [fs, process, env, error] {
     let build_root = fp"${env.get("XSH_PM_BUILD_ROOT") ?? ""}"
     bootstrap_cc = fp"${build_root}/usr/bin/cc"
     bootstrap_triple = build_triple
-    bootstrap_ld_library_path = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
+    bootstrap_ld_library_path = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib"
 
     bootstrap_task_env = {
       XSH_MAKE_NATIVE_CROSS: "0",
       PATH: f"${build_root}/usr/bin:${build_root}/usr/lib/llvm-toolchain/bin:${env.get("PATH") ?? ""}",
-      LD_LIBRARY_PATH: f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib",
+      LD_LIBRARY_PATH: f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib",
     }
   }
 

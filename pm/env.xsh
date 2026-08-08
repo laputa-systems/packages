@@ -81,12 +81,12 @@ export pure build_ld_library_path(root: Path, current: Str = "") -> Str {
 
   if current == "" {
     let lib = rooted(root, "/usr/lib")
-    let llvm_lib = rooted(root, "/usr/lib/llvm22/lib")
+    let llvm_lib = rooted(root, "/usr/lib/llvm23/lib")
     return f"${lib}:${llvm_lib}"
   }
 
   let lib = rooted(root, "/usr/lib")
-  let llvm_lib = rooted(root, "/usr/lib/llvm22/lib")
+  let llvm_lib = rooted(root, "/usr/lib/llvm23/lib")
   return f"${lib}:${llvm_lib}:${current}"
 }
 

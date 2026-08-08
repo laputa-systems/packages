@@ -121,10 +121,10 @@ proc compiler_rt_builtins(arch: Str) [fs, error] -> Result[List[Path]] {
   let target_root = p"llvm-toolchain-target"
 
   let candidates = [
-    fp"${target_root}/usr/lib/llvm22/lib/clang/22/lib/${arch}-linux-musl/libclang_rt.builtins-${arch}.a",
-    fp"${target_root}/lib/llvm22/lib/clang/22/lib/${arch}-linux-musl/libclang_rt.builtins-${arch}.a",
-    fp"/usr/lib/llvm22/lib/clang/22/lib/${arch}-linux-musl/libclang_rt.builtins-${arch}.a",
-    fp"/usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-${arch}.a",
+    fp"${target_root}/usr/lib/llvm23/lib/clang/23/lib/${arch}-linux-musl/libclang_rt.builtins-${arch}.a",
+    fp"${target_root}/lib/llvm23/lib/clang/23/lib/${arch}-linux-musl/libclang_rt.builtins-${arch}.a",
+    fp"/usr/lib/llvm23/lib/clang/23/lib/${arch}-linux-musl/libclang_rt.builtins-${arch}.a",
+    fp"/usr/lib/llvm23/lib/clang/23/lib/linux/libclang_rt.builtins-${arch}.a",
     fp"/usr/lib/libclang_rt.builtins-${arch}.a",
   ]
 
@@ -404,7 +404,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     fs.install(builtin, fp"${dest}/usr/lib/${builtin.name()}", 0o644, parents: true, overwrite: true)?
   }
 
-  let packaged_builtin = fp"llvm-toolchain-target/usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-${arch}.a"
+  let packaged_builtin = fp"llvm-toolchain-target/usr/lib/llvm23/lib/clang/23/lib/linux/libclang_rt.builtins-${arch}.a"
 
   if fs.exists(packaged_builtin)? {
     fs.install(packaged_builtin, fp"${dest}/usr/lib/${packaged_builtin.name()}", 0o644, parents: true, overwrite: true)?

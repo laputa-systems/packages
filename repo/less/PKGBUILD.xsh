@@ -47,7 +47,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     build_task_env = {
       XSH_MAKE_NATIVE_CROSS: "0",
       PATH: f"${build_root}/usr/bin:${build_root}/usr/lib/llvm-toolchain/bin:${env.get("PATH") ?? ""}",
-      LD_LIBRARY_PATH: f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib",
+      LD_LIBRARY_PATH: f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib",
     }
   }
 

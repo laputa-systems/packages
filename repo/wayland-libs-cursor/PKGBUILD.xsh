@@ -135,11 +135,11 @@ proc build_wayland(dest: Path) [fs, process, env, error] {
 
     if native_scanner {
       let native_scanner_path = fp"${fs.cwd()?}/build/wayland-scanner-native"
-      let clang = fp"${build_root}/usr/lib/llvm22/bin/clang-22"
+      let clang = fp"${build_root}/usr/lib/llvm23/bin/clang-23"
 
       env {
         PATH = f"${build_root}/usr/lib/llvm-toolchain/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}"
-        LD_LIBRARY_PATH = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
+        LD_LIBRARY_PATH = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib"
       } {
         run $clang "-o" $native_scanner_path "src/scanner.c" "src/wayland-util.c" "-Ibuild" "-Ibuild/src" "-Isrc" f"-I${build_root}/usr/include" f"-L${build_root}/usr/lib" f"-Wl,-rpath,${build_root}/usr/lib" "-lexpat" ?
       } ?

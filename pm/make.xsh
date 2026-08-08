@@ -348,7 +348,7 @@ pure compiler_command_name(command: Str) -> Str {
 
 pure is_c_compiler_command(command: Str) -> Bool {
   let name = compiler_command_name(command)
-  return name == "cc" or name == "clang" or name == "clang-22"
+  return name == "cc" or name == "clang" or name == "clang-23"
 }
 
 pure is_cxx_compiler_command(command: Str) -> Bool {
@@ -390,20 +390,20 @@ pure musl_ldso_name(arch: Str) -> Str {
 }
 
 proc native_cross_cxx_include_args(build_root: Path, target_root: Path, target: Str) [fs, error] -> Result[List[Str]] {
-  let base = fp"${target_root}/usr/lib/llvm22/include/c++/v1"
+  let base = fp"${target_root}/usr/lib/llvm23/include/c++/v1"
   var include_args = []
 
   if fs.exists(base)? {
     include_args = ["-isystem", base.display()]
   } else {
-    let build_base = fp"${build_root}/usr/lib/llvm22/include/c++/v1"
+    let build_base = fp"${build_root}/usr/lib/llvm23/include/c++/v1"
 
     if fs.exists(build_base)? {
       include_args = ["-isystem", build_base.display()]
     }
   }
 
-  let target_dir = fp"${target_root}/usr/lib/llvm22/include/${target}-linux-musl/c++/v1"
+  let target_dir = fp"${target_root}/usr/lib/llvm23/include/${target}-linux-musl/c++/v1"
 
   if fs.exists(target_dir)? {
     include_args = include_args.extend(["-isystem", target_dir.display()])
@@ -455,9 +455,9 @@ export proc effective_task_argv(raw_argv: List[Any], task_env: Record) [fs, env,
   let build_root = fp"${env_value("XSH_PM_BUILD_ROOT")}"
 
   let driver = if cxx {
-    fp"${build_root}/usr/lib/llvm22/bin/clang++"
+    fp"${build_root}/usr/lib/llvm23/bin/clang++"
   } else {
-    fp"${build_root}/usr/lib/llvm22/bin/clang-22"
+    fp"${build_root}/usr/lib/llvm23/bin/clang-23"
   }
 
   let stripped = strip_cross_driver_args(argv)
@@ -480,7 +480,7 @@ export proc effective_task_argv(raw_argv: List[Any], task_env: Record) [fs, env,
   }
 
   let lib_dir = fp"${target_root}/usr/lib"
-  let llvm_lib_dir = fp"${lib_dir}/llvm22/lib"
+  let llvm_lib_dir = fp"${lib_dir}/llvm23/lib"
   let builtins = fp"${lib_dir}/libclang_rt.builtins-${target}.a"
   var link_args = stripped
 
@@ -528,9 +528,10 @@ export proc effective_task_env(raw_argv: List[Any], task_env: Record) [env, erro
   }
 
   let build_root = fp"${env_value("XSH_PM_BUILD_ROOT")}"
-  let ld_library_path = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
+  let ld_library_path = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib"
   let path_value = f"${build_root}/usr/lib/llvm-toolchain/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}"
-  return {...task_env, LD_LIBRARY_PATH: ld_library_path, PATH: path_value}
+  let libclang_path = f"${build_root}/usr/lib/llvm23/lib"
+  return {...task_env, LD_LIBRARY_PATH: ld_library_path, LIBCLANG_PATH: libclang_path, PATH: path_value}
 }
 
 proc check_tasks(tasks: List[Record], jobs_count: Int) [error] {

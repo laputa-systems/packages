@@ -4047,10 +4047,10 @@ proc host_build_ld_library_path() [env] -> Str {
   }
 
   if current == "" {
-    return f"${root}/usr/lib:${root}/usr/lib/llvm22/lib"
+    return f"${root}/usr/lib:${root}/usr/lib/llvm23/lib"
   }
 
-  return f"${root}/usr/lib:${root}/usr/lib/llvm22/lib:${current}"
+  return f"${root}/usr/lib:${root}/usr/lib/llvm23/lib:${current}"
 }
 
 proc pi_relacheck_build_task(cc: Path) [env] -> make.MakeTask {

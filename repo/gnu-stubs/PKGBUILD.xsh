@@ -4,7 +4,7 @@ error GnuStubsError = Failed(message: Str)
 
 export let name = "gnu-stubs"
 
-export let ver = "22.1.8"
+export let ver = "23.1.0-rc2"
 
 export let rel = "29"
 
@@ -56,12 +56,12 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   let laputa_root = fp"${env.get("LAPUTA_ROOT") ?? ""}"
-  let clang = fp"${laputa_root}/usr/lib/llvm22/bin/clang"
-  let lld = fp"${laputa_root}/usr/lib/llvm22/bin/ld.lld"
-  let llvm_ar = fp"${laputa_root}/usr/lib/llvm22/bin/llvm-ar"
-  let llvm_objcopy = fp"${laputa_root}/usr/lib/llvm22/bin/llvm-objcopy"
-  let libunwind = fp"${laputa_root}/usr/lib/llvm22/lib/libunwind.a"
-  let builtins = fp"${laputa_root}/usr/lib/llvm22/lib/clang/22/lib/linux/libclang_rt.builtins-${target_arch}.a"
+  let clang = fp"${laputa_root}/usr/lib/llvm23/bin/clang"
+  let lld = fp"${laputa_root}/usr/lib/llvm23/bin/ld.lld"
+  let llvm_ar = fp"${laputa_root}/usr/lib/llvm23/bin/llvm-ar"
+  let llvm_objcopy = fp"${laputa_root}/usr/lib/llvm23/bin/llvm-objcopy"
+  let libunwind = fp"${laputa_root}/usr/lib/llvm23/lib/libunwind.a"
+  let builtins = fp"${laputa_root}/usr/lib/llvm23/lib/clang/23/lib/linux/libclang_rt.builtins-${target_arch}.a"
 
   # Rust's musl target hardcodes -lgcc_s, and the prebuilt cargo binary
   # dynamically links libgcc_s.so.1 for unwinding. The prebuilt LLVM tree
@@ -117,7 +117,7 @@ __gttf2
   fs.mkdir(builtins_dir)?
 
   env {
-    LD_LIBRARY_PATH = f"${laputa_root}/usr/lib/llvm22/lib:${env.get("LD_LIBRARY_PATH") ?? ""}"
+    LD_LIBRARY_PATH = f"${laputa_root}/usr/lib/llvm23/lib:${env.get("LD_LIBRARY_PATH") ?? ""}"
   } {
     run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${libdir}/crtbeginS.o" ?
     run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${libdir}/crtendS.o" ?

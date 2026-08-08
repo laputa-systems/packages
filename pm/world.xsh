@@ -1066,7 +1066,7 @@ proc run_compiler(argv: List[Any]) [process, error] {{
     process.command_argv(
       fp"${real}",
       argv,
-      env: {{LD_LIBRARY_PATH: "${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"}},
+      env: {{LD_LIBRARY_PATH: "${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib", LIBCLANG_PATH: "${build_root}/usr/lib/llvm23/lib"}},
     ),
   )?
 
@@ -1086,10 +1086,10 @@ proc main(...argv: List[Str]) [fs, process, error] {{
   }}
 
   if ${cxx_text} {{
-    let target_cxx = fp"${target_root}/usr/lib/llvm22/include/c++/v1"
-    let build_cxx = fp"${build_root}/usr/lib/llvm22/include/c++/v1"
-    let target_cxx_arch = fp"${target_root}/usr/lib/llvm22/include/${target_arch}-linux-musl/c++/v1"
-    let unwind = fp"${target_root}/usr/lib/llvm22/lib/libunwind.a"
+    let target_cxx = fp"${target_root}/usr/lib/llvm23/include/c++/v1"
+    let build_cxx = fp"${build_root}/usr/lib/llvm23/include/c++/v1"
+    let target_cxx_arch = fp"${target_root}/usr/lib/llvm23/include/${target_arch}-linux-musl/c++/v1"
+    let unwind = fp"${target_root}/usr/lib/llvm23/lib/libunwind.a"
 
     if fs.exists(target_cxx)? {{
       cxx_args = ["-isystem", target_cxx]
@@ -1101,7 +1101,7 @@ proc main(...argv: List[Str]) [fs, process, error] {{
       cxx_args = cxx_args.extend(["-isystem", target_cxx_arch])
     }}
 
-    cxx_libs = ["-L${target_root}/usr/lib/llvm22/lib", "-lc++", "-lc++abi"]
+    cxx_libs = ["-L${target_root}/usr/lib/llvm23/lib", "-lc++", "-lc++abi"]
 
     if fs.exists(unwind)? {{
       cxx_libs = cxx_libs.push(unwind)
@@ -1115,7 +1115,7 @@ proc main(...argv: List[Str]) [fs, process, error] {{
     "--target=${target_arch}-linux-musl",
     "--sysroot=${target_root}",
     "-resource-dir",
-    "${build_root}/usr/lib/llvm22/lib/clang/22",
+    "${build_root}/usr/lib/llvm23/lib/clang/23",
   ]
 
   if "-c" in argv or "-S" in argv or "-E" in argv {{
@@ -1144,10 +1144,10 @@ main(@args)?
 proc write_native_cross_tool_shims(build_root: Path, target_root: Path, target_arch: Str) [fs, error] {
   let bin = fp"${build_root}/.native-cross/bin"
   fs.mkdir(bin)?
-  let clang = fp"${build_root}/usr/lib/llvm22/bin/clang-22"
-  let clangxx = fp"${build_root}/usr/lib/llvm22/bin/clang++"
+  let clang = fp"${build_root}/usr/lib/llvm23/bin/clang-23"
+  let clangxx = fp"${build_root}/usr/lib/llvm23/bin/clang++"
 
-  for name in ["cc", "clang", "clang-22"] {
+  for name in ["cc", "clang", "clang-23"] {
     let path_value = fp"${bin}/${name}"
     fs.write(path_value, native_cross_compiler_script(clang, build_root, target_root, target_arch, false))?
     fs.chmod(path_value, 0o755)?

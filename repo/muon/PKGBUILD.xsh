@@ -37,7 +37,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   if cross_build {
     let build_root = fp"${env.get("XSH_PM_BUILD_ROOT") ?? ""}"
     bootstrap_cc = fp"${build_root}/usr/bin/cc"
-    host_ld_library_path = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm22/lib"
+    host_ld_library_path = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib"
   }
 
   fs.mkdir(p"build")?
