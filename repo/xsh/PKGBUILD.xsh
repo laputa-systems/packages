@@ -9,7 +9,7 @@ export let package_kind = "payload"
 export let ver = "0.0.0"
 
 ## Package recipe export.
-export let rel = "13"
+export let rel = "14"
 
 ## Package recipe export.
 export let deps = []
@@ -571,6 +571,8 @@ export let filetree = [
 ]
 
 ## Package recipe export.
+## Immutable root preflight now owns collision detection, so the former live-root
+## Former live-root deletion is intentionally not part of this payload build.
 export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/bin")?
   for pair in [
@@ -610,20 +612,5 @@ export proc build(dest: Path) [fs, error] {
 
   for entry in fs.children(p"xsh-core")? |> where .kind == "file" and .name != "su" {
     fs.symlink(fp"../lib/xsh/core/${entry.name}", fp"${dest}/usr/bin/${entry.name}")?
-  }
-}
-
-## Package recipe export.
-export proc pre_install(root: Path) [fs, error] {
-  for command_name in ["sh", "xsh", "xshi", "xsht"] {
-    fs.remove(fp"${root}/bin/${command_name}", missing_ok: true)?
-    fs.remove(fp"${root}/usr/bin/${command_name}", missing_ok: true)?
-    fs.remove(fp"${root}/usr/local/bin/${command_name}", missing_ok: true)?
-  }
-
-  if fs.exists(fp"${root}/usr/lib/xsh/core")? {
-    for entry in fs.children(fp"${root}/usr/lib/xsh/core")? |> where .kind == "file" and .name != "su" {
-      fs.remove(fp"${root}/usr/bin/${entry.name}", missing_ok: true)?
-    }
   }
 }

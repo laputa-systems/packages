@@ -45,9 +45,27 @@ proc test_repo_help_is_explicit(ctx: TestContext) [fs, process, env, error] {
   let repository = pm_output(["repo", "--help"])?
   let plan = pm_output(["repo", "plan", "--help"])?
 
-  test.contains(top, "repo plan [--repo PATH] (--all | --root PACKAGE...) --output PLAN")?
-  test.contains(repository, "repository planning commands:")?
-  test.contains(plan, "--all and --root are mutually exclusive")?
+  test.contains(top, "repo plan [--repo PATH] (--all | --root PACKAGE...) --target aarch64-linux-musl --output PLAN")?
+  test.contains(top, "repo build PLAN --store STORE")?
+  test.contains(top, "root compose PLAN --store STORE --runtime-root PACKAGE... --output GENERATION")?
+  test.eq(top.contains("world-plan"), false)?
+  test.contains(repository, "checksum [--repo PATH] PACKAGE...")?
+  test.contains(plan, "repo plan [--repo PATH] (--all | --root PACKAGE...)")?
+}
+
+proc test_final_cli_rejects_removed_legacy_command(ctx: TestContext) [fs, process, env, error] {
+  let err = test.temp_path(ctx, name: "legacy-command.err")
+  let status = pm_status(["build-set", "repo"], err)?
+
+  test.eq(status.ok, false)?
+  test.contains(err.read_text()?, "unknown pm command build-set")?
+}
+
+proc test_store_verify_accepts_explicit_empty_store(ctx: TestContext) [fs, process, env, error] {
+  let store_root = test.temp_dir(ctx, name: "empty-store")?
+  let output = pm_output(["store", "verify", "--store", store_root.display()])?
+
+  test.contains(output, "store verify 0 artifacts")?
 }
 
 proc test_repo_check_validates_catalog(ctx: TestContext) [fs, process, env, error] {

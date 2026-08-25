@@ -396,34 +396,3 @@ export proc call_prepare_sources(pkg: types.Package, src: Path) [fs, process, en
     prepare_sources.call(src)?
   }
 }
-
-## Invokes an optional package lifecycle procedure without exposing dynamic exports.
-export proc call_hook(pkg: types.Package, hook_name: Str, root: Path) [fs, process, env, error] {
-  let dynamic = load_dynamic_recipe(pkg)?
-
-  if dynamic.has(hook_name) {
-    let hook: Proc = dynamic.get(hook_name)?
-    hook.call(root)?
-  }
-}
-
-## Invokes an optional hook from an installed package recipe when its recipe remains available.
-export proc call_recipe_installed_hook(metadata: Record, hook_name: Str, root: Path) [fs, process, env, error] {
-  if ! metadata.has("dir") {
-    return
-  }
-
-  let dir_text: Str = metadata.get("dir")?
-  let pkgbuild = fp"${fp"${dir_text}"}/PKGBUILD.xsh"
-
-  if ! fs.exists(pkgbuild)? {
-    return
-  }
-
-  let dynamic = module.load(pkgbuild)?
-
-  if dynamic.has(hook_name) {
-    let hook: Proc = dynamic.get(hook_name)?
-    hook.call(root)?
-  }
-}

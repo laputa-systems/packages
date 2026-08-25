@@ -140,23 +140,18 @@ The base contains the common C/C++ and package tooling surface: musl, LLVM,
 pkgconf, samurai, CMake, m4, flex, bison, Linux, muon, CA certificates, and the
 package-owned runtime closure required by those tools.
 
-Normal package proofs use PM-managed chroots. `pm build-set`, `pm
-build-install`, and `pm world-plan --build` install declared deps and `mkdeps_host`
-into a build root, copy the prepared source tree into `/var/tmp/pm-build`, and
-run package hooks after entering the chroot.
+Normal package proofs are constructed by the explicit `pm repo plan` and `pm
+repo build` flow. A saved typed plan carries every build dependency and
+artifact identity; execution composes an isolated dependency root, builds the
+node, and proves the resulting immutable artifact before publication.
 
-## World Rebuilds
+## Package Planning
 
-`pm world-plan repo --arch <aarch64|x86_64>` computes the rebuild order
-for the package world. A staging repo lives under `~/.cache/laputa/world-<hash>`
-and can be resumed while the plan hash is stable. Packages in the same tranche
-build in parallel. `--to-tranche N` supports incremental catch-up.
-
-`world-plan` compares local metadata with the remote mirror and treats package
-versions and rels declared in `PKGBUILD.xsh` as authoritative. A build fails if
-a declaration is behind the selected architecture's published release, so rel
-bump edits must be explicit. `--upload` refuses to publish until the staged
-world is fully built and proved.
+`pm repo plan --all --output PLAN` computes a deterministic aarch64 package
+graph. `pm repo build PLAN --store STORE` executes it, and `pm repo publish
+PLAN --store STORE` publishes only verified artifacts. Runtime roots are
+created separately with `pm root compose PLAN --store STORE --runtime-root
+PACKAGE --output GENERATION`.
 
 ## Linux
 

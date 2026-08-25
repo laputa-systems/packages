@@ -263,7 +263,8 @@ export proc read(path_value: Path) [fs, error] -> Result[types.BuildPlan] {
   value
 }
 
-## Re-exports durable BuildPlan verification at the JSON persistence boundary.
-export proc verify(value: types.BuildPlan) [error] {
+## Re-exports durable BuildPlan verification without colliding with `root.verify`
+## when XSH imports modules into one runtime symbol table.
+export proc verify_plan(value: types.BuildPlan) [error] {
   build_plan.validate(value)?
 }

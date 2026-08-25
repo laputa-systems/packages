@@ -461,17 +461,8 @@ export type ResolvedSource = {path: Path, kind: Str}
 ## A checksum field update produced by source commands.
 export type ChecksumUpdate = {field: Str, values: List[Str]}
 
-## A discovered PM extension executable.
-export type Extension = {name: Str, path: Path, summary: Str}
-
 ## Repository endpoints used by upload and export flows.
 export type RepoUrls = {repo: Str, public_repo: Str}
 
 ## An uploaded source path and its content digest.
 export type UploadedSource = {rel: Str, sha256: Str}
-
-## Parsed PM command-line arguments.
-export type Cli = {command: Str, action: Str, root: Path, work: Path, out: Path, raw: List[Str]}
-
-## Shared context passed between PM command adapters.
-export type PmContext = {command: Str, root: Path, work: Path, out: Path}

@@ -26,11 +26,6 @@ export pure package_db_path(root: Path, name: Str) -> Path {
   fp"${packages_db_path(root)}/${name}"
 }
 
-## Exported PM declaration `auth_token_path`.
-export pure auth_token_path(root: Path) -> Path {
-  fp"${root}/var/lib/xsh-pm/auth/token"
-}
-
 ## Exported PM declaration `remote_index_cache_path`.
 export pure remote_index_cache_path(out: Path) -> Path {
   fp"${out}/remote-index.json"

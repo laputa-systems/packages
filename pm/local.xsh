@@ -1,7 +1,6 @@
 ##! PM local operations and shared package-manager policy.
 use catalog
 use elf
-use extensions
 use graph
 use policy
 use recipe
@@ -368,17 +367,7 @@ export proc ensure_installable(
         return Err(types.PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
       }
     } else if fs.exists(fp"${root}/${rel_path}")? and ! util.is_etc_file(rel_path) {
-      let root_str = root.display()
-      var msg = f"${pkg.name} would overwrite unowned ${key} in root ${root_str}"
-
-      if root_str.ends_with("/.world/root") or root_str.ends_with("/.world/build-root") {
-        let cache_dir = root.parent.parent
-
-        msg = f"""${msg}
-stale world-plan cache: delete ${cache_dir.display()} to reset"""
-      }
-
-      return Err(types.PmError.DirtyFilesystem(msg))
+      return Err(types.PmError.DirtyFilesystem(f"${pkg.name} would overwrite unowned ${key} in root ${root.display()}"))
     }
   }
 }
@@ -478,20 +467,6 @@ export proc dir_empty(path_value: Path) [fs, error] -> Result[Bool] {
   true
 }
 
-## Exported PM declaration `direct_extract_package`.
-export proc direct_extract_package(
-  ctx: types.PmContext,
-  pkg: types.Package,
-  tarball: Path,
-  manifest: List[Path],
-  etcsums: List[types.EtcSum],
-  installed_owners: Map[Str],
-) [fs, error] {
-  ensure_installable(ctx.root, pkg, manifest, installed_owners)?
-  archive.tar_extract(tarball, ctx.root, 0, "auto", true)?
-  write_package_db(ctx.root, pkg, manifest, etcsums)?
-}
-
 ## Exported PM declaration `collect_removable_manifest`.
 export proc collect_removable_manifest(
   root: Path,
@@ -547,16 +522,6 @@ export proc write_package_db(
       dir: pkg.dir.display(),
     },
   )?
-}
-
-## Exported PM declaration `call_pkg_hook`.
-export proc call_pkg_hook(pkg: types.Package, hook_name: Str, root: Path) [fs, process, env, error] {
-  recipe.call_hook(pkg, hook_name, root)?
-}
-
-## Exported PM declaration `call_installed_hook`.
-export proc call_installed_hook(metadata: Record, hook_name: Str, root: Path) [fs, process, env, error] {
-  recipe.call_recipe_installed_hook(metadata, hook_name, root)?
 }
 
 ## Exported PM declaration `load_package_dirs`.

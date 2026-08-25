@@ -19,4 +19,4 @@ ENV PATH=/bin:/usr/bin \
 
 WORKDIR /src/packages
 
-CMD ["xsht", "test", "--cov", "--cov-json", "target/coverage/pm.json", "tests/xsh/pm.xsh"]
+CMD ["xsht", "test", "--cov", "--cov-json", "target/coverage/pm.json", "tests/xsh/pm_recipe.xsh", "tests/xsh/pm_graph.xsh", "tests/xsh/pm_plan.xsh", "tests/xsh/pm_store.xsh", "tests/xsh/pm_root.xsh", "tests/xsh/pm_execute.xsh", "tests/xsh/pm_publish.xsh", "tests/xsh/pm_generation.xsh", "tests/xsh/pm_cli.xsh"]

@@ -424,3 +424,25 @@ export proc verify_artifact(root: Path, key: Str) [fs, error] -> Result[types.Ar
 
   verify_dir(final_dir, key)
 }
+
+## Verifies every completed immutable object beneath one Store root in canonical key order.
+## Temporary directories and locks are intentionally ignored because they never constitute artifacts.
+export proc verify_all(root: Path) [fs, error] -> Result[List[types.ArtifactReceipt]] {
+  let objects = object_root(root)
+
+  if ! fs.exists(objects)? {
+    return []
+  }
+
+  var receipts: List[types.ArtifactReceipt] = []
+
+  for entry in fs.children(objects)? |> sort-by .name {
+    if entry.kind != "dir" {
+      return Err(types.PmError.PackageContract(f"artifact store object ${entry.path.display()} is not a directory"))
+    }
+
+    receipts = receipts.push(verify_artifact(root, entry.name)?)
+  }
+
+  receipts
+}

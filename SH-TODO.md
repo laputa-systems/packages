@@ -15,7 +15,6 @@ made XSH-native, or explicitly accepted as a package capability.
   scripts; generated Ninja files point directly at `wayland-scanner`.
 - Installed compatibility wrappers for `yacc` and `ldd` are generated as
   `#!/bin/xsh` scripts.
-- PM native-cross compiler shims are generated as `#!/bin/xsh` scripts.
 
 ## Open
 
@@ -24,7 +23,6 @@ made XSH-native, or explicitly accepted as a package capability.
 Files:
 
 - `pm/build.xsh`
-- `pm/chroot-run.xsh`
 
 PM currently seeds `/usr/bin/sh` and `/bin/sh` in build/proof roots with an
 XSH-backed compatibility script, and sets `SHELL=/bin/xshi` for package

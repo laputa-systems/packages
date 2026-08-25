@@ -123,68 +123,6 @@ export proc require_repo_url() [fs, env, error] -> Result[types.RepoUrls] {
   repo_urls
 }
 
-## Exported PM declaration `load_auth_token`.
-export proc load_auth_token(root: Path) [fs, process, env, error] -> Result[Str] {
-  let env_token = load_env_or_dotenv(["LAPUTA_TOKEN"])?
-
-  if env_token != "" {
-    return env_token
-  }
-
-  let security_output = run.text security find-generic-password -a xsh-pm -s xsh-pm-token -w 2> /dev/null
-
-  match security_output {
-    Ok(token) => {
-      let trimmed = token.trim()
-
-      if trimmed != "" {
-        return trimmed
-      }
-    }
-    Err(_) => {}
-  }
-
-  let token_file = util.auth_token_path(root)
-
-  if fs.exists(token_file)? {
-    return fs.read_text(token_file)?.trim()
-  }
-
-  ""
-}
-
-## Exported PM declaration `require_auth_token`.
-export proc require_auth_token(root: Path) [fs, process, env, error] -> Result[Str] {
-  let token = load_auth_token(root)?
-
-  if token == "" {
-    return Err(types.PmError.Auth("not authenticated; run auth or set LAPUTA_TOKEN"))
-  }
-
-  token
-}
-
-## Exported PM declaration `store_auth_token`.
-export proc store_auth_token(root: Path, raw: List[Str]) [fs, process, env, error] {
-  var token = ""
-
-  if raw.len() > 0 {
-    token = raw[0].trim()
-  } else {
-    token = load_auth_token(root)?
-  }
-
-  if token == "" {
-    return Err(types.PmError.Auth("auth requires a token argument or LAPUTA_TOKEN"))
-  }
-
-  let token_file = util.auth_token_path(root)
-  fs.mkdir(token_file.parent)?
-  fs.write_atomic(token_file, token)?
-  fs.chmod(token_file, 0o600)?
-  print "auth" "token" "stored"
-}
-
 proc remote_response_header(headers: List[Record], name: Str) [] -> Str {
   for header in headers {
     if header.name == name or name == "location" and header.name == "Location" {
@@ -936,21 +874,6 @@ export pure package_from_remote(pkg: types.RemotePackage) -> Result[types.Packag
     nostrip: false,
     source_mirror: false,
   }
-}
-
-## Exported PM declaration `args_are_package_dirs`.
-export proc args_are_package_dirs(raw: List[Str]) [fs, error] -> Result[Bool] {
-  if raw.len() == 0 {
-    return false
-  }
-
-  for item in raw {
-    if ! fs.exists(fp"${fp"${item}"}/PKGBUILD.xsh")? {
-      return false
-    }
-  }
-
-  true
 }
 
 ## Exported PM declaration `remote_entry_for`.

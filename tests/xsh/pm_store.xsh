@@ -107,6 +107,17 @@ proc test_store_discards_incomplete_temporary_artifacts(ctx: TestContext) [fs, e
   test.eq(fs.exists(temporary)?, false)?
 }
 
+proc test_store_verify_all_ignores_temporary_state_and_checks_finals(ctx: TestContext) [fs, error] {
+  let root = store_root(ctx, "store-verify-all")?
+  let key = digest("verify-all")
+  let receipt = store.commit(root, test_node(key), staged_artifact(ctx, "store-verify-all-stage")?.staged)?
+  let temporary = fp"${root}/v1/tmp/${digest("ignored")}"
+  fs.mkdir(temporary)?
+  fs.write(fp"${temporary}/partial", "interrupted")?
+
+  test.eq(store.verify_all(root)?, [receipt])?
+}
+
 proc test_store_serializes_duplicate_concurrent_commits(ctx: TestContext) [fs, process, env, error] {
   let root = store_root(ctx, "store-concurrent")?
   let key = digest("concurrent")

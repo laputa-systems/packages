@@ -22,30 +22,22 @@ Laputa userspace and packaging philosophy.
 
 - `pm.xsh`: process entrypoint only. It imports `pm/cli.xsh`, forwards argv,
   and keeps no package manager behavior.
-- `pm/cli.xsh`: command usage, argument parsing, default root/work/out context,
-  package-dir detection, top-level dispatch, extension fallback, and small
-  command adapters that compose domain modules.
-- `pm/world.xsh`: world package expansion, dependency/tranche planning, rebuild
-  explanations, rel propagation, world cache naming, world state, tranche build
-  execution, build log routing, staged artifact verification, and world
-  upload/sync orchestration.
-- `pm/repo.xsh`: repository build/upload/export flows, package staging, staged
-  index mutation, repo artifact verification, source mirror export upload, and
-  repo export synchronization.
-- `pm/build.xsh`: local package build, chroot build, proof execution, build log
-  handling, chroot runner seeding, and build cache preservation.
-- `pm/install.xsh`: remote package install, local built-package install, remove
-  flows, package DB inspection, manifest ownership checks used by
-  install/remove, and installed-package tree/search/outdated reporting.
-- `pm/local.xsh`: package definition loading, dependency ordering, local index
-  writing, source checksum/update/download commands, and shared package
-  metadata/manifest helpers used by build, install, and repo modules.
-- `pm/buildroot.xsh`: dependency-set installation and chroot-base preparation
-  helpers shared by world execution and package build flows.
-- `pm/remote.xsh`: remote transport and index decoding.
-- `pm/sources.xsh`: source resolution and mirroring.
-- `pm/util.xsh`: small shared helpers.
-- `pm/types.xsh`: stable shared types.
+- `pm/cli.xsh`: the final explicit command parser and adapters for plan,
+  execution, publication, generation, and store inspection.
+- `pm/catalog.xsh`, `pm/policy.xsh`, and `pm/graph.xsh`: typed catalog,
+  bootstrap policy, and deterministic dependency resolution.
+- `pm/plan.xsh`, `pm/plan_json.xsh`, and `pm/fingerprint.xsh`: durable plan
+  identity, JSON DTO persistence, and canonical semantic fingerprints.
+- `pm/execute.xsh`, `pm/build.xsh`, `pm/proof.xsh`, and `pm/store.xsh`:
+  isolated payload construction, proof, and immutable artifact receipt flows.
+- `pm/root.xsh` and `pm/generation.xsh`: verified artifact composition and
+  runtime-only generation receipts.
+- `pm/repo.xsh` and `pm/remote.xsh`: verified plan publication and remote
+  index/object transport.
+- `pm/recipe.xsh`: the sole dynamic recipe boundary; callers receive typed
+  packages rather than dynamic module values.
+- `pm/local.xsh`, `pm/sources.xsh`, `pm/util.xsh`, and `pm/types.xsh`: shared
+  metadata, source, utility, and stable domain definitions.
 
 Preserve this ownership model when changing PM code. Small cleanups are fine
 when they reduce duplication, narrow APIs, or make effectful boundaries clearer.

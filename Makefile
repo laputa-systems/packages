@@ -9,10 +9,8 @@ XSH_RELEASE ?= release-d09c6c3305ab8c650043bd8d32e03f2db6509e97
 CARGO ?= $(shell command -v cargo 2>/dev/null || echo /home/josh/.cargo/bin/cargo)
 PM_XSH_MODULE_PATH ?= .:/usr/lib/pm
 PKGDIRS ?= $(sort $(patsubst %/PKGBUILD.xsh,%,$(wildcard repo/*/PKGBUILD.xsh)))
+PM_TESTS := tests/xsh/pm_recipe.xsh tests/xsh/pm_graph.xsh tests/xsh/pm_plan.xsh tests/xsh/pm_store.xsh tests/xsh/pm_root.xsh tests/xsh/pm_execute.xsh tests/xsh/pm_publish.xsh tests/xsh/pm_generation.xsh tests/xsh/pm_cli.xsh
 UPDATE_CHECKSUM_JOBS ?= 8
-CHECKSUM_ROOT ?= .work/update-checksums/root
-CHECKSUM_WORK ?= .work/update-checksums/work
-CHECKSUM_OUT ?= .work/update-checksums/out
 
 ifeq ($(LAPUTA_DOCKER_PLATFORM),linux/amd64)
 XSH_LOCAL_TRIPLE ?= x86_64-unknown-linux-musl
@@ -38,7 +36,7 @@ test-native: xsh-native
 	XSH_HOST="$(abspath $(XSH_NATIVE_BIN_DIR)/xsh)" \
 	XSH_MODULE_PATH="$(CURDIR)" \
 	XSH_PM_BUILD_CHROOT=0 \
-	"$(abspath $(XSH_NATIVE_BIN_DIR)/xsht)" test --cov --cov-json target/coverage/pm-native.json tests/xsh/pm.xsh
+	"$(abspath $(XSH_NATIVE_BIN_DIR)/xsht)" test --cov --cov-json target/coverage/pm-native.json $(PM_TESTS)
 
 xsh-native:
 	$(CARGO) build --manifest-path "$(XSH_ROOT_ABS)/Cargo.toml" --bin xsh --bin xshi --bin xsht
@@ -73,5 +71,4 @@ xsh-builder-image:
 	    docker build --platform $(LAPUTA_DOCKER_PLATFORM) -t $(XSH_BUILD_IMAGE) -f "$(XSH_ROOT)/Dockerfile.test" "$(XSH_ROOT)"
 
 update-checksums:
-	@mkdir -p $(CHECKSUM_ROOT) $(CHECKSUM_WORK) $(CHECKSUM_OUT)
-	@printf '%s\n' $(PKGDIRS) | xargs -n 1 -P $(UPDATE_CHECKSUM_JOBS) sh -c 'pkg="$$1"; name="$${pkg#repo/}"; XSH_MODULE_PATH="$(PM_XSH_MODULE_PATH)" $(XSH) pm.xsh -- update-checksums "$(CHECKSUM_ROOT)/$$name" "$(CHECKSUM_WORK)/$$name" "$(CHECKSUM_OUT)/$$name" "$$pkg"' sh
+	@printf '%s\n' $(PKGDIRS) | xargs -n 1 -P $(UPDATE_CHECKSUM_JOBS) sh -c 'pkg="$$1"; name="$${pkg#repo/}"; XSH_MODULE_PATH="$(PM_XSH_MODULE_PATH)" $(XSH) pm.xsh -- repo update-checksums --repo . "$$name"' sh

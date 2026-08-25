@@ -1,90 +1,12 @@
-##! PM build operations and shared package-manager policy.
-use extensions
-use fingerprint
+##! Isolated package payload construction for the immutable plan executor.
 use local
 use pm.env as pm_env
-use pm.proof as pm_proof
 use recipe
-use sources
 use types
 use util
 
-pure build_fingerprint_target(arch: Str) -> types.Target {
-  if arch == "aarch64" {
-    return types.Aarch64LinuxMusl
-  }
-
-  types.TargetReserved
-}
-
-## Exported PM declaration `write_proof_receipt`.
-export proc write_proof_receipt(out: Path, pkg: types.Package, tarball: Path) [fs, env, error] {
-  let receipt = util.proof_receipt_path(out, pkg)
-  let pm_root = pm_source_root()?
-  let build_input = fingerprint.package_build_input(pm_root, pkg, build_fingerprint_target(util.target_arch()?))?
-  let proof_input = fingerprint.package_proof_input(pm_root, pkg)?
-  fs.mkdir(receipt.parent)?
-
-  json.write(
-    receipt,
-    {
-      format: "laputa-package-proof-2",
-      name: pkg.name,
-      ver: pkg.ver,
-      rel: pkg.rel,
-      tarball_sha256: hash.sha256(tarball)?.hex(),
-      build_input,
-      proof_input,
-    },
-  )?
-}
-
-proc source_ready_fingerprint(pkg: types.Package) [fs, env, error] -> Result[Str] {
-  fingerprint.package_build_input(pm_source_root()?, pkg, build_fingerprint_target(util.target_arch()?))?
-}
-
-proc prepare_build_package_source(ctx: types.PmContext, pkg: types.Package) [fs, net, process, env, time, error] {
-  let id = util.package_id(pkg.name, pkg.ver, pkg.rel)
-  let pkg_work = fp"${ctx.work}/${id}"
-  let src = fp"${pkg_work}/src"
-  let reuse_work = (env.get("XSH_PM_REUSE_WORK") ?? "") == "1"
-  let source_ready = fp"${pkg_work}/.source-ready"
-  let source_fingerprint = source_ready_fingerprint(pkg)?
-  let source_is_ready = fs.exists(source_ready)? and source_ready.read_text()?.trim() == source_fingerprint
-
-  if ! reuse_work {
-    fs.remove(pkg_work, missing_ok: true)?
-  }
-
-  if ! reuse_work or ! src.exists()? or ! source_is_ready {
-    fs.remove(src, missing_ok: true)?
-
-    if pkg.upstream_sources.len() == 0 {
-      fs.mkdir(src)?
-    }
-
-    sources.prepare_package_source_tree(ctx.work, ctx.out, pkg, src, false, true, ! reuse_work)?
-
-    fs.write(source_ready, source_fingerprint)?
-  }
-}
-
-proc chroot_build_enabled(ctx: types.PmContext) [env] -> Bool {
-  if (env.get("XSH_PM_IN_CHROOT") ?? "") == "1" {
-    return false
-  }
-
-  if (env.get("XSH_PM_BUILD_CHROOT") ?? "1") == "0" {
-    return false
-  }
-
-  return ctx.command == "build-install" or ctx.command == "world-plan" or ctx.command == "build-set"
-}
-
 proc pm_source_root() [fs, env, error] -> Result[Path] {
-  let module_path = env.get("XSH_MODULE_PATH") ?? "/usr/lib/pm"
-
-  for entry in module_path.split(":") {
+  for entry in (env.get("XSH_MODULE_PATH") ?? "/usr/lib/pm").split(":") {
     let root = fp"${entry}"
 
     if fs.exists(fp"${root}/pm.xsh")? and fs.exists(fp"${root}/pm")? {
@@ -98,14 +20,14 @@ proc pm_source_root() [fs, env, error] -> Result[Path] {
     }
   }
 
-  return /usr/lib/pm
+  /usr/lib/pm
 }
 
 pure seeded_shell_script() -> Str {
   return r"""#!/bin/xsh
 error ShError = Failed(message: Str)
 
-proc run_argv(argv: List[Str]) [process, error] {
+proc build_shell_run_argv(argv: List[Str]) [process, error] {
   if argv.len() == 0 {
     return
   }
@@ -118,15 +40,15 @@ proc run_argv(argv: List[Str]) [process, error] {
   }
 }
 
-proc run_command_list(script: Str) [process, error] {
+proc build_shell_run_command_list(script: Str) [process, error] {
   for part in script.split("&&") {
     let command = part.trim()
     continue when command == "" or command == ":"
-    run_argv(process.argv_words(command)?)?
+    build_shell_run_argv(process.argv_words(command)?)?
   }
 }
 
-proc run_xshi(argv: List[Str]) [process, error] {
+proc build_shell_run_xshi(argv: List[Str]) [process, error] {
   let xshi_argv = ["/bin/xshi"].extend(argv)
   let status = process.run(process.command_argv("/bin/xshi", xshi_argv))?
 
@@ -137,9 +59,9 @@ proc run_xshi(argv: List[Str]) [process, error] {
 
 proc main(...argv: List[Str]) [process, error] {
   if argv.len() >= 2 and argv[0] == "-c" {
-    run_command_list(argv[1])?
+    build_shell_run_command_list(argv[1])?
   } else {
-    run_xshi(argv)?
+    build_shell_run_xshi(argv)?
   }
 }
 
@@ -147,8 +69,84 @@ main(@args)?
 """
 }
 
-## Seeds the explicitly selected XSH/PM substrate into a mutable executor work root.
-## The root composer remains immutable; callers copy a completed dependency root before using this procedure.
+proc xsh_runner() [fs, process, env, error] -> Result[Path] {
+  let host = (env.get("XSH_HOST") ?? "").trim()
+
+  if host != "" {
+    let host_path = fp"${host}"
+
+    if fs.exists(host_path)? {
+      return host_path
+    }
+  }
+
+  if fs.exists(/bin/xsh)? {
+    return /bin/xsh
+  }
+
+  process.which("xsh")?
+}
+
+proc regular_xsh_source(xsh: Path) [fs, error] -> Result[Path] {
+  var source = xsh
+  var depth = 0
+
+  while depth < 16 {
+    let metadata = fs.metadata(source)?
+
+    if metadata.kind != "symlink" {
+      return source
+    }
+
+    let target = source.readlink()?
+    source = if target.display().starts_with("/") { target } else { fp"${source.parent}/${target}" }
+    depth += 1
+  }
+
+  return Err(types.PmError.PackageContract(f"${xsh.display()} has too many symlink levels"))
+}
+
+proc direct_xsh_source(xsh: Path, name: Str) [fs, error] -> Result[Path] {
+  if name == "xsh" {
+    return regular_xsh_source(xsh)
+  }
+
+  let sibling = fp"${xsh.parent}/${name}"
+  if ! fs.exists(sibling)? {
+    return Err(types.PmError.PackageContract(f"missing direct XSH release binary ${sibling}"))
+  }
+
+  regular_xsh_source(sibling)
+}
+
+proc seed_xsh_runners(root: Path, xsh: Path) [fs, error] {
+  let bin = fp"${root}/bin"
+  fs.mkdir(bin)?
+
+  for name in ["xsh", "xshi", "xsht"] {
+    let source = direct_xsh_source(xsh, name)?
+    let dest = fp"${bin}/${name}"
+    fs.remove(dest, missing_ok: true)?
+    fs.install(source, dest, 0o755, parents: true, overwrite: true)?
+  }
+}
+
+proc seed_chroot_device_paths(root: Path) [fs, error] {
+  fs.mkdir(fp"${root}/dev")?
+  let dev_null = fp"${root}/dev/null"
+
+  if ! fs.exists(dev_null)? {
+    fs.write(dev_null, "")?
+    fs.chmod(dev_null, 0o666)?
+  }
+
+  let dev_fd = fp"${root}/dev/fd"
+  fs.remove(dev_fd, missing_ok: true)?
+  fs.symlink(/proc/self/fd, dev_fd)?
+}
+
+## Seeds the explicitly selected XSH/PM substrate into an executor-local mutable work root.
+## Completed package roots remain immutable; this function never targets a generation root.
 export proc seed_executor_substrate(root: Path) [fs, process, env, error] {
   let xsh = xsh_runner()?
   seed_xsh_runners(root, xsh)?
@@ -220,7 +218,7 @@ proc xsht_runner() [fs, process, env, error] -> Result[Path] {
   process.which("xsht")?
 }
 
-## Exported PM declaration `build_prepared_package`.
+## Builds one prepared recipe into a deterministic payload tarball in executor-owned work.
 export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball: Path) [fs, process, env, error] {
   let packages = local.load_package_dirs([pkg_dir])?
   let pkg = packages[0]
@@ -245,7 +243,6 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
     SHELL = "/bin/xshi"
   } {
     let runner = fp"${pkg_dir}/run-package-build.xsh"
-
     let runner_text = """use pm.recipe
 
 proc main(pkg_dir: Path, src: Path, dest: Path) [fs, process, env, error] {
@@ -255,13 +252,13 @@ proc main(pkg_dir: Path, src: Path, dest: Path) [fs, process, env, error] {
   fs.mkdir(dest)?
   recipe.call_build(pkg, src, dest)?
 }
+
 main(@args)?
 """
 
     fs.write(runner, runner_text)?
     let trace_path = fp"${pkg_dir.parent}/run-package-build.trace"
     let xsht = xsht_runner()?
-
     let status = process.run(
       process.command_argv(
         xsht,
@@ -281,9 +278,7 @@ main(@args)?
 
     if ! status.ok {
       if status.exited() {
-        return Err(
-          types.PmError.ExtensionFailed(f"package build for ${pkg.name} exited with status ${status.exit_code()?}"),
-        )
+        return Err(types.PmError.ExtensionFailed(f"package build for ${pkg.name} exited with status ${status.exit_code()?}"))
       }
 
       return Err(types.PmError.ExtensionFailed(f"package build for ${pkg.name} was signaled"))
@@ -292,16 +287,14 @@ main(@args)?
 
   let manifest = fs.walk(dest)
     |> where .kind == "file" or .kind == "symlink"
-    |> map { |entry|
-      entry.path.strip_prefix(dest)?
-    }
+    |> map { |entry| entry.path.strip_prefix(dest)? }
     |> sort-by .display()
 
   local.validate_and_strip_package(pkg, dest, manifest)?
   let etcsums = local.collect_etcsums(dest, manifest)?
   local.write_package_db(dest, pkg, manifest, etcsums)?
   let dest_text = dest.display()
-  var archive_paths = []
+  var archive_paths: List[Path] = []
 
   for entry in fs.walk(dest) {
     var include = entry.kind == "file" or entry.kind == "symlink"
@@ -318,721 +311,4 @@ main(@args)?
   archive_paths = archive_paths |> sort-by .display()
   fs.mkdir(tarball.parent)?
   archive.tar_create(tarball, dest, archive_paths, compression: "gz", overwrite: true)?
-}
-
-proc chroot_build_cache_dir(ctx: types.PmContext, pkg: types.Package) [] -> Path {
-  return fp"${ctx.work}/.chroot-build-cache/${pkg.name}"
-}
-
-proc linux_kbuild_cache_files() [] -> List[Str] {
-  return [
-    ".xsh-kbuild-plan.json",
-    ".xsh-kbuild-plan.fingerprint",
-    ".xsh-kbuild-compile-flags.json",
-    ".xsh-kbuild-archive-plan.json",
-    ".xsh-kbuild-archive-plan.json.summary",
-    ".xsh-kbuild-archive-plan.fingerprint",
-  ]
-}
-
-proc seed_chroot_build_cache(ctx: types.PmContext, pkg: types.Package, src: Path) [fs, error] {
-  if pkg.name != "linux" {
-    return
-  }
-
-  let cache = chroot_build_cache_dir(ctx, pkg)
-
-  for name in linux_kbuild_cache_files() {
-    let cached = fp"${cache}/${name}"
-
-    if cached.exists()? {
-      fs.copy(cached, fp"${src}/${name}", overwrite: true)?
-    }
-  }
-}
-
-proc preserve_chroot_build_cache(ctx: types.PmContext, pkg: types.Package, src: Path) [fs, error] {
-  if pkg.name != "linux" {
-    return
-  }
-
-  let cache = chroot_build_cache_dir(ctx, pkg)
-  fs.mkdir(cache)?
-
-  for name in linux_kbuild_cache_files() {
-    let source = fp"${src}/${name}"
-    let cached = fp"${cache}/${name}"
-
-    if source.exists()? {
-      fs.copy(source, cached, overwrite: true)?
-    } else {
-      fs.remove(cached, missing_ok: true)?
-    }
-  }
-}
-
-proc run_chroot_build_command(
-  host_xsh: Path,
-  chroot_argv: List[Str],
-  build_log_text: Str,
-  build_log: Path,
-) [fs, process, error] -> Result[Status] {
-  if build_log_text != "" {
-    fs.remove(build_log, missing_ok: true)?
-    fs.mkdir(build_log.parent)?
-    return process.run(process.command_argv(host_xsh, chroot_argv, stdout: build_log, stderr: build_log))
-  }
-
-  process.run(process.command_argv(host_xsh, chroot_argv))
-}
-
-proc append_build_log_or_print(build_log_text: Str, build_log: Path, line: Str) [fs, error] {
-  if build_log_text == "" {
-    print --flush $line
-    return
-  }
-
-  let existing = if fs.exists(build_log)? { build_log.read_text()? } else { "" }
-  fs.mkdir(build_log.parent)?
-
-  fs.write(
-    build_log,
-    f"""${existing}${line}
-""",
-  )?
-}
-
-proc run_logged_proof_command(
-  target: Path,
-  argv: List[Str],
-  build_log_text: Str,
-  build_log: Path,
-) [fs, process, error] {
-  if build_log_text != "" {
-    fs.mkdir(build_log.parent)?
-
-    let status = process.run(
-      process.command_argv(target, argv, stdout: build_log, stderr: build_log, stdout_append: true, stderr_append: true),
-    )?
-
-    if ! status.ok {
-      if status.exited() {
-        return Err(types.PmError.ExtensionFailed(f"package proof exited with status ${status.exit_code()?}"))
-      }
-
-      return Err(types.PmError.ExtensionFailed("package proof was signaled"))
-    }
-
-    return
-  }
-
-  let status = process.run(process.command_argv(target, argv))?
-
-  if ! status.ok {
-    if status.exited() {
-      return Err(types.PmError.ExtensionFailed(f"package proof exited with status ${status.exit_code()?}"))
-    }
-
-    return Err(types.PmError.ExtensionFailed("package proof was signaled"))
-  }
-}
-
-proc build_packages_in_chroot(
-  ctx: types.PmContext,
-  packages: List[types.Package],
-) [fs, net, process, env, time, error] -> Result[List[types.BuiltPackage]] {
-  var built = []
-  var owners: Map[Str] = {}
-
-  for pkg in packages {
-    let source_started = time.now()
-    let source_start_message = f"pm-build-phase-start ${pkg.name} source"
-    print --flush $source_start_message
-    prepare_build_package_source(ctx, pkg)?
-    print --flush f"pm-build-phase-done ${pkg.name} source ${time.now() - source_started} ms"
-    seed_executor_substrate(ctx.root)?
-    let id = util.package_id(pkg.name, pkg.ver, pkg.rel)
-    let source_src = fp"${ctx.work}/${id}/src"
-    let stage = fp"${ctx.root}/var/tmp/pm-build/${id}"
-    let src = fp"${stage}/src"
-    let pkg_dir = fp"${stage}/pkg"
-    let dest = fp"${stage}/dest"
-    let source_ready_path = fp"${ctx.work}/${id}/.source-ready"
-    let source_copy_ready_path = fp"${stage}/.source-copy-ready"
-    let chroot_stage = fp"/var/tmp/pm-build/${id}"
-    let chroot_pkg = fp"${chroot_stage}/pkg"
-    let chroot_src = fp"${chroot_stage}/src"
-    let chroot_dest = fp"${chroot_stage}/dest"
-    let chroot_tarball = fp"${chroot_stage}/out/${id}.tar.gz"
-    let host_tarball = fp"${stage}/out/${id}.tar.gz"
-    let tarball = fp"${ctx.out}/${id}.tar.gz"
-    let chroot_root = ctx.root
-    let host_xsh = xsh_runner()?
-    let host_chroot_runner = fp"${pm_source_root()?}/pm/chroot-run.xsh"
-    let build_log_text = (env.get("XSH_PM_BUILD_LOG") ?? "").trim()
-    let build_log = fp"${build_log_text}"
-    let makeflags = env.get("MAKEFLAGS") ?? f"-s -j${cpu.count()}"
-    let build_arch = util.build_arch()?
-    let target_arch = util.target_arch()?
-    let source_copy_ready = (env.get("XSH_PM_REUSE_WORK") ?? "") == "1" and source_ready_path.exists()? and source_copy_ready_path.exists()? and source_ready_path.read_text()?.trim() == source_copy_ready_path.read_text()?.trim()
-
-    if source_copy_ready {
-      fs.remove(pkg_dir, missing_ok: true)?
-      fs.remove(dest, missing_ok: true)?
-      fs.remove(fp"${stage}/out", missing_ok: true)?
-      fs.copy_tree(pkg.dir, pkg_dir, parents: true, overwrite: true)?
-      print --flush f"pm-build-phase-done ${pkg.name} source-copy 0 ms reused"
-    } else {
-      fs.remove(stage, missing_ok: true)?
-      fs.mkdir(stage)?
-      let copy_started = time.now()
-      print --flush f"pm-build-phase-start ${pkg.name} source-copy"
-      fs.copy_tree(source_src, src, parents: true, overwrite: true)?
-      fs.copy_tree(pkg.dir, pkg_dir, parents: true, overwrite: true)?
-      fs.write(source_copy_ready_path, source_ready_path.read_text()?)?
-      let source_copy_done_message = f"pm-build-phase-done ${pkg.name} source-copy ${time.now() - copy_started} ms"
-      print --flush $source_copy_done_message
-    }
-
-    seed_chroot_build_cache(ctx, pkg, src)?
-    extensions.run_lifecycle_hooks("pre-build", pkg.name, ctx, src.display())?
-
-    let chroot_argv = [
-      host_xsh.display(),
-      host_chroot_runner.display(),
-      "--",
-      chroot_root.display(),
-      pkg.name,
-      "/bin/xsh",
-      "/usr/lib/pm/pm.xsh",
-      "--",
-      "build-prepared-package",
-      chroot_pkg.display(),
-      chroot_src.display(),
-      chroot_dest.display(),
-      chroot_tarball.display(),
-    ]
-
-    env {
-      LAPUTA_ROOT = "/"
-      MAKEFLAGS = makeflags
-      PATH = pm_env.build_path(/, "/bin:/usr/bin")
-      XSH_PM_PREFIX = pm_env.prefix
-      XSH_PM_SYSCONFDIR = pm_env.sysconfdir
-      XSH_PM_LOCALSTATEDIR = pm_env.localstatedir
-      XSH_PM_LIBDIR = pm_env.libdir
-      XSH_PM_LIBDIR_NAME = pm_env.libdir_name
-      XSH_PM_BINDIR = pm_env.bindir
-      XSH_PM_INCLUDEDIR = pm_env.includedir
-      XSH_PM_MANDIR = pm_env.mandir
-      XSH_MODULE_PATH = "/usr/lib/pm"
-      XSH_LINUX_REAL = "1"
-      XSH_LINUX_KBUILD_ARCHIVE_ANALYSIS_JOBS = env.get("XSH_LINUX_KBUILD_ARCHIVE_ANALYSIS_JOBS") ?? ""
-      XSH_LINUX_KBUILD_DISCOVER_JOBS = env.get("XSH_LINUX_KBUILD_DISCOVER_JOBS") ?? ""
-      XSH_LINUX_KBUILD_ARCHIVE_ONLY = env.get("XSH_LINUX_KBUILD_ARCHIVE_ONLY") ?? ""
-      XSH_LINUX_KBUILD_FORCE_ARCHIVES = env.get("XSH_LINUX_KBUILD_FORCE_ARCHIVES") ?? ""
-      XSH_LINUX_KBUILD_JOBS = env.get("XSH_LINUX_KBUILD_JOBS") ?? ""
-      XSH_LINUX_KBUILD_LOCAL_RECORDS = env.get("XSH_LINUX_KBUILD_LOCAL_RECORDS") ?? ""
-      XSH_LINUX_KBUILD_LOCAL_RECORD_CACHE = env.get("XSH_LINUX_KBUILD_LOCAL_RECORD_CACHE") ?? ""
-      XSH_LINUX_KBUILD_ONLY = env.get("XSH_LINUX_KBUILD_ONLY") ?? ""
-      XSH_LINUX_KBUILD_PLAN = env.get("XSH_LINUX_KBUILD_PLAN") ?? ""
-      XSH_LINUX_KBUILD_PROGRESS = env.get("XSH_LINUX_KBUILD_PROGRESS") ?? ""
-      XSH_LINUX_KBUILD_PROGRESS_EVERY = env.get("XSH_LINUX_KBUILD_PROGRESS_EVERY") ?? "100"
-      XSH_LINUX_KBUILD_REUSE_ARCHIVE_PLAN = env.get("XSH_LINUX_KBUILD_REUSE_ARCHIVE_PLAN") ?? ""
-      XSH_LINUX_KBUILD_REUSE_ARCHIVES = env.get("XSH_LINUX_KBUILD_REUSE_ARCHIVES") ?? ""
-      XSH_LINUX_KBUILD_STOP_AFTER = env.get("XSH_LINUX_KBUILD_STOP_AFTER") ?? ""
-      XSH_LINUX_KBUILD_TIMING = env.get("XSH_LINUX_KBUILD_TIMING") ?? ""
-      XSH_LINUX_KBUILD_TRUST_COMPILE_FLAGS_CACHE = env.get("XSH_LINUX_KBUILD_TRUST_COMPILE_FLAGS_CACHE") ?? ""
-      XSH_LINUX_KBUILD_TRUST_PLAN_CACHE = env.get("XSH_LINUX_KBUILD_TRUST_PLAN_CACHE") ?? ""
-      XSH_LINUX_KBUILD_USE_PLAN = env.get("XSH_LINUX_KBUILD_USE_PLAN") ?? ""
-      XSH_LINUX_KBUILD_USE_PLAN_TEXT = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT") ?? ""
-      XSH_MAKE_PROGRESS = env.get("XSH_MAKE_PROGRESS") ?? ""
-      XSH_DISABLE_COMPACT_RUNNER = env.get("XSH_DISABLE_COMPACT_RUNNER") ?? "1"
-      XSH_PM_ARCH = target_arch
-      XSH_PM_BUILD_ARCH = build_arch
-      XSH_PM_BUILD_ROOT = "/"
-      XSH_PM_TARGET_ARCH = target_arch
-      XSH_PM_IN_CHROOT = "1"
-      SHELL = "/bin/xshi"
-    } {
-      let chroot_started = time.now()
-      print --flush f"pm-build-phase-start ${pkg.name} chroot"
-      let status = run_chroot_build_command(host_xsh, chroot_argv, build_log_text, build_log)?
-      print --flush f"pm-build-phase-done ${pkg.name} chroot ${time.now() - chroot_started} ms"
-      preserve_chroot_build_cache(ctx, pkg, src)?
-
-      if ! status.ok {
-        if status.exited() {
-          return Err(
-            types.PmError.ExtensionFailed(f"chroot build for ${pkg.name} exited with status ${status.exit_code()?}"),
-          )
-        }
-
-        return Err(types.PmError.ExtensionFailed(f"chroot build for ${pkg.name} was signaled"))
-      }
-    } ?
-
-    fs.install(host_tarball, tarball, 0o644, parents: true, overwrite: true)?
-    let item = local.load_built_package_from_dest(pkg, id, tarball, dest)?
-
-    for rel_path in item.manifest {
-      let key = rel_path.display()
-
-      if owners.has(key) {
-        let owner = owners.get(key)?
-        return Err(types.PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
-      }
-
-      owners[key] = pkg.name
-    }
-
-    run_package_proof(ctx, pkg, id, tarball, item.manifest, built, build_log_text, build_log)?
-    write_proof_receipt(ctx.out, pkg, tarball)?
-    extensions.run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
-    built = built.push(item)
-    let tarball_size = fs.metadata(tarball)?.size
-
-    append_build_log_or_print(
-      build_log_text,
-      build_log,
-      f"${pkg.name} ${id} build: ${item.manifest.len()} files size: ${local.compressed_package_size(tarball_size)}",
-    )?
-  }
-
-  built
-}
-
-## Exported PM declaration `build_packages`.
-export proc build_packages(
-  ctx: types.PmContext,
-  packages: List[types.Package],
-) [fs, net, process, env, time, error] -> Result[List[types.BuiltPackage]] {
-  if chroot_build_enabled(ctx) {
-    return build_packages_in_chroot(ctx, packages)
-  }
-
-  var built = []
-  var owners: Map[Str] = {}
-
-  for pkg in packages {
-    prepare_build_package_source(ctx, pkg)?
-  }
-
-  for pkg in packages {
-    let id = util.package_id(pkg.name, pkg.ver, pkg.rel)
-    let pkg_work = fp"${ctx.work}/${id}"
-    let src = fp"${pkg_work}/src"
-    let dest = fp"${pkg_work}/dest"
-    let tarball = fp"${ctx.out}/${id}.tar.gz"
-    extensions.run_lifecycle_hooks("pre-build", pkg.name, ctx, src.display())?
-    let makeflags = env.get("MAKEFLAGS") ?? f"-s -j${cpu.count()}"
-
-    env {
-      DESTDIR = dest
-      XSH_PM_PREFIX = pm_env.prefix
-      XSH_PM_SYSCONFDIR = pm_env.sysconfdir
-      XSH_PM_LOCALSTATEDIR = pm_env.localstatedir
-      XSH_PM_LIBDIR = pm_env.libdir
-      XSH_PM_LIBDIR_NAME = pm_env.libdir_name
-      XSH_PM_BINDIR = pm_env.bindir
-      XSH_PM_INCLUDEDIR = pm_env.includedir
-      XSH_PM_MANDIR = pm_env.mandir
-      XSH_PM_NAME = pkg.name
-      XSH_PM_VERSION = pkg.ver
-      XSH_PM_RELEASE = pkg.rel
-      XSH_PM_QUIET = "1"
-      MAKEFLAGS = makeflags
-    } {
-      recipe.call_prepare(pkg, src)?
-
-      fs.remove(dest, missing_ok: true)?
-      fs.mkdir(dest)?
-
-      recipe.call_build(pkg, src, dest)?
-    } ?
-
-    let manifest = fs.walk(dest)
-      |> where .kind == "file" or .kind == "symlink"
-      |> map { |entry|
-        entry.path.strip_prefix(dest)?
-      }
-      |> sort-by .display()
-
-    local.validate_and_strip_package(pkg, dest, manifest)?
-
-    for rel_path in manifest {
-      let key = rel_path.display()
-
-      if owners.has(key) {
-        let owner = owners.get(key)?
-        return Err(types.PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
-      }
-
-      owners[key] = pkg.name
-    }
-
-    let etcsums = local.collect_etcsums(dest, manifest)?
-    local.write_package_db(dest, pkg, manifest, etcsums)?
-    let dest_text = dest.display()
-    var archive_paths = []
-
-    for entry in fs.walk(dest) {
-      var include = entry.kind == "file" or entry.kind == "symlink"
-
-      if entry.kind == "dir" and entry.path.display() != dest_text and local.dir_empty(
-        entry.path,
-      )? {
-        include = true
-      }
-
-      if include {
-        archive_paths = archive_paths.push(entry.path.strip_prefix(dest)?)
-      }
-    }
-
-    archive_paths = archive_paths |> sort-by .display()
-    fs.mkdir(ctx.out)?
-    archive.tar_create(tarball, dest, archive_paths, compression: "gz", overwrite: true)?
-    run_package_proof(ctx, pkg, id, tarball, manifest, built, "", fp"")?
-    write_proof_receipt(ctx.out, pkg, tarball)?
-    extensions.run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
-    let metadata_files = local.collect_artifact_entries(dest)?
-    let metadata_sha256 = local.metadata_files_sha256(pkg, metadata_files)?
-    let tarball_size = fs.metadata(tarball)?.size
-
-    built = built.push({
-      pkg,
-      id,
-      tarball,
-      manifest,
-      etcsums,
-      metadata_sha256,
-      metadata_files,
-    })
-
-    append_build_log_or_print(
-      "",
-      fp"",
-      f"${pkg.name} ${id} build: ${manifest.len()} files size: ${local.compressed_package_size(tarball_size)}",
-    )?
-  }
-
-  built
-}
-
-proc xsh_runner() [fs, process, env, error] -> Result[Path] {
-  let host = (env.get("XSH_HOST") ?? "").trim()
-
-  if host != "" {
-    let host_path = fp"${host}"
-
-    if fs.exists(host_path)? {
-      return host_path
-    }
-  }
-
-  if fs.exists(/bin/xsh)? {
-    return /bin/xsh
-  }
-
-  process.which("xsh")?
-}
-
-proc regular_xsh_source(xsh: Path) [fs, error] -> Result[Path] {
-  var source = xsh
-  var depth = 0
-
-  while depth < 16 {
-    let metadata = fs.metadata(source)?
-
-    if metadata.kind != "symlink" {
-      return source
-    }
-
-    let target = source.readlink()?
-    source = if target.display().starts_with("/") { target } else { fp"${source.parent}/${target}" }
-    depth += 1
-  }
-
-  return Err(types.PmError.PackageContract(f"${xsh.display()} has too many symlink levels"))
-}
-
-proc direct_xsh_source(xsh: Path, name: Str) [fs, error] -> Result[Path] {
-  if name == "xsh" {
-    return regular_xsh_source(xsh)
-  }
-
-  let sibling = fp"${xsh.parent}/${name}"
-  if ! fs.exists(sibling)? {
-    return Err(types.PmError.PackageContract(f"missing direct XSH release binary ${sibling}"))
-  }
-
-  return regular_xsh_source(sibling)
-}
-
-proc seed_xsh_runners(root: Path, xsh: Path) [fs, error] {
-  let bin = fp"${root}/bin"
-  fs.mkdir(bin)?
-
-  for name in ["xsh", "xshi", "xsht"] {
-    let source = direct_xsh_source(xsh, name)?
-    let dest = fp"${bin}/${name}"
-    fs.remove(dest, missing_ok: true)?
-    fs.install(source, dest, 0o755, parents: true, overwrite: true)?
-  }
-}
-
-proc seed_package_proof_shell(proof_root: Path, xsh: Path) [fs, process, env, error] {
-  seed_xsh_runners(proof_root, xsh)?
-
-  for proof_sh in [fp"${proof_root}/usr/bin/sh", fp"${proof_root}/bin/sh"] {
-    fs.mkdir(proof_sh.parent)?
-    fs.remove(proof_sh, missing_ok: true)?
-    fs.write(proof_sh, seeded_shell_script())?
-    fs.chmod(proof_sh, 0o755)?
-  }
-
-  let pm_root = pm_source_root()?
-  fs.install(fp"${pm_root}/pm.xsh", fp"${proof_root}/usr/lib/pm/pm.xsh", 0o644, parents: true, overwrite: true)?
-  fs.remove(fp"${proof_root}/usr/lib/pm/pm", missing_ok: true)?
-  let _ = fs.copy_tree(fp"${pm_root}/pm", fp"${proof_root}/usr/lib/pm/pm", parents: true, overwrite: true)?
-}
-
-proc seed_chroot_device_paths(root: Path) [fs, error] {
-  fs.mkdir(fp"${root}/dev")?
-  let dev_null = fp"${root}/dev/null"
-
-  if ! fs.exists(dev_null)? {
-    fs.write(dev_null, "")?
-    fs.chmod(dev_null, 0o666)?
-  }
-
-  let dev_fd = fp"${root}/dev/fd"
-  fs.remove(dev_fd, missing_ok: true)?
-  fs.symlink(/proc/self/fd, dev_fd)?
-}
-
-proc verify_package_proof_root(root: Path, name: Str) [fs, error] {
-  let db = util.package_db_path(root, name)
-
-  if ! fs.exists(db)? {
-    return Err(types.PmError.PackageTarball(f"${name} proof root is missing package metadata"))
-  }
-
-  let manifest = local.load_manifest(db)?
-
-  for rel_path in manifest {
-    let installed = fp"${root}/${rel_path}"
-
-    match fs.metadata(installed) {
-      Ok(_) => {}
-      Err(_) => return Err(types.PmError.PackageTarball(f"${name} proof root is missing ${rel_path.display()}"))
-    }
-  }
-}
-
-pure manifest_installs_service(manifest: List[Path]) -> Bool {
-  for rel_path in manifest {
-    let entry = rel_path.display()
-
-    if entry.starts_with("usr/lib/xinit/services/") and entry.ends_with(".xsh") {
-      return true
-    }
-  }
-
-  return false
-}
-
-# Locate an xinit script to validate service definitions with. Prefers an
-# explicit XINIT_HOST override, then an installed /usr/bin/xinit, then PATH.
-# Errors with an actionable PackageContract when none is found, since a package
-# that ships service.xsh cannot be proven without one.
-proc resolve_service_xinit(name: Str) [fs, process, env, error] -> Result[Path] {
-  let host = (env.get("XINIT_HOST") ?? "").trim()
-
-  if host != "" {
-    let host_path = fp"${host}"
-
-    if fs.exists(host_path)? {
-      return host_path
-    }
-  }
-
-  if fs.exists(/usr/bin/xinit)? {
-    return /usr/bin/xinit
-  }
-
-  match process.which("xinit") {
-    Ok(found) => return found
-    Err(_) => {}
-  }
-
-  return Err(
-    types.PmError.PackageContract(
-      f"${name} ships service.xsh but no xinit was found to validate it; install the xinit package or set XINIT_HOST to an xinit script",
-    ),
-  )
-}
-
-# A package is an xinit service when it ships a service.xsh next to its
-# PKGBUILD, mirroring the required proof.xsh. The service definition must be
-# installed under /usr/lib/xinit/services/ and is validated with `xinit check`
-# during the package proof, so a malformed or undeclared service fails the
-# build instead of the running system.
-proc verify_service_contract(pkg: types.Package, manifest: List[Path]) [fs, process, env, error] {
-  let service_file = fp"${pkg.dir}/service.xsh"
-  let has_service = fs.exists(service_file)?
-  let installs_service = manifest_installs_service(manifest)
-
-  if installs_service and ! has_service {
-    return Err(
-      types.PmError.PackageContract(
-        f"${pkg.name} installs an xinit service under /usr/lib/xinit/services/ but is missing service.xsh",
-      ),
-    )
-  }
-
-  if has_service and ! installs_service {
-    return Err(
-      types.PmError.PackageContract(
-        f"${pkg.name} defines service.xsh but build() does not install it under /usr/lib/xinit/services/",
-      ),
-    )
-  }
-
-  if ! has_service {
-    return
-  }
-
-  let xinit = resolve_service_xinit(pkg.name)?
-  let xsh = xsh_runner()?
-  let scratch_root = fs.tempdir()?
-  defer fs.close_root(scratch_root)?
-  let scratch = fs.root_path(scratch_root)?
-  let out_log = fp"${scratch}/service-check.out"
-  let err_log = fp"${scratch}/service-check.err"
-  let status = run.status $xsh $xinit "--" check $service_file > $out_log 2> $err_log
-
-  if ! status.ok {
-    return Err(
-      types.PmError.PackageContract(
-        f"${pkg.name} service.xsh failed xinit check: ${err_log.read_text()?.trim()} ${out_log.read_text()?.trim()}",
-      ),
-    )
-  }
-
-  print f"${pkg.name} service ${out_log.read_text()?.trim()}"
-}
-
-proc run_package_proof(
-  ctx: types.PmContext,
-  pkg: types.Package,
-  id: Str,
-  tarball: Path,
-  manifest: List[Path],
-  previous: List[types.BuiltPackage],
-  build_log_text: Str,
-  build_log: Path,
-) [fs, process, env, error] {
-  let proof = fp"${pkg.dir}/proof.xsh"
-
-  if ! fs.exists(proof)? {
-    return Err(types.PmError.PackageContract(f"${pkg.name} is missing proof.xsh"))
-  }
-
-  verify_service_contract(pkg, manifest)?
-  let proof_root = fp"${ctx.work}/${id}-proof-root"
-  fs.remove(proof_root, missing_ok: true)?
-  fs.mkdir(proof_root)?
-
-  if fs.exists(ctx.root)? {
-    fs.copy_tree(ctx.root, proof_root, parents: true, overwrite: true)?
-  }
-
-  for item in previous {
-    archive.tar_extract(item.tarball, proof_root, 0, "auto", true)?
-  }
-
-  let proof_db = util.package_db_path(proof_root, pkg.name)
-
-  if fs.exists(proof_db)? {
-    let old_manifest = local.load_manifest(proof_db)?
-    let _ = fs.remove_manifest(proof_root, old_manifest, missing_ok: true)?
-    fs.remove(proof_db, missing_ok: true)?
-  }
-
-  let installed_owners = local.load_installed_owners(proof_root)?
-
-  for rel_path in manifest {
-    let key = rel_path.display()
-
-    if ! installed_owners.has(key) {
-      fs.remove(fp"${proof_root}/${rel_path}", missing_ok: true)?
-    }
-  }
-
-  archive.tar_extract(tarball, proof_root, 0, "auto", true)?
-  verify_package_proof_root(proof_root, pkg.name)?
-  pm_proof.verify_package_elf_dependencies(proof_root, pkg.name)?
-  let xsh = xsh_runner()?
-  seed_package_proof_shell(proof_root, xsh)?
-  seed_chroot_device_paths(proof_root)?
-  let build_arch = util.build_arch()?
-  let target_arch = util.target_arch()?
-  let native_proof = build_arch == target_arch and (env.get("XSH_PM_BUILD_CHROOT") ?? "1") != "0"
-
-  if native_proof {
-    let proof_stage = fp"${proof_root}/var/tmp/pm-proof/${pkg.name}"
-    fs.mkdir(proof_stage)?
-    fs.install(proof, fp"${proof_stage}/proof.xsh", 0o644, parents: true, overwrite: true)?
-    let host_chroot_runner = fp"${pm_source_root()?}/pm/chroot-run.xsh"
-
-    env {
-      LAPUTA_ROOT = "/"
-      PATH = pm_env.build_path(/, "/bin:/usr/bin")
-      XSH_MODULE_PATH = "/usr/lib/pm"
-      XSH_LINUX_REAL = "1"
-      XSH_PM_ARCH = target_arch
-      XSH_PM_BUILD_ARCH = build_arch
-      XSH_PM_BUILD_ROOT = "/"
-      XSH_PM_PROOF_ROOT = "/"
-      XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
-      XSH_PM_TARGET_ARCH = target_arch
-      SHELL = "/bin/xshi"
-    } {
-      run_logged_proof_command(
-        xsh,
-        [
-          xsh.display(),
-          host_chroot_runner.display(),
-          "--",
-          proof_root.display(),
-          pkg.name,
-          "/bin/xsh",
-          f"/var/tmp/pm-proof/${pkg.name}/proof.xsh",
-          "--",
-          "/",
-        ],
-        build_log_text,
-        build_log,
-      )?
-    } ?
-  } else {
-    env {
-      PATH = f"${proof_root}/bin:${proof_root}/usr/bin:${env.get("PATH") ?? ""}"
-      XSH_MODULE_PATH = env.get("XSH_MODULE_PATH") ?? "/usr/lib/pm"
-      XSH_PM_PROOF_ROOT = proof_root.display()
-      XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
-      SHELL = fp"${proof_root}/bin/xshi"
-    } {
-      run_logged_proof_command(
-        xsh,
-        [xsh.display(), proof.display(), "--", proof_root.display()],
-        build_log_text,
-        build_log,
-      )?
-    } ?
-  }
-
-  append_build_log_or_print(build_log_text, build_log, f"${pkg.name} proof: ok")?
 }
