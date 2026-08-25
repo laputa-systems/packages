@@ -1,4 +1,5 @@
 ##! PM sources operations and shared package-manager policy.
+use fingerprint
 use recipe
 use types
 use util
@@ -414,6 +415,18 @@ proc validate_source_mirror(out: Path, pkg: types.Package, mirror: Path) [fs, en
   false
 }
 
+pure source_mirror_fingerprint_target(arch: Str) -> types.Target {
+  if arch == "aarch64" {
+    return types.Aarch64LinuxMusl
+  }
+
+  types.TargetReserved
+}
+
+proc source_mirror_build_input(pkg: types.Package) [fs, env, error] -> Result[Str] {
+  fingerprint.package_build_input(pkg.dir.parent.parent, pkg, source_mirror_fingerprint_target(util.target_arch()?))?
+}
+
 ## Exported PM declaration `prepare_source_tree`.
 export proc prepare_source_tree(pkg: types.Package, src: Path) [fs, process, env, error] {
   recipe.call_prepare_sources(pkg, src)?
@@ -528,6 +541,7 @@ export proc pack_source_mirror(out: Path, pkg: types.Package, src: Path) [fs, en
       ver: pkg.ver,
       rel: pkg.rel,
       arch,
+      build_input: source_mirror_build_input(pkg)?,
       archive_sha256: hash.sha256(mirror)?.hex(),
       entries,
     },

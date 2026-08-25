@@ -3,6 +3,7 @@ use build as pm_build
 use buildroot
 use catalog
 use extensions
+use fingerprint
 use graph
 use local
 use policy
@@ -96,7 +97,33 @@ proc order_repo_build_packages(
   ordered
 }
 
-proc verify_proof_receipt(out: Path, pkg: types.Package, tarball: Path) [fs, error] {
+pure repo_fingerprint_target(arch: Str) -> types.Target {
+  if arch == "aarch64" {
+    return types.Aarch64LinuxMusl
+  }
+
+  types.TargetReserved
+}
+
+proc repo_pm_source_root() [fs, env, error] -> Result[Path] {
+  for entry in (env.get("XSH_MODULE_PATH") ?? "").split(":") {
+    let candidate = fp"${entry}"
+
+    if fs.exists(fp"${candidate}/pm.xsh")? and fs.exists(fp"${candidate}/pm")? {
+      return path.absolute(candidate)?
+    }
+  }
+
+  for candidate in [p".", p"laputa", /usr/lib/pm] {
+    if fs.exists(fp"${candidate}/pm.xsh")? and fs.exists(fp"${candidate}/pm")? {
+      return path.absolute(candidate)?
+    }
+  }
+
+  return Err(types.PmError.PackageContract("cannot locate PM source root for proof receipt verification"))
+}
+
+proc verify_proof_receipt(out: Path, pkg: types.Package, tarball: Path) [fs, env, error] {
   let receipt = util.proof_receipt_path(out, pkg)
 
   if ! fs.exists(receipt)? {
@@ -111,6 +138,25 @@ proc verify_proof_receipt(out: Path, pkg: types.Package, tarball: Path) [fs, err
 
   if expected != actual {
     return Err(types.PmError.PackageTarball(f"${pkg.name} proof receipt does not match the package tarball"))
+  }
+
+  if metadata.has("build_input") {
+    let recorded: Str = metadata.get("build_input")?
+    let pm_root = repo_pm_source_root()?
+    let current = fingerprint.package_build_input(pm_root, pkg, repo_fingerprint_target(util.machine_arch()?))?
+
+    if recorded != current {
+      return Err(types.PmError.PackageTarball(f"${pkg.name} proof receipt build input is stale; rebuild before upload"))
+    }
+  }
+
+  if metadata.has("proof_input") {
+    let recorded: Str = metadata.get("proof_input")?
+    let current = fingerprint.package_proof_input(repo_pm_source_root()?, pkg)?
+
+    if recorded != current {
+      return Err(types.PmError.PackageTarball(f"${pkg.name} proof receipt input is stale; re-prove before upload"))
+    }
   }
 }
 

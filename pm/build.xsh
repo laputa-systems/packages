@@ -1,5 +1,6 @@
 ##! PM build operations and shared package-manager policy.
 use extensions
+use fingerprint
 use local
 use pm.env as pm_env
 use pm.proof as pm_proof
@@ -8,55 +9,38 @@ use sources
 use types
 use util
 
+pure build_fingerprint_target(arch: Str) -> types.Target {
+  if arch == "aarch64" {
+    return types.Aarch64LinuxMusl
+  }
+
+  types.TargetReserved
+}
+
 ## Exported PM declaration `write_proof_receipt`.
-export proc write_proof_receipt(out: Path, pkg: types.Package, tarball: Path) [fs, error] {
+export proc write_proof_receipt(out: Path, pkg: types.Package, tarball: Path) [fs, env, error] {
   let receipt = util.proof_receipt_path(out, pkg)
+  let pm_root = pm_source_root()?
+  let build_input = fingerprint.package_build_input(pm_root, pkg, build_fingerprint_target(util.target_arch()?))?
+  let proof_input = fingerprint.package_proof_input(pm_root, pkg)?
   fs.mkdir(receipt.parent)?
 
   json.write(
     receipt,
     {
-      format: "laputa-package-proof-1",
+      format: "laputa-package-proof-2",
       name: pkg.name,
       ver: pkg.ver,
       rel: pkg.rel,
       tarball_sha256: hash.sha256(tarball)?.hex(),
+      build_input,
+      proof_input,
     },
   )?
 }
 
-pure source_fingerprint_input(rel: Path) -> Bool {
-  let name = rel.name
-  let key = rel.display()
-
-  if name.starts_with("PKGBUILD") {
-    return true
-  }
-
-  if key.starts_with("files/") or key.starts_with("patches/") {
-    return true
-  }
-
-  return ! name.ends_with(".xsh")
-}
-
 proc source_ready_fingerprint(pkg: types.Package) [fs, env, error] -> Result[Str] {
-  let arch = util.target_arch()?
-  var body = f"""${pkg.name}	${pkg.ver}	${pkg.rel}	${arch}
-"""
-
-  for entry in fs.walk(pkg.dir) |> sort-by .path {
-    if entry.kind == "file" {
-      let rel = entry.path.strip_prefix(pkg.dir)?
-
-      if source_fingerprint_input(rel) {
-        body = f"""${body}${rel.display()}	${hash.sha256(entry.path)?.hex()}
-"""
-      }
-    }
-  }
-
-  bytes.from_text(body).sha256().hex()
+  fingerprint.package_build_input(pm_source_root()?, pkg, build_fingerprint_target(util.target_arch()?))?
 }
 
 proc prepare_build_package_source(ctx: types.PmContext, pkg: types.Package) [fs, net, process, env, time, error] {
