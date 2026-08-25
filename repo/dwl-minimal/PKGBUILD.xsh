@@ -194,6 +194,12 @@ static const char *termcmd[] = { "/usr/bin/foot", NULL };
 """,
   )
 
+  config = config.replace(
+    """\\t{ MODKEY,                    XKB_KEY_p,           spawn,            {.v = menucmd} },
+""",
+    "",
+  )
+
   fs.write(p"config.h", config)?
 }
 
