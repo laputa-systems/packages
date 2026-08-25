@@ -356,6 +356,24 @@ export type BuildPlan = {
 ## The verified immutable artifacts produced or reused while executing one exact BuildPlan.
 export type BuildResult = {format: Str, plan_sha256: Str, artifacts: List[ArtifactReceipt]}
 
+## One verified package object selected from a completed BuildPlan for immutable repository publication.
+export type RepoPublication = {
+  node: PlanNode,
+  receipt: ArtifactReceipt,
+  payload: Path,
+  metadata: Path,
+  proof: Path,
+  kind: PackageKind,
+}
+
+## The complete verified package set that may be published for one immutable BuildPlan.
+export type RepoSnapshot = {
+  format: Str,
+  target: Target,
+  plan_sha256: Str,
+  packages: List[RepoPublication],
+}
+
 ## A checksum recorded for an installed /etc file.
 export type EtcSum = {path: Str, sha256: Str}
 
@@ -393,6 +411,14 @@ export type RemotePackage = {
   size: Int,
   tarball: Str,
   metadata: Str,
+  metadata_sha256: Str,
+  artifact_key: Str,
+  recipe_sha256: Str,
+  executor_sha256: Str,
+  proof_key: Str,
+  proof_sha256: Str,
+  proof: Str,
+  proof_receipt_sha256: Str,
   source_sha256: Str,
   metapackage: Bool,
 }

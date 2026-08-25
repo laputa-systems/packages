@@ -330,35 +330,7 @@ proc remote_snapshot_for_plan(out: Path) [fs, net, env, time, error] -> Result[t
 
   for entry in index {
     continue unless entry.arch == "aarch64"
-    let entry_sha256 = remote_entry_digest(entry)?
-    let tarball = if entry.tarball == "" {
-      util.remote_binary_rel(entry.arch, entry.name, entry.ver, entry.rel).display()
-    } else {
-      entry.tarball
-    }
-    let metadata = if entry.metadata == "" {
-      util.remote_metadata_rel(entry.arch, entry.name, entry.ver, entry.rel).display()
-    } else {
-      entry.metadata
-    }
-
-    packages = packages.push({
-      name: entry.name,
-      ver: entry.ver,
-      rel: entry.rel,
-      retrieval: {
-        arch: entry.arch,
-        tarball,
-        tarball_sha256: if entry.sha256 == "" { entry_sha256 } else { entry.sha256 },
-        metadata,
-        metadata_sha256: entry_sha256,
-      },
-      artifact_key: "",
-      recipe_sha256: "",
-      executor_sha256: "",
-      proof_key: "",
-      proof_sha256: "",
-    })
+    packages = packages.push(remote.plan_artifact_from_package(entry)?)
   }
 
   {target: types.Aarch64LinuxMusl, index_sha256, packages}

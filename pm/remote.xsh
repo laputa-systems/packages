@@ -342,6 +342,52 @@ export proc upload_repo_file(repo: Str, rel: Path, source: Path, token: Str, _: 
   net_put_file(util.repo_url_for(repo, rel)?, source, token)?
 }
 
+## Publishes one immutable repository object. A file remote receives a temporary copy and rename;
+## an existing object is accepted only when its exact bytes already match the requested source.
+export proc upload_immutable_repo_file(repo: Str, rel: Path, source: Path, token: Str, work: Path) [fs, net, error] -> Result[Bool] {
+  if ! util.is_file_url(repo) {
+    let response = net.upload({
+      method: "PUT",
+      url: util.repo_url_for(repo, rel)?,
+      source,
+      headers: [
+        {name: "Authorization", value: f"Bearer ${token}"},
+        {name: "If-None-Match", value: "*"},
+      ],
+      pool: "pm",
+      fail_status: false,
+    })?
+
+    if response.status >= 200 and response.status < 300 {
+      return true
+    }
+
+    if response.status == 409 or response.status == 412 {
+      return Err(types.PmError.PackageConflict(f"immutable remote object ${rel.display()} already exists"))
+    }
+
+    return Err(types.PmError.RemoteUpload(f"failed to upload immutable remote object ${rel.display()}: HTTP ${response.status}"))
+  }
+
+  let dest = util.repo_file_path(repo, rel)?
+
+  if fs.exists(dest)? {
+    if hash.sha256(dest)?.hex() == hash.sha256(source)?.hex() {
+      return false
+    }
+
+    return Err(types.PmError.PackageConflict(f"immutable remote object ${rel.display()} already exists with different bytes"))
+  }
+
+  let temporary = fp"${dest.parent}/.${dest.name}.tmp"
+  fs.mkdir(dest.parent)?
+  fs.remove(temporary, missing_ok: true)?
+  defer fs.remove(temporary, missing_ok: true)?
+  fs.copy(source, temporary, overwrite: true)?
+  fs.rename(temporary, dest)?
+  true
+}
+
 ## Exported PM declaration `upload_large_repo_file`.
 export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: Str, _: Path) [fs, net, time, error] {
   if util.is_file_url(repo) {
@@ -503,6 +549,14 @@ export proc decode_remote_package(row: Record) [error] -> Result[types.RemotePac
     size: row.get("size")?,
     tarball: row.get("tarball")?,
     metadata: if row.has("metadata") { row.get("metadata")? } else { "" },
+    metadata_sha256: if row.has("metadata_sha256") { row.get("metadata_sha256")? } else { "" },
+    artifact_key: if row.has("artifact_key") { row.get("artifact_key")? } else { "" },
+    recipe_sha256: if row.has("recipe_sha256") { row.get("recipe_sha256")? } else { "" },
+    executor_sha256: if row.has("executor_sha256") { row.get("executor_sha256")? } else { "" },
+    proof_key: if row.has("proof_key") { row.get("proof_key")? } else { "" },
+    proof_sha256: if row.has("proof_sha256") { row.get("proof_sha256")? } else { "" },
+    proof: if row.has("proof") { row.get("proof")? } else { "" },
+    proof_receipt_sha256: if row.has("proof_receipt_sha256") { row.get("proof_receipt_sha256")? } else { "" },
     source_sha256: row.get("source_sha256")?,
     metapackage: row.get("metapackage")?,
   }
@@ -528,6 +582,18 @@ export proc write_remote_index_to_repo(
   token: Str,
 ) [fs, net, error] {
   write_remote_index_cache(out, index)?
+
+  if util.is_file_url(repo) {
+    let dest = util.repo_file_path(repo, p"index.json")?
+    let temporary = fp"${dest.parent}/.${dest.name}.tmp"
+    fs.mkdir(dest.parent)?
+    fs.remove(temporary, missing_ok: true)?
+    defer fs.remove(temporary, missing_ok: true)?
+    fs.copy(util.remote_index_cache_path(out), temporary, overwrite: true)?
+    fs.rename(temporary, dest, overwrite: true)?
+    return
+  }
+
   upload_repo_file(repo, p"index.json", util.remote_index_cache_path(out), token, work)?
 }
 
@@ -910,8 +976,86 @@ export pure remote_entry_for(
     size,
     tarball: tarball_rel,
     metadata: metadata_rel,
+    metadata_sha256: "",
+    artifact_key: "",
+    recipe_sha256: "",
+    executor_sha256: "",
+    proof_key: "",
+    proof_sha256: "",
+    proof: "",
+    proof_receipt_sha256: "",
     source_sha256,
     metapackage,
+  }
+}
+
+## Derives the legacy retrieval fingerprint kept for index rows that predate immutable metadata sidecars.
+export pure legacy_snapshot_digest(value: types.RemotePackage) -> Str {
+  var lines = [
+    "format\tlaputa-legacy-remote-entry-1",
+    f"arch\t${value.arch}",
+    f"name\t${value.name}",
+    f"ver\t${value.ver}",
+    f"rel\t${value.rel}",
+    f"sha256\t${value.sha256}",
+    f"tarball\t${value.tarball}",
+    f"metadata\t${value.metadata}",
+    f"source-sha256\t${value.source_sha256}",
+    f"metapackage\t${value.metapackage}",
+  ]
+
+  for dependency in value.deps |> sort {
+    lines = lines.push(f"runtime\t${dependency}")
+  }
+
+  for dependency in value.mkdeps_host |> sort {
+    lines = lines.push(f"build-host\t${dependency}")
+  }
+
+  for dependency in value.mkdeps_target |> sort {
+    lines = lines.push(f"build-target\t${dependency}")
+  }
+
+  bytes.from_text(lines.join("\n") + "\n").sha256().hex()
+}
+
+## Decodes new immutable index identities while retaining the legacy empty-identity fallback.
+export proc plan_artifact_from_package(value: types.RemotePackage) [error] -> Result[types.RemotePlanArtifact] {
+  let fields = [value.artifact_key, value.recipe_sha256, value.executor_sha256, value.proof_key, value.proof_sha256]
+  let populated = [field for field in fields if field != ""]
+
+  if populated.len() != 0 and populated.len() != fields.len() {
+    return Err(types.PmError.PackageContract(f"remote package ${value.name} has a partial immutable identity"))
+  }
+
+  let fallback = legacy_snapshot_digest(value)
+  let tarball = if value.tarball == "" {
+    util.remote_binary_rel(value.arch, value.name, value.ver, value.rel).display()
+  } else {
+    value.tarball
+  }
+  let metadata = if value.metadata == "" {
+    util.remote_metadata_rel(value.arch, value.name, value.ver, value.rel).display()
+  } else {
+    value.metadata
+  }
+
+  {
+    name: value.name,
+    ver: value.ver,
+    rel: value.rel,
+    retrieval: {
+      arch: value.arch,
+      tarball,
+      tarball_sha256: if value.sha256 == "" { fallback } else { value.sha256 },
+      metadata,
+      metadata_sha256: if value.metadata_sha256 == "" { fallback } else { value.metadata_sha256 },
+    },
+    artifact_key: value.artifact_key,
+    recipe_sha256: value.recipe_sha256,
+    executor_sha256: value.executor_sha256,
+    proof_key: value.proof_key,
+    proof_sha256: value.proof_sha256,
   }
 }
 

@@ -76,6 +76,11 @@ export pure remote_metadata_rel(arch: Str, name: Str, ver: Str, rel: Str) -> Pat
   fp"metadata/${arch}/${name}/${remote_metadata_name(name, ver, rel)}"
 }
 
+## Exported PM declaration `remote_proof_rel`.
+export pure remote_proof_rel(arch: Str, name: Str, ver: Str, rel: Str) -> Path {
+  fp"proofs/${arch}/${name}/${remote_metadata_name(name, ver, rel)}"
+}
+
 ## Exported PM declaration `remote_source_rel_for_arch`.
 export pure remote_source_rel_for_arch(arch: Str, name: Str, ver: Str, rel: Str) -> Path {
   fp"sources/${name}/${remote_source_name_for_arch(name, ver, rel, arch)}"
