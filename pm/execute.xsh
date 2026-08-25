@@ -95,7 +95,7 @@ proc execute_mutable_root(
   let immutable = fp"${work}/${label}-dependencies"
   let mutable = fp"${work}/${label}-work"
   let root_plan = pm_root.preflight(artifacts)?
-  let _ = pm_root.compose(immutable, root_plan, artifacts)?
+  let _ = pm_root.compose_artifacts(immutable, root_plan, artifacts)?
   let _ = fs.copy_tree(immutable, mutable, parents: true, overwrite: true)?
   pm_build.seed_executor_substrate(mutable)?
   mutable

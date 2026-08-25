@@ -436,8 +436,9 @@ export proc preflight(artifacts: List[types.ArtifactReceipt]) [fs, error] -> Res
   value
 }
 
-## Composes a verified root plan into a new output directory without mutating any completed root.
-export proc compose(output: Path, plan: types.RootPlan, artifacts: List[types.ArtifactReceipt]) [fs, error] -> Result[types.RootReceipt] {
+## Composes package artifacts into a verified root plan. The explicit `compose_artifacts` spelling
+## avoids XSH's shared-module export collision with the public `generation.compose` boundary.
+export proc compose_artifacts(output: Path, plan: types.RootPlan, artifacts: List[types.ArtifactReceipt]) [fs, error] -> Result[types.RootReceipt] {
   let expected = preflight(artifacts)?
 
   if expected != plan {

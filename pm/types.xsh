@@ -356,6 +356,35 @@ export type BuildPlan = {
 ## The verified immutable artifacts produced or reused while executing one exact BuildPlan.
 export type BuildResult = {format: Str, plan_sha256: Str, artifacts: List[ArtifactReceipt]}
 
+## One runtime package selected from a BuildPlan for a complete system generation.
+export type GenerationArtifact = {package_name: Str, package_id: Str, artifact_key: Str}
+
+## Explicit profile-owned overlay metadata bound into a generation identity.
+export type GenerationProfile = {name: Str, overlay_sha256: Str, replacements: List[Str]}
+
+## The deterministic runtime-only projection of one verified BuildPlan.
+export type GenerationPlan = {
+  format: Str,
+  target: Target,
+  build_plan_sha256: Str,
+  profile: GenerationProfile,
+  runtime_roots: List[Str],
+  artifacts: List[GenerationArtifact],
+  generation_sha256: Str,
+}
+
+## The durable receipt for one completed system generation and its package-root provenance.
+export type GenerationReceipt = {
+  format: Str,
+  generation_sha256: Str,
+  build_plan_sha256: Str,
+  profile: GenerationProfile,
+  target: Target,
+  runtime_roots: List[Str],
+  artifacts: List[GenerationArtifact],
+  root_sha256: Str,
+}
+
 ## One verified package object selected from a completed BuildPlan for immutable repository publication.
 export type RepoPublication = {
   node: PlanNode,

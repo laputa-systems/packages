@@ -129,7 +129,7 @@ proc test_root_composes_empty_and_metapackage_roots(ctx: TestContext) [fs, error
   let empty = root.preflight([])?
   test.eq(empty.artifacts, [])?
   let empty_output = fp"${test.temp_dir(ctx, name: "root-empty-output")?}/root"
-  let empty_receipt = root.compose(empty_output, empty, [])?
+  let empty_receipt = root.compose_artifacts(empty_output, empty, [])?
   test.eq(empty_receipt.entries, [])?
   root.verify(empty_output, empty_receipt)?
 
@@ -139,7 +139,7 @@ proc test_root_composes_empty_and_metapackage_roots(ctx: TestContext) [fs, error
   test.eq(meta_plan.artifacts[0].payload, false)?
   test.eq(meta_plan.entries, [])?
   let output = fp"${test.temp_dir(ctx, name: "root-meta-output")?}/root"
-  test.eq(root.compose(output, meta_plan, [meta])?.artifacts[0].package_name, "meta")?
+  test.eq(root.compose_artifacts(output, meta_plan, [meta])?.artifacts[0].package_name, "meta")?
 }
 
 proc test_root_preserves_file_mode_symlink_and_empty_directory(ctx: TestContext) [fs, error] {
@@ -157,7 +157,7 @@ proc test_root_preserves_file_mode_symlink_and_empty_directory(ctx: TestContext)
   )?
   let plan = root.preflight([receipt])?
   let output = fp"${test.temp_dir(ctx, name: "root-single-output")?}/root"
-  let composed = root.compose(output, plan, [receipt])?
+  let composed = root.compose_artifacts(output, plan, [receipt])?
   test.eq(fs.metadata(fp"${output}/usr/bin/tool")?.mode % 512, 0o755)?
   test.eq(fp"${output}/bin/tool".readlink()?.display(), "../usr/bin/tool")?
   test.eq(fs.metadata(fp"${output}/usr/share/empty")?.kind, "dir")?
@@ -174,7 +174,7 @@ proc test_root_plan_and_receipt_are_deterministic_for_multiple_artifacts(ctx: Te
   test.eq([artifact.package_name for artifact in first.artifacts], ["alpha", "beta"])?
   let first_output = fp"${test.temp_dir(ctx, name: "root-multiple-first")?}/root"
   let second_output = fp"${test.temp_dir(ctx, name: "root-multiple-second")?}/root"
-  test.eq(root.compose(first_output, first, [alpha, beta])?, root.compose(second_output, second, [beta, alpha])?)?
+  test.eq(root.compose_artifacts(first_output, first, [alpha, beta])?, root.compose_artifacts(second_output, second, [beta, alpha])?)?
 }
 
 proc test_root_rejects_collisions_and_same_owner_duplicate_entries_before_mutation(ctx: TestContext) [fs, error] {
@@ -185,7 +185,7 @@ proc test_root_rejects_collisions_and_same_owner_duplicate_entries_before_mutati
   let collision_output = fp"${test.temp_dir(ctx, name: "root-collision-output")?}/root"
   let empty_plan = root.preflight([])?
 
-  match root.compose(collision_output, empty_plan, [left, right]) {
+  match root.compose_artifacts(collision_output, empty_plan, [left, right]) {
     Ok(_) => test.fail("colliding artifacts unexpectedly composed")?
     Err(problem) => test.contains(problem.message, "owned by both")?
   }
@@ -261,7 +261,7 @@ proc test_root_runtime_closure_ignores_build_only_dependency(ctx: TestContext) [
   expect_root_error(ctx, root.preflight([app]), "runtime dependency artifact")?
   let plan = root.preflight([app, runtime])?
   let output = fp"${test.temp_dir(ctx, name: "root-runtime-output")?}/root"
-  let _ = root.compose(output, plan, [app, runtime])?
+  let _ = root.compose_artifacts(output, plan, [app, runtime])?
   test.ok(fs.exists(fp"${output}/usr/bin/app")?)?
   test.ok(fs.exists(fp"${output}/usr/lib/runtime")?)?
   test.eq(fs.exists(fp"${output}/usr/bin/compiler")?, false)?
@@ -275,7 +275,7 @@ proc test_root_failed_composition_leaves_completed_output_untouched(ctx: TestCon
   fs.mkdir(output)?
   fs.write(fp"${output}/marker", "previous root")?
 
-  match root.compose(output, plan, [artifact]) {
+  match root.compose_artifacts(output, plan, [artifact]) {
     Ok(_) => test.fail("completed root was overwritten")?
     Err(problem) => test.contains(problem.message, "already exists")?
   }
