@@ -281,11 +281,16 @@ export type PlanNode = {
   remote: RemoteRetrieval?,
 }
 
+## One verified archive entry that can be installed into an immutable root.
+## Paths and symlink targets remain text here because metadata JSON is a durable boundary.
+export type ArtifactEntry = {path: Str, kind: FileKind, mode: Int, sha256: Str, target: Str}
+
 ## The completed, verified contents of one immutable package artifact directory.
 export type ArtifactReceipt = {
   format: Str,
   key: Str,
   target: Target,
+  package_name: Str,
   package_id: Str,
   origin: ArtifactOrigin,
   recipe_sha256: Str,
@@ -295,11 +300,46 @@ export type ArtifactReceipt = {
   proof_key: Str,
   proof_sha256: Str,
   dependency_keys: List[Str],
+  runtime_dependency_keys: List[Str],
+  artifact_dir: Path,
 }
 
 ## Files produced by a completed package build before immutable-store publication.
 ## The executor digest is staged explicitly because PlanNode carries only its artifact key.
 export type StagedArtifact = {payload: Path, metadata: Path, proof: Path, executor_sha256: Str}
+
+## One selected package artifact in a deterministic root-composition plan.
+export type RootArtifact = {package_name: Str, package_id: Str, artifact_key: Str, payload: Bool}
+
+## One root path together with its sole artifact owner and verified install metadata.
+export type RootEntry = {
+  package_name: Str,
+  package_id: Str,
+  artifact_key: Str,
+  path: Str,
+  kind: FileKind,
+  mode: Int,
+  sha256: Str,
+  target: Str,
+}
+
+## The complete, deterministic ownership and payload plan for one immutable root.
+export type RootPlan = {
+  format: Str,
+  target: Target,
+  artifacts: List[RootArtifact],
+  entries: List[RootEntry],
+  root_sha256: Str,
+}
+
+## The durable receipt written into a completed immutable root.
+export type RootReceipt = {
+  format: Str,
+  target: Target,
+  artifacts: List[RootArtifact],
+  entries: List[RootEntry],
+  root_sha256: Str,
+}
 
 ## A validated immutable package-build plan and its canonical digest.
 export type BuildPlan = {
@@ -324,7 +364,7 @@ export type BuiltPackage = {
   manifest: List[Path],
   etcsums: List[EtcSum],
   metadata_sha256: Str,
-  metadata_files: List[Record],
+  metadata_files: List[ArtifactEntry],
 }
 
 ## The compact package-index representation.

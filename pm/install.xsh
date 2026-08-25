@@ -5,6 +5,8 @@ use remote
 use types
 use util
 
+type MetadataFileDto = {path: Str, kind: Str, mode: Int, sha256: Str, target: Str}
+
 ## Exported PM declaration `install_remote_metapackage`.
 export proc install_remote_metapackage(ctx: types.PmContext, pkg: types.RemotePackage) [fs, process, env, time, error] {
   let started = time.now()
@@ -24,17 +26,30 @@ proc metadata_manifest_paths(metadata: Record) [error] -> Result[List[Path]] {
   manifest
 }
 
+proc metadata_entries(metadata: Record) [error] -> Result[List[types.ArtifactEntry]] {
+  let files: List[MetadataFileDto] = metadata.get("files")?
+  var entries: List[types.ArtifactEntry] = []
+
+  for file in files {
+    entries = entries.push({
+      path: file.path,
+      kind: types.parse_file_kind(file.kind)?,
+      mode: file.mode,
+      sha256: file.sha256,
+      target: file.target,
+    })
+  }
+
+  entries
+}
+
 proc metadata_etcsums(metadata: Record) [error] -> Result[List[types.EtcSum]] {
-  let files: List[Record] = metadata.get("files")?
+  let files = metadata_entries(metadata)?
   var sums = []
 
   for file in files {
-    let path_text: Str = file.get("path")?
-    let kind: Str = file.get("kind")?
-    let sha256: Str = file.get("sha256")?
-
-    if kind == "file" and util.is_etc_file(fp"${path_text}") {
-      sums = sums.push({path: path_text, sha256})
+    if file.kind == types.File and util.is_etc_file(fp"${file.path}") {
+      sums = sums.push({path: file.path, sha256: file.sha256})
     }
   }
 
@@ -59,16 +74,11 @@ proc load_remote_metadata_sidecar(path_value: Path, pkg: types.RemotePackage) [f
   metadata
 }
 
-pure metadata_files_key(files: List[Record]) -> Result[Str] {
+pure metadata_files_key(files: List[types.ArtifactEntry]) -> Result[Str] {
   var key = ""
 
   for file in files {
-    let path_text: Str = file.get("path")?
-    let kind: Str = file.get("kind")?
-    let mode: Int = file.get("mode")?
-    let sha256: Str = file.get("sha256")?
-    let target: Str = file.get("target")?
-    key = f"""${key}${path_text}	${kind}	${mode}	${sha256}	${target}
+    key = f"""${key}${file.path}	${types.file_kind_text(file.kind)}	${file.mode}	${file.sha256}	${file.target}
 """
   }
 
@@ -79,8 +89,8 @@ proc validate_remote_metadata_sidecar(stage: Path, metadata: Record) [fs, error]
   let stage_db = util.package_db_path(stage, metadata.get("name")?)
   let staged_manifest = local.load_manifest(stage_db)?
   let metadata_manifest = metadata_manifest_paths(metadata)?
-  let staged_files = local.collect_metadata_files(stage, staged_manifest)?
-  let metadata_files: List[Record] = metadata.get("files")?
+  let staged_files = local.collect_artifact_entries(stage)?
+  let metadata_files = metadata_entries(metadata)?
 
   staged_manifest == metadata_manifest and metadata_files_key(staged_files)? == metadata_files_key(metadata_files)?
 }

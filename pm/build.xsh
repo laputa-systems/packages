@@ -694,7 +694,7 @@ export proc build_packages(
     run_package_proof(ctx, pkg, id, tarball, manifest, built, "", fp"")?
     write_proof_receipt(ctx.out, pkg, tarball)?
     extensions.run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
-    let metadata_files = local.collect_metadata_files(dest, manifest)?
+    let metadata_files = local.collect_artifact_entries(dest)?
     let metadata_sha256 = local.metadata_files_sha256(pkg, metadata_files)?
     let tarball_size = fs.metadata(tarball)?.size
 

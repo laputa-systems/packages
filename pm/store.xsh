@@ -7,6 +7,7 @@ type ArtifactReceiptDto = {
   format: Str,
   key: Str,
   target: Str,
+  package_name: Str,
   package_id: Str,
   origin: Str,
   recipe_sha256: Str,
@@ -16,6 +17,7 @@ type ArtifactReceiptDto = {
   proof_key: Str,
   proof_sha256: Str,
   dependency_keys: List[Str],
+  runtime_dependency_keys: List[Str],
 }
 
 type RemoteMetadataDto = {name: Str, ver: Str, rel: Str}
@@ -71,6 +73,7 @@ pure receipt_dto(value: types.ArtifactReceipt) -> ArtifactReceiptDto {
     format: value.format,
     key: value.key,
     target: types.target_text(value.target),
+    package_name: value.package_name,
     package_id: value.package_id,
     origin: types.artifact_origin_text(value.origin),
     recipe_sha256: value.recipe_sha256,
@@ -80,14 +83,16 @@ pure receipt_dto(value: types.ArtifactReceipt) -> ArtifactReceiptDto {
     proof_key: value.proof_key,
     proof_sha256: value.proof_sha256,
     dependency_keys: value.dependency_keys,
+    runtime_dependency_keys: value.runtime_dependency_keys,
   }
 }
 
-proc receipt_from_dto(value: ArtifactReceiptDto) [error] -> Result[types.ArtifactReceipt] {
+proc receipt_from_dto(value: ArtifactReceiptDto, artifact_dir: Path) [error] -> Result[types.ArtifactReceipt] {
   {
     format: value.format,
     key: value.key,
     target: types.parse_target(value.target)?,
+    package_name: value.package_name,
     package_id: value.package_id,
     origin: types.parse_artifact_origin(value.origin)?,
     recipe_sha256: value.recipe_sha256,
@@ -97,6 +102,8 @@ proc receipt_from_dto(value: ArtifactReceiptDto) [error] -> Result[types.Artifac
     proof_key: value.proof_key,
     proof_sha256: value.proof_sha256,
     dependency_keys: value.dependency_keys,
+    runtime_dependency_keys: value.runtime_dependency_keys,
+    artifact_dir,
   }
 }
 
@@ -114,6 +121,10 @@ proc validate_receipt(value: types.ArtifactReceipt, expected_key: Str) [error] {
 
   if value.target != types.Aarch64LinuxMusl {
     return Err(types.PmError.PackageContract("artifact receipt must target aarch64-linux-musl"))
+  }
+
+  if value.package_name == "" or value.package_name.contains("\n") {
+    return Err(types.PmError.PackageContract("artifact receipt package_name is invalid"))
   }
 
   if value.package_id == "" or value.package_id.contains("\n") {
@@ -138,11 +149,27 @@ proc validate_receipt(value: types.ArtifactReceipt, expected_key: Str) [error] {
 
     seen[dependency_key] = true
   }
+
+  var seen_runtime: Map[Bool] = {}
+
+  for dependency_key in value.runtime_dependency_keys {
+    require_sha256(dependency_key, "artifact receipt runtime dependency key")?
+
+    if ! seen.has(dependency_key) {
+      return Err(types.PmError.PackageContract(f"artifact receipt runtime dependency key ${dependency_key} is not a dependency"))
+    }
+
+    if seen_runtime.has(dependency_key) {
+      return Err(types.PmError.PackageContract(f"artifact receipt repeats runtime dependency key ${dependency_key}"))
+    }
+
+    seen_runtime[dependency_key] = true
+  }
 }
 
 proc read_receipt(dir: Path, expected_key: Str) [fs, error] -> Result[types.ArtifactReceipt] {
   let dto = json.read(receipt_path(dir))?.require(ArtifactReceiptDto)?
-  let value = receipt_from_dto(dto)?
+  let value = receipt_from_dto(dto, dir)?
   validate_receipt(value, expected_key)?
   value
 }
@@ -201,6 +228,7 @@ proc receipt_for(
     format: "laputa-package-artifact-1",
     key: node.artifact_key,
     target: types.Aarch64LinuxMusl,
+    package_name: node.name,
     package_id: node.package_id,
     origin,
     recipe_sha256: node.recipe_sha256,
@@ -210,6 +238,8 @@ proc receipt_for(
     proof_key: node.proof_key,
     proof_sha256: hash.sha256(proof)?.hex(),
     dependency_keys: [dependency.artifact_key for dependency in node.dependencies],
+    runtime_dependency_keys: [dependency.artifact_key for dependency in node.dependencies if dependency.kind == types.Runtime],
+    artifact_dir: dir,
   }
 }
 
@@ -233,7 +263,7 @@ proc commit_locked(
   let final_dir = artifact_path(root, key)
 
   if fs.exists(final_dir)? {
-    return verify(root, key)
+    return verify_artifact(root, key)
   }
 
   let temporary = temporary_path(root, key)
@@ -248,7 +278,7 @@ proc commit_locked(
   let _ = verify_dir(temporary, key)?
   fs.mkdir(final_dir.parent)?
   fs.rename(temporary, final_dir)?
-  verify(root, key)
+  verify_artifact(root, key)
 }
 
 proc commit_staged(
@@ -348,7 +378,12 @@ export pure artifact_path(root: Path, key: Str) -> Path {
 
 ## Looks up one completed artifact and verifies every stored object before returning its receipt.
 export proc lookup(root: Path, key: Str) [fs, error] -> Result[types.ArtifactReceipt] {
-  verify(root, key)
+  verify_artifact(root, key)
+}
+
+## Re-verifies a receipt at its returned immutable artifact directory before another domain consumes its payload.
+export proc verify_receipt(value: types.ArtifactReceipt) [fs, error] -> Result[types.ArtifactReceipt] {
+  verify_dir(value.artifact_dir, value.key)
 }
 
 ## Commits one locally built artifact through a locked temporary directory and an atomic final rename.
@@ -371,14 +406,15 @@ export proc import_remote(
   defer fs.unlock(lock)?
 
   if fs.exists(artifact_path(root, key))? {
-    return verify(root, key)
+    return verify_artifact(root, key)
   }
 
   commit_locked(root, node, remote_staged_artifact(node, remote_repo, cache)?, types.Remote)?
 }
 
 ## Verifies a completed artifact receipt, its key, and hashes of payload, metadata, and proof objects.
-export proc verify(root: Path, key: Str) [fs, error] -> Result[types.ArtifactReceipt] {
+## XSH currently lowers exported user-module procedures into one runtime symbol table: keeping this as `verify` would collide with the required `root.verify` when root imports this module. `verify_artifact` is therefore the unambiguous store boundary; no `verify` alias may be added.
+export proc verify_artifact(root: Path, key: Str) [fs, error] -> Result[types.ArtifactReceipt] {
   require_key(key)?
   let final_dir = artifact_path(root, key)
 

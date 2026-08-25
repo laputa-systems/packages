@@ -210,8 +210,8 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
 }
 
 ## Exported PM declaration `collect_metadata_files`.
-export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error] -> Result[List[Record]] {
-  var files = []
+export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error] -> Result[List[types.ArtifactEntry]] {
+  var files: List[types.ArtifactEntry] = []
   let root_handle = fs.open_root(root)?
   defer fs.close_root(root_handle)
 
@@ -219,7 +219,7 @@ export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error]
     match fs.root_readlink(root_handle, rel_path) {
       Ok(target) => {
         files = files.push(
-          {path: rel_path.display(), kind: "symlink", mode: 0o777, sha256: "", target: target.display()},
+          {path: rel_path.display(), kind: types.Symlink, mode: 0o777, sha256: "", target: target.display()},
         )
 
         continue
@@ -234,14 +234,42 @@ export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error]
       sha256 = fs.root_read(root_handle, rel_path)?.sha256().hex()
     }
 
-    files = files.push({path: rel_path.display(), kind: meta.kind, mode: meta.mode % 4096, sha256, target: ""})
+    var kind = types.File
+
+    match meta.kind {
+      "file" => kind = types.File
+      "dir" => kind = types.Tree
+      _ => return Err(types.PmError.PackageContract(f"metadata cannot represent ${rel_path.display()} as ${meta.kind}"))
+    }
+    files = files.push({path: rel_path.display(), kind, mode: meta.mode % 4096, sha256, target: ""})
   }
 
   files
 }
 
+## Exported PM declaration `collect_artifact_entries`.
+## Captures files, symlinks, and explicitly archived empty directories for immutable artifact metadata.
+export proc collect_artifact_entries(root: Path) [fs, error] -> Result[List[types.ArtifactEntry]] {
+  var entries: List[Path] = []
+  let root_text = root.display()
+
+  for entry in fs.walk(root) {
+    var include = entry.kind == "file" or entry.kind == "symlink"
+
+    if entry.kind == "dir" and entry.path.display() != root_text and dir_empty(entry.path)? {
+      include = true
+    }
+
+    if include {
+      entries = entries.push(entry.path.strip_prefix(root)?)
+    }
+  }
+
+  collect_metadata_files(root, entries |> sort-by .display())?
+}
+
 ## Exported PM declaration `metadata_files_sha256`.
-export proc metadata_files_sha256(pkg: types.Package, files: List[Record]) [error] -> Result[Str] {
+export proc metadata_files_sha256(pkg: types.Package, files: List[types.ArtifactEntry]) [error] -> Result[Str] {
   var body = f"""name	${pkg.name}
 ver	${pkg.ver}
 deps	${pkg.deps.join(" ")}
@@ -259,13 +287,7 @@ mkdeps_host	${pkg.mkdeps_host.join(" ")}
   }
 
   for file in files {
-    let path_text: Str = file.get("path")?
-    let kind: Str = file.get("kind")?
-    let mode: Int = file.get("mode")?
-    let sha256: Str = file.get("sha256")?
-    let target: Str = file.get("target")?
-
-    body = f"""${body}${path_text}	${kind}	${mode}	${sha256}	${target}
+    body = f"""${body}${file.path}	${types.file_kind_text(file.kind)}	${file.mode}	${file.sha256}	${file.target}
 """
   }
 
@@ -290,7 +312,17 @@ export proc write_package_metadata(path_value: Path, arch: Str, item: types.Buil
       filetree: [{path: entry.path.display(), kind: types.file_kind_text(entry.kind)} for entry in item.pkg.filetree],
       manifest,
       metadata_sha256: item.metadata_sha256,
-      files: item.metadata_files,
+      package_kind: types.package_kind_text(item.pkg.kind),
+      files: [
+        {
+          path: entry.path,
+          kind: types.file_kind_text(entry.kind),
+          mode: entry.mode,
+          sha256: entry.sha256,
+          target: entry.target,
+        }
+        for entry in item.metadata_files
+      ],
     },
   )?
 }
@@ -657,7 +689,7 @@ export proc load_built_package_from_dest(
   let db = util.package_db_path(dest, pkg.name)
   let manifest = load_manifest(db)?
   let etcsums: List[types.EtcSum] = json.read(fp"${db}/etcsums.json")?
-  let metadata_files = collect_metadata_files(dest, manifest)?
+  let metadata_files = collect_artifact_entries(dest)?
   let metadata_sha256 = metadata_files_sha256(pkg, metadata_files)?
 
   return {

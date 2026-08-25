@@ -7,6 +7,7 @@ type ReceiptDto = {
   format: Str,
   key: Str,
   target: Str,
+  package_name: Str,
   package_id: Str,
   origin: Str,
   recipe_sha256: Str,
@@ -16,6 +17,7 @@ type ReceiptDto = {
   proof_key: Str,
   proof_sha256: Str,
   dependency_keys: List[Str],
+  runtime_dependency_keys: List[Str],
 }
 
 pure digest(value: Str) -> Str {
@@ -163,18 +165,18 @@ proc test_store_detects_payload_receipt_and_key_corruption(ctx: TestContext) [fs
   let _ = store.commit(root, test_node(key), stage.staged)?
 
   fs.write(fp"${final_dir}/payload.tar.gz", "corrupted payload")?
-  expect_store_error(ctx, store.verify(root, key), "payload SHA-256 does not match receipt")?
+  expect_store_error(ctx, store.verify_artifact(root, key), "payload SHA-256 does not match receipt")?
 
   fs.write(fp"${final_dir}/payload.tar.gz", "payload")?
   fs.write(fp"${final_dir}/artifact.json", "not JSON")?
-  expect_store_error(ctx, store.verify(root, key), "invalid JSON")?
+  expect_store_error(ctx, store.verify_artifact(root, key), "invalid JSON")?
 
   let clean_root = store_root(ctx, "store-key-corrupt")?
   let clean_dir = store.artifact_path(clean_root, key)
   let _ = store.commit(clean_root, test_node(key), staged_artifact(ctx, "store-key-corrupt-stage")?.staged)?
   let raw = json.read(fp"${clean_dir}/artifact.json")?.require(ReceiptDto)?
   fs.write(fp"${clean_dir}/artifact.json", json.encode({...raw, key: digest("other key")})? + "\n")?
-  expect_store_error(ctx, store.verify(clean_root, key), "does not match")?
+  expect_store_error(ctx, store.verify_artifact(clean_root, key), "does not match")?
 }
 
 proc test_store_staging_failure_never_publishes_final(ctx: TestContext) [fs, error] {
@@ -220,7 +222,7 @@ proc test_store_imports_verified_remote_artifact(ctx: TestContext) [fs, net, err
   let receipt = store.import_remote(root, remote_node(key, payload, metadata), f"file://${remote_root}", test.temp_dir(ctx, name: "store-remote-cache")?)?
   test.eq(receipt.origin, types.Remote)?
   test.eq(receipt.payload_sha256, digest(payload))?
-  test.eq(store.verify(root, key)?, receipt)?
+  test.eq(store.verify_artifact(root, key)?, receipt)?
 }
 
 proc test_store_rejects_remote_hash_and_metadata_mismatches(ctx: TestContext) [fs, net, error] {
