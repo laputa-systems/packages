@@ -1,7 +1,30 @@
 ##! PM remote operations and shared package-manager policy.
+use catalog
 use sources
 use types
 use util
+
+## Returns the package names available from one selected remote architecture snapshot.
+export pure selected_snapshot_names(index: List[types.RemotePackage], arch: Str) -> List[Str] {
+  var names: List[Str] = []
+
+  for pkg in index {
+    if pkg.arch == arch and pkg.name not in names {
+      names = names.push(pkg.name)
+    }
+  }
+
+  names |> sort
+}
+
+## Attaches one selected remote index snapshot to a typed local catalog.
+export proc catalog_with_selected_snapshot(
+  value: types.PackageCatalog,
+  index: List[types.RemotePackage],
+  arch: Str,
+) [error] -> Result[types.PackageCatalog] {
+  catalog.with_remote_names(value, selected_snapshot_names(index, arch))?
+}
 
 pure default_repo_url() -> Str {
   "https://laputa.17166969.xyz"

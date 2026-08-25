@@ -134,6 +134,9 @@ export type PackageId = {name: Str, ver: Str, rel: Str}
 ## A typed directional dependency in a resolved package graph.
 export type DependencyEdge = {from: Str, to: Str, kind: DependencyKind}
 
+## A policy-defined dependency supplied by the bootstrap environment rather than a locally ordered package build.
+export type BootstrapSeedRule = {package: Str, dependency: Str, native_only: Bool, reason: Str}
+
 ## A normalized package definition loaded by the package manager.
 export type Package = {
   dir: Path,
@@ -148,6 +151,17 @@ export type Package = {
   filetree: List[FileTreeEntry],
   nostrip: Bool,
   source_mirror: Bool,
+}
+
+## The sorted local package definitions and externally available names used for one graph resolution.
+export type PackageCatalog = {root: Path, packages: List[Package], remote_names: List[Str]}
+
+## Target and bootstrap rules that determine a package graph's build semantics.
+export type BuildPolicy = {
+  target: Target,
+  build_target: Target,
+  native_build: Bool,
+  bootstrap_seeds: List[BootstrapSeedRule],
 }
 
 ## A checksum recorded for an installed /etc file.

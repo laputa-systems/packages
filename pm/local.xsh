@@ -1,6 +1,9 @@
 ##! PM local operations and shared package-manager policy.
+use catalog
 use elf
 use extensions
+use graph
+use policy
 use recipe
 use sources
 use types
@@ -549,44 +552,44 @@ export proc order_packages(
   packages: List[types.Package],
   allow_installed_deps: Bool,
 ) [fs, error] -> Result[List[types.Package]] {
-  var ordered = []
-  var by_name: Map[Int] = {}
-  var pkg_index = 0
+  var local_names: Map[Bool] = {}
+  var available_names: List[Str] = []
 
   for pkg in packages {
-    by_name[pkg.name] = pkg_index
-    pkg_index += 1
+    local_names[pkg.name] = true
   }
 
-  var added: Map[Bool] = {}
-
-  while ordered.len() < packages.len() {
-    var progressed = false
-
-    for pkg in packages {
-      if ! added.get(pkg.name, false) {
-        var ready = true
-
-        for dep in pkg.deps {
-          if ! by_name.has(dep) {
-            if ! allow_installed_deps or ! fs.exists(util.package_db_path(root, dep))? {
-              return Err(types.PmError.MissingDependency(f"${pkg.name} depends on missing ${dep}"))
-            }
-          } else if ! added.get(dep, false) {
-            ready = false
-          }
+  for pkg in packages {
+    for dependency in pkg.deps {
+      if ! local_names.get(dependency, false) {
+        if ! allow_installed_deps or ! fs.exists(util.package_db_path(root, dependency))? {
+          return Err(types.PmError.MissingDependency(f"${pkg.name} depends on missing ${dependency}"))
         }
 
-        if ready {
-          ordered = ordered.push(pkg)
-          added[pkg.name] = true
-          progressed = true
-        }
+        available_names = available_names.push(dependency)
       }
     }
 
-    if ! progressed {
-      return Err(types.PmError.DependencyCycle("package dependency graph did not make progress"))
+    for dependency in pkg.mkdeps_host.extend(pkg.mkdeps_target) {
+      if ! local_names.get(dependency, false) {
+        available_names = available_names.push(dependency)
+      }
+    }
+  }
+
+  let value = catalog.from_packages(root, packages, available_names)?
+  let edges = graph.edges(value, policy.aarch64_docker())?
+  let runtime_edges = [edge for edge in edges if edge.kind == types.Runtime]
+  let levels = graph.topological_levels(catalog.package_names(value), runtime_edges)?
+  let by_name = catalog.package_map(value)
+  var ordered: List[types.Package] = []
+
+  for level in levels {
+    for name in level {
+      if by_name.has(name) {
+        let pkg: types.Package = by_name.get(name)?
+        ordered = ordered.push(pkg)
+      }
     }
   }
 

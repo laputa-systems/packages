@@ -1,9 +1,12 @@
 ##! PM world operations and shared package-manager policy.
 use build as pm_build
 use buildroot
+use catalog
 use elfdeps
+use graph
 use install
 use local
+use policy
 use remote
 use repo
 use types
@@ -20,8 +23,12 @@ type WorldPlanOptions = {
 
 type WorldPlanResult = {packages: List[types.Package], reasons: Map[Str]}
 
+pure world_build_policy(cross_build: Bool) -> types.BuildPolicy {
+  policy.with_native_build(policy.aarch64_docker(), ! cross_build)
+}
+
 pure world_dependency_is_seeded(pkg: types.Package, dep: Str, cross_build: Bool) -> Bool {
-  ! cross_build and (pkg.name == "musl" and (dep == "llvm-toolchain" or dep == "zlib") or pkg.name == "gnu-stubs" and dep == "llvm-toolchain")
+  policy.is_bootstrap_dependency(world_build_policy(cross_build), pkg.name, dep)
 }
 
 proc order_world_build_packages(
@@ -31,51 +38,50 @@ proc order_world_build_packages(
   arch: Str,
   include_mkdeps_host: Bool,
 ) [fs, env, error] -> Result[List[types.Package]] {
-  var ordered = []
   var local_names: Map[Bool] = {}
-  var repo_names: Map[Bool] = {}
+  let remote_names = remote.selected_snapshot_names(index, arch)
+  var available_names = remote_names
 
   for pkg in packages {
     local_names[pkg.name] = true
   }
 
-  for item in index {
-    if item.arch == arch {
-      repo_names[item.name] = true
+  for pkg in packages {
+    for dependency in pkg.deps.extend(pkg.mkdeps_host).extend(pkg.mkdeps_target) {
+      if ! local_names.get(dependency, false) {
+        available_names = available_names.push(dependency)
+      }
     }
   }
 
-  var added: Map[Bool] = {}
+  let local_catalog = catalog.from_packages(root, packages, available_names)?
+  let value = remote.catalog_with_selected_snapshot(local_catalog, index, arch)?
+  let cross_build = ! include_mkdeps_host
+  let edges = graph.edges(value, world_build_policy(cross_build))?
+  var ordering_kinds = [types.Runtime, types.BuildTarget, types.Bootstrap]
 
-  while ordered.len() < packages.len() {
-    var progressed = false
+  if include_mkdeps_host {
+    ordering_kinds = ordering_kinds.push(types.BuildHost)
+  }
 
-    for pkg in packages {
-      if ! added.get(pkg.name, false) {
-        var ready = true
-
-        for dep in effective_world_seed_dependencies(pkg, include_mkdeps_host, true) {
-          if local_names.get(dep, false) and ! world_dependency_is_seeded(pkg, dep, ! include_mkdeps_host) {
-            if ! added.get(dep, false) {
-              ready = false
-            }
-          } else if ! world_dependency_is_seeded(pkg, dep, ! include_mkdeps_host) and ! repo_names.get(dep, false) and ! fs.exists(
-            util.package_db_path(root, dep),
-          )? {
-            return Err(types.PmError.MissingDependency(f"${pkg.name} depends on missing ${dep}"))
-          }
-        }
-
-        if ready {
-          ordered = ordered.push(pkg)
-          added[pkg.name] = true
-          progressed = true
-        }
-      }
+  for edge in edges {
+    if edge.kind in ordering_kinds and ! local_names.get(edge.to, false) and edge.kind != types.Bootstrap and edge.to not in remote_names and ! fs.exists(
+      util.package_db_path(root, edge.to),
+    )? {
+      return Err(types.PmError.MissingDependency(f"${edge.from} depends on missing ${edge.to}"))
     }
+  }
 
-    if ! progressed {
-      return Err(types.PmError.DependencyCycle("world package dependency graph did not make progress"))
+  let levels = graph.topological_levels(catalog.package_names(value), [edge for edge in edges if edge.kind in ordering_kinds])?
+  let by_name = catalog.package_map(value)
+  var ordered: List[types.Package] = []
+
+  for level in levels {
+    for name in level {
+      if by_name.has(name) {
+        let pkg: types.Package = by_name.get(name)?
+        ordered = ordered.push(pkg)
+      }
     }
   }
 
@@ -173,22 +179,10 @@ proc missing_fresh_world_dependencies(
   missing
 }
 
-pure package_exempt_from_implicit_pm(name: Str) -> Bool {
-  name == "baselayout" or name == "xsh" or name == "laputa-pm"
-}
-
 # Temporary: xsh 0.0.0 is a development marker that should be considered
 # newer than any release-* version in the remote index.
 pure world_package_always_newer_than_remote(name: Str, ver: Str) -> Bool {
   name == "xsh" and ver == "0.0.0"
-}
-
-proc add_implicit_pm_dependency(pkg: types.Package, deps: List[Str]) [] -> List[Str] {
-  if ! package_exempt_from_implicit_pm(pkg.name) and "laputa-pm" not in deps {
-    return deps.push("laputa-pm")
-  }
-
-  deps
 }
 
 proc effective_world_target_dependencies(pkg: types.Package, include_mkdeps_target: Bool) [] -> List[Str] {
@@ -198,7 +192,7 @@ proc effective_world_target_dependencies(pkg: types.Package, include_mkdeps_targ
     deps = deps.extend(pkg.mkdeps_target)
   }
 
-  add_implicit_pm_dependency(pkg, deps)
+  deps
 }
 
 ## Exported PM declaration `effective_world_dependencies`.
@@ -257,8 +251,8 @@ proc copy_world_seed_package(source_root: Path, dest_root: Path, name: Str) [fs,
 }
 
 proc seed_world_package_dependency_set(staged_root: Path, package_root: Path, owner: Str, deps: List[Str]) [fs, error] {
-  var names = ["baselayout", "xsh", "laputa-pm", "zlib"]
-  var required = [false, false, false, false]
+  var names = ["baselayout", "xsh", "zlib"]
+  var required = [false, false, false]
 
   for dep in deps {
     names = names.push(dep)
@@ -513,54 +507,47 @@ proc world_dependency_kind(pkg: types.Package, dep: Str) [] -> Str {
   }
 
   if dep in pkg.mkdeps_host {
-    return "build"
-  }
-
-  if dep == "laputa-pm" and ! package_exempt_from_implicit_pm(pkg.name) {
-    return "implicit world/tool"
+    return "build-host"
   }
 
   "world/tool"
 }
 
 proc summarize_changed_dependencies(changed_deps: List[Str]) [] -> Str {
-  let implicit_pm = "implicit world/tool dependency laputa-pm"
-  var visible = [dep for dep in changed_deps if dep != implicit_pm or changed_deps.len() == 1]
-
-  if visible.len() == 0 {
-    visible = changed_deps
-  }
-
-  if visible.len() <= 4 {
-    return visible.join(", ")
+  if changed_deps.len() <= 4 {
+    return changed_deps.join(", ")
   }
 
   var head = []
   var index = 0
 
   while index < 4 {
-    head = head.push(visible[index])
+    head = head.push(changed_deps[index])
     index += 1
   }
 
-  f"${head.join(", ")}, +${visible.len() - 4} more"
+  f"${head.join(", ")}, +${changed_deps.len() - 4} more"
 }
 
-proc world_plan_levels(ordered: List[types.Package], local_names: Map[Bool]) [] -> Map[Int] {
-  var levels: Map[Int] = {}
+proc world_plan_levels(ordered: List[types.Package], cross_build: Bool) [error] -> Result[Map[Int]] {
+  var available_names: List[Str] = []
 
   for pkg in ordered {
-    var level = 0
+    available_names = available_names.extend(pkg.deps).extend(pkg.mkdeps_host).extend(pkg.mkdeps_target)
+  }
 
-    for dep in world_local_dependency_names(pkg, local_names) {
-      let dep_level = levels.get(dep, 0)
+  let value = catalog.from_packages(p".", ordered, available_names)?
+  let edges = graph.edges(value, world_build_policy(cross_build))?
+  let graph_levels = graph.topological_levels(catalog.package_names(value), edges)?
+  var levels: Map[Int] = {}
+  var level = 0
 
-      if dep_level + 1 > level {
-        level = dep_level + 1
-      }
+  for names in graph_levels {
+    for name in names {
+      levels[name] = level
     }
 
-    levels[pkg.name] = level
+    level += 1
   }
 
   levels
@@ -744,8 +731,9 @@ proc print_world_plan(
   remote_latest: Map[types.RemotePackage],
   arch: Str,
   staged_statuses: Map[Str],
+  cross_build: Bool,
 ) [env, error] {
-  let levels = world_plan_levels(ordered, local_names)
+  let levels = world_plan_levels(ordered, cross_build)?
   let max_level = world_plan_max_level(ordered, levels)
   let colors = color_enabled()
   let planned_by_name = planned_world_package_map(planned)
@@ -1684,7 +1672,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     staged_statuses = world_staged_package_statuses(repo_dir, fingerprint, root, build_root, planned, cross_build)?
   }
 
-  print_world_plan(ordered, planned, plan.reasons, local_names, world_jobs, remote_latest, target_arch, staged_statuses)?
+  print_world_plan(ordered, planned, plan.reasons, local_names, world_jobs, remote_latest, target_arch, staged_statuses, cross_build)?
 
   if build_requested {
     let state = ensure_world_state_compatible(repo_dir, fingerprint, planned)?
@@ -1708,7 +1696,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
 
     var built_names: Map[Bool] = {}
     var unchanged_names: Map[Bool] = {}
-    let levels = world_plan_levels(ordered, local_names)
+    let levels = world_plan_levels(ordered, cross_build)?
     let max_level = world_plan_max_level(ordered, levels)
     let build_max_level = if to_tranche >= 0 and to_tranche < max_level { to_tranche } else { max_level }
     let build_local_names = if cross_build { map.empty() } else { local_names }
