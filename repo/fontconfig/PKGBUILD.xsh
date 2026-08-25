@@ -1,16 +1,23 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 use pm.make as make
 
+## Exported declaration `name`.
 export let name = "fontconfig"
 
+## Exported declaration `ver`.
 export let ver = "2.17.1"
 
+## Exported declaration `rel`.
 export let rel = "8"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "freetype", "expat"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "freetype", "expat"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/VERSION/fontconfig-VERSION.tar.xz",
@@ -66,8 +73,6 @@ export let upstream_sources = [
   },
 ]
 
-type Declaration = {name: Str, define_name: Str}
-
 let conf_links = [
   "10-scale-bitmap-fonts.conf",
   "10-yes-antialias.conf",
@@ -93,6 +98,7 @@ let conf_links = [
   "70-no-bitmaps-except-emoji.conf",
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"etc/fonts/conf.d/10-hinting-slight.conf",
@@ -408,65 +414,6 @@ export let filetree = [
   },
 ]
 
-pure c_string(text: Str) -> Str {
-  text.replace("\\", "\\\\").replace("\"", "\\\"")
-}
-
-pure c_ident(raw: Str) -> Str {
-  raw.replace("-", "_").replace(".", "_")
-}
-
-proc extract_function_names(path_value: Path) [fs, error] -> Result[List[Str]] {
-  let re = regex.compile("^(Fc[^ ]*)[ A-Za-z0-9_]*\\(.*")?
-  var names = []
-
-  for line in path_value.read_text()?.split("\n") {
-    let captures = re.captures(line.trim())
-
-    if captures.len() > 1 {
-      let name_value = captures[1]
-
-      if name_value != "FcCacheDir" and name_value != "FcCacheSubdir" {
-        names = names.push(name_value)
-      }
-    }
-  }
-
-  names
-}
-
-proc source_definitions() [fs, error] -> Result[Map[Str]] {
-  var definitions: Map[Str] = {}
-
-  for entry in fs.ls(p"src")? |> where .kind == "file" and .ext == "c" {
-    let define_name = f"__${entry.name.replace(".c", "")}__"
-
-    for name_value in extract_function_names(entry.path)? {
-      definitions[name_value] = define_name
-    }
-  }
-
-  definitions
-}
-
-proc alias_declarations(headers: List[Path]) [fs, error] -> Result[List[Declaration]] {
-  let definitions = source_definitions()?
-  var declarations = []
-  var seen: Map[Bool] = {}
-
-  for header in headers {
-    for name_value in extract_function_names(header)? {
-      if ! seen.get(name_value, false) {
-        let define_name = definitions.get(name_value)?
-        declarations = declarations.push({name: name_value, define_name})
-        seen[name_value] = true
-      }
-    }
-  }
-
-  declarations
-}
-
 proc write_alias_headers(head: Path, tail: Path, headers: List[Path]) [fs, error] {
   let _ = headers
   fs.write(head, "")?
@@ -712,6 +659,7 @@ fcobjshash_h = custom_target('fcobjshash.h',
   fs.write(conf_meson, conf_text)?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${make.jobs()?}"

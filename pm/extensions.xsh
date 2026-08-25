@@ -1,4 +1,5 @@
-use types
+##! PM extension discovery and lifecycle-hook execution.
+use types as pm_types
 
 type ScriptCommand = {target: Path, argv: List[Str]}
 
@@ -39,6 +40,7 @@ proc command_for_script(script: Path, argv: List[Str]) [fs, env, error] -> Resul
   {target, argv: host_argv}
 }
 
+## Reads the one-line summary embedded in an extension executable.
 export proc read_extension_summary(candidate: Path) [fs] -> Result[Str] {
   match fs.read_text(candidate) {
     Ok(text_value) => {
@@ -58,7 +60,8 @@ export proc read_extension_summary(candidate: Path) [fs] -> Result[Str] {
   ""
 }
 
-export stream extension_candidates() [fs, env, error] -> Stream[Extension] {
+## Yields executable PM extensions found on PATH in stable order.
+export stream extension_candidates() [fs, env, error] -> Stream[pm_types.Extension] {
   var seen: Map[Bool] = {}
   let path_entries = env.path_entries("PATH")?
 
@@ -88,20 +91,23 @@ export stream extension_candidates() [fs, env, error] -> Stream[Extension] {
   }
 }
 
-export proc discover_extensions() [fs, env, error] -> Result[List[Extension]] {
+## Discovers all available PM extensions.
+export proc discover_extensions() [fs, env, error] -> Result[List[pm_types.Extension]] {
   extension_candidates() |> sort-by .name
 }
 
-export proc find_extension(action: Str) [fs, env, error] -> Result[Extension] {
+## Resolves one PM extension action by name.
+export proc find_extension(action: Str) [fs, env, error] -> Result[pm_types.Extension] {
   for extension in extension_candidates() {
     if extension.name == action {
       return extension
     }
   }
 
-  return Err(PmError.Usage(f"usage: pm ACTION ROOT WORK OUT [ARGS...]; unknown command ${action}"))
+  return Err(pm_types.PmError.Usage(f"usage: pm ACTION ROOT WORK OUT [ARGS...]; unknown command ${action}"))
 }
 
+## Exported PM declaration `print_extension_help`.
 export proc print_extension_help() [fs, env, error] {
   let extensions = discover_extensions()?
 
@@ -115,12 +121,13 @@ export proc print_extension_help() [fs, env, error] {
   }
 }
 
+## Exported PM declaration `run_extension_process`.
 export proc run_extension_process(
   action: Str,
   executable: Path,
   argv: List[Str],
   arg_text: Str,
-  ctx: PmContext,
+  ctx: pm_types.PmContext,
 ) [fs, process, env, error] {
   let command = command_for_script(executable, argv)?
 
@@ -140,11 +147,12 @@ export proc run_extension_process(
   let status = process.run(command_plan)?
 
   if ! status.ok {
-    return Err(PmError.ExtensionFailed(f"${action} failed"))
+    return Err(pm_types.PmError.ExtensionFailed(f"${action} failed"))
   }
 }
 
-export proc invoke_extension(action: Str, ctx: PmContext, raw: List[Str]) [fs, process, env, error] {
+## Invokes a named extension with the current PM context.
+export proc invoke_extension(action: Str, ctx: pm_types.PmContext, raw: List[Str]) [fs, process, env, error] {
   let extension = find_extension(action)?
   var argv = [extension.path.name]
 
@@ -176,23 +184,30 @@ proc hook_paths() [env, error] -> Result[List[Path]] {
     }
   }
 
-  return Ok(paths)
+  paths
 }
 
+## Exported PM declaration `load_hook_paths`.
 export proc load_hook_paths() [env, error] -> Result[List[Path]] {
   hook_paths()
 }
 
-export proc run_lifecycle_hooks(hook_name: Str, pkg_name: Str, ctx: PmContext, extra: Str) [fs, process, env, error] {
+## Runs executable lifecycle hooks for a package operation.
+export proc run_lifecycle_hooks(
+  hook_name: Str,
+  pkg_name: Str,
+  ctx: pm_types.PmContext,
+  extra: Str,
+) [fs, process, env, error] {
   let hooks = hook_paths()?
 
   for hook in hooks {
     if ! fs.exists(hook)? {
-      return Err(PmError.LifecycleHook(f"${hook_name} hook not found: ${hook.display()}"))
+      return Err(pm_types.PmError.LifecycleHook(f"${hook_name} hook not found: ${hook.display()}"))
     }
 
     if ! fs.executable(hook)? {
-      return Err(PmError.LifecycleHook(f"${hook_name} hook is not executable: ${hook.display()}"))
+      return Err(pm_types.PmError.LifecycleHook(f"${hook_name} hook is not executable: ${hook.display()}"))
     }
 
     let argv = [hook.name, hook_name, pkg_name, extra]
@@ -217,7 +232,7 @@ export proc run_lifecycle_hooks(hook_name: Str, pkg_name: Str, ctx: PmContext, e
     )?
 
     if ! status.ok {
-      return Err(PmError.LifecycleHook(f"${hook_name} hook failed: ${hook.display()}"))
+      return Err(pm_types.PmError.LifecycleHook(f"${hook_name} hook failed: ${hook.display()}"))
     }
   }
 }

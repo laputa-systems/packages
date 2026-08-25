@@ -1,4 +1,5 @@
 #!/bin/xsh
+##! XSH module `flex` package and build operations.
 error ToolError = Failed(kind: Str, message: Str)
 
 type TextRest = {content: Str, rest: Str}

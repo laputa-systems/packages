@@ -1,15 +1,22 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.make as make
 
+## Exported declaration `name`.
 export let name = "alsa-utils-minimal"
 
+## Exported declaration `ver`.
 export let ver = "1.2.15.2"
 
+## Exported declaration `rel`.
 export let rel = "10"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "alsa-lib", "libudev-zero"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "alsa-lib"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://www.alsa-project.org/files/pub/utils/alsa-utils-VERSION.tar.bz2",
@@ -26,6 +33,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/bin/alsactl",
@@ -90,6 +98,7 @@ int main(int argc, char **argv)
   )?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let os = system.uname()?

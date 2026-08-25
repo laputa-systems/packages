@@ -1,3 +1,4 @@
+##! XSH module `PKGBUILD-aarch64` package and build operations.
 use PKGBUILD-shared as PKGBUILD_shared
 use kbuild
 use pm.make as make
@@ -528,10 +529,11 @@ proc build_native_nvhe(cc: Path, jobs_count: Int) [fs, process, env, time, error
   make.run_tasks(final_tasks, jobs_count)?
 }
 
+## Exported declaration `build_scratch`.
 export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, time, error] {
   if srcarch != "arm64" {
     return Err(
-      ScriptError.Failed(
+      kbuild.ScriptError.Failed(
         "linux-native-kbuild-unsupported-arch",
         f"native scratch Kbuild final link is only implemented for arm64; ${srcarch} needs x86_64 link/vDSO/generated-header support",
       ),
@@ -554,7 +556,7 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, t
     PKGBUILD_shared.timing_done("plan", plan_start)
     PKGBUILD_shared.stop_after("plan")?
     return Err(
-      ScriptError.Failed(
+      kbuild.ScriptError.Failed(
         "linux-kbuild-archive-only",
         f"archive-only loop planned ${archive_plan.task_count} tasks",
       ),
@@ -653,7 +655,7 @@ export proc build_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, t
   }
 
   return Err(
-    ScriptError.Failed(
+    kbuild.ScriptError.Failed(
       "linux-native-kbuild-compile-incomplete",
       f"native scratch Kbuild generated config/syscall headers, discovered ${plan.dirs.len()} dirs and ${plan.objects.len()} objects, constructed ${archive_plan.tasks.len()} object/archive tasks for archive_plan.archives.len() archives, found ${archive_plan.generated_objects.len()} generated objects and ${archive_plan.missing_sources.len()} objects without direct sources; next step is generated object handling and task execution",
     ),

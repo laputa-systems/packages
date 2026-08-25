@@ -1,15 +1,22 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 
+## Exported declaration `name`.
 export let name = "expat"
 
+## Exported declaration `ver`.
 export let ver = "2.7.3"
 
+## Exported declaration `rel`.
 export let rel = "8"
 
+## Exported declaration `deps`.
 export let deps = ["musl"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "cmake", "samurai"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://github.com/libexpat/libexpat/releases/download/R_2_7_3/expat-VERSION.tar.xz",
@@ -26,6 +33,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/include/expat.h",
@@ -81,6 +89,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?
   let samu = process.which("samu")?

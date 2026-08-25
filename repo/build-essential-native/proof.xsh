@@ -1,3 +1,4 @@
+##! XSH module `proof` package and build operations.
 error ProofError = Failed(kind: Str, message: Str)
 
 proc ensure_exists(path_value: Path, label: Str) [fs, error] {

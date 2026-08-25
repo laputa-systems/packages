@@ -1,14 +1,20 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 use pm.util as pm_util
 
+## Exported declaration `name`.
 export let name = "libinput"
 
+## Exported declaration `ver`.
 export let ver = "1.31.2"
 
+## Exported declaration `rel`.
 export let rel = "9"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "libudev-zero", "libevdev", "mtdev"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = [
   "llvm-toolchain",
   "linux",
@@ -20,6 +26,7 @@ export let mkdeps_host = [
   "mtdev",
 ]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/libinput/libinput/-/archive/VERSION/libinput-VERSION.tar.gz",
@@ -36,6 +43,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/bin/libinput",
@@ -395,6 +403,7 @@ endif
   fs.write(meson, text)?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"

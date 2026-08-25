@@ -589,7 +589,7 @@ proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, 
   } ?
 }
 
-proc test_kbuild_archive_analysis_preserves_item_order(ctx: TestContext) [fs, error] {
+proc test_kbuild_archive_analysis_preserves_item_order(ctx: TestContext) [fs, env, error] {
   let root = test.temp_dir(ctx, name: "linux-archive-analysis")?
   fs.write(
     fp"${root}/first.c",

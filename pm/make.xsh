@@ -1,7 +1,10 @@
+##! PM make operations and shared package-manager policy.
 use pm.env as pm_env
 
+## Exported PM declaration `MakeError`.
 export error MakeError = InvalidJobs(message: Str) : InvalidData | InvalidTask(message: Str) : InvalidData | DuplicateTask(message: Str) : Conflict | DuplicateOutput(message: Str) : Conflict | MissingDependency(message: Str) : Dependency | DependencyCycle(message: Str) : Dependency | CommandFailed(message: Str) : ProcessFailure
 
+## Exported PM declaration `MakeTask`.
 export type MakeTask = {
   name: Str,
   outputs: List[Path],
@@ -14,12 +17,14 @@ export type MakeTask = {
   stamp: Path,
 }
 
+## Exported PM declaration `CompileTasks`.
 export type CompileTasks = {
   tasks: List[MakeTask],
   objects: List[Path],
   deps: List[Str],
 }
 
+## Exported PM declaration `CTarget`.
 export type CTarget = {
   tasks: List[MakeTask],
   objects: List[Path],
@@ -27,6 +32,7 @@ export type CTarget = {
   output: Path,
 }
 
+## Exported PM declaration `CProgram`.
 export type CProgram = {
   cc: Path,
   triple: Str,
@@ -42,6 +48,7 @@ export type CProgram = {
   deps: List[Str],
 }
 
+## Exported PM declaration `CSharedLibrary`.
 export type CSharedLibrary = {
   cc: Path,
   triple: Str,
@@ -57,6 +64,7 @@ export type CSharedLibrary = {
   deps: List[Str],
 }
 
+## Exported PM declaration `CStaticLibrary`.
 export type CStaticLibrary = {
   cc: Path,
   triple: Str,
@@ -70,6 +78,7 @@ export type CStaticLibrary = {
   deps: List[Str],
 }
 
+## Exported PM declaration `CSourceGroup`.
 export type CSourceGroup = {
   name: Str,
   cflags: List[Str],
@@ -81,6 +90,7 @@ export type CSourceGroup = {
   deps: List[Str],
 }
 
+## Exported PM declaration `CExecutableTarget`.
 export type CExecutableTarget = {
   name: Str,
   groups: List[Str],
@@ -91,6 +101,7 @@ export type CExecutableTarget = {
   deps: List[Str],
 }
 
+## Exported PM declaration `CMultiProgram`.
 export type CMultiProgram = {
   cc: Path,
   triple: Str,
@@ -103,15 +114,12 @@ export type CMultiProgram = {
   targets: List[CExecutableTarget],
 }
 
+## Exported PM declaration `CMultiTarget`.
 export type CMultiTarget = {
   tasks: List[MakeTask],
   groups: Map[CompileTasks],
   outputs: Map[Path],
   deps: List[Str],
-}
-
-pure empty_records() -> List[Record] {
-  []
 }
 
 pure has_path(path_value: Path) -> Bool {
@@ -157,6 +165,7 @@ pure source_path(root: Path, src: Path) -> Path {
   return fp"${root}/${src}"
 }
 
+## Exported PM declaration `task_deps`.
 export pure task_deps(tasks: List[MakeTask], outputs: List[Path]) -> List[Str] {
   var wanted: Map[Bool] = {}
 
@@ -181,6 +190,7 @@ proc pkg_config_words(
   return out.words()
 }
 
+## Exported PM declaration `pkg_config_flags`.
 export proc pkg_config_flags(packages: List[Str]) [process, env, error] -> Result[Record] {
   let pc = pm_env.pkg_config_context()?
 
@@ -202,6 +212,7 @@ pure path_in_list(path_value: Path, paths: List[Path]) -> Bool {
   return false
 }
 
+## Exported PM declaration `discover_sources`.
 export proc discover_sources(
   root: Path,
   extensions: List[Str],
@@ -221,6 +232,7 @@ export proc discover_sources(
   return sources
 }
 
+## Exported PM declaration `install_header_tree`.
 export proc install_header_tree(src_dir: Path, dest_dir: Path, exclude: List[Path] = []) [fs, error] {
   let source_root = path.absolute(src_dir)?
   fs.mkdir(dest_dir)?
@@ -236,16 +248,6 @@ export proc install_header_tree(src_dir: Path, dest_dir: Path, exclude: List[Pat
       fs.install(entry.path, target, 0o644, parents: true, overwrite: true)?
     }
   }
-}
-
-pure all_deps_done(deps: List[Str], done: Map[Bool]) -> Bool {
-  for dep in deps {
-    if ! done.get(dep, false) {
-      return false
-    }
-  }
-
-  return true
 }
 
 pure parse_jobs(value: Str, source: Str) -> Result[Int] {
@@ -287,6 +289,7 @@ pure makeflags_jobs(flags: Str) -> Result[Int] {
   return cpu.count()
 }
 
+## Exported PM declaration `jobs`.
 export proc jobs() [env, error] -> Result[Int] {
   let value = env.get("MAKEFLAGS") ?? ""
 
@@ -436,6 +439,7 @@ pure strip_cross_driver_args(argv: List[Str]) -> List[Str] {
   return out
 }
 
+## Exported PM declaration `effective_task_argv`.
 export proc effective_task_argv(raw_argv: List[Any], task_env: Record) [fs, env, error] -> Result[List[Str]] {
   let argv = argv_text(raw_argv)
 
@@ -514,6 +518,7 @@ export proc effective_task_argv(raw_argv: List[Any], task_env: Record) [fs, env,
   return out.push(f"-Wl,-dynamic-linker,/usr/lib/${musl_ldso_name(target)}")
 }
 
+## Exported PM declaration `effective_task_env`.
 export proc effective_task_env(raw_argv: List[Any], task_env: Record) [env, error] -> Result[Record] {
   let argv = argv_text(raw_argv)
 
@@ -717,34 +722,6 @@ proc prepare_task_dirs(task: Record) [fs, error] {
   }
 }
 
-proc run_task(task: Record) [fs, process, env, error] {
-  if ! should_run(task)? {
-    return
-  }
-
-  prepare_task_dirs(task)?
-
-  for output in task.outputs {
-    fs.remove(output, missing_ok: true)?
-  }
-
-  let task_argv = effective_task_argv(task.argv, task.env)?
-  let task_env = effective_task_env(task.argv, task.env)?
-  let command = process.command_argv(task_argv[0], task_argv, cwd: task.cwd, env: task_env)
-  let status = process.run(command)?
-
-  if ! status.ok {
-    return Err(MakeError.CommandFailed(message: f"make task '${task.name}' failed"))
-  }
-
-  if has_path(task.stamp) {
-    match task.stamp.write_atomic(command_signature(task)?) {
-      Ok(_) => {}
-      Err(_) => {}
-    }
-  }
-}
-
 proc spawn_task(task: Record) [fs, process, env, error] -> Result[Record] {
   prepare_task_dirs(task)?
 
@@ -827,6 +804,7 @@ pure should_log_dynamic_progress(tasks_count: Int, event_count: Int, running_cou
   return running_count < jobs_count
 }
 
+## Exported PM declaration `run_tasks`.
 export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, error] -> Result[Unit] {
   check_tasks(tasks, jobs_count)?
   var task_by_name: Map[Record] = {}
@@ -942,6 +920,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
     if wait_is_idle {
       idle_intervals += 1
     }
+
     var completed_indices: Map[Bool] = {}
     var completed_tasks = []
 
@@ -1069,6 +1048,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
   }
 }
 
+## Exported PM declaration `compile_lo_task`.
 export proc compile_lo_task(
   toolchain: Path,
   triple: Str,
@@ -1101,6 +1081,7 @@ export proc compile_lo_task(
   }
 }
 
+## Exported PM declaration `compile_lo_tasks`.
 export proc compile_lo_tasks(
   toolchain: Path,
   triple: Str,
@@ -1125,6 +1106,7 @@ export proc compile_lo_tasks(
   return {tasks, objects, deps: [task.name for task in tasks]}
 }
 
+## Exported PM declaration `compile_asm_lo_task`.
 export proc compile_asm_lo_task(
   toolchain: Path,
   triple: Str,
@@ -1153,6 +1135,7 @@ export proc compile_asm_lo_task(
   }
 }
 
+## Exported PM declaration `compile_asm_lo_tasks`.
 export proc compile_asm_lo_tasks(
   toolchain: Path,
   triple: Str,
@@ -1175,6 +1158,7 @@ export proc compile_asm_lo_tasks(
   return {tasks, objects, deps: [task.name for task in tasks]}
 }
 
+## Exported PM declaration `compile_cxx_task`.
 export proc compile_cxx_task(
   toolchain: Path,
   triple: Str,
@@ -1208,6 +1192,7 @@ export proc compile_cxx_task(
   }
 }
 
+## Exported PM declaration `compile_cxx_tasks`.
 export proc compile_cxx_tasks(
   toolchain: Path,
   triple: Str,
@@ -1232,6 +1217,7 @@ export proc compile_cxx_tasks(
   return {tasks, objects, deps: [task.name for task in tasks]}
 }
 
+## Exported PM declaration `compile_c_task`.
 export proc compile_c_task(
   toolchain: Path,
   triple: Str,
@@ -1264,6 +1250,7 @@ export proc compile_c_task(
   }
 }
 
+## Exported PM declaration `compile_c_tasks`.
 export proc compile_c_tasks(
   toolchain: Path,
   triple: Str,
@@ -1288,6 +1275,7 @@ export proc compile_c_tasks(
   return {tasks, objects, deps: [task.name for task in tasks]}
 }
 
+## Exported PM declaration `compile_mixed_tasks`.
 export proc compile_mixed_tasks(
   toolchain: Path,
   triple: Str,
@@ -1318,6 +1306,7 @@ export proc compile_mixed_tasks(
   return {tasks, objects, deps: [task.name for task in tasks]}
 }
 
+## Exported PM declaration `c_program`.
 export proc c_program(spec: CProgram) [] -> CTarget {
   let compiled = compile_c_tasks(
     spec.cc,
@@ -1349,6 +1338,7 @@ export proc c_program(spec: CProgram) [] -> CTarget {
   }
 }
 
+## Exported PM declaration `c_shared_library`.
 export proc c_shared_library(spec: CSharedLibrary) [] -> CTarget {
   let compiled = compile_lo_tasks(
     spec.cc,
@@ -1380,6 +1370,7 @@ export proc c_shared_library(spec: CSharedLibrary) [] -> CTarget {
   }
 }
 
+## Exported PM declaration `c_static_library`.
 export proc c_static_library(spec: CStaticLibrary) [] -> CTarget {
   let compiled = compile_lo_tasks(
     spec.cc,
@@ -1403,6 +1394,7 @@ export proc c_static_library(spec: CStaticLibrary) [] -> CTarget {
   }
 }
 
+## Exported PM declaration `c_multi_program`.
 export proc c_multi_program(spec: CMultiProgram) [] -> Result[CMultiTarget] {
   var tasks = []
   var groups: Map[CompileTasks] = {}
@@ -1494,6 +1486,7 @@ export proc c_multi_program(spec: CMultiProgram) [] -> Result[CMultiTarget] {
   return {tasks, groups, outputs, deps}
 }
 
+## Exported PM declaration `link_shared_task`.
 export proc link_shared_task(
   toolchain: Path,
   triple: Str,
@@ -1522,6 +1515,7 @@ export proc link_shared_task(
   }
 }
 
+## Exported PM declaration `link_executable_cxx_task`.
 export proc link_executable_cxx_task(
   toolchain: Path,
   triple: Str,
@@ -1552,6 +1546,7 @@ export proc link_executable_cxx_task(
 
 # Link an executable from .o objects and shared library files.
 # libs are full paths to .so files linked directly (SONAME comes from the library).
+## Exported PM declaration `link_executable_task`.
 export proc link_executable_task(
   toolchain: Path,
   triple: Str,
@@ -1580,6 +1575,7 @@ export proc link_executable_task(
   }
 }
 
+## Exported PM declaration `link_archive_task`.
 export proc link_archive_task(toolchain: Path, objs: List[Path], out: Path, deps: List[Str] = []) [] -> MakeTask {
   let _ = toolchain
   var argv = ["ar", "rcs", out]
@@ -1602,6 +1598,7 @@ export proc link_archive_task(toolchain: Path, objs: List[Path], out: Path, deps
 
 # Compile a .c file to a position-independent .lo object (for shared libraries).
 # out is the full path of the output object file; parent directories are created.
+## Exported PM declaration `compile_lo`.
 export proc compile_lo(
   toolchain: Path,
   triple: Str,
@@ -1615,6 +1612,7 @@ export proc compile_lo(
 }
 
 # Compile a .cxx/.cpp file to a regular .o object using the C++ compiler.
+## Exported PM declaration `compile_cxx`.
 export proc compile_cxx(
   toolchain: Path,
   triple: Str,
@@ -1628,6 +1626,7 @@ export proc compile_cxx(
 }
 
 # Compile a .c file to a regular .o object (for executables).
+## Exported PM declaration `compile_c`.
 export proc compile_c(
   toolchain: Path,
   triple: Str,
@@ -1641,6 +1640,7 @@ export proc compile_c(
 }
 
 # Link a shared library from .lo objects with a given SONAME.
+## Exported PM declaration `link_shared`.
 export proc link_shared(
   toolchain: Path,
   triple: Str,
@@ -1653,6 +1653,7 @@ export proc link_shared(
 }
 
 # Link a C++ executable using the C++ compiler driver.
+## Exported PM declaration `link_executable_cxx`.
 export proc link_executable_cxx(
   toolchain: Path,
   triple: Str,
@@ -1664,6 +1665,7 @@ export proc link_executable_cxx(
   run_tasks([link_executable_cxx_task(toolchain, triple, objs, libs, ldflags, out)], 1)?
 }
 
+## Exported PM declaration `link_executable`.
 export proc link_executable(
   toolchain: Path,
   triple: Str,
@@ -1676,6 +1678,7 @@ export proc link_executable(
 }
 
 # Create a static archive from .lo/.o objects.
+## Exported PM declaration `link_archive`.
 export proc link_archive(toolchain: Path, objs: List[Path], out: Path) [fs, process, env, error] -> Result[Unit] {
   run_tasks([link_archive_task(toolchain, objs, out)], 1)?
 }

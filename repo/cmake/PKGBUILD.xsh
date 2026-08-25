@@ -1,19 +1,26 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.configure as configure
 use pm.make as make
 use pm.util as pm_util
 
 error ScriptError = Failed(kind: Str, message: Str)
 
+## Exported declaration `name`.
 export let name = "cmake"
 
+## Exported declaration `ver`.
 export let ver = "4.3.1"
 
+## Exported declaration `rel`.
 export let rel = "17"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "llvm-toolchain"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "samurai"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://cmake.org/files/vMAJOR.MINOR/cmake-VERSION.tar.gz",
@@ -69,6 +76,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr",
@@ -88,6 +96,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let target_arch = pm_util.target_arch()?

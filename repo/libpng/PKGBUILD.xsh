@@ -1,16 +1,23 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 use pm.make as make
 
+## Exported declaration `name`.
 export let name = "libpng"
 
+## Exported declaration `ver`.
 export let ver = "1.6.50"
 
+## Exported declaration `rel`.
 export let rel = "9"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "zlib"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "cmake", "samurai", "zlib"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://download.sourceforge.net/libpng/libpng-VERSION.tar.xz",
@@ -27,6 +34,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/include/libpng16/png.h",
@@ -102,6 +110,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?
   let samu = process.which("samu")?

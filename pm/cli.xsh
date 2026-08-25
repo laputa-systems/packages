@@ -1,3 +1,4 @@
+##! PM cli operations and shared package-manager policy.
 use build as pm_build
 use buildroot
 use extensions
@@ -12,7 +13,7 @@ use util
 use world
 
 pure usage(message: Str) -> Error {
-  PmError.Usage(f"usage: ${message}")
+  types.PmError.Usage(f"usage: ${message}")
 }
 
 proc clear_directory_contents(root: Path) [fs, error] {
@@ -38,7 +39,7 @@ proc clear_directory_contents(root: Path) [fs, error] {
   }
 }
 
-proc parse_pm_cli(argv: List[Str]) [error] -> Result[Cli] {
+proc parse_pm_cli(argv: List[Str]) [error] -> Result[types.Cli] {
   let path_types = {root: "Path", work: "Path", out: "Path"}
 
   let commands = {
@@ -207,7 +208,7 @@ proc parse_pm_cli(argv: List[Str]) [error] -> Result[Cli] {
     },
   }
 
-  let parsed: Cli = cli.commands(
+  let parsed: types.Cli = cli.commands(
     argv,
     rootless_default: "smoke",
     commands: commands,
@@ -239,45 +240,45 @@ proc print_help() [] {
 }
 
 proc build_local_packages(
-  ctx: PmContext,
+  ctx: types.PmContext,
   raw: List[Str],
   allow_installed_deps: Bool,
-) [fs, net, process, env, time, error] -> Result[List[BuiltPackage]] {
-  let dirs = paths_from_args(raw)?
-  let packages = load_package_dirs(dirs)?
-  let ordered = order_packages(ctx.root, packages, allow_installed_deps)?
+) [fs, net, process, env, time, error] -> Result[List[types.BuiltPackage]] {
+  let dirs = util.paths_from_args(raw)?
+  let packages = local.load_package_dirs(dirs)?
+  let ordered = local.order_packages(ctx.root, packages, allow_installed_deps)?
   pm_build.build_packages(ctx, ordered)?
 }
 
 proc build_and_install_local_packages(
-  ctx: PmContext,
+  ctx: types.PmContext,
   raw: List[Str],
   allow_installed_deps: Bool,
 ) [fs, net, process, env, time, error] {
   let built = build_local_packages(ctx, raw, allow_installed_deps)?
-  install_built_packages(ctx, built)?
+  install.install_built_packages(ctx, built)?
 }
 
-proc load_local_packages(raw: List[Str]) [fs, env, error] -> Result[List[Package]] {
-  let dirs = paths_from_args(raw)?
-  load_package_dirs(dirs)?
+proc load_local_packages(raw: List[Str]) [fs, env, error] -> Result[List[types.Package]] {
+  let dirs = util.paths_from_args(raw)?
+  local.load_package_dirs(dirs)?
 }
 
-proc command_smoke(ctx: PmContext, raw: List[Str]) [fs, net, process, env, time, error] {
+proc command_smoke(ctx: types.PmContext, raw: List[Str]) [fs, net, process, env, time, error] {
   let built = build_local_packages(ctx, raw, false)?
-  install_built_packages(ctx, built)?
-  remove_built_packages(ctx, built)?
+  install.install_built_packages(ctx, built)?
+  install.remove_built_packages(ctx, built)?
 }
 
-proc command_install(ctx: PmContext, raw: List[Str]) [fs, net, process, env, time, error] {
-  if args_are_package_dirs(raw)? {
+proc command_install(ctx: types.PmContext, raw: List[Str]) [fs, net, process, env, time, error] {
+  if remote.args_are_package_dirs(raw)? {
     build_and_install_local_packages(ctx, raw, true)?
   } else {
-    install_remote_packages(ctx, raw)?
+    install.install_remote_packages(ctx, raw)?
   }
 }
 
-proc command_search(ctx: PmContext, raw: List[Str]) [fs, env, error] {
+proc command_search(ctx: types.PmContext, raw: List[Str]) [fs, env, error] {
   if raw.len() < 1 {
     return Err(usage("pm search ROOT WORK OUT QUERY [PKGDIR...]"))
   }
@@ -291,40 +292,40 @@ proc command_search(ctx: PmContext, raw: List[Str]) [fs, env, error] {
     search_index += 1
   }
 
-  let packages = load_package_dirs(dirs)?
-  print_search_matches(ctx.root, query, packages)?
+  let packages = local.load_package_dirs(dirs)?
+  install.print_search_matches(ctx.root, query, packages)?
 }
 
-proc command_update(ctx: PmContext, raw: List[Str]) [fs, process, env, error] {
+proc command_update(ctx: types.PmContext, raw: List[Str]) [fs, process, env, error] {
   let packages = load_local_packages(raw)?
-  run_lifecycle_hooks("pre-update", "", ctx, "local")?
-  write_local_index(ctx.out, packages)?
-  run_lifecycle_hooks("post-update", "", ctx, "local")?
+  extensions.run_lifecycle_hooks("pre-update", "", ctx, "local")?
+  local.write_local_index(ctx.out, packages)?
+  extensions.run_lifecycle_hooks("post-update", "", ctx, "local")?
 }
 
-proc command_for_each_package(ctx: PmContext, raw: List[Str], action: Str) [fs, net, process, env, time, error] {
+proc command_for_each_package(ctx: types.PmContext, raw: List[Str], action: Str) [fs, net, process, env, time, error] {
   let packages = load_local_packages(raw)?
 
   for pkg in packages {
     match action {
-      "checksum" => print_package_checksums(ctx.work, pkg)?
-      "update-checksums" => update_package_checksums(ctx.work, pkg)?
-      "download" => download_package_sources(ctx.work, ctx.out, pkg)?
-      "upload" => upload_package(ctx, pkg)?
-      _ => return Err(PmError.Usage(f"unknown package action ${action}"))
+      "checksum" => local.print_package_checksums(ctx.work, pkg)?
+      "update-checksums" => local.update_package_checksums(ctx.work, pkg)?
+      "download" => local.download_package_sources(ctx.work, ctx.out, pkg)?
+      "upload" => repo.upload_package(ctx, pkg)?
+      _ => return Err(types.PmError.Usage(f"unknown package action ${action}"))
     }
   }
 }
 
-proc command_upgrade(ctx: PmContext, raw: List[Str]) [fs, net, process, env, time, error] {
+proc command_upgrade(ctx: types.PmContext, raw: List[Str]) [fs, net, process, env, time, error] {
   let packages = load_local_packages(raw)?
-  let upgrade_names = collect_upgrade_names(ctx.root, packages)?
+  let upgrade_names = local.collect_upgrade_names(ctx.root, packages)?
 
   if upgrade_names.len() > 0 {
-    let selected = filter_packages_by_names(packages, upgrade_names)?
-    let ordered = order_packages(ctx.root, selected, true)?
+    let selected = local.filter_packages_by_names(packages, upgrade_names)?
+    let ordered = local.order_packages(ctx.root, selected, true)?
     let built = pm_build.build_packages(ctx, ordered)?
-    install_built_packages(ctx, built)?
+    install.install_built_packages(ctx, built)?
   }
 }
 
@@ -345,21 +346,27 @@ proc build_install_packages(argv: List[Str]) [fs, net, process, env, time, error
     build_i += 1
   }
 
-  let packages = load_package_dirs(paths_from_args(raw_args)?)?
-  let local_names = local_package_names(packages)
-  let root_ctx: PmContext = {command: "build-install", root, work, out}
-  let build_ctx: PmContext = {command: "build-install", root: build_root, work, out}
+  let packages = local.load_package_dirs(util.paths_from_args(raw_args)?)?
+  let local_names = buildroot.local_package_names(packages)
+  let root_ctx: types.PmContext = {command: "build-install", root, work, out}
+  let build_ctx: types.PmContext = {command: "build-install", root: build_root, work, out}
   fs.mkdir(work)?
   let lock = fs.lock(fp"${work}/pm.lock")?
   defer fs.unlock(lock)?
   fs.mkdir(root)?
   fs.mkdir(build_root)?
   fs.mkdir(out)?
-  install_chroot_base(root_ctx, local_names, false)?
-  install_chroot_base(build_ctx, local_names, true)?
-  install_remote_dependency_set(root_ctx, missing_dependency_names(root, packages, false, local_names)?)?
-  install_remote_dependency_set(build_ctx, missing_dependency_names(build_root, packages, true, local_names)?)?
-  let ordered = order_packages(build_root, packages, true)?
+  buildroot.install_chroot_base(root_ctx, local_names, false)?
+  buildroot.install_chroot_base(build_ctx, local_names, true)?
+  buildroot.install_remote_dependency_set(
+    root_ctx,
+    buildroot.missing_dependency_names(root, packages, false, local_names)?,
+  )?
+  buildroot.install_remote_dependency_set(
+    build_ctx,
+    buildroot.missing_dependency_names(build_root, packages, true, local_names)?,
+  )?
+  let ordered = local.order_packages(build_root, packages, true)?
 
   for pkg in ordered {
     var built = []
@@ -371,10 +378,10 @@ proc build_install_packages(argv: List[Str]) [fs, net, process, env, time, error
       built = pm_build.build_packages(build_ctx, [pkg])?
     } ?
 
-    install_built_packages(root_ctx, built)?
+    install.install_built_packages(root_ctx, built)?
 
     if root.display() != build_root.display() {
-      install_built_packages(build_ctx, built)?
+      install.install_built_packages(build_ctx, built)?
     }
   }
 }
@@ -389,9 +396,9 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let build_root = fp"${repo_dir}/.set-build-root"
   let work = fp"${repo_dir}/.work"
   let out = fp"${repo_dir}/.out"
-  let root_ctx: PmContext = {command: "build-set", root, work, out}
-  let build_ctx: PmContext = {command: "build-set", root: build_root, work, out}
-  let upload_ctx: PmContext = {...build_ctx, command: "upload"}
+  let root_ctx: types.PmContext = {command: "build-set", root, work, out}
+  let build_ctx: types.PmContext = {command: "build-set", root: build_root, work, out}
+  let upload_ctx: types.PmContext = {...build_ctx, command: "upload"}
   var raw_args = []
   var build_i = 2
 
@@ -404,11 +411,11 @@ proc build_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   var index = []
 
   if fs.exists(index_path)? {
-    index = load_remote_index_from(index_path)?
+    index = remote.load_remote_index_from(index_path)?
   }
 
-  let packages = load_package_dirs(paths_from_args(raw_args)?)?
-  let local_names = local_package_names(packages)
+  let packages = local.load_package_dirs(util.paths_from_args(raw_args)?)?
+  let local_names = buildroot.local_package_names(packages)
   let reuse_set_roots = (env.get("XSH_PM_REUSE_SET_ROOTS") ?? "") == "1" and packages.len() == 1
   let root_pkg = packages[0]
   let root_pkgbuild = fp"${root_pkg.dir}/PKGBUILD.xsh"
@@ -435,7 +442,7 @@ ${root_pkg.name}	${root_pkg.ver}	${root_pkg.rel}	${hash.sha256(root_pkgbuild)?.h
   fs.mkdir(build_root)?
   fs.mkdir(work)?
   fs.mkdir(out)?
-  fs.remove(remote_index_cache_path(out), missing_ok: true)?
+  fs.remove(util.remote_index_cache_path(out), missing_ok: true)?
   let lock = fs.lock(fp"${work}/pm.lock")?
   defer fs.unlock(lock)?
   let ordered = packages
@@ -456,17 +463,17 @@ ${root_pkg.name}	${root_pkg.ver}	${root_pkg.rel}	${hash.sha256(root_pkgbuild)?.h
       fs.mkdir(build_root)?
     }
 
-    install_chroot_base(root_ctx, local_names, false)?
-    install_chroot_base(build_ctx, local_names, true)?
+    buildroot.install_chroot_base(root_ctx, local_names, false)?
+    buildroot.install_chroot_base(build_ctx, local_names, true)?
 
-    install_remote_dependency_set(
+    buildroot.install_remote_dependency_set(
       root_ctx,
-      missing_world_dependencies(root, effective_world_dependencies(pkg, false), local_names, built_names)?,
+      world.missing_world_dependencies(root, world.effective_world_dependencies(pkg, false), local_names, built_names)?,
     )?
 
-    install_remote_dependency_set(
+    buildroot.install_remote_dependency_set(
       build_ctx,
-      missing_world_dependencies(build_root, effective_world_dependencies(pkg, true), local_names, built_names)?,
+      world.missing_world_dependencies(build_root, world.effective_world_dependencies(pkg, true), local_names, built_names)?,
     )?
 
     if reuse_set_roots and first_package {
@@ -483,20 +490,20 @@ ${root_pkg.name}	${root_pkg.ver}	${root_pkg.rel}	${hash.sha256(root_pkgbuild)?.h
     } ?
 
     for item in built {
-      index = stage_built_package(repo_dir, upload_ctx, index, item)?
+      index = repo.stage_built_package(repo_dir, upload_ctx, index, item)?
       built_names[item.pkg.name] = true
 
       first_package = false
     }
 
     json.write(index_path, index)?
-    fs.remove(remote_index_cache_path(out), missing_ok: true)?
+    fs.remove(util.remote_index_cache_path(out), missing_ok: true)?
   }
 }
 
 proc build_upload_set_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   build_set_repo(argv)?
-  upload_set_repo(argv)?
+  repo.upload_set_repo(argv)?
 }
 
 proc build_set_dependencies(argv: List[Str]) [fs, net, process, env, time, error] {
@@ -509,8 +516,8 @@ proc build_set_dependencies(argv: List[Str]) [fs, net, process, env, time, error
   let build_root = fp"${repo_dir}/.set-build-root"
   let work = fp"${repo_dir}/.work"
   let out = fp"${repo_dir}/.out"
-  let root_ctx: PmContext = {command: "build-set-deps", root, work, out}
-  let build_ctx: PmContext = {command: "build-set-deps", root: build_root, work, out}
+  let root_ctx: types.PmContext = {command: "build-set-deps", root, work, out}
+  let build_ctx: types.PmContext = {command: "build-set-deps", root: build_root, work, out}
   var raw_args = []
   var build_i = 2
 
@@ -519,8 +526,8 @@ proc build_set_dependencies(argv: List[Str]) [fs, net, process, env, time, error
     build_i += 1
   }
 
-  let packages = load_package_dirs(paths_from_args(raw_args)?)?
-  let local_names = local_package_names(packages)
+  let packages = local.load_package_dirs(util.paths_from_args(raw_args)?)?
+  let local_names = buildroot.local_package_names(packages)
   fs.mkdir(repo_dir)?
   fs.remove(root, missing_ok: true)?
   fs.remove(build_root, missing_ok: true)?
@@ -532,10 +539,16 @@ proc build_set_dependencies(argv: List[Str]) [fs, net, process, env, time, error
   defer fs.unlock(lock)?
   let started = time.now()
 
-  install_chroot_base(root_ctx, local_names, false)?
-  install_chroot_base(build_ctx, local_names, true)?
-  install_remote_dependency_set(root_ctx, missing_dependency_names(root, packages, false, local_names)?)?
-  install_remote_dependency_set(build_ctx, missing_dependency_names(build_root, packages, true, local_names)?)?
+  buildroot.install_chroot_base(root_ctx, local_names, false)?
+  buildroot.install_chroot_base(build_ctx, local_names, true)?
+  buildroot.install_remote_dependency_set(
+    root_ctx,
+    buildroot.missing_dependency_names(root, packages, false, local_names)?,
+  )?
+  buildroot.install_remote_dependency_set(
+    build_ctx,
+    buildroot.missing_dependency_names(build_root, packages, true, local_names)?,
+  )?
   let elapsed = time.now() - started
   print --flush "pm-dependencies-ready" $elapsed "ms" packages.len() "packages"
 }
@@ -664,9 +677,9 @@ proc default_root_command_argv(argv: List[Str]) [fs, error] -> Result[List[Str]]
   expanded
 }
 
-proc handle_cli_command(parsed: Cli) [fs, net, process, env, time, error] {
+proc handle_cli_command(parsed: types.Cli) [fs, net, process, env, time, error] {
   let command = parsed.command
-  let ctx: PmContext = {command, root: parsed.root, work: parsed.work, out: parsed.out}
+  let ctx: types.PmContext = {command, root: parsed.root, work: parsed.work, out: parsed.out}
   fs.mkdir(ctx.work)?
   let lock = fs.lock(fp"${ctx.work}/pm.lock")?
   defer fs.unlock(lock)?
@@ -676,34 +689,35 @@ proc handle_cli_command(parsed: Cli) [fs, net, process, env, time, error] {
   match command {
     "smoke" => command_smoke(ctx, parsed.raw)?
     "install" => command_install(ctx, parsed.raw)?
-    "remove" => remove_installed_packages(ctx, parsed.raw)?
-    "list" => print_installed_list(ctx.root)?
+    "remove" => install.remove_installed_packages(ctx, parsed.raw)?
+    "list" => install.print_installed_list(ctx.root)?
     "info" => {
       for name in parsed.raw {
-        print_package_info(ctx.root, name)?
+        install.print_package_info(ctx.root, name)?
       }
     }
-    "tree" => print_dependency_tree(ctx.root, parsed.raw)?
+    "tree" => install.print_dependency_tree(ctx.root, parsed.raw)?
     "search" => command_search(ctx, parsed.raw)?
-    "outdated" => print_outdated(ctx.root, load_local_packages(parsed.raw)?)?
+    "outdated" => install.print_outdated(ctx.root, load_local_packages(parsed.raw)?)?
     "update" => command_update(ctx, parsed.raw)?
     "checksum" => command_for_each_package(ctx, parsed.raw, command)?
     "update-checksums" => command_for_each_package(ctx, parsed.raw, command)?
     "download" => command_for_each_package(ctx, parsed.raw, command)?
     "source-audit" => sources.audit_source_mirrors(ctx.out, load_local_packages(parsed.raw)?)?
     "refresh-index" => {
-      run_lifecycle_hooks("pre-update", "", ctx, "remote")?
-      let _ = refresh_remote_index(ctx.out)?
-      run_lifecycle_hooks("post-update", "", ctx, "remote")?
+      extensions.run_lifecycle_hooks("pre-update", "", ctx, "remote")?
+      let _ = remote.refresh_remote_index(ctx.out)?
+      extensions.run_lifecycle_hooks("post-update", "", ctx, "remote")?
     }
-    "auth" => store_auth_token(ctx.root, parsed.raw)?
+    "auth" => remote.store_auth_token(ctx.root, parsed.raw)?
     "upload" => command_for_each_package(ctx, parsed.raw, command)?
     "upgrade" => command_upgrade(ctx, parsed.raw)?
-    "help-ext" => print_extension_help()?
-    _ => invoke_extension(command, ctx, parsed.raw)?
+    "help-ext" => extensions.print_extension_help()?
+    _ => extensions.invoke_extension(command, ctx, parsed.raw)?
   }
 }
 
+## Exported PM declaration `run_pm_cli`.
 export proc run_pm_cli(argv: List[Str]) [fs, net, process, env, time, error] {
   var a = argv
 
@@ -725,7 +739,7 @@ export proc run_pm_cli(argv: List[Str]) [fs, net, process, env, time, error] {
   }
 
   if a.len() >= 1 and a[0] == "build" {
-    build_repo(a)?
+    repo.build_repo(a)?
     return
   }
 
@@ -735,7 +749,7 @@ export proc run_pm_cli(argv: List[Str]) [fs, net, process, env, time, error] {
   }
 
   if a.len() >= 1 and a[0] == "world-plan" {
-    world_plan_repo(a)?
+    world.world_plan_repo(a)?
     return
   }
 
@@ -755,7 +769,7 @@ export proc run_pm_cli(argv: List[Str]) [fs, net, process, env, time, error] {
   }
 
   if a.len() >= 1 and a[0] == "upload-set" {
-    upload_set_repo(a)?
+    repo.upload_set_repo(a)?
     return
   }
 
@@ -765,7 +779,7 @@ export proc run_pm_cli(argv: List[Str]) [fs, net, process, env, time, error] {
   }
 
   if a.len() >= 1 and a[0] == "upload-repo-export" {
-    upload_repo_export(a)?
+    repo.upload_repo_export(a)?
     return
   }
 

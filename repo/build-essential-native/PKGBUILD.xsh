@@ -1,9 +1,13 @@
+##! XSH module `PKGBUILD` package and build operations.
 export let name = "build-essential-native"
 
+## Exported declaration `ver`.
 export let ver = "1"
 
+## Exported declaration `rel`.
 export let rel = "9"
 
+## Exported declaration `deps`.
 export let deps = [
   "ca-certificates",
   "musl",
@@ -19,12 +23,16 @@ export let deps = [
   "muon",
 ]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = []
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = []
 
+## Exported declaration `filetree`.
 export let filetree = []
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, error] {
   fs.mkdir(dest)?
 }

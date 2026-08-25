@@ -1,3 +1,4 @@
+##! PM chroot-run operations and shared package-manager policy.
 error ChrootRunError = Failed(message: Str)
 
 proc main(root: Path, package_name: Str, ...argv: List[Str]) [fs, process, env, error] {

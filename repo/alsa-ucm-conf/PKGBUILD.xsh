@@ -1,13 +1,19 @@
+##! XSH module `PKGBUILD` package and build operations.
 export let name = "alsa-ucm-conf"
 
+## Exported declaration `ver`.
 export let ver = "1.2.15.3"
 
+## Exported declaration `rel`.
 export let rel = "8"
 
+## Exported declaration `deps`.
 export let deps = ["alsa-lib"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = []
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://www.alsa-project.org/files/pub/lib/alsa-ucm-conf-VERSION.tar.bz2",
@@ -24,6 +30,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr",
@@ -603,6 +610,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/share/alsa")?
   let _ = fs.copy_tree(p"ucm2", fp"${dest}/usr/share/alsa/ucm2", parents: true, overwrite: true)?

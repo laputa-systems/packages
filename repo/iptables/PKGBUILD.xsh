@@ -1,15 +1,22 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.make as make
 
+## Exported declaration `name`.
 export let name = "iptables"
 
+## Exported declaration `ver`.
 export let ver = "1.8.11"
 
+## Exported declaration `rel`.
 export let rel = "10"
 
+## Exported declaration `deps`.
 export let deps = ["musl"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://www.netfilter.org/projects/iptables/files/iptables-VERSION.tar.xz",
@@ -26,6 +33,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/bin/ip6tables",
@@ -84,6 +92,7 @@ int main(int argc, char **argv)
   )?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let os = system.uname()?

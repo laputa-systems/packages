@@ -1,16 +1,23 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.make as make
 use pm.util as pm_util
 
+## Exported declaration `name`.
 export let name = "libudev-zero"
 
+## Exported declaration `ver`.
 export let ver = "1.0.3"
 
+## Exported declaration `rel`.
 export let rel = "8"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "linux"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "linux"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://github.com/illiliti/libudev-zero/archive/VERSION.tar.gz",
@@ -27,6 +34,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/include/libudev.h",
@@ -46,6 +54,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let arch = pm_util.target_arch()?

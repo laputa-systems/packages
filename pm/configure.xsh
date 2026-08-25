@@ -1,3 +1,4 @@
+##! PM configure operations and shared package-manager policy.
 # Generates a config.h from a config.h.in by processing autoconf #undef lines.
 #
 # defines maps variable name → C token (e.g. "1", "0", "\"pkgconf\"").
@@ -5,6 +6,7 @@
 #   - VAR in defines → '#define VAR value'
 #   - VAR not in defines → '/* #undef VAR */'
 # All other lines (comments, '/* #undef */' commented forms, blank) pass through.
+## Exported PM declaration `config_h`.
 export proc config_h(in_path: Path, out_path: Path, defines: Map[Str]) [fs, error] -> Result[Unit] {
   let content = fs.read_text(in_path)?
   let lines = content.split("\n")
@@ -32,6 +34,7 @@ export proc config_h(in_path: Path, out_path: Path, defines: Map[Str]) [fs, erro
 # Substitutes @VAR@ placeholders in an autoconf .in file and writes the result.
 # vars is a list of [name, value] pairs; name is the placeholder without @.
 # Unknown @VAR@ tokens are left as-is.
+## Exported PM declaration `substitute`.
 export proc substitute(in_path: Path, out_path: Path, vars: List[List[Str]]) [fs, error] -> Result[Unit] {
   var content = fs.read_text(in_path)?
 

@@ -1,3 +1,4 @@
+##! XSH module `proof-stack` package and build operations.
 error ScriptError = Failed(kind: Str, message: Str)
 
 proc main(rootfs: Path = /rootfs) [fs, process, env, error] {

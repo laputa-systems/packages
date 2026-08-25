@@ -1,15 +1,22 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.make as make
 
+## Exported declaration `name`.
 export let name = "libnl3"
 
+## Exported declaration `ver`.
 export let ver = "3.11.0"
 
+## Exported declaration `rel`.
 export let rel = "5"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "linux"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://github.com/thom311/libnl/releases/download/libnl3_11_0/libnl-3.11.0.tar.gz",
@@ -26,6 +33,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr",
@@ -57,6 +65,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cwd = fs.cwd()?
   let src = cwd

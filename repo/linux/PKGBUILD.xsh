@@ -1,3 +1,4 @@
+##! XSH module `PKGBUILD` package and build operations.
 use PKGBUILD-aarch64 as PKGBUILD_aarch64
 use PKGBUILD-shared as PKGBUILD_shared
 use PKGBUILD-x86_64 as PKGBUILD_x86_64
@@ -6,18 +7,25 @@ use linux_config
 use parser_gen
 use pm.util as pm_util
 
+## Exported declaration `name`.
 export let name = "linux"
 
+## Exported declaration `ver`.
 export let ver = "7.0.5"
 
+## Exported declaration `rel`.
 export let rel = "34"
 
+## Exported declaration `deps`.
 export let deps: List[Str] = []
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "flex", "bison"]
 
+## Exported declaration `nostrip`.
 export let nostrip = true
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.0.5.tar.xz",
@@ -203,6 +211,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [{path: p"boot", kind: "tree"}, {path: p"usr", kind: "tree"}]
 
 proc package_arch() [env, error] -> Result[Str] {
@@ -212,7 +221,7 @@ proc package_arch() [env, error] -> Result[Str] {
     return arch
   }
 
-  return Err(ScriptError.Failed("linux-unsupported-arch", f"unsupported linux package arch ${arch}"))
+  return Err(kbuild.ScriptError.Failed("linux-unsupported-arch", f"unsupported linux package arch ${arch}"))
 }
 
 pure linux_srcarch(package_arch_value: Str) -> Result[Str] {
@@ -224,7 +233,9 @@ pure linux_srcarch(package_arch_value: Str) -> Result[Str] {
     return "x86"
   }
 
-  return Err(ScriptError.Failed("linux-unsupported-arch", f"unsupported linux package arch ${package_arch_value}"))
+  return Err(
+    kbuild.ScriptError.Failed("linux-unsupported-arch", f"unsupported linux package arch ${package_arch_value}"),
+  )
 }
 
 pure kernel_config_fragments_for(package_arch_value: Str) -> Result[List[Path]] {
@@ -236,7 +247,9 @@ pure kernel_config_fragments_for(package_arch_value: Str) -> Result[List[Path]] 
     return [p"files/config/x86_64/base-x86_64.fragment"]
   }
 
-  return Err(ScriptError.Failed("linux-unsupported-arch", f"unsupported linux package arch ${package_arch_value}"))
+  return Err(
+    kbuild.ScriptError.Failed("linux-unsupported-arch", f"unsupported linux package arch ${package_arch_value}"),
+  )
 }
 
 proc build_kernel_config_fragments_for(package_arch_value: Str) [fs, error] -> Result[List[Path]] {
@@ -264,7 +277,9 @@ pure kernel_image_for(package_arch_value: Str) -> Result[Path] {
     return p"arch/x86/boot/bzImage"
   }
 
-  return Err(ScriptError.Failed("linux-unsupported-arch", f"unsupported linux package arch ${package_arch_value}"))
+  return Err(
+    kbuild.ScriptError.Failed("linux-unsupported-arch", f"unsupported linux package arch ${package_arch_value}"),
+  )
 }
 
 proc install_headers_from(root: Path, source: Path, target: Path) [fs, error] {
@@ -307,7 +322,7 @@ proc build_native_scratch(cc: Path, srcarch: Str) [fs, process, env, time, error
   }
 
   return Err(
-    ScriptError.Failed(
+    kbuild.ScriptError.Failed(
       "linux-native-kbuild-unsupported-arch",
       f"native scratch Kbuild final link is only implemented for arm64 and x86; ${srcarch} needs new arch support",
     ),
@@ -321,7 +336,7 @@ proc build_cc() [fs, process, env, error] -> Result[Path] {
     let cc = fp"${root}/usr/bin/cc"
 
     if ! fs.exists(cc)? {
-      return Err(ScriptError.Failed("linux-build-cc", f"missing build-root compiler: ${cc.display()}"))?
+      return Err(kbuild.ScriptError.Failed("linux-build-cc", f"missing build-root compiler: ${cc.display()}"))?
     }
 
     return cc
@@ -330,6 +345,7 @@ proc build_cc() [fs, process, env, error] -> Result[Path] {
   return process.which("cc")?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, time, error] {
   let package_start = PKGBUILD_shared.timing_start("package-total")
   let cc = build_cc()?

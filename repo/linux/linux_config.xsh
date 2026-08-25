@@ -1,3 +1,4 @@
+##! XSH module `linux_config` package and build operations.
 use kbuild
 
 proc render_fragments(fragments: List[Path]) [fs, error] -> Result[Str] {
@@ -8,7 +9,7 @@ proc render_fragments(fragments: List[Path]) [fs, error] -> Result[Str] {
   for fragment in fragments {
     if ! fragment.exists()? {
       return Err(
-        ScriptError.Failed("linux-config-fragment-missing", f"missing kernel config fragment ${fragment.display()}"),
+        kbuild.ScriptError.Failed("linux-config-fragment-missing", f"missing kernel config fragment ${fragment.display()}"),
       )
     }
 
@@ -19,6 +20,7 @@ proc render_fragments(fragments: List[Path]) [fs, error] -> Result[Str] {
   return out
 }
 
+## Exported declaration `write_resolved_config`.
 export proc write_resolved_config(root: Path, srcarch: Str, fragments: List[Path], out: Path) [fs, error] {
   let _ = {root: root.display(), srcarch}
   kbuild.write_text_if_changed(out, render_fragments(fragments)?)?

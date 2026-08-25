@@ -1,15 +1,22 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.make as make
 
+## Exported declaration `name`.
 export let name = "alsa-lib"
 
+## Exported declaration `ver`.
 export let ver = "1.2.15.3"
 
+## Exported declaration `rel`.
 export let rel = "9"
 
+## Exported declaration `deps`.
 export let deps = ["musl"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://www.alsa-project.org/files/pub/lib/alsa-lib-VERSION.tar.bz2",
@@ -26,6 +33,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/include/alsa/asoundlib.h",
@@ -168,6 +176,7 @@ defaults.pcm.device 0
   )?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let os = system.uname()?

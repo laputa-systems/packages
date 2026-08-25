@@ -1,3 +1,4 @@
+##! XSH module `proof` package and build operations.
 error ProofError = Failed(kind: Str, message: Str)
 
 proc ensure(condition: Bool, kind: Str, message: Str) [error] {

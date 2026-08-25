@@ -1,15 +1,22 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 
+## Exported declaration `name`.
 export let name = "libdrm"
 
+## Exported declaration `ver`.
 export let ver = "2.4.127"
 
+## Exported declaration `rel`.
 export let rel = "9"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "libudev-zero"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "libudev-zero"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://dri.freedesktop.org/libdrm/libdrm-VERSION.tar.xz",
@@ -28,6 +35,7 @@ export let upstream_sources = [
 
 type Modifier = {vendor: Str, mod: Str, name: Str}
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/include/libdrm/amdgpu_drm.h",
@@ -213,6 +221,7 @@ format_mod_static_table = custom_target(
   fs.write(meson, text)?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"

@@ -1,14 +1,20 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 use pm.util as pm_util
 
+## Exported declaration `name`.
 export let name = "dwl-minimal"
 
+## Exported declaration `ver`.
 export let ver = "0.8"
 
+## Exported declaration `rel`.
 export let rel = "10"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "wlroots0.19-mesa", "wayland-libs-server", "libxkbcommon", "libinput"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = [
   "llvm-toolchain",
   "pkgconf",
@@ -23,8 +29,10 @@ export let mkdeps_host = [
   "libinput",
 ]
 
+## Exported declaration `mkdeps_target`.
 export let mkdeps_target = ["wayland-dev", "wayland-protocols", "pixman-dev"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://codeberg.org/dwl/dwl/archive/vVERSION.tar.gz",
@@ -41,6 +49,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [{path: p"usr/bin/dwl", kind: "binary"}]
 
 proc sysroot_path(root: Str, raw: Str) [fs, error] -> Result[Path] {
@@ -203,6 +212,7 @@ static const char *termcmd[] = { "/usr/bin/foot", NULL };
   fs.write(p"config.h", config)?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let pc = pm_env.pkg_config_context()?

@@ -1,18 +1,26 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 use pm.util as pm_util
 
+## Exported declaration `name`.
 export let name = "libva"
 
+## Exported declaration `ver`.
 export let ver = "2.22.0"
 
+## Exported declaration `rel`.
 export let rel = "8"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "libdrm", "wayland-libs-client"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "libdrm", "wayland-dev"]
 
+## Exported declaration `mkdeps_target`.
 export let mkdeps_target = ["wayland-dev"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://github.com/intel/libva/releases/download/VERSION/libva-VERSION.tar.bz2",
@@ -29,6 +37,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/include/va/va.h",
@@ -204,6 +213,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `prepare_sources`.
 export proc prepare_sources(src: Path) [fs, error] {
   let trace = fp"${src}/va/va_trace.c"
   fs.write(trace, trace.read_text()?.replace("syscall(__NR_gettid)", "syscall(SYS_gettid)"))?
@@ -218,6 +228,7 @@ proc prune_install(dest: Path) [fs, error] {
   }
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"

@@ -1,4 +1,5 @@
 #!/bin/xsh
+##! XSH module `kbuild-pool-worker` package and build operations.
 use kbuild
 
 proc main(...argv: List[Str]) [fs, time, error] {
@@ -73,7 +74,7 @@ proc main(...argv: List[Str]) [fs, time, error] {
           {...failed_state, active: failed_state.get("active")? - 1, done: true, error: "directory scan failed"},
         )?
         fs.unlock(error_lock)?
-        return Err(ScriptError.Failed("kbuild-process-pool", "directory scan failed"))
+        return Err(kbuild.ScriptError.Failed("kbuild-process-pool", "directory scan failed"))
       }
     }
   }

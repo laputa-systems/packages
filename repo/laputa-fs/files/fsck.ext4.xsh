@@ -1,4 +1,5 @@
 #!/bin/xsh
+##! XSH module `fsck.ext4` package and build operations.
 error Ext4FsckError = Failed(kind: Str, message: Str)
 
 let BLOCK_SIZE = 4096

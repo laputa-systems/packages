@@ -1,19 +1,27 @@
+##! LLVM toolchain package definition and build operations.
 use pm.util as pm_util
 
 error LlvmToolchainError = Failed(message: Str)
 
+## Package name.
 export let name = "llvm-toolchain"
 
+## Upstream LLVM version.
 export let ver = "23.1.0-rc2"
 
+## Package release revision.
 export let rel = "13"
 
+## Runtime package dependencies.
 export let deps = ["musl"]
 
+## Host-side build dependencies.
 export let mkdeps_host = []
 
+## Preserve upstream binaries without stripping.
 export let nostrip = true
 
+## Upstream source archives and checksums.
 export let upstream_sources = [
   {
     source: p"https://github.com/laputa-systems/llvm-prebuilt-musl/releases/download/llvm-musl-VERSION-6eb5fb9/clang+llvm-VERSION-ARCH-linux-musl.tar.xz => llvm-prebuilt",
@@ -34,6 +42,7 @@ export let upstream_sources = [
   },
 ]
 
+## Installed package file tree.
 export let filetree = [
   {
     path: p"usr",
@@ -335,7 +344,7 @@ proc main(...argv: List[Str]) [fs, process, env, error] {
 env {
       LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm23/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}"
     } {
-      run $real @argv ?
+      run \$real @argv ?
     } ?
     return
   }
@@ -432,7 +441,7 @@ env {
   env {
     LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm23/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}"
   } {
-    run $real @exec_args ?
+    run \$real @exec_args ?
   } ?
 }
 
@@ -447,16 +456,6 @@ main(@args)?
         cxx,
       ),
     )
-}
-
-proc require_env_path(env_name: Str) [env, error] -> Result[Path] {
-  let value = (env.get(env_name) ?? "").trim()
-
-  if value == "" {
-    return Err(LlvmToolchainError.Failed(f"${env_name} is required"))
-  }
-
-  fp"${value}"
 }
 
 proc write_wrapper(dest: Path, wrapper_name: Str, real: Path, clang: Bool = false, cxx: Bool = false) [fs, error] {
@@ -529,6 +528,7 @@ proc install_prebuilt_tree(dest: Path) [fs, env, error] {
   require_file(fp"${target}/lib/clang/23/lib/linux/libclang_rt.builtins-${arch}.a", "compiler-rt builtins")?
 }
 
+## Install target-specific compiler wrapper links.
 export proc install_wrappers(dest: Path) [fs, error] {
   write_wrapper(dest, "cc", /usr/lib/llvm23/bin/clang, clang: true)?
   write_wrapper(dest, "clang", /usr/lib/llvm23/bin/clang, clang: true)?
@@ -549,6 +549,7 @@ export proc install_wrappers(dest: Path) [fs, error] {
   }
 }
 
+## Build and install the LLVM toolchain package.
 export proc build(dest: Path) [fs, process, env, error] {
   install_prebuilt_tree(dest)?
   install_wrappers(dest)?

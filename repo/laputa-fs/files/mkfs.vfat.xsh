@@ -1,4 +1,5 @@
 #!/bin/xsh
+##! XSH module `mkfs.vfat` package and build operations.
 error FatToolError = Failed(kind: Str, message: Str)
 
 pure ceil_div(value: Int, divisor: Int) -> Int {

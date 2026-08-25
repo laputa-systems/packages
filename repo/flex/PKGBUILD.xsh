@@ -1,17 +1,24 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.configure as configure
 use pm.make as make
 use pm.util as pm_util
 
+## Exported declaration `name`.
 export let name = "flex"
 
+## Exported declaration `ver`.
 export let ver = "2.6.4"
 
+## Exported declaration `rel`.
 export let rel = "10"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "m4"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://github.com/westes/flex/releases/download/vVERSION/flex-VERSION.tar.gz",
@@ -41,6 +48,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/bin/flex",
@@ -56,6 +64,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let arch = pm_util.target_arch()?

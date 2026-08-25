@@ -1,13 +1,18 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 use pm.make as make
 use pm.util as pm_util
 
+## Exported declaration `name`.
 export let name = "foot-minimal"
 
+## Exported declaration `ver`.
 export let ver = "1.27.0"
 
+## Exported declaration `rel`.
 export let rel = "11"
 
+## Exported declaration `deps`.
 export let deps = [
   "musl",
   "wayland-libs-client",
@@ -21,6 +26,7 @@ export let deps = [
   "utf8proc",
 ]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = [
   "llvm-toolchain",
   "linux",
@@ -37,8 +43,10 @@ export let mkdeps_host = [
   "tllist",
 ]
 
+## Exported declaration `mkdeps_target`.
 export let mkdeps_target = ["wayland-dev", "wayland-protocols", "pixman-dev", "tllist"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://codeberg.org/dnkl/foot/archive/VERSION.tar.gz",
@@ -107,21 +115,8 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [{path: p"etc/xdg/foot/foot.ini", kind: "file"}, {path: p"usr/bin/foot", kind: "binary"}]
-
-proc sysroot_path(root: Str, raw: Str) [fs, error] -> Result[Path] {
-  let path_value = fp"${raw.trim()}"
-
-  if fs.exists(path_value)? {
-    return path_value
-  }
-
-  if root != "" and root != "/" and raw.starts_with("/") {
-    return fp"${root}${raw.trim()}"
-  }
-
-  path_value
-}
 
 proc write_version_header() [fs, error] {
   fs.write(
@@ -243,6 +238,7 @@ term=xterm-256color
   )?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${make.jobs()?}"

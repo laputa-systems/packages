@@ -1,3 +1,4 @@
+##! XSH module `service` package and build operations.
 pure restart_policy() -> Record {
   return {mode: "always", delay_ms: 1000, max_delay_ms: 30000, stable_after_ms: 10000}
 }
@@ -20,6 +21,7 @@ let port = (env.get("XINIT_DROPBEAR_PORT") ?? "22").parse_int()?
 let host_key = env.path("XINIT_DROPBEAR_HOST_KEY", p"")?
 let service_record = dropbear_service(bind, port, host_key)
 
+## Exported declaration `service`.
 export let service = {
   name: service_record.name,
   kind: "longrun",

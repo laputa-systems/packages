@@ -1,3 +1,4 @@
+##! PM remote operations and shared package-manager policy.
 use sources
 use types
 use util
@@ -72,7 +73,8 @@ proc load_env_or_dotenv(names: List[Str]) [fs, env, error] -> Result[Str] {
   ""
 }
 
-export proc load_repo_urls() [fs, env, error] -> Result[RepoUrls] {
+## Exported PM declaration `load_repo_urls`.
+export proc load_repo_urls() [fs, env, error] -> Result[types.RepoUrls] {
   var repo = load_env_or_dotenv(["XSH_PM_REPO", "LAPUTA_REPO"])?
   var public_repo = load_env_or_dotenv(["XSH_PM_PUBLIC_REPO", "R2_PUBLIC_URL"])?
 
@@ -87,16 +89,18 @@ export proc load_repo_urls() [fs, env, error] -> Result[RepoUrls] {
   {repo, public_repo}
 }
 
-export proc require_repo_url() [fs, env, error] -> Result[RepoUrls] {
+## Exported PM declaration `require_repo_url`.
+export proc require_repo_url() [fs, env, error] -> Result[types.RepoUrls] {
   let repo_urls = load_repo_urls()?
 
   if repo_urls.repo == "" {
-    return Err(PmError.RemoteRepo("set XSH_PM_REPO or LAPUTA_REPO"))
+    return Err(types.PmError.RemoteRepo("set XSH_PM_REPO or LAPUTA_REPO"))
   }
 
   repo_urls
 }
 
+## Exported PM declaration `load_auth_token`.
 export proc load_auth_token(root: Path) [fs, process, env, error] -> Result[Str] {
   let env_token = load_env_or_dotenv(["LAPUTA_TOKEN"])?
 
@@ -117,7 +121,7 @@ export proc load_auth_token(root: Path) [fs, process, env, error] -> Result[Str]
     Err(_) => {}
   }
 
-  let token_file = auth_token_path(root)
+  let token_file = util.auth_token_path(root)
 
   if fs.exists(token_file)? {
     return fs.read_text(token_file)?.trim()
@@ -126,16 +130,18 @@ export proc load_auth_token(root: Path) [fs, process, env, error] -> Result[Str]
   ""
 }
 
+## Exported PM declaration `require_auth_token`.
 export proc require_auth_token(root: Path) [fs, process, env, error] -> Result[Str] {
   let token = load_auth_token(root)?
 
   if token == "" {
-    return Err(PmError.Auth("not authenticated; run auth or set LAPUTA_TOKEN"))
+    return Err(types.PmError.Auth("not authenticated; run auth or set LAPUTA_TOKEN"))
   }
 
   token
 }
 
+## Exported PM declaration `store_auth_token`.
 export proc store_auth_token(root: Path, raw: List[Str]) [fs, process, env, error] {
   var token = ""
 
@@ -146,10 +152,10 @@ export proc store_auth_token(root: Path, raw: List[Str]) [fs, process, env, erro
   }
 
   if token == "" {
-    return Err(PmError.Auth("auth requires a token argument or LAPUTA_TOKEN"))
+    return Err(types.PmError.Auth("auth requires a token argument or LAPUTA_TOKEN"))
   }
 
-  let token_file = auth_token_path(root)
+  let token_file = util.auth_token_path(root)
   fs.mkdir(token_file.parent)?
   fs.write_atomic(token_file, token)?
   fs.chmod(token_file, 0o600)?
@@ -192,6 +198,7 @@ proc remote_resolve_download_redirect(url: Str) [net] -> Str {
   url
 }
 
+## Exported PM declaration `try_fetch_repo_file`.
 export proc try_fetch_repo_file(
   repo: Str,
   rel: Path,
@@ -203,8 +210,8 @@ export proc try_fetch_repo_file(
   fs.remove(tmp, missing_ok: true)?
   defer fs.remove(tmp, missing_ok: true)?
 
-  if is_file_url(repo) {
-    let source = repo_file_path(repo, rel)?
+  if util.is_file_url(repo) {
+    let source = util.repo_file_path(repo, rel)?
 
     if fs.exists(source)? {
       fs.copy(source, tmp, overwrite: true)?
@@ -212,12 +219,12 @@ export proc try_fetch_repo_file(
       return ""
     }
 
-    let missing_url = repo_url_for(repo, rel)?
+    let missing_url = util.repo_url_for(repo, rel)?
     return f"${missing_url}: missing file"
   }
 
   fs.remove(dest, missing_ok: true)?
-  let url = repo_url_for(repo, rel)?
+  let url = util.repo_url_for(repo, rel)?
   let download_url = remote_resolve_download_redirect(url)
 
   let response = net.download({
@@ -241,17 +248,16 @@ export proc try_fetch_repo_file(
       return f"${url}: ${err.message}"
     }
   }
-
-  ""
 }
 
+## Exported PM declaration `fetch_repo_file_with_retry`.
 export proc fetch_repo_file_with_retry(
   repo: Str,
   rel: Path,
   dest: Path,
   timeout: Duration = 1800s,
 ) [fs, net, time, error] -> Result[Str] {
-  if is_file_url(repo) {
+  if util.is_file_url(repo) {
     return try_fetch_repo_file(repo, rel, dest, timeout: timeout)?
   }
 
@@ -262,7 +268,7 @@ export proc fetch_repo_file_with_retry(
 
     match attempt_failure {
       "" => Ok("")
-      _ => Err(PmError.RemoteFetch(attempt_failure))
+      _ => Err(types.PmError.RemoteFetch(attempt_failure))
     }
   } {
     Ok(_) => failure = ""
@@ -272,6 +278,7 @@ export proc fetch_repo_file_with_retry(
   failure
 }
 
+## Exported PM declaration `fetch_repo_file`.
 export proc fetch_repo_file(repo: Str, rel: Path, dest: Path, required: Bool) [fs, net, time, error] {
   let failure = fetch_repo_file_with_retry(repo, rel, dest)?
 
@@ -280,10 +287,11 @@ export proc fetch_repo_file(repo: Str, rel: Path, dest: Path, required: Bool) [f
   }
 
   if required {
-    return Err(PmError.RemoteFetch(failure))
+    return Err(types.PmError.RemoteFetch(failure))
   }
 }
 
+## Exported PM declaration `net_put_file`.
 export proc net_put_file(url: Str, source: Path, token: Str) [net, error] {
   let response = net.upload({
     method: "PUT",
@@ -295,24 +303,26 @@ export proc net_put_file(url: Str, source: Path, token: Str) [net, error] {
   })?
 
   if response.status < 200 or response.status >= 300 {
-    return Err(PmError.RemoteUpload(f"failed to upload ${source.name}"))
+    return Err(types.PmError.RemoteUpload(f"failed to upload ${source.name}"))
   }
 }
 
+## Exported PM declaration `upload_repo_file`.
 export proc upload_repo_file(repo: Str, rel: Path, source: Path, token: Str, _: Path) [fs, net, error] {
-  if is_file_url(repo) {
-    let dest = repo_file_path(repo, rel)?
+  if util.is_file_url(repo) {
+    let dest = util.repo_file_path(repo, rel)?
     fs.mkdir(dest.parent)?
     fs.copy(source, dest, overwrite: true)?
     return
   }
 
-  net_put_file(repo_url_for(repo, rel)?, source, token)?
+  net_put_file(util.repo_url_for(repo, rel)?, source, token)?
 }
 
+## Exported PM declaration `upload_large_repo_file`.
 export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: Str, _: Path) [fs, net, time, error] {
-  if is_file_url(repo) {
-    let dest = repo_file_path(repo, rel)?
+  if util.is_file_url(repo) {
+    let dest = util.repo_file_path(repo, rel)?
     let partial = fp"${dest.parent}/.${dest.name}.upload"
     fs.mkdir(dest.parent)?
     fs.remove(partial, missing_ok: true)?
@@ -326,7 +336,7 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
   let chunks = data.chunks(25 * 1024 * 1024)
 
   if chunks.len() == 0 {
-    net_put_file(repo_url_for(repo, rel)?, source, token)?
+    net_put_file(util.repo_url_for(repo, rel)?, source, token)?
     return
   }
 
@@ -337,7 +347,7 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
   for chunk in chunks {
     requests = requests.push({
       method: "PUT",
-      url: repo_url_for(repo, fp"_uploads/${upload_id}/${chunk_index}")?,
+      url: util.repo_url_for(repo, fp"_uploads/${upload_id}/${chunk_index}")?,
       body: chunk,
       headers: [{name: "Authorization", value: f"Bearer ${token}"}],
       pool: "pm",
@@ -355,7 +365,7 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
   for response in responses {
     match response {
       Ok(_) => {}
-      Err(_) => return Err(PmError.RemoteUpload(f"failed to upload chunk ${chunk_index} for ${source.name}"))
+      Err(_) => return Err(types.PmError.RemoteUpload(f"failed to upload chunk ${chunk_index} for ${source.name}"))
     }
 
     chunk_index += 1
@@ -363,7 +373,7 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
 
   let response = net.request({
     method: "POST",
-    url: repo_url_for(repo, fp"_uploads/${upload_id}/complete")?,
+    url: util.repo_url_for(repo, fp"_uploads/${upload_id}/complete")?,
     body_text: json.encode({rel: rel.display(), chunks: chunks.len()})?,
     headers: [{name: "Authorization", value: f"Bearer ${token}"}, {name: "Content-Type", value: "application/json"}],
     pool: "pm",
@@ -371,11 +381,12 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
   })?
 
   if response.status < 200 or response.status >= 300 {
-    return Err(PmError.RemoteUpload(f"failed to complete chunked upload for ${source.name}"))
+    return Err(types.PmError.RemoteUpload(f"failed to complete chunked upload for ${source.name}"))
   }
 }
 
-export proc load_remote_index_from(index_path: Path) [fs, error] -> Result[List[RemotePackage]] {
+## Exported PM declaration `load_remote_index_from`.
+export proc load_remote_index_from(index_path: Path) [fs, error] -> Result[List[types.RemotePackage]] {
   if fs.exists(index_path)? {
     let rows: List[Record] = json.read(index_path)?
     return decode_remote_index(rows)
@@ -385,15 +396,15 @@ export proc load_remote_index_from(index_path: Path) [fs, error] -> Result[List[
   empty
 }
 
-proc try_load_remote_index_from_repo(repo: Str, out: Path) [fs, net, error] -> Result[List[RemotePackage]] {
-  if is_file_url(repo) {
-    return load_remote_index_from(repo_file_path(repo, p"index.json")?)?
+proc try_load_remote_index_from_repo(repo: Str, out: Path) [fs, net, error] -> Result[List[types.RemotePackage]] {
+  if util.is_file_url(repo) {
+    return load_remote_index_from(util.repo_file_path(repo, p"index.json")?)?
   }
 
   # The mirror advertises a cache lifetime for index.json; PM needs the current generation.
   let response = net.request({
     method: "GET",
-    url: repo_url_for(repo, p"index.json")?,
+    url: util.repo_url_for(repo, p"index.json")?,
     headers: [{name: "Cache-Control", value: "no-cache"}, {name: "Pragma", value: "no-cache"}],
     pool: "pm",
     timeout: 15s,
@@ -407,19 +418,23 @@ proc try_load_remote_index_from_repo(repo: Str, out: Path) [fs, net, error] -> R
   }
 
   if response.status < 200 or response.status >= 300 {
-    return Err(PmError.RemoteIndex(f"failed to fetch remote index: HTTP ${response.status}"))
+    return Err(types.PmError.RemoteIndex(f"failed to fetch remote index: HTTP ${response.status}"))
   }
 
   let body = response.body.utf8()?
   let rows: List[Record] = json.decode(body)?
   let items = decode_remote_index(rows)?
   fs.mkdir(out)?
-  fs.write_atomic(remote_index_cache_path(out), body)?
+  fs.write_atomic(util.remote_index_cache_path(out), body)?
   items
 }
 
-export proc load_remote_index_from_repo(repo: Str, out: Path) [fs, net, time, error] -> Result[List[RemotePackage]] {
-  if is_file_url(repo) {
+## Exported PM declaration `load_remote_index_from_repo`.
+export proc load_remote_index_from_repo(
+  repo: Str,
+  out: Path,
+) [fs, net, time, error] -> Result[List[types.RemotePackage]] {
+  if util.is_file_url(repo) {
     return try_load_remote_index_from_repo(repo, out)?
   }
 
@@ -428,12 +443,14 @@ export proc load_remote_index_from_repo(repo: Str, out: Path) [fs, net, time, er
   }?
 }
 
-export proc decode_remote_index(rows: List[Record]) [error] -> Result[List[RemotePackage]] {
+## Exported PM declaration `decode_remote_index`.
+export proc decode_remote_index(rows: List[Record]) [error] -> Result[List[types.RemotePackage]] {
   var items = [decode_remote_package(row)? for row in rows]
   items
 }
 
-export proc decode_remote_package(row: Record) [error] -> Result[RemotePackage] {
+## Exported PM declaration `decode_remote_package`.
+export proc decode_remote_package(row: Record) [error] -> Result[types.RemotePackage] {
   var arch = "aarch64"
   let empty_mkdeps_target = []
   let mkdeps_host = if row.has("mkdeps_host") { row.get("mkdeps_host")? } else { row.get("mkdeps")? }
@@ -448,7 +465,7 @@ export proc decode_remote_package(row: Record) [error] -> Result[RemotePackage] 
 
   if row.has("arch") {
     let stored_arch: Str = row.get("arch")?
-    arch = normalize_arch(stored_arch)
+    arch = util.normalize_arch(stored_arch)
   }
 
   {
@@ -468,30 +485,33 @@ export proc decode_remote_package(row: Record) [error] -> Result[RemotePackage] 
   }
 }
 
-export proc load_cached_remote_index(out: Path) [fs, error] -> Result[List[RemotePackage]] {
-  load_remote_index_from(remote_index_cache_path(out))?
+## Exported PM declaration `load_cached_remote_index`.
+export proc load_cached_remote_index(out: Path) [fs, error] -> Result[List[types.RemotePackage]] {
+  load_remote_index_from(util.remote_index_cache_path(out))?
 }
 
-export proc write_remote_index_cache(out: Path, index: List[RemotePackage]) [fs, error] {
+## Exported PM declaration `write_remote_index_cache`.
+export proc write_remote_index_cache(out: Path, index: List[types.RemotePackage]) [fs, error] {
   fs.mkdir(out)?
-  json.write(remote_index_cache_path(out), index)?
+  json.write(util.remote_index_cache_path(out), index)?
 }
 
+## Exported PM declaration `write_remote_index_to_repo`.
 export proc write_remote_index_to_repo(
   repo: Str,
   work: Path,
   out: Path,
-  index: List[RemotePackage],
+  index: List[types.RemotePackage],
   token: Str,
 ) [fs, net, error] {
   write_remote_index_cache(out, index)?
-  upload_repo_file(repo, p"index.json", remote_index_cache_path(out), token, work)?
+  upload_repo_file(repo, p"index.json", util.remote_index_cache_path(out), token, work)?
 }
 
 proc merge_remote_indexes(
-  base: List[RemotePackage],
-  overlay: List[RemotePackage],
-) [error] -> Result[List[RemotePackage]] {
+  base: List[types.RemotePackage],
+  overlay: List[types.RemotePackage],
+) [error] -> Result[List[types.RemotePackage]] {
   var merged = base
 
   for entry in overlay {
@@ -501,7 +521,8 @@ proc merge_remote_indexes(
   merged
 }
 
-export proc refresh_remote_index(out: Path) [fs, net, env, time, error] -> Result[List[RemotePackage]] {
+## Exported PM declaration `refresh_remote_index`.
+export proc refresh_remote_index(out: Path) [fs, net, env, time, error] -> Result[List[types.RemotePackage]] {
   let repo_urls = load_repo_urls()?
   var fetched = false
   var index = []
@@ -517,13 +538,13 @@ export proc refresh_remote_index(out: Path) [fs, net, env, time, error] -> Resul
   }
 
   if ! fetched {
-    if fs.exists(remote_index_cache_path(out))? {
+    if fs.exists(util.remote_index_cache_path(out))? {
       let cached = load_cached_remote_index(out)?
       print "remote-index" cached.len() "cached"
       return cached
     }
 
-    return Err(PmError.RemoteRepo("set XSH_PM_PUBLIC_REPO, R2_PUBLIC_URL, XSH_PM_REPO, or LAPUTA_REPO"))
+    return Err(types.PmError.RemoteRepo("set XSH_PM_PUBLIC_REPO, R2_PUBLIC_URL, XSH_PM_REPO, or LAPUTA_REPO"))
   }
 
   write_remote_index_cache(out, index)?
@@ -531,18 +552,20 @@ export proc refresh_remote_index(out: Path) [fs, net, env, time, error] -> Resul
   index
 }
 
-export proc ensure_remote_index(out: Path) [fs, net, env, time, error] -> Result[List[RemotePackage]] {
-  if fs.exists(remote_index_cache_path(out))? {
+## Exported PM declaration `ensure_remote_index`.
+export proc ensure_remote_index(out: Path) [fs, net, env, time, error] -> Result[List[types.RemotePackage]] {
+  if fs.exists(util.remote_index_cache_path(out))? {
     return load_cached_remote_index(out)?
   }
 
   refresh_remote_index(out)?
 }
 
+## Exported PM declaration `upsert_remote_package`.
 export proc upsert_remote_package(
-  index: List[RemotePackage],
-  entry: RemotePackage,
-) [error] -> Result[List[RemotePackage]] {
+  index: List[types.RemotePackage],
+  entry: types.RemotePackage,
+) [error] -> Result[List[types.RemotePackage]] {
   var updated = []
   var replaced = false
 
@@ -560,11 +583,15 @@ export proc upsert_remote_package(
   }
 
   let sorted = updated |> sort-by .name
-  return Ok(sorted)
+  sorted
 }
 
-export proc find_remote_package(index: List[RemotePackage], name: Str) [env, error] -> Result[RemotePackage] {
-  let arch = machine_arch()?
+## Exported PM declaration `find_remote_package`.
+export proc find_remote_package(
+  index: List[types.RemotePackage],
+  name: Str,
+) [env, error] -> Result[types.RemotePackage] {
+  let arch = util.machine_arch()?
 
   for entry in index {
     if entry.arch == arch and entry.name == name {
@@ -572,14 +599,15 @@ export proc find_remote_package(index: List[RemotePackage], name: Str) [env, err
     }
   }
 
-  return Err(PmError.RemotePackage(f"${name} for ${arch} is not in the remote index"))
+  return Err(types.PmError.RemotePackage(f"${name} for ${arch} is not in the remote index"))
 }
 
+## Exported PM declaration `collect_remote_packages`.
 export proc collect_remote_packages(
   root: Path,
-  index: List[RemotePackage],
+  index: List[types.RemotePackage],
   names: List[Str],
-) [fs, env, error] -> Result[List[RemotePackage]] {
+) [fs, env, error] -> Result[List[types.RemotePackage]] {
   var packages = []
   var seen: Map[Bool] = {}
   var pending = names
@@ -595,7 +623,7 @@ export proc collect_remote_packages(
       seen[name] = true
 
       for dep in pkg.deps {
-        if ! fs.exists(package_db_path(root, dep))? and ! seen.get(dep, false) {
+        if ! fs.exists(util.package_db_path(root, dep))? and ! seen.get(dep, false) {
           pending = pending.push(dep)
         }
       }
@@ -605,10 +633,11 @@ export proc collect_remote_packages(
   packages
 }
 
+## Exported PM declaration `order_remote_packages`.
 export proc order_remote_packages(
   root: Path,
-  packages: List[RemotePackage],
-) [fs, error] -> Result[List[RemotePackage]] {
+  packages: List[types.RemotePackage],
+) [fs, error] -> Result[List[types.RemotePackage]] {
   var ordered = []
   var by_name: Map[Int] = {}
   var pkg_index = 0
@@ -629,8 +658,8 @@ export proc order_remote_packages(
 
         for dep in pkg.deps {
           if ! by_name.has(dep) {
-            if ! fs.exists(package_db_path(root, dep))? {
-              return Err(PmError.MissingDependency(f"${pkg.name} depends on missing ${dep}"))
+            if ! fs.exists(util.package_db_path(root, dep))? {
+              return Err(types.PmError.MissingDependency(f"${pkg.name} depends on missing ${dep}"))
             }
           } else if ! added.get(dep, false) {
             ready = false
@@ -646,14 +675,15 @@ export proc order_remote_packages(
     }
 
     if ! progressed {
-      return Err(PmError.DependencyCycle("remote package dependency graph did not make progress"))
+      return Err(types.PmError.DependencyCycle("remote package dependency graph did not make progress"))
     }
   }
 
   ordered
 }
 
-export proc verify_cached_tarball(tarball: Path, pkg: RemotePackage) [fs, error] -> Result[Bool] {
+## Exported PM declaration `verify_cached_tarball`.
+export proc verify_cached_tarball(tarball: Path, pkg: types.RemotePackage) [fs, error] -> Result[Bool] {
   if ! fs.exists(tarball)? {
     return false
   }
@@ -666,7 +696,8 @@ export proc verify_cached_tarball(tarball: Path, pkg: RemotePackage) [fs, error]
   true
 }
 
-export proc downloaded_tarball_failure(tarball: Path, pkg: RemotePackage, url: Str) [fs, error] -> Result[Str] {
+## Exported PM declaration `downloaded_tarball_failure`.
+export proc downloaded_tarball_failure(tarball: Path, pkg: types.RemotePackage, url: Str) [fs, error] -> Result[Str] {
   if ! fs.exists(tarball)? {
     return f"${url}: download missing after transfer"
   }
@@ -684,8 +715,9 @@ export proc downloaded_tarball_failure(tarball: Path, pkg: RemotePackage, url: S
   ""
 }
 
-export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env, time, error] -> Result[Record] {
-  let tarball = remote_cache_tarball_path(out, pkg)?
+## Exported PM declaration `download_remote_tarball`.
+export proc download_remote_tarball(out: Path, pkg: types.RemotePackage) [fs, net, env, time, error] -> Result[Record] {
+  let tarball = util.remote_cache_tarball_path(out, pkg)?
 
   if verify_cached_tarball(tarball, pkg)? {
     return {tarball, from_cache: true}
@@ -697,7 +729,7 @@ export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env
 
   if repo_urls.public_repo != "" {
     let rel = fp"${pkg.tarball}"
-    let url = repo_url_for(repo_urls.public_repo, rel)?
+    let url = util.repo_url_for(repo_urls.public_repo, rel)?
     let failure = fetch_repo_file_with_retry(repo_urls.public_repo, rel, tarball)?
 
     if failure != "" {
@@ -715,7 +747,7 @@ export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env
 
   if ! fetched and repo_urls.repo != "" {
     let rel = fp"${pkg.tarball}"
-    let url = repo_url_for(repo_urls.repo, rel)?
+    let url = util.repo_url_for(repo_urls.repo, rel)?
     let failure = fetch_repo_file_with_retry(repo_urls.repo, rel, tarball)?
 
     if failure != "" {
@@ -741,11 +773,15 @@ export proc download_remote_tarball(out: Path, pkg: RemotePackage) [fs, net, env
     detail = failures.join("; ")
   }
 
-  return Err(PmError.RemoteFetch(f"failed to fetch ${pkg.name} ${version_id(pkg.ver, pkg.rel)}: ${detail}"))
+  return Err(types.PmError.RemoteFetch(f"failed to fetch ${pkg.name} ${util.version_id(pkg.ver, pkg.rel)}: ${detail}"))
 }
 
-export proc fetch_remote_metadata_sidecar(out: Path, pkg: RemotePackage) [fs, net, env, time, error] -> Result[Record] {
-  let metadata = remote_cache_metadata_path(out, pkg)?
+## Exported PM declaration `fetch_remote_metadata_sidecar`.
+export proc fetch_remote_metadata_sidecar(
+  out: Path,
+  pkg: types.RemotePackage,
+) [fs, net, env, time, error] -> Result[Record] {
+  let metadata = util.remote_cache_metadata_path(out, pkg)?
 
   if pkg.metadata == "" {
     return {found: false, path: metadata, from_cache: false}
@@ -755,7 +791,7 @@ export proc fetch_remote_metadata_sidecar(out: Path, pkg: RemotePackage) [fs, ne
     return {found: true, path: metadata, from_cache: true}
   }
 
-  let rel = ensure_relative_path(fp"${pkg.metadata}", "remote metadata")?
+  let rel = util.ensure_relative_path(fp"${pkg.metadata}", "remote metadata")?
   let repo_urls = load_repo_urls()?
   var fetched = false
   var failures = []
@@ -786,8 +822,8 @@ export proc fetch_remote_metadata_sidecar(out: Path, pkg: RemotePackage) [fs, ne
 
   if failures.len() > 0 {
     return Err(
-      PmError.RemoteFetch(
-        f"failed to fetch metadata for ${pkg.name} ${version_id(pkg.ver, pkg.rel)}: ${failures.join("; ")}",
+      types.PmError.RemoteFetch(
+        f"failed to fetch metadata for ${pkg.name} ${util.version_id(pkg.ver, pkg.rel)}: ${failures.join("; ")}",
       ),
     )
   }
@@ -795,7 +831,8 @@ export proc fetch_remote_metadata_sidecar(out: Path, pkg: RemotePackage) [fs, ne
   return {found: false, path: metadata, from_cache: false}
 }
 
-export pure package_from_remote(pkg: RemotePackage) -> Result[Package] {
+## Exported PM declaration `package_from_remote`.
+export pure package_from_remote(pkg: types.RemotePackage) -> Result[types.Package] {
   {
     dir: p".",
     exports: {},
@@ -813,6 +850,7 @@ export pure package_from_remote(pkg: RemotePackage) -> Result[Package] {
   }
 }
 
+## Exported PM declaration `args_are_package_dirs`.
 export proc args_are_package_dirs(raw: List[Str]) [fs, error] -> Result[Bool] {
   if raw.len() == 0 {
     return false
@@ -827,16 +865,17 @@ export proc args_are_package_dirs(raw: List[Str]) [fs, error] -> Result[Bool] {
   true
 }
 
+## Exported PM declaration `remote_entry_for`.
 export pure remote_entry_for(
   arch: Str,
-  pkg: Package,
+  pkg: types.Package,
   tarball_rel: Str,
   sha256: Str,
   size: Int,
   metadata_rel: Str,
   source_sha256: Str,
   metapackage: Bool,
-) -> RemotePackage {
+) -> types.RemotePackage {
   return {
     arch,
     name: pkg.name,
@@ -854,21 +893,22 @@ export pure remote_entry_for(
   }
 }
 
+## Exported PM declaration `upload_package_source`.
 export proc upload_package_source(
   repo: Str,
   work: Path,
   out: Path,
-  pkg: Package,
+  pkg: types.Package,
   token: Str,
-) [fs, net, env, time, error] -> Result[UploadedSource] {
-  let arch = machine_arch()?
-  let mirror = source_mirror_path_for_arch(out, pkg, arch)
+) [fs, net, env, time, error] -> Result[types.UploadedSource] {
+  let arch = util.machine_arch()?
+  let mirror = util.source_mirror_path_for_arch(out, pkg, arch)
 
   if ! fs.exists(mirror)? {
     return {rel: "", sha256: ""}
   }
 
-  let rel = remote_source_rel_for_arch(arch, pkg.name, pkg.ver, pkg.rel)
+  let rel = util.remote_source_rel_for_arch(arch, pkg.name, pkg.ver, pkg.rel)
   let metadata = fs.metadata(mirror)?
 
   if metadata.size > 52428800 {

@@ -1,38 +1,46 @@
+##! PM sources operations and shared package-manager policy.
 use types
 use util
 
-export proc select_filetree(exports: Any, fallback: List[FileTreeEntry]) [env, error] -> Result[List[FileTreeEntry]] {
-  let arch = machine_arch()?
+## Exported PM declaration `select_filetree`.
+export proc select_filetree(
+  exports: Any,
+  fallback: List[types.FileTreeEntry],
+) [env, error] -> Result[List[types.FileTreeEntry]] {
+  let arch = util.machine_arch()?
 
   if arch == "x86_64" and exports.has("filetree_x86_64") {
-    let filetree: List[FileTreeEntry] = exports.get("filetree_x86_64")?
+    let filetree: List[types.FileTreeEntry] = exports.get("filetree_x86_64")?
     return filetree
   }
 
   if arch == "aarch64" and exports.has("filetree_aarch64") {
-    let filetree: List[FileTreeEntry] = exports.get("filetree_aarch64")?
+    let filetree: List[types.FileTreeEntry] = exports.get("filetree_aarch64")?
     return filetree
   }
 
   fallback
 }
 
+## Exported PM declaration `ensure_source_dest`.
 export pure ensure_source_dest(dest: Path) -> Result[Unit] {
-  let _ = ensure_relative_path(dest, "source destination")?
+  let _ = util.ensure_relative_path(dest, "source destination")?
 }
 
+## Exported PM declaration `source_kind_valid`.
 export pure source_kind_valid(kind: Str) -> Bool {
   kind == "auto" or kind == "archive" or kind == "zip" or kind == "cpio" or kind == "file" or kind == "directory" or kind == "git"
 }
 
-export proc source_checksum(source: UpstreamSource, arch: Str) [error] -> Result[Str] {
+## Exported PM declaration `source_checksum`.
+export proc source_checksum(source: types.UpstreamSource, arch: Str) [error] -> Result[Str] {
   for checksum in source.checksums {
     if checksum.arch == arch or checksum.arch == "all" {
       return checksum.sha256
     }
   }
 
-  Err(PmError.SourceChecksum(f"no checksum for ${source.source.display()} on ${arch}"))
+  Err(types.PmError.SourceChecksum(f"no checksum for ${source.source.display()} on ${arch}"))
 }
 
 proc sources_response_header(headers: List[Record], name: Str) [] -> Str {
@@ -71,6 +79,7 @@ proc sources_resolve_download_redirect(url: Str) [net] -> Str {
   url
 }
 
+## Exported PM declaration `try_download_url_to_cache`.
 export proc try_download_url_to_cache(url: Str, dest: Path) [fs, net, error] -> Result[Bool] {
   if fs.exists(dest)? {
     return true
@@ -121,9 +130,10 @@ export proc try_download_url_to_cache(url: Str, dest: Path) [fs, net, error] -> 
   false
 }
 
+## Exported PM declaration `download_url_to_cache`.
 export proc download_url_to_cache(url: Str, dest: Path) [fs, net, time, error] {
   if dest.name == "" {
-    return Err(PmError.SourceName(f"URL has no file name: ${url}"))
+    return Err(types.PmError.SourceName(f"URL has no file name: ${url}"))
   }
 
   if url.starts_with("file://") {
@@ -131,7 +141,7 @@ export proc download_url_to_cache(url: Str, dest: Path) [fs, net, time, error] {
       return
     }
 
-    return Err(PmError.DownloadFailed(f"failed to download ${url}"))
+    return Err(types.PmError.DownloadFailed(f"failed to download ${url}"))
   }
 
   retry [1s, 2s, 4s, 15s, 60s] {
@@ -139,11 +149,12 @@ export proc download_url_to_cache(url: Str, dest: Path) [fs, net, time, error] {
 
     match downloaded {
       true => Ok()
-      false => Err(PmError.DownloadFailed(f"failed to download ${url}"))
+      false => Err(types.PmError.DownloadFailed(f"failed to download ${url}"))
     }
   }?
 }
 
+## Exported PM declaration `checkout_git_source`.
 export proc checkout_git_source(source: Str, dest: Path) [fs, process, env, error] {
   if fs.exists(dest)? {
     return
@@ -153,20 +164,20 @@ export proc checkout_git_source(source: Str, dest: Path) [fs, process, env, erro
 
   match process.which("git") {
     Ok(tool) => git = tool
-    Err(_) => return Err(PmError.DownloadTool("git is required for git sources"))
+    Err(_) => return Err(types.PmError.DownloadTool("git is required for git sources"))
   }
 
   fs.remove(dest, missing_ok: true)?
   fs.mkdir(dest.parent)?
-  let url = git_source_url(source)
+  let url = util.git_source_url(source)
   let clone = run.status $git clone --depth 1 $url $dest ?
 
   if ! clone.ok {
     fs.remove(dest, missing_ok: true)?
-    return Err(PmError.DownloadFailed(f"failed to clone ${url}"))
+    return Err(types.PmError.DownloadFailed(f"failed to clone ${url}"))
   }
 
-  let rev = git_source_ref(source)
+  let rev = util.git_source_ref(source)
 
   if rev != "" {
     var checkout_ok = true
@@ -178,27 +189,28 @@ export proc checkout_git_source(source: Str, dest: Path) [fs, process, env, erro
 
     if ! checkout_ok {
       fs.remove(dest, missing_ok: true)?
-      return Err(PmError.DownloadFailed(f"failed to checkout ${rev} from ${url}"))
+      return Err(types.PmError.DownloadFailed(f"failed to checkout ${rev} from ${url}"))
     }
   }
 }
 
+## Exported PM declaration `resolve_source`.
 export proc resolve_source(
   work: Path,
-  pkg: Package,
-  line: SourceLine,
+  pkg: types.Package,
+  line: types.SourceLine,
   arch: Str,
   force_download: Bool,
-) [fs, net, process, env, time, error] -> Result[ResolvedSource] {
+) [fs, net, process, env, time, error] -> Result[types.ResolvedSource] {
   ensure_source_dest(line.dest)?
-  let source = source_vars(line.source, pkg, arch)?
+  let source = util.source_vars(line.source, pkg, arch)?
 
   if source == "" {
-    return Err(PmError.SourceName(f"${pkg.name} has an empty source"))
+    return Err(types.PmError.SourceName(f"${pkg.name} has an empty source"))
   }
 
-  if is_git_source(source) {
-    let cache = source_cache_path(work, pkg, line, source)?
+  if util.is_git_source(source) {
+    let cache = util.source_cache_path(work, pkg, line, source)?
 
     if force_download {
       fs.remove(cache, missing_ok: true)?
@@ -208,8 +220,8 @@ export proc resolve_source(
     return {path: cache, kind: "git"}
   }
 
-  if is_url_source(source) {
-    let cache = source_cache_path(work, pkg, line, source)?
+  if util.is_url_source(source) {
+    let cache = util.source_cache_path(work, pkg, line, source)?
 
     if force_download {
       fs.remove(cache, missing_ok: true)?
@@ -227,20 +239,21 @@ export proc resolve_source(
   }
 
   if ! fs.exists(local)? {
-    return Err(PmError.SourceNotFound(f"${pkg.name} source not found: ${source}"))
+    return Err(types.PmError.SourceNotFound(f"${pkg.name} source not found: ${source}"))
   }
 
   let metadata = fs.metadata(local)?
   {path: local, kind: metadata.kind}
 }
 
+## Exported PM declaration `verify_source_checksum`.
 export proc verify_source_checksum(source_path: Path, checksum: Str, kind: Str) [fs, error] {
   if checksum == "SKIP" {
     return
   }
 
   if kind == "dir" or kind == "git" {
-    return Err(PmError.SourceChecksum(f"${source_path.display()} must use SKIP because it is not a regular file"))
+    return Err(types.PmError.SourceChecksum(f"${source_path.display()} must use SKIP because it is not a regular file"))
   }
 
   hash.verify_file(source_path, sha256: checksum)?
@@ -256,6 +269,7 @@ pure first_archive_path_component(path_value: Path) -> Str {
   ""
 }
 
+## Exported PM declaration `tar_source_strip_components`.
 export proc tar_source_strip_components(source_path: Path) [fs, error] -> Result[Int] {
   let entries = archive.tar_list(source_path)?
   var first = ""
@@ -281,9 +295,10 @@ export proc tar_source_strip_components(source_path: Path) [fs, error] -> Result
   0
 }
 
+## Exported PM declaration `stage_resolved_source`.
 export proc stage_resolved_source(
-  _: Package,
-  line: SourceLine,
+  _: types.Package,
+  line: types.SourceLine,
   source_path: Path,
   resolved_kind: Str,
   source_kind: Str,
@@ -291,7 +306,7 @@ export proc stage_resolved_source(
   src: Path,
 ) [fs, error] {
   verify_source_checksum(source_path, checksum, resolved_kind)?
-  let dest = source_stage_dir(src, line)
+  let dest = util.source_stage_dir(src, line)
 
   if source_kind == "git" or resolved_kind == "git" {
     fs.mkdir(dest)?
@@ -306,21 +321,23 @@ export proc stage_resolved_source(
     return
   }
 
-  if source_kind == "archive" and is_tar_source(source_path) or source_kind == "auto" and is_tar_source(source_path) {
+  if source_kind == "archive" and util.is_tar_source(source_path) or source_kind == "auto" and util.is_tar_source(
+    source_path,
+  ) {
     fs.remove(dest, missing_ok: true)?
     dest.parent.mkdir()?
     archive.tar_extract(source_path, dest, tar_source_strip_components(source_path)?, "auto", true)?
     return
   }
 
-  if source_kind == "zip" or source_kind == "auto" and is_zip_source(source_path) {
+  if source_kind == "zip" or source_kind == "auto" and util.is_zip_source(source_path) {
     fs.remove(dest, missing_ok: true)?
     dest.parent.mkdir()?
     archive.zip_extract(source_path, dest, overwrite: true)?
     return
   }
 
-  if source_kind == "cpio" or source_kind == "auto" and is_cpio_source(source_path) {
+  if source_kind == "cpio" or source_kind == "auto" and util.is_cpio_source(source_path) {
     fs.remove(dest, missing_ok: true)?
     dest.parent.mkdir()?
     archive.cpio_extract(source_path, dest, overwrite: true)?
@@ -331,18 +348,19 @@ export proc stage_resolved_source(
   fs.install(source_path, fp"${dest}/${source_path.name}", 0o644, parents: true, overwrite: true)?
 }
 
+## Exported PM declaration `stage_package_sources`.
 export proc stage_package_sources(
   work: Path,
-  pkg: Package,
+  pkg: types.Package,
   src: Path,
   force_download: Bool,
 ) [fs, net, process, env, time, error] {
-  let arch = machine_arch()?
+  let arch = util.machine_arch()?
   var entries = []
 
   for source in pkg.upstream_sources {
     if source.architectures.len() == 0 or "all" in source.architectures or arch in source.architectures {
-      let line = parse_source_line(source.source)?
+      let line = util.parse_source_line(source.source)?
       entries = entries.push({source, line})
     }
   }
@@ -376,6 +394,7 @@ export proc stage_package_sources(
   }
 }
 
+## Exported PM declaration `prune_git_dirs`.
 export proc prune_git_dirs(src: Path) [fs, error] {
   let git_dirs = fs.walk(src, gitignore: false) |> where .kind == "dir" and .name == ".git"
 
@@ -384,8 +403,8 @@ export proc prune_git_dirs(src: Path) [fs, error] {
   }
 }
 
-proc expected_source_sha256(out: Path, pkg: Package, arch: Str) [fs, error] -> Result[Str] {
-  let index = remote_index_cache_path(out)
+proc expected_source_sha256(out: Path, pkg: types.Package, arch: Str) [fs, error] -> Result[Str] {
+  let index = util.remote_index_cache_path(out)
 
   if ! fs.exists(index)? {
     return ""
@@ -402,8 +421,8 @@ proc expected_source_sha256(out: Path, pkg: Package, arch: Str) [fs, error] -> R
   ""
 }
 
-proc validate_source_mirror(out: Path, pkg: Package, mirror: Path) [fs, env, error] -> Result[Bool] {
-  let expected = expected_source_sha256(out, pkg, machine_arch()?)?
+proc validate_source_mirror(out: Path, pkg: types.Package, mirror: Path) [fs, env, error] -> Result[Bool] {
+  let expected = expected_source_sha256(out, pkg, util.machine_arch()?)?
 
   if expected == "" {
     return true
@@ -419,7 +438,8 @@ proc validate_source_mirror(out: Path, pkg: Package, mirror: Path) [fs, env, err
   false
 }
 
-export proc prepare_source_tree(pkg: Package, src: Path) [fs, process, env, error] {
+## Exported PM declaration `prepare_source_tree`.
+export proc prepare_source_tree(pkg: types.Package, src: Path) [fs, process, env, error] {
   let exports = pkg.exports
 
   if exports.has("prepare_sources") {
@@ -428,16 +448,17 @@ export proc prepare_source_tree(pkg: Package, src: Path) [fs, process, env, erro
   }
 }
 
-export proc try_fetch_source_mirror_from_repo(out: Path, pkg: Package) [fs, net, env, error] {
-  let arch = machine_arch()?
-  let mirror = source_mirror_path_for_arch(out, pkg, arch)
+## Exported PM declaration `try_fetch_source_mirror_from_repo`.
+export proc try_fetch_source_mirror_from_repo(out: Path, pkg: types.Package) [fs, net, env, error] {
+  let arch = util.machine_arch()?
+  let mirror = util.source_mirror_path_for_arch(out, pkg, arch)
 
   if fs.exists(mirror)? {
     return
   }
 
   fs.mkdir(mirror.parent)?
-  let rel = remote_source_rel_for_arch(arch, pkg.name, pkg.ver, pkg.rel)
+  let rel = util.remote_source_rel_for_arch(arch, pkg.name, pkg.ver, pkg.rel)
 
   let urls = [
     (env.get("XSH_PM_PUBLIC_REPO") ?? env.get("R2_PUBLIC_URL") ?? "").trim(),
@@ -450,15 +471,15 @@ export proc try_fetch_source_mirror_from_repo(out: Path, pkg: Package) [fs, net,
     if repo != "" and ! seen.get(repo, false) {
       seen[repo] = true
 
-      if is_file_url(repo) {
-        let source = repo_file_path(repo, rel)?
+      if util.is_file_url(repo) {
+        let source = util.repo_file_path(repo, rel)?
 
         if fs.exists(source)? {
           fs.copy(source, mirror, overwrite: true)?
           let _ = validate_source_mirror(out, pkg, mirror)?
           return
         }
-      } else if try_download_url_to_cache(repo_url_for(repo, rel)?, mirror)? {
+      } else if try_download_url_to_cache(util.repo_url_for(repo, rel)?, mirror)? {
         let _ = validate_source_mirror(out, pkg, mirror)?
         return
       }
@@ -466,9 +487,10 @@ export proc try_fetch_source_mirror_from_repo(out: Path, pkg: Package) [fs, net,
   }
 }
 
-export proc use_source_mirror(out: Path, pkg: Package, src: Path) [fs, env, error] -> Result[Bool] {
-  let arch = machine_arch()?
-  let mirror = source_mirror_path_for_arch(out, pkg, arch)
+## Exported PM declaration `use_source_mirror`.
+export proc use_source_mirror(out: Path, pkg: types.Package, src: Path) [fs, env, error] -> Result[Bool] {
+  let arch = util.machine_arch()?
+  let mirror = util.source_mirror_path_for_arch(out, pkg, arch)
 
   if ! fs.exists(mirror)? {
     return false
@@ -489,19 +511,18 @@ export proc use_source_mirror(out: Path, pkg: Package, src: Path) [fs, env, erro
       return false
     }
   }
-
-  false
 }
 
-export proc pack_source_mirror(out: Path, pkg: Package, src: Path) [fs, env, error] {
+## Exported PM declaration `pack_source_mirror`.
+export proc pack_source_mirror(out: Path, pkg: types.Package, src: Path) [fs, env, error] {
   if pkg.upstream_sources.len() == 0 or ! pkg.source_mirror {
     return
   }
 
   prune_git_dirs(src)?
-  let arch = machine_arch()?
-  let mirror = source_mirror_path_for_arch(out, pkg, arch)
-  let manifest = source_manifest_path_for_arch(out, pkg, arch)
+  let arch = util.machine_arch()?
+  let mirror = util.source_mirror_path_for_arch(out, pkg, arch)
+  let manifest = util.source_manifest_path_for_arch(out, pkg, arch)
   fs.mkdir(mirror.parent)?
   archive.tar_create(mirror, src, [p"."], compression: "bz2", overwrite: true)?
   var entries = []
@@ -542,10 +563,11 @@ export proc pack_source_mirror(out: Path, pkg: Package, src: Path) [fs, env, err
   )?
 }
 
+## Exported PM declaration `prepare_package_source_tree`.
 export proc prepare_package_source_tree(
   work: Path,
   out: Path,
-  pkg: Package,
+  pkg: types.Package,
   src: Path,
   force_download: Bool,
   allow_mirror: Bool,
@@ -585,16 +607,17 @@ export proc prepare_package_source_tree(
   }
 }
 
+## Exported PM declaration `generate_checksums_for`.
 export proc generate_checksums_for(
   work: Path,
-  pkg: Package,
+  pkg: types.Package,
   arch: Str,
 ) [fs, net, process, env, time, error] -> Result[List[Str]] {
   var generated = []
 
   for source in pkg.upstream_sources {
     continue when source.architectures.len() > 0 and "all" not in source.architectures and arch not in source.architectures
-    let line = parse_source_line(source.source)?
+    let line = util.parse_source_line(source.source)?
     let resolved = resolve_source(work, pkg, line, arch, true)?
     let stored = source_checksum(source, arch)?
 
@@ -609,20 +632,22 @@ export proc generate_checksums_for(
   generated
 }
 
+## Exported PM declaration `collect_checksum_updates`.
 export proc collect_checksum_updates(
   work: Path,
-  pkg: Package,
-) [fs, net, process, env, time, error] -> Result[List[ChecksumUpdate]] {
-  let arch = machine_arch()?
+  pkg: types.Package,
+) [fs, net, process, env, time, error] -> Result[List[types.ChecksumUpdate]] {
+  let arch = util.machine_arch()?
   let generated = generate_checksums_for(work, pkg, arch)?
   [{field: f"upstream_sources:${arch}", values: generated}]
 }
 
-export proc write_checksum_field(pkg: Package, field: Str, values: List[Str]) [fs, error] {
+## Exported PM declaration `write_checksum_field`.
+export proc write_checksum_field(pkg: types.Package, field: Str, values: List[Str]) [fs, error] {
   let field_parts = field.split(":")
 
   if field_parts.len() != 2 or field_parts[0] != "upstream_sources" {
-    return Err(PmError.ChecksumField(f"unsupported checksum field ${field}"))
+    return Err(types.PmError.ChecksumField(f"unsupported checksum field ${field}"))
   }
 
   let arch = field_parts[1]
@@ -649,7 +674,9 @@ export proc write_checksum_field(pkg: Package, field: Str, values: List[Str]) [f
         in_sources = false
       } else if (f"arch: \"${arch}\"" in line or ! has_arch_specific and "arch: \"all\"" in line) and "sha256: \"" in line {
         if value_index >= values.len() {
-          return Err(PmError.ChecksumField(f"${pkgbuild.display()} has fewer ${arch} checksum entries than expected"))
+          return Err(
+            types.PmError.ChecksumField(f"${pkgbuild.display()} has fewer ${arch} checksum entries than expected"),
+          )
         }
 
         let marker = "sha256: \""
@@ -667,13 +694,14 @@ export proc write_checksum_field(pkg: Package, field: Str, values: List[Str]) [f
   }
 
   if ! found or value_index != values.len() {
-    return Err(PmError.ChecksumField(f"${pkgbuild.display()} has no complete ${arch} checksum field"))
+    return Err(types.PmError.ChecksumField(f"${pkgbuild.display()} has no complete ${arch} checksum field"))
   }
 
   fs.write_atomic(pkgbuild, output.join("\n"))?
 }
 
-export proc audit_source_mirrors(out: Path, packages: List[Package]) [fs, env, error] {
+## Exported PM declaration `audit_source_mirrors`.
+export proc audit_source_mirrors(out: Path, packages: List[types.Package]) [fs, env, error] {
   var missing = []
 
   for pkg in packages {
@@ -682,9 +710,9 @@ export proc audit_source_mirrors(out: Path, packages: List[Package]) [fs, env, e
       continue
     }
 
-    let arch = machine_arch()?
-    let mirror = source_mirror_path_for_arch(out, pkg, arch)
-    let manifest = source_manifest_path_for_arch(out, pkg, arch)
+    let arch = util.machine_arch()?
+    let mirror = util.source_mirror_path_for_arch(out, pkg, arch)
+    let manifest = util.source_manifest_path_for_arch(out, pkg, arch)
 
     if ! fs.exists(mirror)? or ! fs.exists(manifest)? {
       missing = missing.push(pkg.name)
@@ -697,13 +725,13 @@ export proc audit_source_mirrors(out: Path, packages: List[Package]) [fs, env, e
     let recorded: Str = metadata.get("archive_sha256")?
 
     if actual != recorded {
-      return Err(PmError.SourceChecksum(f"${pkg.name} source manifest hash mismatch"))
+      return Err(types.PmError.SourceChecksum(f"${pkg.name} source manifest hash mismatch"))
     }
 
     print ${pkg.name} "source-mirror" "ok"
   }
 
   if missing.len() > 0 {
-    return Err(PmError.SourceNotFound(f"${missing.len()} source mirror(s) missing"))
+    return Err(types.PmError.SourceNotFound(f"${missing.len()} source mirror(s) missing"))
   }
 }

@@ -1,13 +1,10 @@
+##! XSH module `proof-xinit` package and build operations.
 error ScriptError = Failed(kind: Str, message: Str)
 
 proc ensure(condition: Bool, kind: Str, message: Str) [error] {
   if ! condition {
     Err(ScriptError.Failed(kind, message))?
   }
-}
-
-pure rootfs_command(loader: Path, binary: Path, argv: List[Str], timeout: Duration = 0s) -> Command {
-  return process.command_argv(loader, [loader.display(), binary.display()].extend(argv), timeout: timeout)
 }
 
 proc public_key_line(body: Str) [error] -> Result[Str] {

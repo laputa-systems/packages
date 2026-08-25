@@ -1,4 +1,5 @@
 #!/bin/xsh
+##! XSH module `kbuild-archive-analysis-worker` package and build operations.
 use kbuild
 
 proc main(...argv: List[Str]) [fs, error] {

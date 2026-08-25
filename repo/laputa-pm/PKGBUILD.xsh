@@ -1,13 +1,19 @@
+##! XSH module `PKGBUILD` package and build operations.
 export let name = "laputa-pm"
 
+## Exported declaration `ver`.
 export let ver = "1"
 
+## Exported declaration `rel`.
 export let rel = "11"
 
+## Exported declaration `deps`.
 export let deps = ["xsh"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = []
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: ../../pm.xsh,
@@ -37,6 +43,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/bin/pm",
@@ -128,6 +135,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, env, error] {
   fs.install(p"pm.xsh", fp"${dest}/usr/lib/pm/pm.xsh", 0o644, parents: true, overwrite: true)?
   let _ = fs.copy_tree(p"pm", fp"${dest}/usr/lib/pm/pm", parents: true, overwrite: true)?

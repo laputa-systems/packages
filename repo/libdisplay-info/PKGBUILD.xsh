@@ -1,15 +1,22 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 
+## Exported declaration `name`.
 export let name = "libdisplay-info"
 
+## Exported declaration `ver`.
 export let ver = "0.3.0"
 
+## Exported declaration `rel`.
 export let rel = "9"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "hwdata"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "hwdata"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/emersion/libdisplay-info/-/releases/VERSION/downloads/libdisplay-info-VERSION.tar.xz",
@@ -28,6 +35,7 @@ export let upstream_sources = [
 
 type PnpRecord = {id: Str, name: Str}
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/include/libdisplay-info/cta.h",
@@ -156,6 +164,7 @@ subdir('test')
   fs.write(meson_path, text)?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"

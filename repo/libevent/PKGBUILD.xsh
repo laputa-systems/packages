@@ -1,16 +1,23 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 use pm.make as make
 
+## Exported declaration `name`.
 export let name = "libevent"
 
+## Exported declaration `ver`.
 export let ver = "2.1.12-stable"
 
+## Exported declaration `rel`.
 export let rel = "8"
 
+## Exported declaration `deps`.
 export let deps = ["musl"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "cmake", "samurai"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://github.com/libevent/libevent/releases/download/release-VERSION/libevent-VERSION.tar.gz",
@@ -27,6 +34,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/bin/event_rpcgen.py",
@@ -275,6 +283,7 @@ proc create_unversioned_links() [fs, error] {
   }
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?
   let samu = process.which("samu")?

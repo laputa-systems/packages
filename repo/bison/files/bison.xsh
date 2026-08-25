@@ -1,4 +1,5 @@
 #!/bin/xsh
+##! XSH module `bison` package and build operations.
 error ToolError = Failed(kind: Str, message: Str)
 
 type TextRest = {content: Str, rest: Str}
@@ -23,28 +24,6 @@ pure take_char(text: Str) -> Result[TextRest] {
   }
 
   return {content: "", rest: ""}
-}
-
-proc drop_prefix(text: Str, prefix: Str) [error] -> Result[Str] {
-  var cur = text
-  var rem = prefix
-
-  while rem != "" {
-    let next_rem = take_char(rem)?
-    let next_cur = take_char(cur)?
-    rem = next_rem.rest
-    cur = next_cur.rest
-  }
-
-  return cur
-}
-
-pure c_quote(text: Str) -> Str {
-  return text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
-}
-
-pure c_ident(name: Str) -> Str {
-  return name.replace("-", "_").replace(".", "_")
 }
 
 pure literal_code(token: Str) -> Int {

@@ -1,20 +1,28 @@
+##! musl libc package definition and build operations.
 use pm.make as make
 use pm.util as pm_util
 
 error MuslError = Failed(message: Str)
 
+## Package name.
 export let name = "musl"
 
+## Upstream musl version.
 export let ver = "1.2.6"
 
+## Package release revision.
 export let rel = "16"
 
+## Runtime package dependencies.
 export let deps = []
 
+## Host-side build dependencies.
 export let mkdeps_host = ["llvm-toolchain"]
 
+## Preserve upstream binaries without stripping.
 export let nostrip = true
 
+## Upstream source archives and checksums.
 export let upstream_sources = [
   {
     source: p"https://musl.libc.org/releases/musl-VERSION.tar.gz",
@@ -106,10 +114,13 @@ let filetree_common = [
   },
 ]
 
+## Installed files for aarch64.
 export let filetree_aarch64 = filetree_common.push({path: p"usr/lib/ld-musl-aarch64.so.1", kind: "symlink"})
 
+## Installed files for x86_64.
 export let filetree_x86_64 = filetree_common.push({path: p"usr/lib/ld-musl-x86_64.so.1", kind: "symlink"})
 
+## Installed package file tree for the selected architecture.
 export let filetree = filetree_aarch64
 
 pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {
@@ -137,6 +148,7 @@ proc compiler_rt_builtins(arch: Str) [fs, error] -> Result[List[Path]] {
   []
 }
 
+## Build and install the musl libc package.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let arch = pm_util.target_arch()?

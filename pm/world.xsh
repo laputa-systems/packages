@@ -1,3 +1,4 @@
+##! PM world operations and shared package-manager policy.
 use build as pm_build
 use buildroot
 use elfdeps
@@ -17,19 +18,19 @@ type WorldPlanOptions = {
   jobs: Int,
 }
 
-type WorldPlanResult = {packages: List[Package], reasons: Map[Str]}
+type WorldPlanResult = {packages: List[types.Package], reasons: Map[Str]}
 
-pure world_dependency_is_seeded(pkg: Package, dep: Str, cross_build: Bool) -> Bool {
+pure world_dependency_is_seeded(pkg: types.Package, dep: Str, cross_build: Bool) -> Bool {
   ! cross_build and (pkg.name == "musl" and (dep == "llvm-toolchain" or dep == "zlib") or pkg.name == "gnu-stubs" and dep == "llvm-toolchain")
 }
 
 proc order_world_build_packages(
   root: Path,
-  packages: List[Package],
-  index: List[RemotePackage],
+  packages: List[types.Package],
+  index: List[types.RemotePackage],
   arch: Str,
   include_mkdeps_host: Bool,
-) [fs, env, error] -> Result[List[Package]] {
+) [fs, env, error] -> Result[List[types.Package]] {
   var ordered = []
   var local_names: Map[Bool] = {}
   var repo_names: Map[Bool] = {}
@@ -59,9 +60,9 @@ proc order_world_build_packages(
               ready = false
             }
           } else if ! world_dependency_is_seeded(pkg, dep, ! include_mkdeps_host) and ! repo_names.get(dep, false) and ! fs.exists(
-            package_db_path(root, dep),
+            util.package_db_path(root, dep),
           )? {
-            return Err(PmError.MissingDependency(f"${pkg.name} depends on missing ${dep}"))
+            return Err(types.PmError.MissingDependency(f"${pkg.name} depends on missing ${dep}"))
           }
         }
 
@@ -74,13 +75,14 @@ proc order_world_build_packages(
     }
 
     if ! progressed {
-      return Err(PmError.DependencyCycle("world package dependency graph did not make progress"))
+      return Err(types.PmError.DependencyCycle("world package dependency graph did not make progress"))
     }
   }
 
   ordered
 }
 
+## Exported PM declaration `missing_world_dependencies`.
 export proc missing_world_dependencies(
   root: Path,
   deps: List[Str],
@@ -92,10 +94,10 @@ export proc missing_world_dependencies(
 
   for dep in deps {
     if local_names.get(dep, false) and ! built_names.get(dep, false) {
-      return Err(PmError.MissingDependency(f"${dep} has not been built yet"))
+      return Err(types.PmError.MissingDependency(f"${dep} has not been built yet"))
     }
 
-    if ! seen.get(dep, false) and ! fs.exists(package_db_path(root, dep))? {
+    if ! seen.get(dep, false) and ! fs.exists(util.package_db_path(root, dep))? {
       missing = missing.push(dep)
       seen[dep] = true
     }
@@ -106,7 +108,7 @@ export proc missing_world_dependencies(
 
 proc missing_world_build_dependencies(
   root: Path,
-  pkg: Package,
+  pkg: types.Package,
   deps: List[Str],
   local_names: Map[Bool],
   built_names: Map[Bool],
@@ -121,10 +123,10 @@ proc missing_world_build_dependencies(
       dep,
       cross_build,
     ) {
-      return Err(PmError.MissingDependency(f"${dep} has not been built yet"))
+      return Err(types.PmError.MissingDependency(f"${dep} has not been built yet"))
     }
 
-    if ! seen.get(dep, false) and ! fs.exists(package_db_path(root, dep))? {
+    if ! seen.get(dep, false) and ! fs.exists(util.package_db_path(root, dep))? {
       missing = missing.push(dep)
       seen[dep] = true
     }
@@ -138,23 +140,23 @@ proc missing_fresh_world_dependencies(
   deps: List[Str],
   local_names: Map[Bool],
   built_names: Map[Bool],
-  remote_latest: Map[RemotePackage],
+  remote_latest: Map[types.RemotePackage],
 ) [fs, error] -> Result[List[Str]] {
   var missing = []
   var seen: Map[Bool] = {}
 
   for dep in deps {
     if local_names.get(dep, false) and ! built_names.get(dep, false) {
-      return Err(PmError.MissingDependency(f"${dep} has not been built yet"))
+      return Err(types.PmError.MissingDependency(f"${dep} has not been built yet"))
     }
 
     if ! seen.get(dep, false) {
-      let db = package_db_path(root, dep)
+      let db = util.package_db_path(root, dep)
       var needs_install = ! fs.exists(db)?
 
       if ! needs_install and remote_latest.has(dep) {
-        let remote_pkg: RemotePackage = remote_latest.get(dep)?
-        let metadata = load_metadata(db)?
+        let remote_pkg: types.RemotePackage = remote_latest.get(dep)?
+        let metadata = local.load_metadata(db)?
         let ver: Str = metadata.get("ver")?
         let rel: Str = metadata.get("rel")?
         needs_install = compare_version_release(ver, rel, remote_pkg.ver, remote_pkg.rel) < 0
@@ -181,7 +183,7 @@ pure world_package_always_newer_than_remote(name: Str, ver: Str) -> Bool {
   name == "xsh" and ver == "0.0.0"
 }
 
-proc add_implicit_pm_dependency(pkg: Package, deps: List[Str]) [] -> List[Str] {
+proc add_implicit_pm_dependency(pkg: types.Package, deps: List[Str]) [] -> List[Str] {
   if ! package_exempt_from_implicit_pm(pkg.name) and "laputa-pm" not in deps {
     return deps.push("laputa-pm")
   }
@@ -189,7 +191,7 @@ proc add_implicit_pm_dependency(pkg: Package, deps: List[Str]) [] -> List[Str] {
   deps
 }
 
-proc effective_world_target_dependencies(pkg: Package, include_mkdeps_target: Bool) [] -> List[Str] {
+proc effective_world_target_dependencies(pkg: types.Package, include_mkdeps_target: Bool) [] -> List[Str] {
   var deps = pkg.deps
 
   if include_mkdeps_target {
@@ -199,7 +201,8 @@ proc effective_world_target_dependencies(pkg: Package, include_mkdeps_target: Bo
   add_implicit_pm_dependency(pkg, deps)
 }
 
-export proc effective_world_dependencies(pkg: Package, include_mkdeps_host: Bool) [] -> List[Str] {
+## Exported PM declaration `effective_world_dependencies`.
+export proc effective_world_dependencies(pkg: types.Package, include_mkdeps_host: Bool) [] -> List[Str] {
   var deps = effective_world_target_dependencies(pkg, include_mkdeps_host)
 
   if include_mkdeps_host {
@@ -209,7 +212,7 @@ export proc effective_world_dependencies(pkg: Package, include_mkdeps_host: Bool
   deps
 }
 
-proc effective_world_build_dependencies(pkg: Package, cross_build: Bool) [] -> List[Str] {
+proc effective_world_build_dependencies(pkg: types.Package, cross_build: Bool) [] -> List[Str] {
   var deps = []
 
   if cross_build {
@@ -238,9 +241,9 @@ proc copy_world_seed_path(source_root: FsRoot, dest_root: FsRoot, rel_path: Path
 }
 
 proc copy_world_seed_package(source_root: Path, dest_root: Path, name: Str) [fs, error] {
-  let source_db = package_db_path(source_root, name)
-  let dest_db = package_db_path(dest_root, name)
-  let manifest = load_manifest(source_db)?
+  let source_db = util.package_db_path(source_root, name)
+  let dest_db = util.package_db_path(dest_root, name)
+  let manifest = local.load_manifest(source_db)?
   let source_handle = fs.open_root(source_root)?
   defer fs.close_root(source_handle)
   let dest_handle = fs.open_root(dest_root)?
@@ -270,12 +273,12 @@ proc seed_world_package_dependency_set(staged_root: Path, package_root: Path, ow
     let is_required = required[index]
 
     if ! copied.get(name, false) {
-      let db = package_db_path(staged_root, name)
+      let db = util.package_db_path(staged_root, name)
 
       if fs.exists(db)? {
         copy_world_seed_package(staged_root, package_root, name)?
         copied[name] = true
-        let metadata = load_metadata(db)?
+        let metadata = local.load_metadata(db)?
         let package_deps: List[Str] = metadata.get("deps")?
 
         for dep in package_deps {
@@ -285,7 +288,7 @@ proc seed_world_package_dependency_set(staged_root: Path, package_root: Path, ow
           }
         }
       } else if is_required {
-        return Err(PmError.MissingDependency(f"${owner} requires staged ${name}"))
+        return Err(types.PmError.MissingDependency(f"${owner} requires staged ${name}"))
       }
     }
 
@@ -298,7 +301,7 @@ proc seed_world_package_dependency_set(staged_root: Path, package_root: Path, ow
 }
 
 proc effective_world_seed_dependencies(
-  pkg: Package,
+  pkg: types.Package,
   include_mkdeps_host: Bool,
   include_mkdeps_target: Bool,
 ) [] -> List[Str] {
@@ -314,7 +317,7 @@ proc effective_world_seed_dependencies(
 proc seed_world_package_root(
   staged_root: Path,
   package_root: Path,
-  pkg: Package,
+  pkg: types.Package,
   include_mkdeps_host: Bool,
   include_mkdeps_target: Bool,
 ) [fs, error] {
@@ -326,19 +329,15 @@ proc seed_world_package_root(
   )?
 }
 
-proc seed_world_package_tool_root(staged_root: Path, package_root: Path, pkg: Package) [fs, error] {
-  seed_world_package_dependency_set(staged_root, package_root, pkg.name, pkg.mkdeps_host)?
-}
-
 pure world_state_path(repo_dir: Path) -> Path {
   fp"${repo_dir}/.world/state.json"
 }
 
-pure world_package_id(pkg: Package) -> Str {
-  package_id(pkg.name, pkg.ver, pkg.rel)
+pure world_package_id(pkg: types.Package) -> Str {
+  util.package_id(pkg.name, pkg.ver, pkg.rel)
 }
 
-proc world_package_rows(packages: List[Package]) [] -> List[Record] {
+proc world_package_rows(packages: List[types.Package]) [] -> List[Record] {
   var rows = []
 
   for pkg in packages {
@@ -390,7 +389,7 @@ proc pm_module_root_path() [fs, env, error] -> Result[Path] {
     }
   }
 
-  return Err(PmError.PackageContract("cannot find PM module root"))
+  return Err(types.PmError.PackageContract("cannot find PM module root"))
 }
 
 proc append_fingerprint_file(body: Str, label: Str, path_value: Path) [fs, error] -> Result[Str] {
@@ -409,7 +408,7 @@ proc append_fingerprint_file(body: Str, label: Str, path_value: Path) [fs, error
   body
 }
 
-proc world_plan_content_hash(packages: List[Package], arch: Str) [fs, error] -> Result[Str] {
+proc world_plan_content_hash(packages: List[types.Package], arch: Str) [fs, error] -> Result[Str] {
   var body = f"""arch	${arch}
 """
 
@@ -422,7 +421,7 @@ proc world_plan_content_hash(packages: List[Package], arch: Str) [fs, error] -> 
   bytes.from_text(body).sha256().hex()
 }
 
-proc world_plan_cache_key(packages: List[Package], arch: Str) [] -> Str {
+proc world_plan_cache_key(packages: List[types.Package], arch: Str) [] -> Str {
   var body = f"""arch	${arch}
 """
 
@@ -440,7 +439,7 @@ proc world_cache_repo_dir(cache_key: Str) [env, error] -> Result[Path] {
   let home = (env.get("HOME") ?? "").trim()
 
   if home == "" {
-    return Err(PmError.PackageContract("HOME is required for world-plan cache"))
+    return Err(types.PmError.PackageContract("HOME is required for world-plan cache"))
   }
 
   fp"${home}/.cache/laputa/world-${cache_key}"
@@ -473,7 +472,7 @@ proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]]
       children = children |> sort-by .display()
 
       if children.len() == 0 {
-        return Err(PmError.PackageContract(f"${input.display()} is not a package dir or package root"))
+        return Err(types.PmError.PackageContract(f"${input.display()} is not a package dir or package root"))
       }
 
       for child in children {
@@ -490,7 +489,7 @@ proc expand_world_package_dirs(raw: List[Str]) [fs, error] -> Result[List[Path]]
   dirs
 }
 
-proc world_local_dependency_names(pkg: Package, local_names: Map[Bool]) [] -> List[Str] {
+proc world_local_dependency_names(pkg: types.Package, local_names: Map[Bool]) [] -> List[Str] {
   var names = []
   var seen: Map[Bool] = {}
 
@@ -504,7 +503,7 @@ proc world_local_dependency_names(pkg: Package, local_names: Map[Bool]) [] -> Li
   names
 }
 
-proc world_dependency_kind(pkg: Package, dep: Str) [] -> Str {
+proc world_dependency_kind(pkg: types.Package, dep: Str) [] -> Str {
   if dep in pkg.deps {
     return "runtime"
   }
@@ -547,7 +546,7 @@ proc summarize_changed_dependencies(changed_deps: List[Str]) [] -> Str {
   f"${head.join(", ")}, +${visible.len() - 4} more"
 }
 
-proc world_plan_levels(ordered: List[Package], local_names: Map[Bool]) [] -> Map[Int] {
+proc world_plan_levels(ordered: List[types.Package], local_names: Map[Bool]) [] -> Map[Int] {
   var levels: Map[Int] = {}
 
   for pkg in ordered {
@@ -587,7 +586,7 @@ pure package_count_text(count: Int) -> Str {
   f"${count} packages"
 }
 
-proc world_plan_max_level(ordered: List[Package], levels: Map[Int]) [] -> Int {
+proc world_plan_max_level(ordered: List[types.Package], levels: Map[Int]) [] -> Int {
   var max_level = 0
 
   for pkg in ordered {
@@ -601,19 +600,19 @@ proc world_plan_max_level(ordered: List[Package], levels: Map[Int]) [] -> Int {
   max_level
 }
 
-proc world_packages_at_level(ordered: List[Package], levels: Map[Int], level: Int) [] -> List[Package] {
+proc world_packages_at_level(ordered: List[types.Package], levels: Map[Int], level: Int) [] -> List[types.Package] {
   var tranche = [pkg for pkg in ordered if levels.get(pkg.name, 0) == level]
   tranche
 }
 
 proc validate_world_arch(arch: Str) [error] -> Result[Str] {
-  let normalized = normalize_arch(arch)
+  let normalized = util.normalize_arch(arch)
 
   if normalized == "aarch64" or normalized == "x86_64" {
     return normalized
   }
 
-  return Err(PmError.Usage(f"unsupported world-plan arch ${arch}; expected aarch64 or x86_64"))
+  return Err(types.PmError.Usage(f"unsupported world-plan arch ${arch}; expected aarch64 or x86_64"))
 }
 
 proc host_world_arch() [env, error] -> Result[Str] {
@@ -622,9 +621,9 @@ proc host_world_arch() [env, error] -> Result[Str] {
 }
 
 proc world_plan_remote_annotation(
-  pkg: Package,
-  planned: Package,
-  remote_latest: Map[RemotePackage],
+  pkg: types.Package,
+  planned: types.Package,
+  remote_latest: Map[types.RemotePackage],
 ) [error] -> Result[Str] {
   if ! remote_latest.has(pkg.name) {
     return ""
@@ -634,20 +633,20 @@ proc world_plan_remote_annotation(
     return ""
   }
 
-  let remote_pkg: RemotePackage = remote_latest.get(pkg.name)?
+  let remote_pkg: types.RemotePackage = remote_latest.get(pkg.name)?
   let cmp = compare_version_release(planned.ver, planned.rel, remote_pkg.ver, remote_pkg.rel)
 
   if cmp >= 0 {
     return ""
   }
 
-  f"remote newer ${version_id(remote_pkg.ver, remote_pkg.rel)}"
+  f"remote newer ${util.version_id(remote_pkg.ver, remote_pkg.rel)}"
 }
 
 proc planned_world_packages(
-  ordered: List[Package],
+  ordered: List[types.Package],
   local_names: Map[Bool],
-  remote_latest: Map[RemotePackage],
+  remote_latest: Map[types.RemotePackage],
 ) [error] -> Result[WorldPlanResult] {
   var planned = []
   var changed: Map[Bool] = {}
@@ -666,22 +665,22 @@ proc planned_world_packages(
     }
 
     if remote_latest.has(pkg.name) {
-      let remote_pkg: RemotePackage = remote_latest.get(pkg.name)?
+      let remote_pkg: types.RemotePackage = remote_latest.get(pkg.name)?
 
       if compare_version_text(pkg.ver, remote_pkg.ver) == 0 {
         if compare_version_text(pkg.rel, remote_pkg.rel) > 0 {
-          reasons[pkg.name] = f"local rel above remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
+          reasons[pkg.name] = f"local rel above remote ${util.version_id(remote_pkg.ver, remote_pkg.rel)}"
         }
       } else {
-        reasons[pkg.name] = f"version differs from remote ${version_id(remote_pkg.ver, remote_pkg.rel)}"
+        reasons[pkg.name] = f"version differs from remote ${util.version_id(remote_pkg.ver, remote_pkg.rel)}"
       }
 
       changed[pkg.name] = compare_version_release(planned_pkg.ver, planned_pkg.rel, remote_pkg.ver, remote_pkg.rel) != 0
 
       if changed_dep and compare_version_release(pkg.ver, pkg.rel, remote_pkg.ver, remote_pkg.rel) <= 0 {
         return Err(
-          PmError.PackageContract(
-            f"${pkg.name} dependencies changed (${summarize_changed_dependencies(changed_deps)}); bump its declared rel above ${version_id(
+          types.PmError.PackageContract(
+            f"${pkg.name} dependencies changed (${summarize_changed_dependencies(changed_deps)}); bump its declared rel above ${util.version_id(
               remote_pkg.ver,
               remote_pkg.rel,
             )}",
@@ -703,31 +702,31 @@ proc planned_world_packages(
   {packages: planned, reasons}
 }
 
-proc planned_world_package_map(planned: List[Package]) [] -> Map[Package] {
+proc planned_world_package_map(planned: List[types.Package]) [] -> Map[types.Package] {
   var packages = {pkg.name: pkg for pkg in planned}
   packages
 }
 
 proc world_plan_version_text(
-  pkg: Package,
-  planned: Package,
-  remote_latest: Map[RemotePackage],
+  pkg: types.Package,
+  planned: types.Package,
+  remote_latest: Map[types.RemotePackage],
   colors: Bool,
 ) [error] -> Result[Str] {
   if remote_latest.has(pkg.name) {
-    let remote_pkg: RemotePackage = remote_latest.get(pkg.name)?
+    let remote_pkg: types.RemotePackage = remote_latest.get(pkg.name)?
 
     if compare_version_text(pkg.ver, remote_pkg.ver) == 0 and compare_version_text(pkg.rel, remote_pkg.rel) > 0 {
-      return f"${ansi(colors, "2", version_id(remote_pkg.ver, remote_pkg.rel))} ${ansi(colors, "1;33", "->")} ${ansi(
+      return f"${ansi(colors, "2", util.version_id(remote_pkg.ver, remote_pkg.rel))} ${ansi(colors, "1;33", "->")} ${ansi(
         colors,
         "1;33",
-        version_id(planned.ver, planned.rel),
+        util.version_id(planned.ver, planned.rel),
       )}"
     }
   }
 
-  let current = version_id(pkg.ver, pkg.rel)
-  let next = version_id(planned.ver, planned.rel)
+  let current = util.version_id(pkg.ver, pkg.rel)
+  let next = util.version_id(planned.ver, planned.rel)
 
   if current == next {
     return ansi(colors, "2", current)
@@ -737,12 +736,12 @@ proc world_plan_version_text(
 }
 
 proc print_world_plan(
-  ordered: List[Package],
-  planned: List[Package],
+  ordered: List[types.Package],
+  planned: List[types.Package],
   reasons: Map[Str],
   local_names: Map[Bool],
   world_jobs: Int,
-  remote_latest: Map[RemotePackage],
+  remote_latest: Map[types.RemotePackage],
   arch: Str,
   staged_statuses: Map[Str],
 ) [env, error] {
@@ -764,7 +763,7 @@ proc print_world_plan(
     print --flush f"${ansi(colors, "1;35", f"tranche ${level}")} ${ansi(colors, "2", package_count_text(tranche.len()))}"
 
     for pkg in tranche {
-      let planned_pkg: Package = planned_by_name.get(pkg.name)?
+      let planned_pkg: types.Package = planned_by_name.get(pkg.name)?
       let annotation = world_plan_remote_annotation(pkg, planned_pkg, remote_latest)?
       var suffix = if annotation == "" { "" } else { f" ${ansi(colors, "1;31", annotation)}" }
       let reason = reasons.get(pkg.name, "")
@@ -778,10 +777,10 @@ proc print_world_plan(
       if staged_statuses.has(pkg.name) {
         let status = staged_statuses.get(pkg.name)?
 
-        version_text = f"${ansi(colors, "1;33", version_id(planned_pkg.ver, planned_pkg.rel))} ${ansi(
+        version_text = f"${ansi(colors, "1;33", util.version_id(planned_pkg.ver, planned_pkg.rel))} ${ansi(
           colors,
           "2",
-          f"stage: ${status} (local ${version_id(pkg.ver, pkg.rel)})",
+          f"stage: ${status} (local ${util.version_id(pkg.ver, pkg.rel)})",
         )}"
       } else {
         version_text = world_plan_version_text(pkg, planned_pkg, remote_latest, colors)?
@@ -798,7 +797,7 @@ proc parse_world_jobs(value: Str, source: Str) [error] -> Result[Int] {
   let parsed = value.parse_int()?
 
   if parsed <= 0 {
-    return Err(PmError.Usage(f"${source} must be a positive integer"))
+    return Err(types.PmError.Usage(f"${source} must be a positive integer"))
   }
 
   parsed
@@ -808,7 +807,7 @@ proc parse_world_to_tranche(value: Str, source: Str) [error] -> Result[Int] {
   let parsed = value.parse_int()?
 
   if parsed < -1 {
-    return Err(PmError.Usage(f"${source} must be -1, zero, or a positive integer"))
+    return Err(types.PmError.Usage(f"${source} must be -1, zero, or a positive integer"))
   }
 
   parsed
@@ -896,16 +895,16 @@ proc compare_version_release(left_ver: Str, left_rel: Str, right_ver: Str, right
   compare_version_text(left_rel, right_rel)
 }
 
-proc validate_world_declared_versions(packages: List[Package], remote_latest: Map[RemotePackage]) [error] {
+proc validate_world_declared_versions(packages: List[types.Package], remote_latest: Map[types.RemotePackage]) [error] {
   for pkg in packages {
     if remote_latest.has(pkg.name) and ! world_package_always_newer_than_remote(pkg.name, pkg.ver) {
-      let rpkg: RemotePackage = remote_latest.get(pkg.name)?
+      let rpkg: types.RemotePackage = remote_latest.get(pkg.name)?
       let cmp = compare_version_release(pkg.ver, pkg.rel, rpkg.ver, rpkg.rel)
 
       if cmp < 0 {
         return Err(
-          PmError.PackageContract(
-            f"${pkg.name} declares ${version_id(pkg.ver, pkg.rel)} but ${version_id(rpkg.ver, rpkg.rel)} is already published for this architecture; bump PKGBUILD.xsh rel explicitly",
+          types.PmError.PackageContract(
+            f"${pkg.name} declares ${util.version_id(pkg.ver, pkg.rel)} but ${util.version_id(rpkg.ver, rpkg.rel)} is already published for this architecture; bump PKGBUILD.xsh rel explicitly",
           ),
         )
       }
@@ -913,25 +912,15 @@ proc validate_world_declared_versions(packages: List[Package], remote_latest: Ma
   }
 }
 
-proc world_remote_has(index: List[RemotePackage], arch: Str, name: Str) [] -> Bool {
-  for entry in index {
-    if entry.arch == arch and entry.name == name {
-      return true
-    }
-  }
-
-  false
-}
-
-proc world_latest_remote_map(index: List[RemotePackage], arch: Str) [error] -> Result[Map[RemotePackage]] {
-  var latest: Map[RemotePackage] = {}
+proc world_latest_remote_map(index: List[types.RemotePackage], arch: Str) [error] -> Result[Map[types.RemotePackage]] {
+  var latest: Map[types.RemotePackage] = {}
 
   for entry in index {
     if entry.arch == arch {
       if ! latest.has(entry.name) {
         latest[entry.name] = entry
       } else {
-        let current: RemotePackage = latest.get(entry.name)?
+        let current: types.RemotePackage = latest.get(entry.name)?
 
         if compare_version_release(entry.ver, entry.rel, current.ver, current.rel) > 0 {
           latest[entry.name] = entry
@@ -943,100 +932,6 @@ proc world_latest_remote_map(index: List[RemotePackage], arch: Str) [error] -> R
   latest
 }
 
-proc world_latest_remote(index: List[RemotePackage], arch: Str, name: Str) [error] -> Result[RemotePackage] {
-  var found = false
-
-  var latest: RemotePackage = {
-    arch,
-    name,
-    ver: "",
-    rel: "",
-    deps: [],
-    mkdeps_host: [],
-    mkdeps_target: [],
-    sha256: "",
-    size: 0,
-    tarball: "",
-    metadata: "",
-    source_sha256: "",
-    metapackage: false,
-  }
-
-  for entry in index {
-    if entry.arch == arch and entry.name == name {
-      if ! found or compare_version_release(entry.ver, entry.rel, latest.ver, latest.rel) > 0 {
-        found = true
-        latest = entry
-      }
-    }
-  }
-
-  if ! found {
-    return Err(PmError.RemotePackage(f"${name} for ${arch} is not in the remote index"))
-  }
-
-  latest
-}
-
-proc remote_metadata_sha256(repo: Str, out: Path, entry: RemotePackage) [fs, net, time, error] -> Result[Str] {
-  if entry.metadata == "" {
-    return ""
-  }
-
-  let rel = ensure_relative_path(fp"${entry.metadata}", "remote metadata")?
-  let cache = fp"${out}/remote-metadata/${rel.display()}"
-  let failure = fetch_repo_file_with_retry(repo, rel, cache, timeout: 60s)?
-
-  if failure != "" {
-    return Err(PmError.RemoteFetch(failure))
-  }
-
-  let metadata: Record = json.read(cache)?
-  return Ok(metadata.get("metadata_sha256")?)
-}
-
-type RemoteMetadataHash = {name: Str, sha256: Str}
-
-proc world_remote_metadata_hashes(
-  repo: Str,
-  out: Path,
-  packages: List[Package],
-  remote_latest: Map[RemotePackage],
-  jobs: Int,
-) [fs, net, time, error] -> Result[Map[Str]] {
-  var candidates = []
-
-  if repo == "" {
-    let empty: Map[Str] = {}
-    return empty
-  }
-
-  for pkg in packages {
-    if remote_latest.has(pkg.name) {
-      let rpkg: RemotePackage = remote_latest.get(pkg.name)?
-
-      if compare_version_text(pkg.ver, rpkg.ver) == 0 and compare_version_text(pkg.rel, rpkg.rel) <= 0 {
-        candidates = candidates.push(rpkg)
-      }
-    }
-  }
-
-  if candidates.len() == 0 {
-    let empty: Map[Str] = {}
-    return empty
-  }
-
-  # Metadata files are small; fetch this preflight sequentially before the
-  # package scheduler starts real build work.
-  var hashes: Map[Str] = {}
-
-  for entry in candidates {
-    hashes[entry.name] = remote_metadata_sha256(repo, out, entry)?
-  }
-
-  return Ok(hashes)
-}
-
 pure native_cross_ldso_name(arch: Str) -> Str {
   if arch == "aarch64" {
     return "ld-musl-aarch64.so.1"
@@ -1046,12 +941,12 @@ pure native_cross_ldso_name(arch: Str) -> Str {
 }
 
 type WorldBuildBatch = {
-  built: List[BuiltPackage],
+  built: List[types.BuiltPackage],
   failed: Bool,
 }
 
 type WorldBatchStageResult = {
-  index: List[RemotePackage],
+  index: List[types.RemotePackage],
   failed: Bool,
 }
 
@@ -1162,14 +1057,14 @@ proc write_native_cross_tool_shims(build_root: Path, target_root: Path, target_a
 
 proc build_world_package(
   repo_dir: Path,
-  build_ctx: PmContext,
+  build_ctx: types.PmContext,
   target_staged_root: Path,
   build_staged_root: Path,
-  pkg: Package,
+  pkg: types.Package,
   target_arch: Str,
   build_arch: Str,
   cross_build: Bool,
-) [fs, net, process, env, time, error] -> Result[List[BuiltPackage]] {
+) [fs, net, process, env, time, error] -> Result[List[types.BuiltPackage]] {
   var built = []
   let started_at = time.now()
   let log_path = fp"${repo_dir}/packages/${target_arch}/${pkg.name}/build.log"
@@ -1178,7 +1073,12 @@ proc build_world_package(
   let package_build_root = fp"${build_ctx.work}/world-build/${world_package_id(pkg)}/build-root"
   let package_work = fp"${build_ctx.work}/world-build/${world_package_id(pkg)}/work"
   let package_out = fp"${build_ctx.work}/world-build/${world_package_id(pkg)}/out"
-  let package_ctx: PmContext = {command: build_ctx.command, root: package_root, work: package_work, out: package_out}
+  let package_ctx: types.PmContext = {
+    command: build_ctx.command,
+    root: package_root,
+    work: package_work,
+    out: package_out,
+  }
   fs.remove(package_root, missing_ok: true)?
   fs.remove(package_build_root, missing_ok: true)?
   fs.remove(package_work, missing_ok: true)?
@@ -1221,13 +1121,17 @@ proc build_world_package(
     }
   } ?
 
-  let tarball_size = if built.len() > 0 { compressed_package_size(fs.metadata(built[0].tarball)?.size) } else { "0K" }
+  let tarball_size = if built.len() > 0 {
+    local.compressed_package_size(fs.metadata(built[0].tarball)?.size)
+  } else {
+    "0K"
+  }
 
   print --flush ${pkg.name} world_package_id(pkg) "build:" "finished" time.duration_compact(
     (time.now() - started_at) / 1000,
   ) "size:" $tarball_size "log:" $log_path
 
-  return Ok(built)
+  built
 }
 
 proc append_world_package_log(log_path: Path, line: Str) [fs, error] {
@@ -1245,10 +1149,10 @@ proc append_world_package_log(log_path: Path, line: Str) [fs, error] {
 
 proc build_world_package_or_empty(
   repo_dir: Path,
-  build_ctx: PmContext,
+  build_ctx: types.PmContext,
   target_staged_root: Path,
   build_staged_root: Path,
-  pkg: Package,
+  pkg: types.Package,
   target_arch: Str,
   build_arch: Str,
   cross_build: Bool,
@@ -1279,8 +1183,8 @@ proc build_world_package_or_empty(
   }
 }
 
-proc remove_world_unowned_install_conflicts(root: Path, built: List[BuiltPackage]) [fs, error] {
-  let installed_owners = load_installed_owners(root)?
+proc remove_world_unowned_install_conflicts(root: Path, built: List[types.BuiltPackage]) [fs, error] {
+  let installed_owners = local.load_installed_owners(root)?
 
   for item in built {
     for rel_path in item.manifest {
@@ -1294,7 +1198,7 @@ proc remove_world_unowned_install_conflicts(root: Path, built: List[BuiltPackage
 }
 
 proc world_stage_package_present(root: Path, name: Str) [fs, error] -> Result[Bool] {
-  fs.exists(package_db_path(root, name))?
+  fs.exists(util.package_db_path(root, name))?
 }
 
 proc world_stage_package_present_in_roots(
@@ -1314,36 +1218,36 @@ proc world_stage_package_present_in_roots(
   world_stage_package_present(build_root, name)?
 }
 
-proc install_world_built_packages(ctx: PmContext, built: List[BuiltPackage]) [fs, process, env, error] {
+proc install_world_built_packages(ctx: types.PmContext, built: List[types.BuiltPackage]) [fs, process, env, error] {
   if built.len() > 0 {
-    install_built_packages(ctx, built)?
+    install.install_built_packages(ctx, built)?
   }
 }
 
-proc stage_world_source_mirror(repo_dir: Path, item: BuiltPackage, arch: Str) [fs, error] {
+proc stage_world_source_mirror(repo_dir: Path, item: types.BuiltPackage, arch: Str) [fs, error] {
   if item.pkg.upstream_sources.len() == 0 or ! item.pkg.source_mirror {
     return
   }
 
   let package_out = fp"${repo_dir}/.work/world-build/${world_package_id(item.pkg)}/out"
-  let source = source_mirror_path_for_arch(package_out, item.pkg, arch)
-  let manifest = source_manifest_path_for_arch(package_out, item.pkg, arch)
+  let source = util.source_mirror_path_for_arch(package_out, item.pkg, arch)
+  let manifest = util.source_manifest_path_for_arch(package_out, item.pkg, arch)
 
   if ! fs.exists(source)? or ! fs.exists(manifest)? {
-    return Err(PmError.SourceNotFound(f"${item.pkg.name} world build did not produce a source mirror"))
+    return Err(types.PmError.SourceNotFound(f"${item.pkg.name} world build did not produce a source mirror"))
   }
 
   let manifest_record: Record = json.read(manifest)?
   let expected: Str = manifest_record.get("archive_sha256")?
 
   if expected != hash.sha256(source)?.hex() {
-    return Err(PmError.SourceChecksum(f"${item.pkg.name} world source manifest hash mismatch"))
+    return Err(types.PmError.SourceChecksum(f"${item.pkg.name} world source manifest hash mismatch"))
   }
 
   let repo_out = fp"${repo_dir}/.out"
-  fs.mkdir(source_mirror_path_for_arch(repo_out, item.pkg, arch).parent)?
-  fs.copy(source, source_mirror_path_for_arch(repo_out, item.pkg, arch), overwrite: true)?
-  fs.copy(manifest, source_manifest_path_for_arch(repo_out, item.pkg, arch), overwrite: true)?
+  fs.mkdir(util.source_mirror_path_for_arch(repo_out, item.pkg, arch).parent)?
+  fs.copy(source, util.source_mirror_path_for_arch(repo_out, item.pkg, arch), overwrite: true)?
+  fs.copy(manifest, util.source_manifest_path_for_arch(repo_out, item.pkg, arch), overwrite: true)?
 }
 
 # Keep post-build staging in a separate procedure. The lowered world-plan
@@ -1351,15 +1255,14 @@ proc stage_world_source_mirror(repo_dir: Path, item: BuiltPackage, arch: Str) [f
 # remote-metadata comparison, even though the package batch is already built.
 proc stage_world_build_batch(
   repo_dir: Path,
-  upload_ctx: PmContext,
-  root_ctx: PmContext,
-  build_ctx: PmContext,
+  upload_ctx: types.PmContext,
+  root_ctx: types.PmContext,
+  build_ctx: types.PmContext,
   root: Path,
   build_root: Path,
-  built: List[BuiltPackage],
-  index: List[RemotePackage],
+  built: List[types.BuiltPackage],
+  index: List[types.RemotePackage],
   target_arch: Str,
-  build_arch: Str,
   cross_build: Bool,
 ) [fs, net, process, env, time, error] -> Result[WorldBatchStageResult] {
   var updated_index = index
@@ -1370,7 +1273,7 @@ proc stage_world_build_batch(
 
   for item in built {
     stage_world_source_mirror(repo_dir, item, target_arch)?
-    updated_index = stage_built_package(repo_dir, upload_ctx, updated_index, item)?
+    updated_index = repo.stage_built_package(repo_dir, upload_ctx, updated_index, item)?
   }
 
   remove_world_unowned_install_conflicts(root, built)?
@@ -1388,7 +1291,7 @@ proc read_world_state(repo_dir: Path) [fs, error] -> Result[Record] {
   let state_path = world_state_path(repo_dir)
 
   if ! fs.exists(state_path)? {
-    return Err(PmError.PackageTarball(f"${state_path.display()} is missing; run world-plan --build first"))
+    return Err(types.PmError.PackageTarball(f"${state_path.display()} is missing; run world-plan --build first"))
   }
 
   json.read(state_path)?
@@ -1397,14 +1300,14 @@ proc read_world_state(repo_dir: Path) [fs, error] -> Result[Record] {
 proc write_world_state(
   repo_dir: Path,
   fingerprint: Str,
-  packages: List[Package],
+  packages: List[types.Package],
   built_names: Map[Bool],
   unchanged_names: Map[Bool],
   complete: Bool,
 ) [fs, env, error] {
   let state_path = world_state_path(repo_dir)
   fs.mkdir(state_path.parent)?
-  let arch = machine_arch()?
+  let arch = util.machine_arch()?
   var built = []
   var proofed = []
   var unchanged = []
@@ -1439,7 +1342,7 @@ proc write_world_state(
 proc ensure_world_state_compatible(
   repo_dir: Path,
   fingerprint: Str,
-  packages: List[Package],
+  packages: List[types.Package],
 ) [fs, env, error] -> Result[Record] {
   let state_path = world_state_path(repo_dir)
 
@@ -1482,7 +1385,7 @@ proc world_staged_package_statuses(
   fingerprint: Str,
   root: Path,
   build_root: Path,
-  planned: List[Package],
+  planned: List[types.Package],
   cross_build: Bool,
 ) [fs, env, error] -> Result[Map[Str]] {
   let state = ensure_world_state_compatible(repo_dir, fingerprint, planned)?
@@ -1509,19 +1412,7 @@ proc world_staged_package_statuses(
   statuses
 }
 
-proc find_world_index_entry(index: List[RemotePackage], arch: Str, pkg: Package) [error] -> Result[RemotePackage] {
-  for entry in index {
-    if entry.arch == arch and entry.name == pkg.name and entry.ver == pkg.ver and entry.rel == pkg.rel {
-      return entry
-    }
-  }
-
-  return Err(
-    PmError.RemotePackage(f"${pkg.name} ${version_id(pkg.ver, pkg.rel)} for ${arch} is not in the staged index"),
-  )
-}
-
-proc verify_staged_entry_tarball(repo_dir: Path, entry: RemotePackage) [fs, error] {
+proc verify_staged_entry_tarball(repo_dir: Path, entry: types.RemotePackage) [fs, error] {
   if entry.metapackage {
     return
   }
@@ -1529,57 +1420,61 @@ proc verify_staged_entry_tarball(repo_dir: Path, entry: RemotePackage) [fs, erro
   let tarball = fp"${repo_dir}/${entry.tarball}"
 
   if ! fs.exists(tarball)? {
-    return Err(PmError.PackageTarball(f"${tarball.display()} is missing"))
+    return Err(types.PmError.PackageTarball(f"${tarball.display()} is missing"))
   }
 
   let metadata = fs.metadata(tarball)?
 
   if metadata.size != entry.size {
-    return Err(PmError.PackageTarball(f"${tarball.display()} size mismatch"))
+    return Err(types.PmError.PackageTarball(f"${tarball.display()} size mismatch"))
   }
 
   let actual = hash.sha256(tarball)?.hex()
 
   if actual != entry.sha256 {
-    return Err(PmError.PackageTarball(f"${tarball.display()} checksum mismatch"))
+    return Err(types.PmError.PackageTarball(f"${tarball.display()} checksum mismatch"))
   }
 }
 
-proc verify_staged_entry_metadata(repo_dir: Path, entry: RemotePackage) [fs, error] {
+proc verify_staged_entry_metadata(repo_dir: Path, entry: types.RemotePackage) [fs, error] {
   if entry.metapackage {
     return
   }
 
   if entry.metadata == "" {
-    return Err(PmError.PackageTarball(f"${entry.name} ${version_id(entry.ver, entry.rel)} has no metadata sidecar"))
+    return Err(
+      types.PmError.PackageTarball(f"${entry.name} ${util.version_id(entry.ver, entry.rel)} has no metadata sidecar"),
+    )
   }
 
   let metadata = fp"${repo_dir}/${entry.metadata}"
 
   if ! fs.exists(metadata)? {
-    return Err(PmError.PackageTarball(f"${metadata.display()} is missing"))
+    return Err(types.PmError.PackageTarball(f"${metadata.display()} is missing"))
   }
 
   let metadata_record: Record = json.read(metadata)?
   let sidecar_hash: Str = metadata_record.get("metadata_sha256")?
 
   if sidecar_hash == "" {
-    return Err(PmError.PackageTarball(f"${metadata.display()} has empty metadata hash"))
+    return Err(types.PmError.PackageTarball(f"${metadata.display()} has empty metadata hash"))
   }
 }
 
-proc verify_world_stage(repo_dir: Path, packages: List[Package], fingerprint: Str) [fs, env, error] {
+proc verify_world_stage(repo_dir: Path, packages: List[types.Package], fingerprint: Str) [fs, env, error] {
   let state = read_world_state(repo_dir)?
   let stored_fingerprint: Str = state.get("fingerprint")?
 
   if stored_fingerprint != fingerprint {
-    return Err(PmError.PackageContract(f"${world_state_path(repo_dir).display()} belongs to a different world plan"))
+    return Err(
+      types.PmError.PackageContract(f"${world_state_path(repo_dir).display()} belongs to a different world plan"),
+    )
   }
 
   let complete: Bool = state.get("complete")?
 
   if ! complete {
-    return Err(PmError.PackageTarball("world staging repo is incomplete; run world-plan --build first"))
+    return Err(types.PmError.PackageTarball("world staging repo is incomplete; run world-plan --build first"))
   }
 
   let built: List[Str] = state.get("built")?
@@ -1588,10 +1483,10 @@ proc verify_world_stage(repo_dir: Path, packages: List[Package], fingerprint: St
   let index_path = fp"${repo_dir}/index.json"
 
   if ! fs.exists(index_path)? {
-    return Err(PmError.PackageTarball(f"${index_path.display()} is missing"))
+    return Err(types.PmError.PackageTarball(f"${index_path.display()} is missing"))
   }
 
-  let index = load_remote_index_from(index_path)?
+  let index = remote.load_remote_index_from(index_path)?
 
   for entry in index {
     verify_staged_entry_tarball(repo_dir, entry)?
@@ -1602,16 +1497,16 @@ proc verify_world_stage(repo_dir: Path, packages: List[Package], fingerprint: St
     let id = world_package_id(pkg)
 
     if id not in built and id not in unchanged {
-      return Err(PmError.PackageTarball(f"${id} has not been built in the world stage"))
+      return Err(types.PmError.PackageTarball(f"${id} has not been built in the world stage"))
     }
 
     if id not in proofed and id not in unchanged {
-      return Err(PmError.PackageTarball(f"${id} has not been proved in the world stage"))
+      return Err(types.PmError.PackageTarball(f"${id} has not been proved in the world stage"))
     }
   }
 }
 
-proc audit_world_elf_dependencies(root: Path, packages: List[Package]) [fs, env, error] {
+proc audit_world_elf_dependencies(root: Path, packages: List[types.Package]) [fs, env, error] {
   let providers = elfdeps.collect_library_providers(root)?
   var package_deps: Map[List[Str]] = {}
 
@@ -1619,13 +1514,13 @@ proc audit_world_elf_dependencies(root: Path, packages: List[Package]) [fs, env,
     package_deps[pkg.name] = pkg.deps
   }
 
-  var failures: List[ElfDependencyFailure] = []
+  var failures: List[elfdeps.ElfDependencyFailure] = []
 
   for pkg in packages {
     let allowed = elfdeps.runtime_dependency_closure(pkg.deps, package_deps)
-    let db = package_db_path(root, pkg.name)
+    let db = util.package_db_path(root, pkg.name)
     continue unless fs.exists(db)?
-    let manifest = load_manifest(db)?
+    let manifest = local.load_manifest(db)?
 
     for rel_path in manifest {
       let path_value = fp"${root}/${rel_path}"
@@ -1644,7 +1539,7 @@ proc audit_world_elf_dependencies(root: Path, packages: List[Package]) [fs, env,
     }
 
     return Err(
-      PmError.PackageContract(
+      types.PmError.PackageContract(
         f"world ELF dependency audit found ${failures.len()} undeclared runtime dependency edge(s)",
       ),
     )
@@ -1653,6 +1548,7 @@ proc audit_world_elf_dependencies(root: Path, packages: List[Package]) [fs, env,
   print --flush "world-audit" "elf-deps" "ok"
 }
 
+## Plans, builds, and optionally uploads the selected world package set.
 export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error] {
   let opts: WorldPlanOptions = cli.parse(
     argv |> drop(1),
@@ -1701,20 +1597,20 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   let target_arch = validate_world_arch(opts.arch)?
   let to_tranche = parse_world_to_tranche(f"${opts.to_tranche}", "--to-tranche")?
   let host_arch = host_world_arch()?
-  let world_build_arch = validate_world_arch(build_arch()?)?
+  let world_build_arch = validate_world_arch(util.build_arch()?)?
   let native_cross_requested = (env.get("XSH_PM_NATIVE_CROSS") ?? "0") == "1"
   let cross_build = target_arch != world_build_arch
 
   if build_requested and target_arch != host_arch and ! native_cross_requested {
-    return Err(PmError.Usage(f"world-plan --build for ${target_arch} is not supported on host ${host_arch}"))
+    return Err(types.PmError.Usage(f"world-plan --build for ${target_arch} is not supported on host ${host_arch}"))
   }
 
   if build_requested and cross_build and ! native_cross_requested {
-    return Err(PmError.Usage("world-plan native cross build requires XSH_PM_NATIVE_CROSS=1"))
+    return Err(types.PmError.Usage("world-plan native cross build requires XSH_PM_NATIVE_CROSS=1"))
   }
 
   if build_requested and world_build_arch != host_arch {
-    return Err(PmError.Usage(f"world-plan build arch ${world_build_arch} must match host ${host_arch}"))
+    return Err(types.PmError.Usage(f"world-plan build arch ${world_build_arch} must match host ${host_arch}"))
   }
 
   let colors = color_enabled()
@@ -1729,7 +1625,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     XSH_PM_BUILD_ARCH = world_build_arch
     XSH_MODULE_PATH = f"${pm_module_root.display()}:${env.get("XSH_MODULE_PATH") ?? ""}"
   } {
-    packages = load_package_dirs(package_dirs)?
+    packages = local.load_package_dirs(package_dirs)?
   } ?
 
   let fingerprint = world_plan_content_hash(packages, target_arch)?
@@ -1739,9 +1635,9 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   let build_root = if cross_build { fp"${repo_dir}/.world/build-root" } else { root }
   let work = fp"${repo_dir}/.work"
   let out = fp"${repo_dir}/.out"
-  let root_ctx: PmContext = {command: "world-plan", root, work, out}
-  let build_ctx: PmContext = {command: "world-plan", root: build_root, work, out}
-  let upload_ctx: PmContext = {...build_ctx, command: "upload"}
+  let root_ctx: types.PmContext = {command: "world-plan", root, work, out}
+  let build_ctx: types.PmContext = {command: "world-plan", root: build_root, work, out}
+  let upload_ctx: types.PmContext = {...build_ctx, command: "upload"}
   fs.mkdir(repo_dir)?
   fs.mkdir(root)?
 
@@ -1757,18 +1653,18 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
   var index = []
 
   if fs.exists(index_path)? {
-    index = load_remote_index_from(index_path)?
+    index = remote.load_remote_index_from(index_path)?
   }
 
   print --flush f"${ansi(colors, "1;36", "world-repo")} ${ansi(colors, "2", repo_dir.display())}"
   print --flush ansi(colors, "1;34", "world-plan fetching") ansi(colors, "2", "remote index")
-  let repo_urls = load_repo_urls()?
+  let repo_urls = remote.load_repo_urls()?
   var remote_index = []
-  var remote_latest: Map[RemotePackage] = {}
-  var build_remote_latest: Map[RemotePackage] = {}
+  var remote_latest: Map[types.RemotePackage] = {}
+  var build_remote_latest: Map[types.RemotePackage] = {}
 
   if repo_urls.repo != "" {
-    remote_index = load_remote_index_from_repo(repo_urls.repo, out)?
+    remote_index = remote.load_remote_index_from_repo(repo_urls.repo, out)?
     remote_latest = world_latest_remote_map(remote_index, target_arch)?
     build_remote_latest = world_latest_remote_map(remote_index, world_build_arch)?
 
@@ -1777,7 +1673,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     }
   }
 
-  let local_names = local_package_names(packages)
+  let local_names = buildroot.local_package_names(packages)
   let ordered = order_world_build_packages(build_root, packages, index, target_arch, ! cross_build)?
   let plan = planned_world_packages(ordered, local_names, remote_latest)?
   let planned = plan.packages
@@ -1817,10 +1713,10 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     let build_max_level = if to_tranche >= 0 and to_tranche < max_level { to_tranche } else { max_level }
     let build_local_names = if cross_build { map.empty() } else { local_names }
     print --flush ansi(colors, "1;34", "world-build preparing") ansi(colors, "2", "chroot base")
-    install_chroot_base_for_arch(root_ctx, local_names, false, target_arch)?
+    buildroot.install_chroot_base_for_arch(root_ctx, local_names, false, target_arch)?
 
     if build_root.display() != root.display() {
-      install_chroot_base_for_arch(build_ctx, build_local_names, true, world_build_arch)?
+      buildroot.install_chroot_base_for_arch(build_ctx, build_local_names, true, world_build_arch)?
     }
 
     var level = 0
@@ -1831,7 +1727,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
       var pending_originals = []
 
       for pkg in tranche {
-        let build_pkg: Package = planned_by_name.get(pkg.name)?
+        let build_pkg: types.Package = planned_by_name.get(pkg.name)?
         let id = world_package_id(build_pkg)
 
         if id in recorded_unchanged and world_stage_package_present_in_roots(root, build_root, pkg.name, cross_build)? {
@@ -1865,7 +1761,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
             missing_world_build_dependencies(root, pkg, root_dependency_names, local_names, built_names, cross_build)?
           }
 
-          install_remote_dependency_set_for_arch(root_ctx, missing_root_dependencies, target_arch)?
+          buildroot.install_remote_dependency_set_for_arch(root_ctx, missing_root_dependencies, target_arch)?
 
           let missing_build_dependencies = if cross_build {
             missing_fresh_world_dependencies(
@@ -1886,7 +1782,7 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
             )?
           }
 
-          install_remote_dependency_set_for_arch(build_ctx, missing_build_dependencies, world_build_arch)?
+          buildroot.install_remote_dependency_set_for_arch(build_ctx, missing_build_dependencies, world_build_arch)?
           pending = pending.push(build_pkg)
           pending_originals = pending_originals.push(pkg)
         }
@@ -1950,7 +1846,6 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
             batch.built,
             index,
             target_arch,
-            world_build_arch,
             cross_build,
           )?
           index = result.index
@@ -1997,6 +1892,6 @@ export proc world_plan_repo(argv: List[Str]) [fs, net, process, env, time, error
     verify_world_stage(repo_dir, planned, fingerprint)?
     audit_world_elf_dependencies(root, planned)?
     print --flush "world-plan" "uploading" "repository export"
-    upload_repo_export(["upload-repo-export", repo_dir.display()])?
+    repo.upload_repo_export(["upload-repo-export", repo_dir.display()])?
   }
 }

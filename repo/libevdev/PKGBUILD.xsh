@@ -1,15 +1,22 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 
+## Exported declaration `name`.
 export let name = "libevdev"
 
+## Exported declaration `ver`.
 export let ver = "1.13.6"
 
+## Exported declaration `rel`.
 export let rel = "8"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "linux"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/libevdev/libevdev/-/archive/libevdev-VERSION/libevdev-libevdev-VERSION.tar.gz",
@@ -28,6 +35,7 @@ export let upstream_sources = [
 
 type EventDef = {attr: Str, value: Int, name: Str}
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/include/libevdev-1.0/libevdev/libevdev-uinput.h",
@@ -157,12 +165,7 @@ proc c_lookup_lines(
   include_button_aliases: Bool,
   max_codes: Map[Int],
 ) [] -> Result[List[Str]] {
-  var lookups = []
-  for item in defs {
-    if item.attr == attr {
-      lookups = lookups.push({name: item.name, value: item.name})
-    }
-  }
+  var lookups = [{name: item.name, value: item.name} for item in defs if item.attr == attr]
   if include_button_aliases {
     lookups = lookups.push({name: "BTN_A", value: "BTN_A"})
     lookups = lookups.push({name: "BTN_B", value: "BTN_B"})
@@ -204,10 +207,7 @@ proc c_lookup_lines(
     lookups = lookups.push({name: max_name, value: max_name})
   }
 
-  var lines = []
-  for item in lookups {
-    lines = lines.push(f"    { .name = \"${item.name}\", .value = ${item.value} },")
-  }
+  var lines = [f"    { .name = \"${item.name}\", .value = ${item.value} }," for item in lookups]
   lines
 }
 
@@ -406,6 +406,7 @@ dep_rt = declare_dependency()""",
   fs.write(meson, text)?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"

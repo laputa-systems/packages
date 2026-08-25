@@ -1,16 +1,23 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 use pm.make as make
 
+## Exported declaration `name`.
 export let name = "freetype"
 
+## Exported declaration `ver`.
 export let ver = "2.14.1"
 
+## Exported declaration `rel`.
 export let rel = "8"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "zlib", "libpng"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "cmake", "samurai", "pkgconf", "zlib", "libpng"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://download-mirror.savannah.gnu.org/releases/freetype/freetype-VERSION.tar.xz",
@@ -27,6 +34,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/include/freetype2/dlg/dlg.h",
@@ -286,6 +294,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?
   let samu = process.which("samu")?

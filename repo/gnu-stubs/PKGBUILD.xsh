@@ -1,17 +1,24 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.util as pm_util
 
 error GnuStubsError = Failed(message: Str)
 
+## Exported declaration `name`.
 export let name = "gnu-stubs"
 
+## Exported declaration `ver`.
 export let ver = "23.1.0-rc2"
 
+## Exported declaration `rel`.
 export let rel = "29"
 
+## Exported declaration `deps`.
 export let deps = ["musl"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"files/.keep",
@@ -28,6 +35,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/lib/crtbeginS.o",
@@ -47,6 +55,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let build_arch = pm_util.build_arch()?
   let target_arch = pm_util.target_arch()?

@@ -1,13 +1,19 @@
+##! XSH module `PKGBUILD` package and build operations.
 export let name = "baselayout"
 
+## Exported declaration `ver`.
 export let ver = "1"
 
+## Exported declaration `rel`.
 export let rel = "14"
 
+## Exported declaration `deps`.
 export let deps = []
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = []
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"files/rootfs",
@@ -24,8 +30,10 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `extract_install`.
 export let extract_install = true
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"bin",
@@ -133,6 +141,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, error] {
   let _ = fs.copy_tree(p".", dest, parents: true, overwrite: true)?
 

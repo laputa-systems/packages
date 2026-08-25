@@ -1,3 +1,4 @@
+##! XSH module `proof-native` package and build operations.
 error ScriptError = Failed(kind: Str, message: Str)
 
 proc ensure(condition: Bool, kind: Str, message: Str) [error] {

@@ -1,16 +1,23 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.make as make
 
+## Exported declaration `name`.
 export let name = "dropbear"
 
+## Exported declaration `ver`.
 export let ver = "2025.89"
 
+## Exported declaration `rel`.
 export let rel = "16"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "zlib"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain", "xinit"]
 
 # Source is a git commit (no VERSION substitution needed).
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://github.com/mkj/dropbear/archive/f5d44406ef2952ca69a68d59c6b0f7f0ff777305.tar.gz",
@@ -40,6 +47,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/bin/dbclient",
@@ -62,12 +70,6 @@ export let filetree = [
     kind: "file",
   },
 ]
-
-proc install_manpage(source: Path, dest: Path) [fs, error] {
-  if source.exists()? {
-    fs.install(source, dest, 0o644, parents: true, overwrite: true)?
-  }
-}
 
 proc write_config_h() [fs, error] {
   fs.write(
@@ -160,6 +162,7 @@ proc ifndef_wrapped_defines(source: Path) [fs, error] -> Result[Str] {
   return lines.join("\n")
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let src = fs.cwd()?
   let cc = process.which("cc")?

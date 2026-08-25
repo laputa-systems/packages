@@ -1,4 +1,5 @@
 #!/bin/xsh
+##! XSH module `update-certdata` package and build operations.
 # Update CA certificate bundle from curl.se (Mozilla-derived).
 error UpdateCertdataError = Failed(message: Str)
 

@@ -1,7 +1,9 @@
+##! PM elfdeps operations and shared package-manager policy.
 use elf
 use local
 use util
 
+## Exported PM declaration `ElfDependencyFailure`.
 export type ElfDependencyFailure = {pkg: Str, file: Path, soname: Str, provider: Str}
 
 pure path_basename_text(path_value: Path) -> Str {
@@ -15,6 +17,7 @@ pure path_may_provide_library(rel_path: Path) -> Bool {
   return (text.starts_with("lib/") or text.starts_with("usr/lib/")) and ".so" in path_basename_text(rel_path)
 }
 
+## Exported PM declaration `elf_info_mentions_musl`.
 export pure elf_info_mentions_musl(needed: List[Str], interpreter: Str) -> Bool {
   if "ld-musl-" in interpreter {
     return true
@@ -23,6 +26,7 @@ export pure elf_info_mentions_musl(needed: List[Str], interpreter: Str) -> Bool 
   return "libc.so" in needed
 }
 
+## Exported PM declaration `runtime_dependency_closure`.
 export pure runtime_dependency_closure(initial: List[Str], package_deps: Map[List[Str]]) -> Map[Bool] {
   var closure: Map[Bool] = {}
   var pending = initial
@@ -42,6 +46,7 @@ export pure runtime_dependency_closure(initial: List[Str], package_deps: Map[Lis
   closure
 }
 
+## Exported PM declaration `missing_elf_runtime_dependencies`.
 export pure missing_elf_runtime_dependencies(
   pkg_name: Str,
   deps: List[Str],
@@ -58,6 +63,7 @@ export pure missing_elf_runtime_dependencies(
   missing_elf_runtime_dependencies_with_allowed(pkg_name, allowed, needed, interpreter, providers)
 }
 
+## Exported PM declaration `missing_elf_runtime_dependencies_with_allowed`.
 export pure missing_elf_runtime_dependencies_with_allowed(
   pkg_name: Str,
   allowed: Map[Bool],
@@ -83,9 +89,10 @@ export pure missing_elf_runtime_dependencies_with_allowed(
   failures
 }
 
+## Exported PM declaration `collect_library_providers`.
 export proc collect_library_providers(root: Path) [fs, error] -> Result[Map[Str]] {
   var providers: Map[Str] = {}
-  let packages_db = packages_db_path(root)
+  let packages_db = util.packages_db_path(root)
 
   if ! fs.exists(packages_db)? {
     return providers
@@ -123,6 +130,7 @@ export proc collect_library_providers(root: Path) [fs, error] -> Result[Map[Str]
   providers
 }
 
+## Exported PM declaration `installed_file_elf_dependency_failures`.
 export proc installed_file_elf_dependency_failures(
   pkg_name: Str,
   allowed: Map[Bool],

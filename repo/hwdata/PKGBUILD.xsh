@@ -1,13 +1,19 @@
+##! XSH module `PKGBUILD` package and build operations.
 export let name = "hwdata"
 
+## Exported declaration `ver`.
 export let ver = "0.400"
 
+## Exported declaration `rel`.
 export let rel = "9"
 
+## Exported declaration `deps`.
 export let deps = []
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = []
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://github.com/vcrhonek/hwdata/archive/refs/tags/vVERSION.tar.gz",
@@ -24,6 +30,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/share/hwdata/pci.ids",
@@ -39,6 +46,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/share/hwdata")?
   fs.install(p"pnp.ids", fp"${dest}/usr/share/hwdata/pnp.ids", 0o644, parents: true, overwrite: true)?

@@ -1,13 +1,19 @@
+##! XSH module `PKGBUILD` package and build operations.
 export let name = "laputa-fs"
 
+## Exported declaration `ver`.
 export let ver = "1"
 
+## Exported declaration `rel`.
 export let rel = "8"
 
+## Exported declaration `deps`.
 export let deps = ["xsh"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = []
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"files/mkfs.vfat.xsh",
@@ -63,6 +69,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/bin/fsck.ext4",
@@ -82,6 +89,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, error] {
   fs.install(p"mkfs.vfat.xsh", fp"${dest}/usr/bin/mkfs.vfat", 0o755, parents: true, overwrite: true)?
   fs.install(p"mkfs.ext4.xsh", fp"${dest}/usr/bin/mkfs.ext4", 0o755, parents: true, overwrite: true)?

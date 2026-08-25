@@ -1812,7 +1812,6 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
   if name == "m4exit" {
     let code = (if margs.len() >= 1 { margs[0].trim() } else { "0" }).parse_int()?
     abort(code)
-    return {text: "", st}
   }
 
   if name == "m4wrap" {

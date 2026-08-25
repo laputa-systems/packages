@@ -561,14 +561,24 @@ export let filetree = [
 export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/bin")?
   for pair in [
-    {source: "xsh-bin", dest: "xsh"},
-    {source: "xshi-bin", dest: "xshi"},
-    {source: "xsht-bin", dest: "xsht"},
+    {
+      source: "xsh-bin",
+      dest: "xsh",
+    },
+    {
+      source: "xshi-bin",
+      dest: "xshi",
+    },
+    {
+      source: "xsht-bin",
+      dest: "xsht",
+    },
   ] {
     let staged = fs.children(fp"${pair.source}")? |> where .kind == "file"
     if staged.len() != 1 {
       return Err(XshPackageError.Source(f"expected one staged ${pair.source} release artifact"))
     }
+
     fs.install(staged[0].path, fp"${dest}/usr/bin/${pair.dest}", 0o755, parents: true, overwrite: true)?
   }
 

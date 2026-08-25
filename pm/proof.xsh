@@ -1,15 +1,19 @@
+##! PM proof operations and shared package-manager policy.
 use elfdeps
 use local
 use pm.util as pm_util
 
+## Exported PM declaration `ProofError`.
 export error ProofError = Failed(kind: Str, message: Str)
 
+## Exported PM declaration `ensure`.
 export proc ensure(condition: Bool, kind: Str, message: Str) [error] {
   if ! condition {
     return Err(ProofError.Failed(kind, message))
   }
 }
 
+## Exported PM declaration `package_metadata`.
 export proc package_metadata(root: Path, name: Str) [fs, error] {
   let db = fp"${root}/var/lib/xsh-pm/packages/${name}/metadata.json"
   ensure(fs.exists(db)?, f"proof-${name}", f"missing package metadata: ${db.display()}")?
@@ -41,6 +45,7 @@ proc package_dependency_map(root: Path) [fs, error] -> Result[Map[List[Str]]] {
   package_deps
 }
 
+## Exported PM declaration `verify_package_elf_dependencies`.
 export proc verify_package_elf_dependencies(root: Path, name: Str) [fs, error] {
   let providers = elfdeps.collect_library_providers(root)?
   let package_deps = package_dependency_map(root)?
@@ -70,6 +75,7 @@ export proc verify_package_elf_dependencies(root: Path, name: Str) [fs, error] {
   }
 }
 
+## Exported PM declaration `elf_machine_name`.
 export pure elf_machine_name(arch: Str) -> Str {
   if arch == "aarch64" {
     return "AArch64"
@@ -82,6 +88,7 @@ export pure elf_machine_name(arch: Str) -> Str {
   return arch
 }
 
+## Exported PM declaration `readelf_tool`.
 export proc readelf_tool() [fs, process, env, error] -> Result[Path] {
   let host_readelf = /usr/bin/readelf
   let host_llvm_readelf = /usr/bin/llvm-readelf
@@ -102,6 +109,7 @@ export proc readelf_tool() [fs, process, env, error] -> Result[Path] {
   return process.which("llvm-readelf")?
 }
 
+## Exported PM declaration `target_elf`.
 export proc target_elf(root: Path, rel: Path, name: Str) [fs, process, env, error] {
   let path_value = fp"${root}/${rel}"
   ensure(fs.exists(path_value)?, f"proof-${name}", f"missing ELF: ${path_value.display()}")?

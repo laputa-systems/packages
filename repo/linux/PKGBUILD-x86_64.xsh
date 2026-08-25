@@ -1,3 +1,4 @@
+##! XSH module `PKGBUILD-x86_64` package and build operations.
 use PKGBUILD-shared as PKGBUILD_shared
 use kbuild
 
@@ -434,7 +435,7 @@ proc write_x86_realmode_pasyms(nm: Path, objects: List[Str]) [fs, process, env, 
   }
 
   if unique.len() == 0 {
-    return Err(ScriptError.Failed("linux-x86-realmode-pasyms", "llvm-nm did not report realmode symbols"))
+    return Err(kbuild.ScriptError.Failed("linux-x86-realmode-pasyms", "llvm-nm did not report realmode symbols"))
   }
 
   kbuild.write_text_if_changed(
@@ -632,7 +633,7 @@ proc build_x86_realmode_payload(cc: Path) [fs, process, env, error] {
   let relocs_out = run.capture --bytes $relocs "--realmode" "arch/x86/realmode/rm/realmode.elf" ?
 
   if ! relocs_out.status.ok {
-    return Err(ScriptError.Failed("linux-x86-realmode-relocs", "relocs --realmode failed"))
+    return Err(kbuild.ScriptError.Failed("linux-x86-realmode-relocs", "relocs --realmode failed"))
   }
 
   fs.write(p"arch/x86/realmode/rm/realmode.relocs", relocs_out.stdout)?
@@ -642,6 +643,7 @@ proc build_x86_realmode_payload(cc: Path) [fs, process, env, error] {
   )?
 }
 
+## Exported declaration `build_x86_64_scratch`.
 export proc build_x86_64_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process, env, time, error] {
   let prepare_start = PKGBUILD_shared.timing_start("prepare")
   kbuild.write_config_headers(p".config", p".", ver, srcarch)?

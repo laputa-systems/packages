@@ -1,18 +1,25 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.configure as configure
 use pm.make as make
 use pm.target as target
 use pm.util as pm_util
 
+## Exported declaration `name`.
 export let name = "bison"
 
+## Exported declaration `ver`.
 export let ver = "3.8.2"
 
+## Exported declaration `rel`.
 export let rel = "8"
 
+## Exported declaration `deps`.
 export let deps = ["musl"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["llvm-toolchain"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://mirrors.kernel.org/gnu/bison/bison-VERSION.tar.xz",
@@ -42,6 +49,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/bin/bison",
@@ -187,6 +195,7 @@ proc install_data_tree(src: Path, dest: Path) [fs, error] {
   }
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let arch = pm_util.target_arch()?

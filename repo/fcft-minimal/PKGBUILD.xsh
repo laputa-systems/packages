@@ -1,14 +1,20 @@
+##! XSH module `PKGBUILD` package and build operations.
 use pm.env as pm_env
 use pm.make as make
 
+## Exported declaration `name`.
 export let name = "fcft-minimal"
 
+## Exported declaration `ver`.
 export let ver = "3.3.3"
 
+## Exported declaration `rel`.
 export let rel = "9"
 
+## Exported declaration `deps`.
 export let deps = ["musl", "fontconfig", "freetype", "pixman"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = [
   "llvm-toolchain",
   "muon",
@@ -20,8 +26,10 @@ export let mkdeps_host = [
   "tllist",
 ]
 
+## Exported declaration `mkdeps_target`.
 export let mkdeps_target = ["pixman-dev", "tllist"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"https://codeberg.org/dnkl/fcft/archive/VERSION.tar.gz",
@@ -64,6 +72,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"usr/include/fcft/fcft.h",
@@ -140,6 +149,7 @@ version = files('version.h')
   fs.write(meson, text)?
 }
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${make.jobs()?}"

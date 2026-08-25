@@ -1,15 +1,21 @@
+##! XSH module `PKGBUILD` package and build operations.
 export let name = "laputa-net"
 
+## Exported declaration `ver`.
 export let ver = "1"
 
+## Exported declaration `rel`.
 export let rel = "10"
 
 # ifup/ifdown are xsh core applets; the net service drives them.
 # wpa_supplicant provides Wi-Fi association for wireless interfaces.
+## Exported declaration `deps`.
 export let deps = ["xsh", "wpa_supplicant"]
 
+## Exported declaration `mkdeps_host`.
 export let mkdeps_host = ["xinit"]
 
+## Exported declaration `upstream_sources`.
 export let upstream_sources = [
   {
     source: p"service.xsh",
@@ -39,6 +45,7 @@ export let upstream_sources = [
   },
 ]
 
+## Exported declaration `filetree`.
 export let filetree = [
   {
     path: p"etc/network/if-down.d/keep",
@@ -70,6 +77,7 @@ export let filetree = [
   },
 ]
 
+## Exported declaration `build`.
 export proc build(dest: Path) [fs, error] {
   fs.install(p"service.xsh", fp"${dest}/usr/lib/xinit/services/net.xsh", 0o644, parents: true, overwrite: true)?
   fs.install(p"interfaces", fp"${dest}/etc/network/interfaces", 0o644, parents: true, overwrite: true)?

@@ -1,7 +1,10 @@
+##! XSH module `parser_gen` package and build operations.
 error ParserGenError = Failed(kind: Str, message: Str)
 
+## Exported declaration `ParserGen`.
 export type ParserGen = {name: Str, tool: Path, argv: List[Str], outputs: List[Path]}
 
+## Exported declaration `bison_tool`.
 export proc bison_tool() [env, error] -> Result[Path] {
   let root = env.get("XSH_PM_BUILD_ROOT") ?? env.get("LAPUTA_ROOT") ?? ""
 
@@ -12,6 +15,7 @@ export proc bison_tool() [env, error] -> Result[Path] {
   return /usr/lib/pm/repo/bison/files/bison.xsh
 }
 
+## Exported declaration `flex_tool`.
 export proc flex_tool() [env, error] -> Result[Path] {
   let root = env.get("XSH_PM_BUILD_ROOT") ?? env.get("LAPUTA_ROOT") ?? ""
 
@@ -22,6 +26,7 @@ export proc flex_tool() [env, error] -> Result[Path] {
   return /usr/lib/pm/repo/flex/files/flex.xsh
 }
 
+## Exported declaration `parser_generators`.
 export proc parser_generators() [env, error] -> Result[List[ParserGen]] {
   return [
     {
@@ -83,6 +88,7 @@ export proc parser_generators() [env, error] -> Result[List[ParserGen]] {
   ]
 }
 
+## Exported declaration `parser_generator`.
 export proc parser_generator(name: Str) [env, error] -> Result[ParserGen] {
   for spec in parser_generators()? {
     if spec.name == name {
@@ -93,6 +99,7 @@ export proc parser_generator(name: Str) [env, error] -> Result[ParserGen] {
   return Err(ParserGenError.Failed("linux-parser-generator", f"unknown parser generator '${name}'"))
 }
 
+## Exported declaration `remove_outputs`.
 export proc remove_outputs(spec: ParserGen) [fs, error] {
   for out in spec.outputs {
     fs.remove(out, missing_ok: true)?
@@ -105,6 +112,7 @@ export proc remove_outputs(spec: ParserGen) [fs, error] {
   }
 }
 
+## Exported declaration `run_generator`.
 export proc run_generator(spec: ParserGen) [fs, process, error] {
   let command = process.command_argv(
     /bin/xsh,
@@ -131,6 +139,7 @@ export proc run_generator(spec: ParserGen) [fs, process, error] {
   }
 }
 
+## Exported declaration `generate_parser`.
 export proc generate_parser(name: Str, clean: Bool = true) [fs, process, env, error] {
   let spec = parser_generator(name)?
 
@@ -141,16 +150,19 @@ export proc generate_parser(name: Str, clean: Bool = true) [fs, process, env, er
   run_generator(spec)?
 }
 
+## Exported declaration `generate_kconfig_parsers`.
 export proc generate_kconfig_parsers(clean: Bool = true) [fs, process, env, error] {
   generate_parser("bison-kconfig", clean)?
   generate_parser("flex-kconfig", clean)?
 }
 
+## Exported declaration `generate_dtc_parsers`.
 export proc generate_dtc_parsers(clean: Bool = true) [fs, process, env, error] {
   generate_parser("bison-dtc", clean)?
   generate_parser("flex-dtc", clean)?
 }
 
+## Exported declaration `generate_linux_parsers`.
 export proc generate_linux_parsers(clean: Bool = true) [fs, process, env, error] {
   for spec in parser_generators()? {
     if clean {

@@ -1,6 +1,8 @@
+##! XSH module `PKGBUILD-shared` package and build operations.
 use kbuild
 use pm.make as make
 
+## Exported declaration `build_jobs`.
 export proc build_jobs() [env, error] -> Result[Int] {
   let raw = env.get("XSH_LINUX_KBUILD_JOBS") ?? ""
 
@@ -8,7 +10,7 @@ export proc build_jobs() [env, error] -> Result[Int] {
     let parsed = raw.parse_int()?
 
     if parsed <= 0 {
-      return Err(ScriptError.Failed("linux-kbuild-jobs", "XSH_LINUX_KBUILD_JOBS must be a positive integer"))
+      return Err(kbuild.ScriptError.Failed("linux-kbuild-jobs", "XSH_LINUX_KBUILD_JOBS must be a positive integer"))
     }
 
     return parsed
@@ -17,6 +19,7 @@ export proc build_jobs() [env, error] -> Result[Int] {
   return make.jobs()
 }
 
+## Exported declaration `archive_analysis_jobs`.
 export proc archive_analysis_jobs() [env, error] -> Result[Int] {
   let raw = env.get("XSH_LINUX_KBUILD_ARCHIVE_ANALYSIS_JOBS") ?? ""
 
@@ -28,7 +31,7 @@ export proc archive_analysis_jobs() [env, error] -> Result[Int] {
 
   if parsed <= 0 {
     return Err(
-      ScriptError.Failed(
+      kbuild.ScriptError.Failed(
         "linux-kbuild-archive-analysis-jobs",
         "XSH_LINUX_KBUILD_ARCHIVE_ANALYSIS_JOBS must be a positive integer",
       ),
@@ -38,6 +41,7 @@ export proc archive_analysis_jobs() [env, error] -> Result[Int] {
   return parsed
 }
 
+## Exported declaration `discover_options_from_env`.
 export proc discover_options_from_env() [env, error] -> Result[kbuild.DiscoverOptions] {
   let every_text = env.get("XSH_LINUX_KBUILD_PROGRESS_EVERY") ?? "100"
   let jobs_text = env.get("XSH_LINUX_KBUILD_DISCOVER_JOBS") ?? ""
@@ -55,6 +59,7 @@ export proc discover_options_from_env() [env, error] -> Result[kbuild.DiscoverOp
   }
 }
 
+## Exported declaration `discover_package_plan`.
 export proc discover_package_plan(srcarch: Str) [fs, process, env, time, error] -> Result[kbuild.KbuildPlan] {
   let config = kbuild.load_config(p".config")?
   let options = discover_options_from_env()?
@@ -75,6 +80,7 @@ export proc discover_package_plan(srcarch: Str) [fs, process, env, time, error] 
   return kbuild.discover_plan_with_options(p".", config, srcarch, options)?
 }
 
+## Exported declaration `write_materialized_outputs`.
 export proc write_materialized_outputs(outputs: List[Path]) [fs, error] {
   var text = """format linux-materialized-outputs-v1
 """
@@ -87,6 +93,7 @@ export proc write_materialized_outputs(outputs: List[Path]) [fs, error] {
   kbuild.write_text_if_changed(p".xsh-kbuild/materialized-outputs", text)?
 }
 
+## Exported declaration `requested_stop_after`.
 export proc requested_stop_after() [env, error] -> Result[Str] {
   let requested = env.get("XSH_LINUX_KBUILD_STOP_AFTER") ?? ""
 
@@ -96,7 +103,7 @@ export proc requested_stop_after() [env, error] -> Result[Str] {
 
   if requested not in ["prepare", "discover", "plan", "compile", "link"] {
     return Err(
-      ScriptError.Failed(
+      kbuild.ScriptError.Failed(
         "linux-kbuild-stop-after",
         f"XSH_LINUX_KBUILD_STOP_AFTER must be prepare, discover, plan, compile, or link; got '${requested}'",
       ),
@@ -106,12 +113,14 @@ export proc requested_stop_after() [env, error] -> Result[Str] {
   return requested
 }
 
+## Exported declaration `stop_after`.
 export proc stop_after(stage: Str) [env, error] {
   if requested_stop_after()? == stage {
-    return Err(ScriptError.Failed("linux-kbuild-stopped", f"stopped after ${stage}"))
+    return Err(kbuild.ScriptError.Failed("linux-kbuild-stopped", f"stopped after ${stage}"))
   }
 }
 
+## Exported declaration `timing_start`.
 export proc timing_start(stage: Str) [env, time] -> Int {
   if (env.get("XSH_LINUX_KBUILD_TIMING") ?? "") == "1" {
     print "linux-kbuild-timing-start" $stage
@@ -121,6 +130,7 @@ export proc timing_start(stage: Str) [env, time] -> Int {
   return 0
 }
 
+## Exported declaration `timing_done`.
 export proc timing_done(stage: Str, start: Int) [env, time] {
   if (env.get("XSH_LINUX_KBUILD_TIMING") ?? "") == "1" {
     let elapsed = time.now() - start
@@ -128,6 +138,7 @@ export proc timing_done(stage: Str, start: Int) [env, time] {
   }
 }
 
+## Exported declaration `emit_plan_if_enabled`.
 export proc emit_plan_if_enabled(plan: kbuild.KbuildPlan) [fs, env, error] {
   if (env.get("XSH_LINUX_KBUILD_PLAN") ?? "") == "1" {
     kbuild.write_discovered_plan(plan, p".xsh-kbuild-plan.json")?
@@ -135,6 +146,7 @@ export proc emit_plan_if_enabled(plan: kbuild.KbuildPlan) [fs, env, error] {
   }
 }
 
+## Exported declaration `emit_kbuild_progress`.
 export proc emit_kbuild_progress(message: Str) [fs, env, error] {
   if (env.get("XSH_LINUX_KBUILD_PROGRESS") ?? "") == "1" {
     kbuild.write_text_if_changed(
@@ -201,6 +213,7 @@ proc copy_archive_plan_cache(source: Path, dest: Path) [fs, error] {
   }
 }
 
+## Exported declaration `cached_archive_plan`.
 export proc cached_archive_plan(
   plan: kbuild.KbuildPlan,
   cc: Path,
@@ -211,7 +224,7 @@ export proc cached_archive_plan(
 ) [fs, process, env, time, error] -> Result[Record] {
   if srcarch != "arm64" and srcarch != "x86" {
     return Err(
-      ScriptError.Failed(
+      kbuild.ScriptError.Failed(
         "linux-native-kbuild-unsupported-arch",
         f"native scratch Kbuild final link is only implemented for arm64 and x86; ${srcarch} needs new arch support",
       ),
@@ -241,7 +254,7 @@ export proc cached_archive_plan(
 
             return archive_plan
           }
-          Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
+          Err(kbuild.ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
             f"xsh-kbuild-archive-plan-summary-cache miss ${kind}",
           )?
         }
@@ -259,7 +272,7 @@ export proc cached_archive_plan(
 
           return archive_plan
         }
-        Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
+        Err(kbuild.ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
           f"xsh-kbuild-archive-plan-cache miss ${kind}",
         )?
       }
@@ -277,7 +290,7 @@ export proc cached_archive_plan(
             write_archive_plan_fingerprint(archive_fingerprint, fingerprint)?
             return archive_plan
           }
-          Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
+          Err(kbuild.ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
             f"xsh-kbuild-archive-plan-stable-summary-cache miss ${kind}",
           )?
         }
@@ -293,7 +306,7 @@ export proc cached_archive_plan(
           write_archive_plan_fingerprint(archive_fingerprint, fingerprint)?
           return archive_plan
         }
-        Err(ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
+        Err(kbuild.ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
           f"xsh-kbuild-archive-plan-stable-cache miss ${kind}",
         )?
       }
@@ -301,7 +314,7 @@ export proc cached_archive_plan(
   }
 
   emit_kbuild_progress(
-    f"xsh-kbuild-archive-plan-start $plan.dirs.len() dirs $plan.objects.len() objects $plan.composites.len() composites",
+    f"xsh-kbuild-archive-plan-start ${plan.dirs.len()} dirs ${plan.objects.len()} objects ${plan.composites.len()} composites",
   )?
 
   let analysis_jobs = archive_analysis_jobs()?
@@ -340,6 +353,7 @@ export proc cached_archive_plan(
   return archive_plan
 }
 
+## Exported declaration `cached_package_plan`.
 export proc cached_package_plan(srcarch: Str) [fs, process, env, time, error] -> Result[kbuild.KbuildPlan] {
   let config = kbuild.load_config(p".config")?
   let explicit_inline = env.get("XSH_LINUX_KBUILD_USE_PLAN_TEXT_INLINE") ?? ""
@@ -381,7 +395,7 @@ export proc cached_package_plan(srcarch: Str) [fs, process, env, time, error] ->
   if ! force_discover and plan_path.exists()? and fingerprint_path.exists()? {
     emit_kbuild_progress("xsh-kbuild-plan-cache read")?
     let plan = kbuild.read_discovered_plan(plan_path)?
-    emit_kbuild_progress(f"xsh-kbuild-plan-cache fingerprint $plan.dirs.len() dirs $plan.objects.len() objects")?
+    emit_kbuild_progress(f"xsh-kbuild-plan-cache fingerprint ${plan.dirs.len()} dirs ${plan.objects.len()} objects")?
 
     if (env.get("XSH_LINUX_KBUILD_TRUST_PLAN_CACHE") ?? "") == "1" {
       print "xsh-kbuild-plan-cache" "trusted" plan.dirs.len() "dirs" plan.objects.len() "objects" plan.composites.len() "composites"
@@ -544,7 +558,7 @@ export proc cached_package_plan(srcarch: Str) [fs, process, env, time, error] ->
 
   emit_kbuild_progress("xsh-kbuild-plan discover-start")?
   let plan = discover_package_plan(srcarch)?
-  emit_kbuild_progress(f"xsh-kbuild-plan write $plan.dirs.len() dirs $plan.objects.len() objects")?
+  emit_kbuild_progress(f"xsh-kbuild-plan write ${plan.dirs.len()} dirs ${plan.objects.len()} objects")?
   kbuild.write_discovered_plan(plan, plan_path)?
   remove_archive_plan_cache()?
   emit_kbuild_progress("xsh-kbuild-plan fingerprint")?
@@ -569,6 +583,7 @@ export proc cached_package_plan(srcarch: Str) [fs, process, env, time, error] ->
   return plan
 }
 
+## Exported declaration `add_extra_objects_from_env`.
 export proc add_extra_objects_from_env(plan: kbuild.KbuildPlan) [env, error] -> Result[kbuild.KbuildPlan] {
   let raw = (env.get("XSH_LINUX_KBUILD_EXTRA_OBJECTS") ?? "").replace(",", " ")
   var objects = [fp"${item}" for item in raw.words()]
@@ -588,7 +603,7 @@ proc parse_kbuild_only_outputs(raw: Str) [error] -> Result[List[Path]] {
 
   if outputs.len() == 0 {
     return Err(
-      ScriptError.Failed(
+      kbuild.ScriptError.Failed(
         "linux-native-kbuild-target-empty",
         "XSH_LINUX_KBUILD_ONLY must name at least one archive-plan output",
       ),
@@ -598,6 +613,7 @@ proc parse_kbuild_only_outputs(raw: Str) [error] -> Result[List[Path]] {
   return outputs
 }
 
+## Exported declaration `run_targeted_kbuild_outputs`.
 export proc run_targeted_kbuild_outputs(archive_plan: Record, only: Str) [fs, process, env, time, error] {
   let outputs = parse_kbuild_only_outputs(only)?
   let jobs_count = build_jobs()?
@@ -613,19 +629,20 @@ export proc run_targeted_kbuild_outputs(archive_plan: Record, only: Str) [fs, pr
   stop_after("compile")?
 
   return Err(
-    ScriptError.Failed(
+    kbuild.ScriptError.Failed(
       "linux-native-kbuild-target-complete",
       f"native scratch Kbuild ran outputs.len() requested target(s); continue with the next targeted object batch or the full archive graph",
     ),
   )
 }
 
+## Exported declaration `require_valid_archive_plan`.
 export proc require_valid_archive_plan(archive_plan: Record) [error] {
   if archive_plan.has("duplicate_outputs") {
     let duplicates: List[Path] = archive_plan.duplicate_outputs
 
     if duplicates.len() > 0 {
-      return Err(ScriptError.Failed("linux-native-kbuild-duplicate-output", "archive plan has duplicate output"))
+      return Err(kbuild.ScriptError.Failed("linux-native-kbuild-duplicate-output", "archive plan has duplicate output"))
     }
   }
 
@@ -637,7 +654,9 @@ export proc require_valid_archive_plan(archive_plan: Record) [error] {
       continue when key == ""
 
       if outputs.get(key, false) {
-        return Err(ScriptError.Failed("linux-native-kbuild-duplicate-output", "archive plan has duplicate output"))
+        return Err(
+          kbuild.ScriptError.Failed("linux-native-kbuild-duplicate-output", "archive plan has duplicate output"),
+        )
       }
 
       outputs[key] = true
@@ -645,12 +664,13 @@ export proc require_valid_archive_plan(archive_plan: Record) [error] {
   }
 }
 
+## Exported declaration `require_complete_x86_archive_plan`.
 export proc require_complete_x86_archive_plan(archive_plan: Record) [error] {
   require_valid_archive_plan(archive_plan)?
 
   if archive_plan.generated_objects.len() > 0 {
     return Err(
-      ScriptError.Failed(
+      kbuild.ScriptError.Failed(
         "linux-native-kbuild-generated-incomplete",
         f"x86 full package build still has ${archive_plan.generated_objects.len()} generated object(s); generate or exclude them before linking",
       ),
@@ -659,7 +679,7 @@ export proc require_complete_x86_archive_plan(archive_plan: Record) [error] {
 
   if archive_plan.missing_sources.len() > 0 {
     return Err(
-      ScriptError.Failed(
+      kbuild.ScriptError.Failed(
         "linux-native-kbuild-missing-sources",
         f"x86 full package build still has ${archive_plan.missing_sources.len()} selected object(s) without direct sources; restore/generate/exclude them before linking",
       ),
@@ -667,6 +687,7 @@ export proc require_complete_x86_archive_plan(archive_plan: Record) [error] {
   }
 }
 
+## Exported declaration `native_tool`.
 export proc native_tool(name: Str) [fs, process, env, error] -> Result[Path] {
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
 
@@ -681,6 +702,7 @@ export proc native_tool(name: Str) [fs, process, env, error] -> Result[Path] {
   return process.which(name)?
 }
 
+## Exported declaration `run_native_command`.
 export proc run_native_command(argv: List[Str]) [process, env, error] {
   let build_root = env.get("XSH_PM_BUILD_ROOT") ?? ""
 
@@ -693,10 +715,11 @@ export proc run_native_command(argv: List[Str]) [process, env, error] {
   let status = process.run(command)?
 
   if ! status.ok {
-    return Err(ScriptError.Failed("linux-native-kbuild-command", f"command failed: ${argv.join(" ")}"))
+    return Err(kbuild.ScriptError.Failed("linux-native-kbuild-command", f"command failed: ${argv.join(" ")}"))
   }
 }
 
+## Exported declaration `write_default_builtin_initramfs`.
 export proc write_default_builtin_initramfs(cc: Path) [fs, process, env, error] {
   # Keep Linux's default built-in cpio, not a userspace initramfs. With
   # CONFIG_INITRAMFS_SOURCE="", upstream kbuild generates usr/default_cpio_list:
@@ -713,7 +736,7 @@ export proc write_default_builtin_initramfs(cc: Path) [fs, process, env, error] 
   let output = run.capture --bytes $gen "usr/default_cpio_list" ?
 
   if ! output.status.ok {
-    return Err(ScriptError.Failed("linux-initramfs-default-cpio", "gen_init_cpio failed"))
+    return Err(kbuild.ScriptError.Failed("linux-initramfs-default-cpio", "gen_init_cpio failed"))
   }
 
   fs.write(p"usr/initramfs_inc_data", output.stdout)?

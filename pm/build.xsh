@@ -1,3 +1,4 @@
+##! PM build operations and shared package-manager policy.
 use extensions
 use local
 use pm.env as pm_env
@@ -6,8 +7,9 @@ use sources
 use types
 use util
 
-export proc write_proof_receipt(out: Path, pkg: Package, tarball: Path) [fs, error] {
-  let receipt = proof_receipt_path(out, pkg)
+## Exported PM declaration `write_proof_receipt`.
+export proc write_proof_receipt(out: Path, pkg: types.Package, tarball: Path) [fs, error] {
+  let receipt = util.proof_receipt_path(out, pkg)
   fs.mkdir(receipt.parent)?
 
   json.write(
@@ -37,7 +39,7 @@ pure source_fingerprint_input(rel: Path) -> Bool {
   return ! name.ends_with(".xsh")
 }
 
-proc source_ready_fingerprint(pkg: Package) [fs, env, error] -> Result[Str] {
+proc source_ready_fingerprint(pkg: types.Package) [fs, env, error] -> Result[Str] {
   let arch = util.target_arch()?
   var body = f"""${pkg.name}	${pkg.ver}	${pkg.rel}	${arch}
 """
@@ -56,8 +58,8 @@ proc source_ready_fingerprint(pkg: Package) [fs, env, error] -> Result[Str] {
   bytes.from_text(body).sha256().hex()
 }
 
-proc prepare_build_package_source(ctx: PmContext, pkg: Package) [fs, net, process, env, time, error] {
-  let id = package_id(pkg.name, pkg.ver, pkg.rel)
+proc prepare_build_package_source(ctx: types.PmContext, pkg: types.Package) [fs, net, process, env, time, error] {
+  let id = util.package_id(pkg.name, pkg.ver, pkg.rel)
   let pkg_work = fp"${ctx.work}/${id}"
   let src = fp"${pkg_work}/src"
   let reuse_work = (env.get("XSH_PM_REUSE_WORK") ?? "") == "1"
@@ -76,13 +78,13 @@ proc prepare_build_package_source(ctx: PmContext, pkg: Package) [fs, net, proces
       fs.mkdir(src)?
     }
 
-    prepare_package_source_tree(ctx.work, ctx.out, pkg, src, false, true, ! reuse_work)?
+    sources.prepare_package_source_tree(ctx.work, ctx.out, pkg, src, false, true, ! reuse_work)?
 
     fs.write(source_ready, source_fingerprint)?
   }
 }
 
-proc chroot_build_enabled(ctx: PmContext) [env] -> Bool {
+proc chroot_build_enabled(ctx: types.PmContext) [env] -> Bool {
   if (env.get("XSH_PM_IN_CHROOT") ?? "") == "1" {
     return false
   }
@@ -231,8 +233,9 @@ proc xsht_runner() [fs, process, env, error] -> Result[Path] {
   process.which("xsht")?
 }
 
+## Exported PM declaration `build_prepared_package`.
 export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball: Path) [fs, process, env, error] {
-  let packages = load_package_dirs([pkg_dir])?
+  let packages = local.load_package_dirs([pkg_dir])?
   let pkg = packages[0]
   let makeflags = env.get("MAKEFLAGS") ?? f"-s -j${cpu.count()}"
 
@@ -304,10 +307,12 @@ main(@args)?
 
     if ! status.ok {
       if status.exited() {
-        return Err(PmError.ExtensionFailed(f"package build for ${pkg.name} exited with status ${status.exit_code()?}"))
+        return Err(
+          types.PmError.ExtensionFailed(f"package build for ${pkg.name} exited with status ${status.exit_code()?}"),
+        )
       }
 
-      return Err(PmError.ExtensionFailed(f"package build for ${pkg.name} was signaled"))
+      return Err(types.PmError.ExtensionFailed(f"package build for ${pkg.name} was signaled"))
     }
   } ?
 
@@ -318,16 +323,16 @@ main(@args)?
     }
     |> sort-by .display()
 
-  validate_and_strip_package(pkg, dest, manifest)?
-  let etcsums = collect_etcsums(dest, manifest)?
-  write_package_db(dest, pkg, manifest, etcsums)?
+  local.validate_and_strip_package(pkg, dest, manifest)?
+  let etcsums = local.collect_etcsums(dest, manifest)?
+  local.write_package_db(dest, pkg, manifest, etcsums)?
   let dest_text = dest.display()
   var archive_paths = []
 
   for entry in fs.walk(dest) {
     var include = entry.kind == "file" or entry.kind == "symlink"
 
-    if pkg.extract_install and entry.kind == "dir" and entry.path.display() != dest_text and dir_empty(entry.path)? {
+    if pkg.extract_install and entry.kind == "dir" and entry.path.display() != dest_text and local.dir_empty(entry.path)? {
       include = true
     }
 
@@ -341,7 +346,7 @@ main(@args)?
   archive.tar_create(tarball, dest, archive_paths, compression: "gz", overwrite: true)?
 }
 
-proc chroot_build_cache_dir(ctx: PmContext, pkg: Package) [] -> Path {
+proc chroot_build_cache_dir(ctx: types.PmContext, pkg: types.Package) [] -> Path {
   return fp"${ctx.work}/.chroot-build-cache/${pkg.name}"
 }
 
@@ -356,7 +361,7 @@ proc linux_kbuild_cache_files() [] -> List[Str] {
   ]
 }
 
-proc seed_chroot_build_cache(ctx: PmContext, pkg: Package, src: Path) [fs, error] {
+proc seed_chroot_build_cache(ctx: types.PmContext, pkg: types.Package, src: Path) [fs, error] {
   if pkg.name != "linux" {
     return
   }
@@ -372,7 +377,7 @@ proc seed_chroot_build_cache(ctx: PmContext, pkg: Package, src: Path) [fs, error
   }
 }
 
-proc preserve_chroot_build_cache(ctx: PmContext, pkg: Package, src: Path) [fs, error] {
+proc preserve_chroot_build_cache(ctx: types.PmContext, pkg: types.Package, src: Path) [fs, error] {
   if pkg.name != "linux" {
     return
   }
@@ -438,10 +443,10 @@ proc run_logged_proof_command(
 
     if ! status.ok {
       if status.exited() {
-        return Err(PmError.ExtensionFailed(f"package proof exited with status ${status.exit_code()?}"))
+        return Err(types.PmError.ExtensionFailed(f"package proof exited with status ${status.exit_code()?}"))
       }
 
-      return Err(PmError.ExtensionFailed("package proof was signaled"))
+      return Err(types.PmError.ExtensionFailed("package proof was signaled"))
     }
 
     return
@@ -451,27 +456,28 @@ proc run_logged_proof_command(
 
   if ! status.ok {
     if status.exited() {
-      return Err(PmError.ExtensionFailed(f"package proof exited with status ${status.exit_code()?}"))
+      return Err(types.PmError.ExtensionFailed(f"package proof exited with status ${status.exit_code()?}"))
     }
 
-    return Err(PmError.ExtensionFailed("package proof was signaled"))
+    return Err(types.PmError.ExtensionFailed("package proof was signaled"))
   }
 }
 
 proc build_packages_in_chroot(
-  ctx: PmContext,
-  packages: List[Package],
-) [fs, net, process, env, time, error] -> Result[List[BuiltPackage]] {
+  ctx: types.PmContext,
+  packages: List[types.Package],
+) [fs, net, process, env, time, error] -> Result[List[types.BuiltPackage]] {
   var built = []
   var owners: Map[Str] = {}
 
   for pkg in packages {
     let source_started = time.now()
-    print --flush "pm-build-phase-start" $pkg.name "source"
+    let source_start_message = f"pm-build-phase-start ${pkg.name} source"
+    print --flush $source_start_message
     prepare_build_package_source(ctx, pkg)?
-    print --flush "pm-build-phase-done" $pkg.name "source" ${time.now() - source_started} "ms"
+    print --flush f"pm-build-phase-done ${pkg.name} source ${time.now() - source_started} ms"
     seed_chroot_runner(ctx.root)?
-    let id = package_id(pkg.name, pkg.ver, pkg.rel)
+    let id = util.package_id(pkg.name, pkg.ver, pkg.rel)
     let source_src = fp"${ctx.work}/${id}/src"
     let stage = fp"${ctx.root}/var/tmp/pm-build/${id}"
     let src = fp"${stage}/src"
@@ -501,20 +507,21 @@ proc build_packages_in_chroot(
       fs.remove(dest, missing_ok: true)?
       fs.remove(fp"${stage}/out", missing_ok: true)?
       fs.copy_tree(pkg.dir, pkg_dir, parents: true, overwrite: true)?
-      print --flush "pm-build-phase-done" $pkg.name "source-copy" 0 "ms" "reused"
+      print --flush f"pm-build-phase-done ${pkg.name} source-copy 0 ms reused"
     } else {
       fs.remove(stage, missing_ok: true)?
       fs.mkdir(stage)?
       let copy_started = time.now()
-      print --flush "pm-build-phase-start" $pkg.name "source-copy"
+      print --flush f"pm-build-phase-start ${pkg.name} source-copy"
       fs.copy_tree(source_src, src, parents: true, overwrite: true)?
       fs.copy_tree(pkg.dir, pkg_dir, parents: true, overwrite: true)?
       fs.write(source_copy_ready_path, source_ready_path.read_text()?)?
-      print --flush "pm-build-phase-done" $pkg.name "source-copy" ${time.now() - copy_started} "ms"
+      let source_copy_done_message = f"pm-build-phase-done ${pkg.name} source-copy ${time.now() - copy_started} ms"
+      print --flush $source_copy_done_message
     }
 
     seed_chroot_build_cache(ctx, pkg, src)?
-    run_lifecycle_hooks("pre-build", pkg.name, ctx, src.display())?
+    extensions.run_lifecycle_hooks("pre-build", pkg.name, ctx, src.display())?
 
     let chroot_argv = [
       host_xsh.display(),
@@ -575,29 +582,31 @@ proc build_packages_in_chroot(
       SHELL = "/bin/xshi"
     } {
       let chroot_started = time.now()
-      print --flush "pm-build-phase-start" $pkg.name "chroot"
+      print --flush f"pm-build-phase-start ${pkg.name} chroot"
       let status = run_chroot_build_command(host_xsh, chroot_argv, build_log_text, build_log)?
-      print --flush "pm-build-phase-done" $pkg.name "chroot" ${time.now() - chroot_started} "ms"
+      print --flush f"pm-build-phase-done ${pkg.name} chroot ${time.now() - chroot_started} ms"
       preserve_chroot_build_cache(ctx, pkg, src)?
 
       if ! status.ok {
         if status.exited() {
-          return Err(PmError.ExtensionFailed(f"chroot build for ${pkg.name} exited with status ${status.exit_code()?}"))
+          return Err(
+            types.PmError.ExtensionFailed(f"chroot build for ${pkg.name} exited with status ${status.exit_code()?}"),
+          )
         }
 
-        return Err(PmError.ExtensionFailed(f"chroot build for ${pkg.name} was signaled"))
+        return Err(types.PmError.ExtensionFailed(f"chroot build for ${pkg.name} was signaled"))
       }
     } ?
 
     fs.install(host_tarball, tarball, 0o644, parents: true, overwrite: true)?
-    let item = load_built_package_from_dest(pkg, id, tarball, dest)?
+    let item = local.load_built_package_from_dest(pkg, id, tarball, dest)?
 
     for rel_path in item.manifest {
       let key = rel_path.display()
 
       if owners.has(key) {
         let owner = owners.get(key)?
-        return Err(PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
+        return Err(types.PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
       }
 
       owners[key] = pkg.name
@@ -605,24 +614,25 @@ proc build_packages_in_chroot(
 
     run_package_proof(ctx, pkg, id, tarball, item.manifest, built, build_log_text, build_log)?
     write_proof_receipt(ctx.out, pkg, tarball)?
-    run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
+    extensions.run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
     built = built.push(item)
     let tarball_size = fs.metadata(tarball)?.size
 
     append_build_log_or_print(
       build_log_text,
       build_log,
-      f"${pkg.name} ${id} build: ${item.manifest.len()} files size: ${compressed_package_size(tarball_size)}",
+      f"${pkg.name} ${id} build: ${item.manifest.len()} files size: ${local.compressed_package_size(tarball_size)}",
     )?
   }
 
-  return Ok(built)
+  built
 }
 
+## Exported PM declaration `build_packages`.
 export proc build_packages(
-  ctx: PmContext,
-  packages: List[Package],
-) [fs, net, process, env, time, error] -> Result[List[BuiltPackage]] {
+  ctx: types.PmContext,
+  packages: List[types.Package],
+) [fs, net, process, env, time, error] -> Result[List[types.BuiltPackage]] {
   if chroot_build_enabled(ctx) {
     return build_packages_in_chroot(ctx, packages)
   }
@@ -635,12 +645,12 @@ export proc build_packages(
   }
 
   for pkg in packages {
-    let id = package_id(pkg.name, pkg.ver, pkg.rel)
+    let id = util.package_id(pkg.name, pkg.ver, pkg.rel)
     let pkg_work = fp"${ctx.work}/${id}"
     let src = fp"${pkg_work}/src"
     let dest = fp"${pkg_work}/dest"
     let tarball = fp"${ctx.out}/${id}.tar.gz"
-    run_lifecycle_hooks("pre-build", pkg.name, ctx, src.display())?
+    extensions.run_lifecycle_hooks("pre-build", pkg.name, ctx, src.display())?
     let makeflags = env.get("MAKEFLAGS") ?? f"-s -j${cpu.count()}"
 
     env {
@@ -684,28 +694,30 @@ export proc build_packages(
       }
       |> sort-by .display()
 
-    validate_and_strip_package(pkg, dest, manifest)?
+    local.validate_and_strip_package(pkg, dest, manifest)?
 
     for rel_path in manifest {
       let key = rel_path.display()
 
       if owners.has(key) {
         let owner = owners.get(key)?
-        return Err(PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
+        return Err(types.PmError.PackageConflict(f"${pkg.name} conflicts with ${owner}: ${key}"))
       }
 
       owners[key] = pkg.name
     }
 
-    let etcsums = collect_etcsums(dest, manifest)?
-    write_package_db(dest, pkg, manifest, etcsums)?
+    let etcsums = local.collect_etcsums(dest, manifest)?
+    local.write_package_db(dest, pkg, manifest, etcsums)?
     let dest_text = dest.display()
     var archive_paths = []
 
     for entry in fs.walk(dest) {
       var include = entry.kind == "file" or entry.kind == "symlink"
 
-      if pkg.extract_install and entry.kind == "dir" and entry.path.display() != dest_text and dir_empty(entry.path)? {
+      if pkg.extract_install and entry.kind == "dir" and entry.path.display() != dest_text and local.dir_empty(
+        entry.path,
+      )? {
         include = true
       }
 
@@ -719,9 +731,9 @@ export proc build_packages(
     archive.tar_create(tarball, dest, archive_paths, compression: "gz", overwrite: true)?
     run_package_proof(ctx, pkg, id, tarball, manifest, built, "", fp"")?
     write_proof_receipt(ctx.out, pkg, tarball)?
-    run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
-    let metadata_files = collect_metadata_files(dest, manifest)?
-    let metadata_sha256 = metadata_files_sha256(pkg, metadata_files)?
+    extensions.run_lifecycle_hooks("post-build", pkg.name, ctx, tarball.display())?
+    let metadata_files = local.collect_metadata_files(dest, manifest)?
+    let metadata_sha256 = local.metadata_files_sha256(pkg, metadata_files)?
     let tarball_size = fs.metadata(tarball)?.size
 
     built = built.push({
@@ -737,11 +749,11 @@ export proc build_packages(
     append_build_log_or_print(
       "",
       fp"",
-      f"${pkg.name} ${id} build: ${manifest.len()} files size: ${compressed_package_size(tarball_size)}",
+      f"${pkg.name} ${id} build: ${manifest.len()} files size: ${local.compressed_package_size(tarball_size)}",
     )?
   }
 
-  return Ok(built)
+  built
 }
 
 proc xsh_runner() [fs, process, env, error] -> Result[Path] {
@@ -778,7 +790,7 @@ proc regular_xsh_source(xsh: Path) [fs, error] -> Result[Path] {
     depth += 1
   }
 
-  return Err(PmError.PackageContract(f"${xsh.display()} has too many symlink levels"))
+  return Err(types.PmError.PackageContract(f"${xsh.display()} has too many symlink levels"))
 }
 
 proc direct_xsh_source(xsh: Path, name: Str) [fs, error] -> Result[Path] {
@@ -788,8 +800,9 @@ proc direct_xsh_source(xsh: Path, name: Str) [fs, error] -> Result[Path] {
 
   let sibling = fp"${xsh.parent}/${name}"
   if ! fs.exists(sibling)? {
-    return Err(PmError.PackageContract(f"missing direct XSH release binary ${sibling}"))
+    return Err(types.PmError.PackageContract(f"missing direct XSH release binary ${sibling}"))
   }
+
   return regular_xsh_source(sibling)
 }
 
@@ -835,39 +848,21 @@ proc seed_chroot_device_paths(root: Path) [fs, error] {
   fs.symlink(/proc/self/fd, dev_fd)?
 }
 
-proc mount_package_proof_devpts(proof_root: Path) [fs, process, error] -> Result[Path] {
-  let dev = fp"${proof_root}/dev"
-  let pts = fp"${dev}/pts"
-  fs.mkdir(pts)?
-  fs.remove(fp"${dev}/ptmx", missing_ok: true)?
-  fs.symlink(p"pts/ptmx", fp"${dev}/ptmx")?
-  let mount = process.which("mount")?
-  run $mount "-t" "devpts" "devpts" $pts "-o" "newinstance,ptmxmode=0666,mode=0620" ?
-  pts
-}
-
-proc unmount_package_proof_devpts(pts: Path) [process] {
-  match process.which("umount") {
-    Ok(umount) => let _ = run.status $umount $pts
-    Err(_) => {}
-  }
-}
-
 proc verify_package_proof_root(root: Path, name: Str) [fs, error] {
-  let db = package_db_path(root, name)
+  let db = util.package_db_path(root, name)
 
   if ! fs.exists(db)? {
-    return Err(PmError.PackageTarball(f"${name} proof root is missing package metadata"))
+    return Err(types.PmError.PackageTarball(f"${name} proof root is missing package metadata"))
   }
 
-  let manifest = load_manifest(db)?
+  let manifest = local.load_manifest(db)?
 
   for rel_path in manifest {
     let installed = fp"${root}/${rel_path}"
 
     match fs.metadata(installed) {
       Ok(_) => {}
-      Err(_) => return Err(PmError.PackageTarball(f"${name} proof root is missing ${rel_path.display()}"))
+      Err(_) => return Err(types.PmError.PackageTarball(f"${name} proof root is missing ${rel_path.display()}"))
     }
   }
 }
@@ -909,7 +904,7 @@ proc resolve_service_xinit(name: Str) [fs, process, env, error] -> Result[Path] 
   }
 
   return Err(
-    PmError.PackageContract(
+    types.PmError.PackageContract(
       f"${name} ships service.xsh but no xinit was found to validate it; install the xinit package or set XINIT_HOST to an xinit script",
     ),
   )
@@ -920,14 +915,14 @@ proc resolve_service_xinit(name: Str) [fs, process, env, error] -> Result[Path] 
 # installed under /usr/lib/xinit/services/ and is validated with `xinit check`
 # during the package proof, so a malformed or undeclared service fails the
 # build instead of the running system.
-proc verify_service_contract(pkg: Package, manifest: List[Path]) [fs, process, env, error] {
+proc verify_service_contract(pkg: types.Package, manifest: List[Path]) [fs, process, env, error] {
   let service_file = fp"${pkg.dir}/service.xsh"
   let has_service = fs.exists(service_file)?
   let installs_service = manifest_installs_service(manifest)
 
   if installs_service and ! has_service {
     return Err(
-      PmError.PackageContract(
+      types.PmError.PackageContract(
         f"${pkg.name} installs an xinit service under /usr/lib/xinit/services/ but is missing service.xsh",
       ),
     )
@@ -935,7 +930,7 @@ proc verify_service_contract(pkg: Package, manifest: List[Path]) [fs, process, e
 
   if has_service and ! installs_service {
     return Err(
-      PmError.PackageContract(
+      types.PmError.PackageContract(
         f"${pkg.name} defines service.xsh but build() does not install it under /usr/lib/xinit/services/",
       ),
     )
@@ -956,7 +951,7 @@ proc verify_service_contract(pkg: Package, manifest: List[Path]) [fs, process, e
 
   if ! status.ok {
     return Err(
-      PmError.PackageContract(
+      types.PmError.PackageContract(
         f"${pkg.name} service.xsh failed xinit check: ${err_log.read_text()?.trim()} ${out_log.read_text()?.trim()}",
       ),
     )
@@ -966,19 +961,19 @@ proc verify_service_contract(pkg: Package, manifest: List[Path]) [fs, process, e
 }
 
 proc run_package_proof(
-  ctx: PmContext,
-  pkg: Package,
+  ctx: types.PmContext,
+  pkg: types.Package,
   id: Str,
   tarball: Path,
   manifest: List[Path],
-  previous: List[BuiltPackage],
+  previous: List[types.BuiltPackage],
   build_log_text: Str,
   build_log: Path,
 ) [fs, process, env, error] {
   let proof = fp"${pkg.dir}/proof.xsh"
 
   if ! fs.exists(proof)? {
-    return Err(PmError.PackageContract(f"${pkg.name} is missing proof.xsh"))
+    return Err(types.PmError.PackageContract(f"${pkg.name} is missing proof.xsh"))
   }
 
   verify_service_contract(pkg, manifest)?
@@ -994,15 +989,15 @@ proc run_package_proof(
     archive.tar_extract(item.tarball, proof_root, 0, "auto", true)?
   }
 
-  let proof_db = package_db_path(proof_root, pkg.name)
+  let proof_db = util.package_db_path(proof_root, pkg.name)
 
   if fs.exists(proof_db)? {
-    let old_manifest = load_manifest(proof_db)?
+    let old_manifest = local.load_manifest(proof_db)?
     let _ = fs.remove_manifest(proof_root, old_manifest, missing_ok: true)?
     fs.remove(proof_db, missing_ok: true)?
   }
 
-  let installed_owners = load_installed_owners(proof_root)?
+  let installed_owners = local.load_installed_owners(proof_root)?
 
   for rel_path in manifest {
     let key = rel_path.display()
@@ -1023,9 +1018,6 @@ proc run_package_proof(
   let native_proof = build_arch == target_arch and (env.get("XSH_PM_BUILD_CHROOT") ?? "1") != "0"
 
   if native_proof {
-    # note: not working on macos
-    # let proof_devpts = mount_package_proof_devpts(proof_root)?
-    # defer unmount_package_proof_devpts(proof_devpts)
     let proof_stage = fp"${proof_root}/var/tmp/pm-proof/${pkg.name}"
     fs.mkdir(proof_stage)?
     fs.install(proof, fp"${proof_stage}/proof.xsh", 0o644, parents: true, overwrite: true)?

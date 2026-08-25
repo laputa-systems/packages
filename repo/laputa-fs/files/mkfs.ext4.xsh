@@ -1,4 +1,5 @@
 #!/bin/xsh
+##! XSH module `mkfs.ext4` package and build operations.
 error Ext4ToolError = Failed(kind: Str, message: Str)
 
 let BLOCK_SIZE = 4096
@@ -93,18 +94,6 @@ proc fixed_text(text: Str, width: Int) [error] -> Result[Bytes] {
   }
 
   return bytes.concat([raw, bytes.zero(width - raw.len())?])
-}
-
-proc block_key(block: Int) [] -> Str {
-  return f"${block}"
-}
-
-proc reserve_block(used: Map[Bool], block: Int) [] -> Map[Bool] {
-  return used.set(block_key(block), true)
-}
-
-proc block_used(used: Map[Bool], block: Int) [] -> Bool {
-  return used.get(block_key(block), false)
 }
 
 pure metadata_reserved(block: Int) -> Bool {
@@ -387,19 +376,6 @@ proc write_block(image: Path, block: Int, data: Bytes) [error] {
 proc u32_block(values: List[Int]) [error] -> Result[Bytes] {
   var parts = [bytes.pack_le(value, 4)? for value in values]
   return bytes.concat(parts)
-}
-
-proc int_slice(values: List[Int], offset: Int, length: Int) [] -> List[Int] {
-  var out = []
-  var index = offset
-  let end = offset + length
-
-  while index < end and index < values.len() {
-    out = out.push(values[index])
-    index += 1
-  }
-
-  return out
 }
 
 proc data_block_at(alloc: ExtAlloc, index: Int) [] -> Int {
