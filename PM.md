@@ -107,6 +107,32 @@ package proof fails with an actionable error when none is found.
 
 ## Commands
 
+### Explicit Repository Planning
+
+The intermediate deterministic planning interface is explicit about the
+repository, selected roots, target, and output path:
+
+```text
+pm repo check [--repo PATH]
+pm repo plan [--repo PATH] (--all | --root PACKAGE...) \
+  --output PLAN [--target aarch64-linux-musl]
+pm repo show PLAN
+```
+
+`pm repo check` loads and validates the typed catalog. `pm repo plan` resolves
+one typed `BuildPlan`, writes it atomically, and renders that same value. It
+requires exactly one of `--all` or one-or-more `--root` options; `--output` is
+always required. `aarch64-linux-musl` is the only accepted target and is the
+default.
+
+When `--repo` is omitted, PM walks parent directories only for a directory
+containing both `pm.xsh` and `repo/`. New `repo` commands never reinterpret
+positional values according to filesystem contents. `pm repo show` verifies
+the saved plan digest and durable invariants before rendering its action,
+reason, topological level, and artifact identity.
+
+### Legacy Execution
+
 Common commands:
 
 ```text

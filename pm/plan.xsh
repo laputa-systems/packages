@@ -139,7 +139,7 @@ proc find_remote(
   selected
 }
 
-pure compare_lex(left: Str, right: Str) -> Int {
+pure plan_compare_lex(left: Str, right: Str) -> Int {
   if left == right {
     return 0
   }
@@ -151,11 +151,11 @@ pure compare_lex(left: Str, right: Str) -> Int {
   1
 }
 
-pure version_parts(value: Str) -> List[Str] {
+pure plan_version_parts(value: Str) -> List[Str] {
   value.replace("-", ".").replace("_", ".").replace("+", ".").split(".")
 }
 
-pure compare_version_part(left: Str, right: Str) -> Int {
+pure plan_compare_version_part(left: Str, right: Str) -> Int {
   let left_num = left.parse_int() ?? -1
   let right_num = right.parse_int() ?? -1
   let left_is_num = f"${left_num}" == left
@@ -173,17 +173,17 @@ pure compare_version_part(left: Str, right: Str) -> Int {
     return 0
   }
 
-  compare_lex(left, right)
+  plan_compare_lex(left, right)
 }
 
-pure compare_version_release(left_ver: Str, left_rel: Str, right_ver: Str, right_rel: Str) -> Int {
-  let left_parts = version_parts(left_ver)
-  let right_parts = version_parts(right_ver)
+pure plan_compare_version_release(left_ver: Str, left_rel: Str, right_ver: Str, right_rel: Str) -> Int {
+  let left_parts = plan_version_parts(left_ver)
+  let right_parts = plan_version_parts(right_ver)
   let total = if left_parts.len() > right_parts.len() { left_parts.len() } else { right_parts.len() }
   var index = 0
 
   while index < total {
-    let result = compare_version_part(left_parts.get(index, "0"), right_parts.get(index, "0"))
+    let result = plan_compare_version_part(left_parts.get(index, "0"), right_parts.get(index, "0"))
 
     if result != 0 {
       return result
@@ -192,7 +192,7 @@ pure compare_version_release(left_ver: Str, left_rel: Str, right_ver: Str, right
     index += 1
   }
 
-  compare_version_part(left_rel, right_rel)
+  plan_compare_version_part(left_rel, right_rel)
 }
 
 proc require_supported_target(target: types.Target, label: Str) [error] {
@@ -325,7 +325,7 @@ export proc resolve(
       let candidate = find_remote(snapshot, name)?
 
       if candidate != null {
-          let tuple_order = compare_version_release(pkg.ver, pkg.rel, candidate.ver, candidate.rel)
+          let tuple_order = plan_compare_version_release(pkg.ver, pkg.rel, candidate.ver, candidate.rel)
 
           if tuple_order < 0 {
             return Err(

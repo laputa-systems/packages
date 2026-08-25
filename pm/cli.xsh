@@ -1,16 +1,412 @@
 ##! PM cli operations and shared package-manager policy.
 use build as pm_build
 use buildroot
+use catalog
 use extensions
+use fingerprint as pm_fingerprint
+use graph
 use install
 use local
 use pm.env as pm_env
+use plan as pm_plan
+use plan_json as pm_plan_json
+use policy
 use remote
 use repo
 use sources
 use types
 use util
-use world
+use world as pm_world
+
+# Explicit arguments for catalog validation without a plan write.
+type RepoCheckArgs = {repo: Path}
+
+# Explicit arguments for deterministic BuildPlan generation.
+type RepoPlanArgs = {
+  repo: Path,
+  all: Bool,
+  roots: List[Str],
+  target: Str,
+  output: Path,
+}
+
+# Explicit arguments for displaying one persisted BuildPlan.
+type RepoShowArgs = {input: Path}
+
+# The intermediate typed repository-planning command surface.
+type RepoCommand = LegacyCommand | RepoCheck(RepoCheckArgs) | RepoPlan(RepoPlanArgs) | RepoShow(RepoShowArgs) | RepoHelp(Str)
+
+type RepoCheckOptions = {repo: Str}
+type RepoPlanOptions = {repo: Str, all: Bool, roots: List[Str], target: Str, output: Path}
+type RepoShowOptions = {input: Path}
+
+pure repo_help_text() -> Str {
+  """usage: pm repo COMMAND [OPTIONS]
+
+repository planning commands:
+  check [--repo PATH]                    validate the typed package catalog
+  plan [--repo PATH] (--all | --root PACKAGE...) --output PLAN [--target aarch64-linux-musl]
+                                         resolve and atomically save a BuildPlan
+  show PLAN                              verify and render a saved BuildPlan
+"""
+}
+
+pure repo_plan_help_text() -> Str {
+  """usage: pm repo plan [--repo PATH] (--all | --root PACKAGE...) --output PLAN [--target aarch64-linux-musl]
+
+--all and --root are mutually exclusive. --output is required.
+"""
+}
+
+pure repo_check_help_text() -> Str {
+  """usage: pm repo check [--repo PATH]
+"""
+}
+
+pure repo_show_help_text() -> Str {
+  """usage: pm repo show PLAN
+"""
+}
+
+pure tail_after(argv: List[Str], start: Int) -> List[Str] {
+  var result: List[Str] = []
+  var index = start
+
+  while index < argv.len() {
+    result = result.push(argv[index])
+    index += 1
+  }
+
+  result
+}
+
+proc repo_default_root() [fs, error] -> Result[Path] {
+  let root = current_pm_repo_root()?
+
+  if root.display() == "" {
+    return Err(types.PmError.Usage("pm repo requires --repo outside a package repository"))
+  }
+
+  root
+}
+
+proc resolve_repo_root(raw: Str) [fs, error] -> Result[Path] {
+  if raw == "" {
+    return repo_default_root()?
+  }
+
+  path.absolute(fp"${raw}")?
+}
+
+# Parses every new repository-planning command through typed option schemas.
+# Legacy executor commands retain their historical parser until their later cutover.
+proc parse_repo_command(argv: List[Str]) [fs, error] -> Result[RepoCommand] {
+  if argv.len() == 0 or argv[0] != "repo" {
+    return LegacyCommand
+  }
+
+  if argv.len() == 1 or argv[1] in ["-h", "--help", "help"] {
+    return RepoHelp(repo_help_text())
+  }
+
+  let action = argv[1]
+  let args = tail_after(argv, 2)
+
+  if args.len() == 1 and args[0] in ["-h", "--help", "help"] {
+    match action {
+      "check" => return RepoHelp(repo_check_help_text())
+      "plan" => return RepoHelp(repo_plan_help_text())
+      "show" => return RepoHelp(repo_show_help_text())
+      _ => return Err(types.PmError.Usage(f"unknown pm repo command ${action}"))
+    }
+  }
+
+  match action {
+    "check" => {
+      var parsed: RepoCheckOptions = {repo: ""}
+      match cli.parse(args, {repo: {form: "--repo PATH", default: ""}}, "pm repo check") {
+        Ok(value) => parsed = value
+        Err(problem) => return Err(problem)
+      }
+      var root: Path = p""
+      match resolve_repo_root(parsed.repo) {
+        Ok(value) => root = value
+        Err(problem) => return Err(problem)
+      }
+      return RepoCheck({repo: root})
+    }
+    "plan" => {
+      var parsed: RepoPlanOptions = {
+        repo: "",
+        all: false,
+        roots: [],
+        target: "aarch64-linux-musl",
+        output: p"",
+      }
+      match cli.parse(
+        args,
+        {
+          repo: {form: "--repo PATH", default: ""},
+          all: {form: "--all", default: false},
+          roots: {form: "--root PACKAGE", repeated: true},
+          target: {form: "--target TARGET", default: "aarch64-linux-musl"},
+          output: {form: "--output PLAN", kind: "Path", required: true},
+        },
+        "pm repo plan",
+      ) {
+        Ok(value) => parsed = value
+        Err(problem) => return Err(problem)
+      }
+
+      if parsed.all == (parsed.roots.len() > 0) {
+        return Err(usage("pm repo plan requires exactly one of --all or one-or-more --root"))
+      }
+
+      match types.parse_target(parsed.target) {
+        Ok(_) => {}
+        Err(problem) => return Err(problem)
+      }
+      var root: Path = p""
+      match resolve_repo_root(parsed.repo) {
+        Ok(value) => root = value
+        Err(problem) => return Err(problem)
+      }
+      return RepoPlan({
+        repo: root,
+        all: parsed.all,
+        roots: parsed.roots,
+        target: parsed.target,
+        output: parsed.output,
+      })
+    }
+    "show" => {
+      var parsed: RepoShowOptions = {input: p""}
+      match cli.parse(args, {input: {form: "PLAN", kind: "Path", required: true}}, "pm repo show") {
+        Ok(value) => parsed = value
+        Err(problem) => return Err(problem)
+      }
+      return RepoShow({input: parsed.input})
+    }
+    _ => return Err(types.PmError.Usage(f"unknown pm repo command ${action}"))
+  }
+}
+
+proc cli_pm_source_root(repo_root: Path) [fs, env, error] -> Result[Path] {
+  if fs.exists(fp"${repo_root}/pm.xsh")? and fs.exists(fp"${repo_root}/pm")? {
+    return path.absolute(repo_root)?
+  }
+
+  for raw in (env.get("XSH_MODULE_PATH") ?? "").split(":") {
+    continue when raw == ""
+    let candidate = fp"${raw}"
+
+    if fs.exists(fp"${candidate}/pm.xsh")? and fs.exists(fp"${candidate}/pm")? {
+      return path.absolute(candidate)?
+    }
+  }
+
+  let current = current_pm_repo_root()?
+
+  if current.display() != "" and fs.exists(fp"${current}/pm")? {
+    return current
+  }
+
+  return Err(types.PmError.PackageContract("cannot locate PM source root for BuildPlan executor identity"))
+}
+
+proc cli_xsh_runner() [fs, process, env, error] -> Result[Path] {
+  let configured = (env.get("XSH_HOST") ?? "").trim()
+
+  if configured != "" {
+    return path.absolute(fp"${configured}")?
+  }
+
+  process.which("xsh")?
+}
+
+proc cli_core_root(pm_root: Path) [fs, env, error] -> Result[Path] {
+  let configured = (env.get("XSH_CORE_ROOT") ?? "").trim()
+
+  if configured != "" {
+    let root = path.absolute(fp"${configured}")?
+
+    if fs.exists(root)? {
+      return root
+    }
+
+    return Err(types.PmError.PackageContract(f"XSH_CORE_ROOT ${root.display()} is missing"))
+  }
+
+  for candidate in [p"/usr/lib/xsh/core", fp"${pm_root.parent}/xsh/core"] {
+    if fs.exists(candidate)? {
+      return candidate
+    }
+  }
+
+  return Err(types.PmError.PackageContract("cannot locate XSH core applets for BuildPlan executor identity; set XSH_CORE_ROOT"))
+}
+
+proc cli_executor_identity(repo_root: Path) [fs, process, env, error] -> Result[types.ExecutorIdentity] {
+  let pm_root = cli_pm_source_root(repo_root)?
+  let xsh = cli_xsh_runner()?
+  let xshi = fp"${xsh.parent}/xshi"
+  let xsht = fp"${xsh.parent}/xsht"
+
+  if ! fs.exists(xshi)? or ! fs.exists(xsht)? {
+    return Err(types.PmError.PackageContract(f"BuildPlan executor needs xsh, xshi, and xsht beside ${xsh.display()}"))
+  }
+
+  {
+    format: "laputa-pm-executor-1",
+    pm_sha256: pm_fingerprint.pm_tree(pm_root)?,
+    xsh_sha256: pm_fingerprint.runners(xsh, xshi, xsht)?,
+    core_sha256: pm_fingerprint.core_tree(cli_core_root(pm_root)?)?,
+  }
+}
+
+proc remote_entry_digest(value: types.RemotePackage) [error] -> Result[Str] {
+  var lines = [
+    "format\tlaputa-legacy-remote-entry-1",
+    f"arch\t${value.arch}",
+    f"name\t${value.name}",
+    f"ver\t${value.ver}",
+    f"rel\t${value.rel}",
+    f"sha256\t${value.sha256}",
+    f"tarball\t${value.tarball}",
+    f"metadata\t${value.metadata}",
+    f"source-sha256\t${value.source_sha256}",
+    f"metapackage\t${value.metapackage}",
+  ]
+
+  for dependency in value.deps |> sort {
+    lines = lines.push(f"runtime\t${dependency}")
+  }
+
+  for dependency in value.mkdeps_host |> sort {
+    lines = lines.push(f"build-host\t${dependency}")
+  }
+
+  for dependency in value.mkdeps_target |> sort {
+    lines = lines.push(f"build-target\t${dependency}")
+  }
+
+  bytes.from_text(lines.join("\n") + "\n").sha256().hex()
+}
+
+proc remote_index_digest(out: Path) [fs, error] -> Result[Str] {
+  let index_path = util.remote_index_cache_path(out)
+
+  if index_path.exists()? {
+    return hash.sha256(index_path)?.hex()
+  }
+
+  bytes.from_text("[]\n").sha256().hex()
+}
+
+proc remote_snapshot_for_plan(out: Path) [fs, net, env, time, error] -> Result[types.RemoteSnapshot] {
+  var index: List[types.RemotePackage] = []
+  let cache = util.remote_index_cache_path(out)
+  let offline = (env.get("XSH_PM_OFFLINE") ?? "") == "1"
+
+  if cache.exists()? {
+    index = remote.load_cached_remote_index(out)?
+  } else if ! offline {
+    let urls = remote.load_repo_urls()?
+
+    for endpoint in [urls.public_repo, urls.repo] {
+      continue when endpoint == ""
+      let fetched = remote.load_remote_index_from_repo(endpoint, out)?
+
+      for entry in fetched {
+        index = remote.upsert_remote_package(index, entry)?
+      }
+    }
+
+    remote.write_remote_index_cache(out, index)?
+  }
+
+  let index_sha256 = remote_index_digest(out)?
+  var packages: List[types.RemotePlanArtifact] = []
+
+  for entry in index {
+    continue unless entry.arch == "aarch64"
+    let entry_sha256 = remote_entry_digest(entry)?
+    let tarball = if entry.tarball == "" {
+      util.remote_binary_rel(entry.arch, entry.name, entry.ver, entry.rel).display()
+    } else {
+      entry.tarball
+    }
+    let metadata = if entry.metadata == "" {
+      util.remote_metadata_rel(entry.arch, entry.name, entry.ver, entry.rel).display()
+    } else {
+      entry.metadata
+    }
+
+    packages = packages.push({
+      name: entry.name,
+      ver: entry.ver,
+      rel: entry.rel,
+      retrieval: {
+        arch: entry.arch,
+        tarball,
+        tarball_sha256: if entry.sha256 == "" { entry_sha256 } else { entry.sha256 },
+        metadata,
+        metadata_sha256: entry_sha256,
+      },
+      artifact_key: "",
+      recipe_sha256: "",
+      executor_sha256: "",
+      proof_key: "",
+      proof_sha256: "",
+    })
+  }
+
+  {target: types.Aarch64LinuxMusl, index_sha256, packages}
+}
+
+proc command_repo_check(args: RepoCheckArgs) [fs, env, error] {
+  let value = catalog.load(args.repo)?
+  let edges = graph.edges(value, policy.aarch64_docker())?
+  print "repo" "check" value.packages.len() "packages" edges.len() "edges"
+}
+
+proc command_repo_plan(args: RepoPlanArgs) [fs, net, process, env, time, error] {
+  let target = types.parse_target(args.target)?
+  let policy_value = policy.aarch64_docker()
+
+  if target != policy_value.target {
+    return Err(types.PmError.PackageContract(f"unsupported planning target ${args.target}"))
+  }
+
+  let value = pm_plan.resolve(
+    catalog.load(args.repo)?,
+    remote_snapshot_for_plan(args.output.parent)?,
+    policy_value,
+    args.roots,
+    args.all,
+    cli_executor_identity(args.repo)?,
+  )?
+
+  # Keep the public plan_json.write contract intact. The current indexed XSH
+  # runner cannot compile a direct reachable call to that exported spelling;
+  # write_plan is its identical typed DTO and atomic-write implementation.
+  pm_plan_json.write_plan(args.output, value)?
+  print pm_plan.render(value, false)?
+}
+
+proc command_repo_show(args: RepoShowArgs) [fs, error] {
+  print pm_plan.render(pm_plan_json.read(args.input)?, false)?
+}
+
+proc handle_repo_command(command: RepoCommand) [fs, net, process, env, time, error] {
+  match command {
+    LegacyCommand => return Err(types.PmError.Usage("internal: legacy command reached repository command handler"))
+    RepoCheck(args) => command_repo_check(args)?
+    RepoPlan(args) => command_repo_plan(args)?
+    RepoShow(args) => command_repo_show(args)?
+    RepoHelp(text) => print $text
+  }
+}
 
 pure usage(message: Str) -> Error {
   types.PmError.Usage(f"usage: ${message}")
@@ -236,7 +632,7 @@ proc parse_pm_cli(argv: List[Str]) [error] -> Result[types.Cli] {
 }
 
 proc print_help() [] {
-  print "usage: pm COMMAND [ARG...]\n\ntop-level commands:\n  build REPO_DIR PKGDIR...\n  world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--to-tranche N] [-j N|--jobs N]\n  build-install ROOT BUILD_ROOT WORK OUT PKGDIR...\n  build-set REPO_DIR PKGDIR...\n  build-upload-set REPO_DIR PKGDIR...\n  upload-set REPO_DIR PKGDIR...\n  upload-repo-export REPO_DIR\n\nroot commands:\n  install [ROOT WORK OUT] PKG...\n  remove [ROOT WORK OUT] PKG...\n  list [ROOT WORK OUT]\n  info [ROOT WORK OUT] PKG...\n  tree [ROOT WORK OUT] [PKG...]\n  search [ROOT WORK OUT] QUERY [PKGDIR...]\n  outdated [ROOT WORK OUT] PKGDIR...\n  update [ROOT WORK OUT] PKGDIR...\n  upgrade [ROOT WORK OUT] PKGDIR...\n  checksum [ROOT WORK OUT] PKGDIR...\n  update-checksums [ROOT WORK OUT] PKGDIR...\n  download [ROOT WORK OUT] PKGDIR...\n  source-audit [ROOT WORK OUT] PKGDIR...\n  refresh-index [ROOT WORK OUT]\n  auth [ROOT WORK OUT] [TOKEN]\n  upload [ROOT WORK OUT] PKGDIR...\n  help-ext [ROOT WORK OUT]\n\nWhen run from inside this package repo, root commands default ROOT, WORK, and OUT\nto .root, .work, and .out at the repo root.\n\nworld-plan stores its staging repo under ~/.cache/laputa/world-<hash>, where\nthe hash covers the selected package set and arch. The state fingerprint covers\nselected PKGBUILD.xsh files so package edits invalidate an in-progress world.\n"
+  print "usage: pm COMMAND [ARG...]\n\nrepository planning:\n  repo check [--repo PATH]\n  repo plan [--repo PATH] (--all | --root PACKAGE...) --output PLAN [--target aarch64-linux-musl]\n  repo show PLAN\n\nlegacy execution commands:\n  build REPO_DIR PKGDIR...\n  world-plan PKGDIR... [--arch ARCH] [--build] [--upload] [--to-tranche N] [-j N|--jobs N]\n  build-install ROOT BUILD_ROOT WORK OUT PKGDIR...\n  build-set REPO_DIR PKGDIR...\n  build-upload-set REPO_DIR PKGDIR...\n  upload-set REPO_DIR\n  upload-repo-export REPO_DIR\n\nroot commands:\n  install [ROOT WORK OUT] PKG...\n  remove [ROOT WORK OUT] PKG...\n  list [ROOT WORK OUT]\n  info [ROOT WORK OUT] PKG...\n  tree [ROOT WORK OUT] [PKG...]\n  search [ROOT WORK OUT] QUERY [PKGDIR...]\n  outdated [ROOT WORK OUT] PKGDIR...\n  update [ROOT WORK OUT] PKGDIR...\n  upgrade [ROOT WORK OUT] PKGDIR...\n  checksum [ROOT WORK OUT] PKGDIR...\n  update-checksums [ROOT WORK OUT] PKGDIR...\n  download [ROOT WORK OUT] PKGDIR...\n  source-audit [ROOT WORK OUT] PKGDIR...\n  refresh-index [ROOT WORK OUT]\n  auth [ROOT WORK OUT] [TOKEN]\n  upload [ROOT WORK OUT] PKGDIR...\n  help-ext [ROOT WORK OUT]\n\nWhen run from inside this package repo, root commands default ROOT, WORK, and OUT\nto .root, .work, and .out at the repo root.\n\nworld-plan stores its staging repo under ~/.cache/laputa/world-<hash>, where\nthe hash covers the selected package set and arch. The state fingerprint covers\nselected PKGBUILD.xsh files so package edits invalidate an in-progress world.\n"
 }
 
 proc build_local_packages(
@@ -468,12 +864,12 @@ ${root_pkg.name}	${root_pkg.ver}	${root_pkg.rel}	${hash.sha256(root_pkgbuild)?.h
 
     buildroot.install_remote_dependency_set(
       root_ctx,
-      world.missing_world_dependencies(root, world.effective_world_dependencies(pkg, false), local_names, built_names)?,
+      pm_world.missing_world_dependencies(root, pm_world.effective_world_dependencies(pkg, false), local_names, built_names)?,
     )?
 
     buildroot.install_remote_dependency_set(
       build_ctx,
-      world.missing_world_dependencies(build_root, world.effective_world_dependencies(pkg, true), local_names, built_names)?,
+      pm_world.missing_world_dependencies(build_root, pm_world.effective_world_dependencies(pkg, true), local_names, built_names)?,
     )?
 
     if reuse_set_roots and first_package {
@@ -623,7 +1019,7 @@ proc current_pm_repo_root() [fs, error] -> Result[Path] {
   var dir = fs.cwd()?
 
   while true {
-    if fs.exists(fp"${dir}/pm.xsh")? and fs.exists(fp"${dir}/pm")? {
+    if fs.exists(fp"${dir}/pm.xsh")? and fs.exists(fp"${dir}/repo")? {
       return dir
     }
 
@@ -738,6 +1134,16 @@ export proc run_pm_cli(argv: List[Str]) [fs, net, process, env, time, error] {
     return
   }
 
+  let repo_command = parse_repo_command(a)?
+
+  match repo_command {
+    LegacyCommand => {}
+    _ => {
+      handle_repo_command(repo_command)?
+      return
+    }
+  }
+
   if a.len() >= 1 and a[0] == "build" {
     repo.build_repo(a)?
     return
@@ -749,7 +1155,7 @@ export proc run_pm_cli(argv: List[Str]) [fs, net, process, env, time, error] {
   }
 
   if a.len() >= 1 and a[0] == "world-plan" {
-    world.world_plan_repo(a)?
+    pm_world.world_plan_repo(a)?
     return
   }
 

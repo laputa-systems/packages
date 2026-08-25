@@ -1,4 +1,4 @@
-##! XSH module `pm` package and build operations.
+##! XSH PM entrypoint for explicit repository planning and legacy package execution.
 #!/usr/bin/env -S XSH_MODULE_PATH=.:/usr/lib/pm /bin/xsh
 use pm.cli as pm_cli
 
