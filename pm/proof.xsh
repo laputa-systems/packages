@@ -2,6 +2,16 @@
 use elfdeps
 use local
 use pm.util as pm_util
+use types
+
+type ArtifactProofDto = {
+  format: Str,
+  package_id: Str,
+  artifact_key: Str,
+  proof_key: Str,
+  proof_sha256: Str,
+  payload_sha256: Str,
+}
 
 ## Exported PM declaration `ProofError`.
 export error ProofError = Failed(kind: Str, message: Str)
@@ -117,4 +127,88 @@ export proc target_elf(root: Path, rel: Path, name: Str) [fs, process, env, erro
   let header = run.text $readelf "-h" $path_value ?
   let arch = pm_util.target_arch()?
   ensure(header.contains(elf_machine_name(arch)), f"proof-${name}", f"${rel.display()} is not ${arch}")?
+}
+
+proc proof_xsh_runner() [fs, process, env, error] -> Result[Path] {
+  let configured = (env.get("XSH_HOST") ?? "").trim()
+
+  if configured != "" {
+    let selected = fp"${configured}"
+
+    if fs.exists(selected)? {
+      return selected
+    }
+  }
+
+  if fs.exists(/bin/xsh)? {
+    return /bin/xsh
+  }
+
+  process.which("xsh")?
+}
+
+## Runs one package proof against an already composed mutable proof work root.
+## Callers must seed the explicit executor substrate before invoking this boundary.
+export proc run_artifact_proof(root: Path, pkg: types.Package) [fs, process, env, error] {
+  let script = fp"${pkg.dir}/proof.xsh"
+
+  if ! fs.exists(script)? {
+    return Err(types.PmError.PackageContract(f"${pkg.name} is missing proof.xsh"))
+  }
+
+  package_metadata(root, pkg.name)?
+  verify_package_elf_dependencies(root, pkg.name)?
+  let xsh = proof_xsh_runner()?
+
+  env {
+    LAPUTA_ROOT = root.display()
+    PATH = f"${root}/bin:${root}/usr/bin:${env.get("PATH") ?? ""}"
+    XSH_MODULE_PATH = env.get("XSH_MODULE_PATH") ?? ""
+    XSH_PM_PROOF_ROOT = root.display()
+    XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
+    SHELL = fp"${root}/bin/xshi"
+  } {
+    let status = process.run(process.command_argv(xsh, [xsh.display(), script.display(), "--", root.display()]))?
+
+    if ! status.ok {
+      if status.exited() {
+        return Err(types.PmError.ExtensionFailed(f"package proof for ${pkg.name} exited with status ${status.exit_code()?}"))
+      }
+
+      return Err(types.PmError.ExtensionFailed(f"package proof for ${pkg.name} was signaled"))
+    }
+  } ?
+}
+
+## Writes the deterministic proof receipt that binds a proof input to one exact payload artifact.
+export proc write_artifact_receipt(path_value: Path, node: types.PlanNode, payload: Path) [fs, error] {
+  fs.mkdir(path_value.parent)?
+  fs.write(
+    path_value,
+    json.encode({
+      format: "laputa-package-proof-3",
+      package_id: node.package_id,
+      artifact_key: node.artifact_key,
+      proof_key: node.proof_key,
+      proof_sha256: node.proof_sha256,
+      payload_sha256: hash.sha256(payload)?.hex(),
+    })? + "\n",
+  )?
+}
+
+## Verifies an immutable proof receipt against the exact node and payload it attests.
+export proc verify_artifact_receipt(path_value: Path, node: types.PlanNode, payload: Path) [fs, error] {
+  let value = json.read(path_value)?.require(ArtifactProofDto)?
+
+  if value.format != "laputa-package-proof-3" {
+    return Err(types.PmError.PackageContract(f"unsupported package proof format ${value.format}"))
+  }
+
+  if value.package_id != node.package_id or value.artifact_key != node.artifact_key or value.proof_key != node.proof_key or value.proof_sha256 != node.proof_sha256 {
+    return Err(types.PmError.PackageContract(f"proof receipt ${path_value.display()} does not match ${node.package_id}"))
+  }
+
+  if value.payload_sha256 != hash.sha256(payload)?.hex() {
+    return Err(types.PmError.PackageContract(f"proof receipt ${path_value.display()} payload hash does not match ${node.package_id}"))
+  }
 }

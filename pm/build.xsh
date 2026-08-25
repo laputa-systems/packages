@@ -147,7 +147,9 @@ main(@args)?
 """
 }
 
-proc seed_chroot_runner(root: Path) [fs, process, env, error] {
+## Seeds the explicitly selected XSH/PM substrate into a mutable executor work root.
+## The root composer remains immutable; callers copy a completed dependency root before using this procedure.
+export proc seed_executor_substrate(root: Path) [fs, process, env, error] {
   let xsh = xsh_runner()?
   seed_xsh_runners(root, xsh)?
 
@@ -226,7 +228,7 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
 
   env {
     DESTDIR = dest
-    LAPUTA_ROOT = "/"
+    LAPUTA_ROOT = env.get("LAPUTA_ROOT") ?? "/"
     XSH_PM_PREFIX = pm_env.prefix
     XSH_PM_SYSCONFDIR = pm_env.sysconfdir
     XSH_PM_LOCALSTATEDIR = pm_env.localstatedir
@@ -448,7 +450,7 @@ proc build_packages_in_chroot(
     print --flush $source_start_message
     prepare_build_package_source(ctx, pkg)?
     print --flush f"pm-build-phase-done ${pkg.name} source ${time.now() - source_started} ms"
-    seed_chroot_runner(ctx.root)?
+    seed_executor_substrate(ctx.root)?
     let id = util.package_id(pkg.name, pkg.ver, pkg.rel)
     let source_src = fp"${ctx.work}/${id}/src"
     let stage = fp"${ctx.root}/var/tmp/pm-build/${id}"

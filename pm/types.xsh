@@ -353,6 +353,9 @@ export type BuildPlan = {
   plan_sha256: Str,
 }
 
+## The verified immutable artifacts produced or reused while executing one exact BuildPlan.
+export type BuildResult = {format: Str, plan_sha256: Str, artifacts: List[ArtifactReceipt]}
+
 ## A checksum recorded for an installed /etc file.
 export type EtcSum = {path: Str, sha256: Str}
 
