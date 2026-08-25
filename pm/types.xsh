@@ -20,6 +20,9 @@ export type FileKind = File | Binary | Symlink | Tree
 ## The selected execution strategy for one durable build-plan node.
 export type PlanAction = Build(Str) | ReuseRemote(Str)
 
+## The immutable origin of one package artifact in the local store.
+export type ArtifactOrigin = Built | Remote
+
 ## Renders the supported target as its stable external text form.
 export pure target_text(target: Target) -> Str {
   match target {
@@ -69,6 +72,23 @@ export pure parse_plan_action(raw: Str, reason: Str) -> Result[PlanAction] {
     "build" => return Build(reason)
     "reuse-remote" => return ReuseRemote(reason)
     _ => return Err(PmError.PackageContract(f"invalid build-plan action ${raw}"))
+  }
+}
+
+## Renders an artifact origin for its JSON-facing receipt record.
+export pure artifact_origin_text(origin: ArtifactOrigin) -> Str {
+  match origin {
+    Built => return "built"
+    Remote => return "remote"
+  }
+}
+
+## Decodes an artifact origin at the durable receipt boundary.
+export pure parse_artifact_origin(raw: Str) -> Result[ArtifactOrigin] {
+  match raw {
+    "built" => return Built
+    "remote" => return Remote
+    _ => return Err(PmError.PackageContract(f"invalid artifact origin ${raw}"))
   }
 }
 
@@ -260,6 +280,26 @@ export type PlanNode = {
   dependencies: List[PlanDependency],
   remote: RemoteRetrieval?,
 }
+
+## The completed, verified contents of one immutable package artifact directory.
+export type ArtifactReceipt = {
+  format: Str,
+  key: Str,
+  target: Target,
+  package_id: Str,
+  origin: ArtifactOrigin,
+  recipe_sha256: Str,
+  executor_sha256: Str,
+  payload_sha256: Str,
+  metadata_sha256: Str,
+  proof_key: Str,
+  proof_sha256: Str,
+  dependency_keys: List[Str],
+}
+
+## Files produced by a completed package build before immutable-store publication.
+## The executor digest is staged explicitly because PlanNode carries only its artifact key.
+export type StagedArtifact = {payload: Path, metadata: Path, proof: Path, executor_sha256: Str}
 
 ## A validated immutable package-build plan and its canonical digest.
 export type BuildPlan = {
