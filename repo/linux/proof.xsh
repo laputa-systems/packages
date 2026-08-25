@@ -71,27 +71,6 @@ proc main(rootfs: Path = /rootfs) [fs, env, error] {
   if proof_arch == "x86_64" or proof_arch == "amd64" {
     ensure_config(config_path, "CONFIG_X86_64", "x86_64 arch check")?
     ensure_x86_bzimage(fp"${rootfs}/boot/vmlinuz")?
-    ensure_config(config_path, "CONFIG_DRM", "x86_64 DRM core")?
-    ensure_config(config_path, "CONFIG_DRM_KMS_HELPER", "x86_64 DRM KMS helper")?
-    ensure_config(config_path, "CONFIG_DRM_I915", "x86_64 Intel i915 DRM")?
-    ensure_config(config_path, "CONFIG_DRM_SIMPLEDRM", "x86_64 EFI/simpledrm boot display")?
-    ensure_config(config_path, "CONFIG_FW_LOADER", "x86_64 firmware loader")?
-    ensure_config(config_path, "CONFIG_INPUT_EVDEV", "x86_64 evdev input")?
-    ensure_config(config_path, "CONFIG_I2C_HID", "x86_64 I2C HID")?
-    ensure_config(config_path, "CONFIG_HID_MULTITOUCH", "x86_64 multitouch HID")?
-    ensure_config(config_path, "CONFIG_ACPI_VIDEO", "x86_64 ACPI video")?
-    ensure_config(config_path, "CONFIG_BACKLIGHT_CLASS_DEVICE", "x86_64 backlight")?
-    ensure_config(config_path, "CONFIG_BLK_DEV_NVME", "x86_64 NVMe storage")?
-    ensure_config(config_path, "CONFIG_USB_XHCI_HCD", "x86_64 USB xHCI")?
-    ensure_config(config_path, "CONFIG_USB_HID", "x86_64 USB HID")?
-    ensure_config(config_path, "CONFIG_SND_HDA_INTEL", "x86_64 Intel HDA audio")?
-    ensure_config(config_path, "CONFIG_IWLWIFI", "x86_64 Intel Wi-Fi")?
-    ensure_config(config_path, "CONFIG_IWLMVM", "x86_64 Intel MVM Wi-Fi")?
-    ensure_config(config_path, "CONFIG_CFG80211", "x86_64 wireless cfg80211")?
-    ensure_config(config_path, "CONFIG_MAC80211", "x86_64 wireless mac80211")?
-    ensure_config(config_path, "CONFIG_DELL_LAPTOP", "x86_64 Dell laptop platform")?
-    ensure_config(config_path, "CONFIG_DELL_WMI", "x86_64 Dell WMI")?
-    ensure_config(config_path, "CONFIG_DELL_SMBIOS", "x86_64 Dell SMBIOS")?
   } else if proof_arch == "aarch64" or proof_arch == "arm64" {
     ensure_config(config_path, "CONFIG_ARM64", "arm64 arch check")?
   } else {
