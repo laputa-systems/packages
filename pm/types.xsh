@@ -17,6 +17,9 @@ export type SourceKind = Auto | Archive | Zip | Cpio | SourceFile | Directory | 
 ## The expected on-disk kind for a declared package output path.
 export type FileKind = File | Binary | Symlink | Tree
 
+## The selected execution strategy for one durable build-plan node.
+export type PlanAction = Build(Str) | ReuseRemote(Str)
+
 ## Renders the supported target as its stable external text form.
 export pure target_text(target: Target) -> Str {
   match target {
@@ -29,7 +32,43 @@ export pure target_text(target: Target) -> Str {
 export pure parse_target(raw: Str) -> Result[Target] {
   match raw {
     "aarch64-linux-musl" => return Aarch64LinuxMusl
+    "aarch64" => return Aarch64LinuxMusl
+    "arm64" => return Aarch64LinuxMusl
+    "arm64-linux-musl" => return Aarch64LinuxMusl
     _ => return Err(PmError.PackageContract(f"unsupported target ${raw}"))
+  }
+}
+
+## Renders one build-plan action for its JSON-facing data-transfer record.
+export pure plan_action_text(action: PlanAction) -> Str {
+  match action {
+    Build(_) => return "build"
+    ReuseRemote(_) => return "reuse-remote"
+  }
+}
+
+## Returns the explanation carried by one build-plan action.
+export pure plan_action_reason(action: PlanAction) -> Str {
+  match action {
+    Build(reason) => return reason
+    ReuseRemote(reason) => return reason
+  }
+}
+
+## Returns whether a plan action executes a local build.
+export pure plan_action_is_build(action: PlanAction) -> Bool {
+  match action {
+    Build(_) => return true
+    ReuseRemote(_) => return false
+  }
+}
+
+## Decodes one build-plan action at a JSON boundary.
+export pure parse_plan_action(raw: Str, reason: Str) -> Result[PlanAction] {
+  match raw {
+    "build" => return Build(reason)
+    "reuse-remote" => return ReuseRemote(reason)
+    _ => return Err(PmError.PackageContract(f"invalid build-plan action ${raw}"))
   }
 }
 
@@ -162,6 +201,76 @@ export type BuildPolicy = {
   build_target: Target,
   native_build: Bool,
   bootstrap_seeds: List[BootstrapSeedRule],
+}
+
+## The exact PM and XSH substrate that executes a build plan.
+export type ExecutorIdentity = {
+  format: Str,
+  pm_sha256: Str,
+  xsh_sha256: Str,
+  core_sha256: Str,
+}
+
+## Immutable retrieval coordinates for an artifact reused from a remote snapshot.
+export type RemoteRetrieval = {
+  arch: Str,
+  tarball: Str,
+  tarball_sha256: Str,
+  metadata: Str,
+  metadata_sha256: Str,
+}
+
+## Remote artifact identity as observed while resolving one selected snapshot.
+## Empty semantic fields represent legacy metadata and use the retrieval identity instead.
+export type RemotePlanArtifact = {
+  name: Str,
+  ver: Str,
+  rel: Str,
+  retrieval: RemoteRetrieval,
+  artifact_key: Str,
+  recipe_sha256: Str,
+  executor_sha256: Str,
+  proof_key: Str,
+  proof_sha256: Str,
+}
+
+## The selected immutable remote index snapshot used for a build-plan decision.
+export type RemoteSnapshot = {
+  target: Target,
+  index_sha256: Str,
+  packages: List[RemotePlanArtifact],
+}
+
+## One typed dependency reference in a durable build-plan node.
+export type PlanDependency = {name: Str, kind: DependencyKind, artifact_key: Str}
+
+## One deterministically ordered package build or remote-reuse operation.
+export type PlanNode = {
+  name: Str,
+  ver: Str,
+  rel: Str,
+  package_id: Str,
+  recipe_dir: Path,
+  recipe_sha256: Str,
+  proof_sha256: Str,
+  artifact_key: Str,
+  proof_key: Str,
+  action: PlanAction,
+  level: Int,
+  dependencies: List[PlanDependency],
+  remote: RemoteRetrieval?,
+}
+
+## A validated immutable package-build plan and its canonical digest.
+export type BuildPlan = {
+  format: Str,
+  target: Target,
+  roots: List[Str],
+  repository_digest: Str,
+  remote_index_sha256: Str,
+  executor: ExecutorIdentity,
+  nodes: List[PlanNode],
+  plan_sha256: Str,
 }
 
 ## A checksum recorded for an installed /etc file.
