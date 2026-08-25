@@ -105,28 +105,6 @@ proc single_world_cache(home: Path) [fs, error] -> Result[Path] {
   found[0]
 }
 
-pure waterfox_forbidden_pm_info_terms() -> List[Str] {
-  [
-    "dwl",
-    "seatd",
-    "Mesa",
-    "Wayland",
-    "xkbcommon",
-    "ALSA",
-    "PipeWire",
-    "PulseAudio",
-    "DBus",
-    "portals",
-    "X11",
-    "XCB",
-    "GLX",
-    "GTK",
-    "fontconfig",
-    "freetype",
-    "libva",
-  ]
-}
-
 proc test_pm_baseinit_smoke(ctx: TestContext) [fs, process, error] {
   let root = test.temp_dir(ctx, name: "root")?
   let work = test.temp_dir(ctx, name: "work")?
@@ -207,43 +185,6 @@ proc test_pm_rejects_unowned_non_etc_files(ctx: TestContext) [fs, process, error
     """stale
 """,
   )?
-}
-
-proc test_pm_info_waterfox_bin_excludes_session_stack(ctx: TestContext) [fs, process, error] {
-  let root = test.temp_dir(ctx, name: "waterfox-info-root")?
-  let work = test.temp_dir(ctx, name: "waterfox-info-work")?
-  let out = test.temp_dir(ctx, name: "waterfox-info-out")?
-  let db = fp"${root}/var/lib/xsh-pm/packages/waterfox-bin"
-  let no_mkdeps_host = []
-  let no_etcsums = []
-  fs.mkdir(db)?
-
-  json.write(
-    fp"${db}/metadata.json",
-    {
-      name: "waterfox-bin",
-      ver: "140.11.0esr",
-      rel: "1",
-      deps: [
-        "musl",
-        "ca-certificates",
-      ],
-      mkdeps_host: no_mkdeps_host,
-      nostrip: true,
-      dir: "repo/waterfox-bin",
-    },
-  )?
-
-  json.write(fp"${db}/manifest.json", ["opt/waterfox/waterfox-bin", "usr/bin/waterfox"])?
-  json.write(fp"${db}/etcsums.json", no_etcsums)?
-  let info = run.text xsh_bin() pm.xsh -- info $root $work $out waterfox-bin ?
-  test.contains(info, "waterfox-bin 140.11.0esr-1")?
-  test.contains(info, "deps musl ca-certificates")?
-  test.contains(info, "mkdeps_host")?
-
-  for term in waterfox_forbidden_pm_info_terms() {
-    test.eq(term in info, false, message: f"pm info unexpectedly contained ${term}")?
-  }
 }
 
 proc test_pm_install_remove_lifecycle(ctx: TestContext) [fs, process, error] {

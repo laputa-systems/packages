@@ -90,8 +90,8 @@ host. Target libraries, headers, pkg-config files, and protocol data must come
 from the target root.
 
 Prebuilt package payloads are acceptable only when the package is unusually
-hard to bootstrap without already having a large toolchain or browser stack.
-`cargo`, `waterfox`, and `llvm` are the current strategic exceptions.  Treat
+hard to bootstrap without already having a large toolchain.
+`cargo` and `llvm` are the current strategic exceptions. Treat
 them as explicit bootstrap anchors, keep their source URLs and hashes pinned,
 and prefer source-built packages for ordinary libraries and tools.
 
@@ -183,8 +183,8 @@ Laputa prefers separable device and session components:
 - service definitions and lifecycle hooks are XSH programs.
 
 The current desktop path uses `mdevd`, `libudev-zero`, `seatd`, wlroots, dwl,
-foot, and Waterfox to prove DRM/input/seat/Wayland/browser behavior without
-systemd, elogind, DBus, portals, X11, PulseAudio, or PipeWire.
+and foot to prove DRM/input/seat/Wayland behavior without systemd, elogind,
+DBus, portals, X11, PulseAudio, or PipeWire.
 
 ## Proofs
 
@@ -194,8 +194,6 @@ Durable proof targets:
 - `make package-test PKGNAME=<name>`: one package and its package proof.
 - `make proof-rootfs`: core rootfs proof.
 - `make dwl-foot-minimal-test`: compositor/terminal image proof.
-- `make waterfox-test`: browser session image proof.
-- `make waterfox-qemu-test`: final browser VM proof.
 - `make installer-qemu-test`: arm64 installer/installed-target proof.
 
 Proofs should show the package graph, dynamic library closure, generated files,

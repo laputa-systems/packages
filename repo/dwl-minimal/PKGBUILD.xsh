@@ -191,14 +191,6 @@ static const char *menucmd[] = { "wmenu-run", NULL };
 """,
     """/* commands */
 static const char *termcmd[] = { "/usr/bin/foot", NULL };
-static const char *browsercmd[] = { "/usr/bin/waterfox", NULL };
-""",
-  )
-
-  config = config.replace(
-    """	{ MODKEY,                    XKB_KEY_p,           spawn,            {.v = menucmd} },
-""",
-    """	{ MODKEY,                    XKB_KEY_b,           spawn,            {.v = browsercmd} },
 """,
   )
 
