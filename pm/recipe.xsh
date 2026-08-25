@@ -60,7 +60,7 @@ proc validate_dependencies(name: Str, label: Str, dependencies: List[Str]) [erro
 
 proc source_is_repository_local(source: Path) [] -> Bool {
   let raw = source.display()
-  return ! util.is_url_source(raw) and ! util.is_git_source(raw)
+  return ! util.is_url_source(raw) and ! util.is_git_source(raw) and ! raw.starts_with("/")
 }
 
 proc decode_source_checksum(name: Str, raw: Record) [error] -> Result[types.SourceChecksum] {

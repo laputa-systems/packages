@@ -13,11 +13,12 @@ proc expect_contract_rejection(dir: Path, description: Str) [fs, env, error] {
   }
 }
 
-proc test_recipe_loads_valid_payload() [fs, env, error] {
+proc test_recipe_loads_valid_payload_with_relative_skip_checksum() [fs, env, error] {
   let pkg = recipe.load_package(fixture("recipe-valid-payload"))?
   test.eq(pkg.kind, types.Payload)?
   test.eq(pkg.upstream_sources.len(), 1)?
   test.eq(pkg.upstream_sources[0].kind, types.Auto)?
+  test.eq(pkg.upstream_sources[0].checksums[0].sha256, "SKIP")?
   test.eq(pkg.filetree[0].kind, types.File)?
 }
 
@@ -67,6 +68,10 @@ proc test_recipe_rejects_invalid_file_kind() [fs, env, error] {
 
 proc test_recipe_rejects_remote_skip_checksum() [fs, env, error] {
   expect_contract_rejection(fixture("recipe-remote-skip"), "remote SKIP checksum")?
+}
+
+proc test_recipe_rejects_absolute_local_skip_checksum() [fs, env, error] {
+  expect_contract_rejection(fixture("recipe-absolute-skip"), "absolute local SKIP checksum")?
 }
 
 proc test_recipe_rejects_missing_aarch64_checksum() [fs, env, error] {
