@@ -1,12 +1,20 @@
+##! Package recipe metadata and build operations.
 use pm.env as pm_env
 use pm.util as pm_util
 
+## Package recipe export.
 export let name = "wlroots0.19-mesa"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "0.19.3"
 
+## Package recipe export.
 export let rel = "18"
 
+## Package recipe export.
 export let deps = [
   "musl",
   "wayland-libs-server",
@@ -21,6 +29,7 @@ export let deps = [
   "libdisplay-info",
 ]
 
+## Package recipe export.
 export let mkdeps_host = [
   "llvm-toolchain",
   "linux",
@@ -39,8 +48,10 @@ export let mkdeps_host = [
   "libdisplay-info",
 ]
 
+## Package recipe export.
 export let mkdeps_target = ["wayland-dev", "wayland-protocols", "pixman-dev"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/VERSION/wlroots-VERSION.tar.gz",
@@ -59,6 +70,7 @@ export let upstream_sources = [
 
 type PnpRecord = {id: Str, vendor: Str}
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/include/wlroots-0.19/wlr/backend.h",
@@ -712,6 +724,7 @@ proc prune_xwayland_headers(root: Path) [fs, error] {
   fs.remove(fp"${root}/usr/include/wlroots-0.19/wlr/xwayland", missing_ok: true)?
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"

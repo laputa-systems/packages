@@ -1,16 +1,26 @@
+##! Package recipe metadata and build operations.
 use pm.env as pm_env
 use pm.make as make
 
+## Package recipe export.
 export let name = "utf8proc"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "2.10.0"
 
+## Package recipe export.
 export let rel = "8"
 
+## Package recipe export.
 export let deps = ["musl"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain", "cmake", "samurai"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://github.com/JuliaStrings/utf8proc/archive/vVERSION.tar.gz",
@@ -27,6 +37,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/include/utf8proc.h",
@@ -50,6 +61,7 @@ export let filetree = [
   },
 ]
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let cmake = process.which("cmake")?
   let samu = process.which("samu")?

@@ -8,6 +8,9 @@ error ScriptError = Failed(kind: Str, message: Str)
 ## Exported declaration `name`.
 export let name = "cmake"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
 ## Exported declaration `ver`.
 export let ver = "4.3.1"
 

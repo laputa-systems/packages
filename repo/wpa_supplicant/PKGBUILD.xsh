@@ -1,18 +1,28 @@
+##! Package recipe metadata and build operations.
 use pm.make as make
 
+## Package recipe export.
 export let name = "wpa_supplicant"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "2.11"
 
+## Package recipe export.
 export let rel = "5"
 
 # Internal TLS/crypto — no openssl needed.
 # The nl80211 driver unconditionally includes <netlink/genl/genl.h>, so libnl3
 # headers and library are required at build and runtime.
+## Package recipe export.
 export let deps = ["musl", "linux", "libnl3"]
 
+## Package recipe export.
 export let mkdeps_host = ["xsh", "llvm-toolchain", "libnl3", "xinit"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://w1.fi/releases/wpa_supplicant-2.11.tar.gz",
@@ -68,6 +78,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"etc/wpa_supplicant/wpa_supplicant.conf",
@@ -91,6 +102,7 @@ export let filetree = [
   },
 ]
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let cwd = fs.cwd()?
   let tgz = fp"${cwd}/wpa_supplicant-2.11.tar.gz"

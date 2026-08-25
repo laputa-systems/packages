@@ -1,15 +1,25 @@
+##! Package recipe metadata and build operations.
 use pm.env as pm_env
 
+## Package recipe export.
 export let name = "wayland-protocols"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "1.45"
 
+## Package recipe export.
 export let rel = "10"
 
+## Package recipe export.
 export let deps = []
 
+## Package recipe export.
 export let mkdeps_host = ["muon", "pkgconf", "wayland-dev"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/VERSION/downloads/wayland-protocols-VERSION.tar.xz",
@@ -26,6 +36,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/share/pkgconfig/wayland-protocols.pc",
@@ -294,6 +305,7 @@ proc prune_x_compat_protocols(root: Path) [fs, error] {
   fs.remove(fp"${root}/usr/share/wayland-protocols/unstable/xwayland-keyboard-grab", missing_ok: true)?
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let pc = pm_env.pkg_config_context()?

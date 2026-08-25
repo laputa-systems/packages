@@ -1,15 +1,25 @@
+##! Package recipe metadata and build operations.
 use pm.make as make
 
+## Package recipe export.
 export let name = "mesa-minimal"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "24.2.8"
 
+## Package recipe export.
 export let rel = "27"
 
+## Package recipe export.
 export let deps = ["musl", "libdrm", "wayland-libs-client", "wayland-libs-server", "libffi"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain", "linux", "pkgconf", "libdrm", "wayland-dev", "libffi"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"files/source-marker.txt => .",
@@ -26,6 +36,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/include/EGL/egl.h",
@@ -1079,6 +1090,7 @@ Cflags: -I\${{includedir}}
   }
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let os = system.uname()?

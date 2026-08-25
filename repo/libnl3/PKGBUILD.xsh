@@ -4,6 +4,9 @@ use pm.make as make
 ## Exported declaration `name`.
 export let name = "libnl3"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
 ## Exported declaration `ver`.
 export let ver = "3.11.0"
 

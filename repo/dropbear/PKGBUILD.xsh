@@ -4,6 +4,9 @@ use pm.make as make
 ## Exported declaration `name`.
 export let name = "dropbear"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
 ## Exported declaration `ver`.
 export let ver = "2025.89"
 

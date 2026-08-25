@@ -1,5 +1,9 @@
 ##! XSH module `PKGBUILD` package and build operations.
+## Package recipe export.
 export let name = "baselayout"
+
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
 
 ## Exported declaration `ver`.
 export let ver = "1"
@@ -29,9 +33,6 @@ export let upstream_sources = [
     ],
   },
 ]
-
-## Exported declaration `extract_install`.
-export let extract_install = true
 
 ## Exported declaration `filetree`.
 export let filetree = [

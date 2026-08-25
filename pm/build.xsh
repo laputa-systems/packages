@@ -3,6 +3,7 @@ use extensions
 use local
 use pm.env as pm_env
 use pm.proof as pm_proof
+use recipe
 use sources
 use types
 use util
@@ -257,31 +258,17 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
     MAKEFLAGS = makeflags
     SHELL = "/bin/xshi"
   } {
-    let exports = pkg.exports
     let runner = fp"${pkg_dir}/run-package-build.xsh"
 
-    let prepare_call = if exports.has("prepare") {
-      """  prepare(src)?
-"""
-    } else {
-      ""
-    }
+    let runner_text = """use pm.recipe
 
-    let build_call = if exports.has("build") {
-      """  cd src {
-    build(dest)?
-  } ?
-"""
-    } else {
-      ""
-    }
-
-    let runner_text = """use PKGBUILD
-
-proc main(src: Path, dest: Path) [fs, process, env, error] {
-""" + prepare_call + """  fs.remove(dest, missing_ok: true)?
+proc main(pkg_dir: Path, src: Path, dest: Path) [fs, process, env, error] {
+  let pkg = recipe.load_package(pkg_dir)?
+  recipe.call_prepare(pkg, src)?
+  fs.remove(dest, missing_ok: true)?
   fs.mkdir(dest)?
-""" + build_call + """}
+  recipe.call_build(pkg, src, dest)?
+}
 main(@args)?
 """
 
@@ -299,6 +286,7 @@ main(@args)?
           trace_path.display(),
           runner.display(),
           "--",
+          pkg_dir.display(),
           src.display(),
           dest.display(),
         ],
@@ -332,7 +320,7 @@ main(@args)?
   for entry in fs.walk(dest) {
     var include = entry.kind == "file" or entry.kind == "symlink"
 
-    if pkg.extract_install and entry.kind == "dir" and entry.path.display() != dest_text and local.dir_empty(entry.path)? {
+    if entry.kind == "dir" and entry.path.display() != dest_text and local.dir_empty(entry.path)? {
       include = true
     }
 
@@ -669,22 +657,12 @@ export proc build_packages(
       XSH_PM_QUIET = "1"
       MAKEFLAGS = makeflags
     } {
-      let exports = pkg.exports
-
-      if exports.has("prepare") {
-        let prepare_fn: Proc = exports.get("prepare")?
-        prepare_fn.call(src)?
-      }
+      recipe.call_prepare(pkg, src)?
 
       fs.remove(dest, missing_ok: true)?
       fs.mkdir(dest)?
 
-      if exports.has("build") {
-        cd src {
-          let build_fn: Proc = exports.get("build")?
-          build_fn.call(dest)?
-        } ?
-      }
+      recipe.call_build(pkg, src, dest)?
     } ?
 
     let manifest = fs.walk(dest)
@@ -715,7 +693,7 @@ export proc build_packages(
     for entry in fs.walk(dest) {
       var include = entry.kind == "file" or entry.kind == "symlink"
 
-      if pkg.extract_install and entry.kind == "dir" and entry.path.display() != dest_text and local.dir_empty(
+      if entry.kind == "dir" and entry.path.display() != dest_text and local.dir_empty(
         entry.path,
       )? {
         include = true

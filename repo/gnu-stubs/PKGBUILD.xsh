@@ -6,6 +6,9 @@ error GnuStubsError = Failed(message: Str)
 ## Exported declaration `name`.
 export let name = "gnu-stubs"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
 ## Exported declaration `ver`.
 export let ver = "23.1.0-rc2"
 

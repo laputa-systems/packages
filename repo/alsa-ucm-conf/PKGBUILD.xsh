@@ -1,5 +1,9 @@
 ##! XSH module `PKGBUILD` package and build operations.
+## Package recipe export.
 export let name = "alsa-ucm-conf"
+
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
 
 ## Exported declaration `ver`.
 export let ver = "1.2.15.3"

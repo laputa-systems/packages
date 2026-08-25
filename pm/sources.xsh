@@ -1,35 +1,11 @@
 ##! PM sources operations and shared package-manager policy.
+use recipe
 use types
 use util
-
-## Exported PM declaration `select_filetree`.
-export proc select_filetree(
-  exports: Any,
-  fallback: List[types.FileTreeEntry],
-) [env, error] -> Result[List[types.FileTreeEntry]] {
-  let arch = util.machine_arch()?
-
-  if arch == "x86_64" and exports.has("filetree_x86_64") {
-    let filetree: List[types.FileTreeEntry] = exports.get("filetree_x86_64")?
-    return filetree
-  }
-
-  if arch == "aarch64" and exports.has("filetree_aarch64") {
-    let filetree: List[types.FileTreeEntry] = exports.get("filetree_aarch64")?
-    return filetree
-  }
-
-  fallback
-}
 
 ## Exported PM declaration `ensure_source_dest`.
 export pure ensure_source_dest(dest: Path) -> Result[Unit] {
   let _ = util.ensure_relative_path(dest, "source destination")?
-}
-
-## Exported PM declaration `source_kind_valid`.
-export pure source_kind_valid(kind: Str) -> Bool {
-  kind == "auto" or kind == "archive" or kind == "zip" or kind == "cpio" or kind == "file" or kind == "directory" or kind == "git"
 }
 
 ## Exported PM declaration `source_checksum`.
@@ -301,27 +277,27 @@ export proc stage_resolved_source(
   line: types.SourceLine,
   source_path: Path,
   resolved_kind: Str,
-  source_kind: Str,
+  source_kind: types.SourceKind,
   checksum: Str,
   src: Path,
 ) [fs, error] {
   verify_source_checksum(source_path, checksum, resolved_kind)?
   let dest = util.source_stage_dir(src, line)
 
-  if source_kind == "git" or resolved_kind == "git" {
+  if source_kind == types.Git or resolved_kind == "git" {
     fs.mkdir(dest)?
     prune_git_dirs(source_path)?
     fs.copy_tree(source_path, dest, parents: true, overwrite: true)?
     return
   }
 
-  if source_kind == "directory" or resolved_kind == "dir" {
+  if source_kind == types.Directory or resolved_kind == "dir" {
     fs.mkdir(dest)?
     fs.copy_tree(source_path, dest, parents: true, overwrite: true)?
     return
   }
 
-  if source_kind == "archive" and util.is_tar_source(source_path) or source_kind == "auto" and util.is_tar_source(
+  if source_kind == types.Archive and util.is_tar_source(source_path) or source_kind == types.Auto and util.is_tar_source(
     source_path,
   ) {
     fs.remove(dest, missing_ok: true)?
@@ -330,14 +306,14 @@ export proc stage_resolved_source(
     return
   }
 
-  if source_kind == "zip" or source_kind == "auto" and util.is_zip_source(source_path) {
+  if source_kind == types.Zip or source_kind == types.Auto and util.is_zip_source(source_path) {
     fs.remove(dest, missing_ok: true)?
     dest.parent.mkdir()?
     archive.zip_extract(source_path, dest, overwrite: true)?
     return
   }
 
-  if source_kind == "cpio" or source_kind == "auto" and util.is_cpio_source(source_path) {
+  if source_kind == types.Cpio or source_kind == types.Auto and util.is_cpio_source(source_path) {
     fs.remove(dest, missing_ok: true)?
     dest.parent.mkdir()?
     archive.cpio_extract(source_path, dest, overwrite: true)?
@@ -440,12 +416,7 @@ proc validate_source_mirror(out: Path, pkg: types.Package, mirror: Path) [fs, en
 
 ## Exported PM declaration `prepare_source_tree`.
 export proc prepare_source_tree(pkg: types.Package, src: Path) [fs, process, env, error] {
-  let exports = pkg.exports
-
-  if exports.has("prepare_sources") {
-    let prepare_sources_fn: Proc = exports.get("prepare_sources")?
-    prepare_sources_fn.call(src)?
-  }
+  recipe.call_prepare_sources(pkg, src)?
 }
 
 ## Exported PM declaration `try_fetch_source_mirror_from_repo`.

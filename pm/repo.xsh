@@ -200,7 +200,7 @@ export proc upload_package(ctx: types.PmContext, pkg: types.Package) [fs, net, p
   let arch = util.machine_arch()?
   var index = remote.load_remote_index_from_repo(repo, ctx.out)?
 
-  if pkg.upstream_sources.len() == 0 {
+  if pkg.kind == types.Meta {
     let entry = remote.remote_entry_for(arch, pkg, "", "", 0, "", "", true)
     index = remote.upsert_remote_package(index, entry)?
     remote.write_remote_index_to_repo(repo, ctx.work, ctx.out, index, token)?

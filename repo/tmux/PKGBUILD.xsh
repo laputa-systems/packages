@@ -1,17 +1,27 @@
+##! Package recipe metadata and build operations.
 use pm.make as make
 use pm.util as pm_util
 
+## Package recipe export.
 export let name = "tmux"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "next-3.7"
 
+## Package recipe export.
 export let rel = "10"
 
+## Package recipe export.
 export let deps = ["musl", "libevent", "utf8proc"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain", "pkgconf"]
 
 # Source is a fixed GitHub commit archive (no VERSION substitution needed).
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://github.com/laputa-systems/tmux/archive/f83a6070f75a66d9ac6d4e897544e85302b8ec4b.tar.gz",
@@ -54,6 +64,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [{path: p"usr/bin/tmux", kind: "binary"}]
 
 proc write_config_h() [fs, error] {
@@ -186,6 +197,7 @@ compat/utf8proc.c
   return tmux.output
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   write_config_h()?

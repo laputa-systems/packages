@@ -1,17 +1,27 @@
+##! Package recipe metadata and build operations.
 use pm.util as pm_util
 
 error SudoRsBuildError = MissingRustStd(path: Str)
 
+## Package recipe export.
 export let name = "sudo-rs"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "0.2.13"
 
+## Package recipe export.
 export let rel = "16"
 
+## Package recipe export.
 export let deps = ["linux-pam", "gnu-stubs", "musl"]
 
+## Package recipe export.
 export let mkdeps_host = ["cargo", "llvm-toolchain", "linux-pam", "ca-certificates"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://static.crates.io/crates/sudo-rs/sudo-rs-VERSION.crate",
@@ -49,6 +59,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/bin/su",
@@ -98,6 +109,7 @@ proc stage_rustlib(source: Path, dest: Path) [fs, error] {
   }
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let cargo = process.which("cargo")?
   let cc = process.which("cc")?

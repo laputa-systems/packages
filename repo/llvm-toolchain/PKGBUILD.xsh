@@ -6,6 +6,9 @@ error LlvmToolchainError = Failed(message: Str)
 ## Package name.
 export let name = "llvm-toolchain"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
 ## Upstream LLVM version.
 export let ver = "23.1.0-rc2"
 

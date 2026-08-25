@@ -1,6 +1,7 @@
 ##! PM local operations and shared package-manager policy.
 use elf
 use extensions
+use recipe
 use sources
 use types
 use util
@@ -53,41 +54,6 @@ export proc load_metadata(db: Path) [fs, error] -> Result[Record] {
   metadata
 }
 
-## Exported PM declaration `load_extract_install`.
-export proc load_extract_install(db: Path) [fs, error] -> Result[Bool] {
-  if ! fs.exists(fp"${db}/metadata.json")? {
-    return false
-  }
-
-  let metadata = load_metadata(db)?
-
-  if metadata.has("extract_install") {
-    let extract_install: Bool = metadata.get("extract_install")?
-    return extract_install
-  }
-
-  false
-}
-
-## Exported PM declaration `package_with_extract_install`.
-export pure package_with_extract_install(pkg: types.Package, extract_install: Bool) -> types.Package {
-  {
-    dir: pkg.dir,
-    exports: pkg.exports,
-    name: pkg.name,
-    ver: pkg.ver,
-    rel: pkg.rel,
-    deps: pkg.deps,
-    mkdeps_host: pkg.mkdeps_host,
-    mkdeps_target: pkg.mkdeps_target,
-    upstream_sources: pkg.upstream_sources,
-    filetree: pkg.filetree,
-    nostrip: pkg.nostrip,
-    extract_install,
-    source_mirror: pkg.source_mirror,
-  }
-}
-
 ## Exported PM declaration `compressed_package_size`.
 export pure compressed_package_size(size: Int) -> Str {
   let kib = (size + 1023) / 1024
@@ -123,7 +89,7 @@ export proc collect_etcsums(dest: Path, manifest: List[Path]) [fs, error] -> Res
 
 ## Exported PM declaration `validate_and_strip_package`.
 export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest: List[Path]) [fs, process, error] {
-  var declared: Map[Str] = {}
+  var declared: Map[types.FileKind] = {}
   var binaries = []
 
   for entry in pkg.filetree {
@@ -133,21 +99,17 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
       return Err(types.PmError.PackageContract(f"${pkg.name} declares an invalid filetree path ${key}"))
     }
 
-    if entry.kind != "file" and entry.kind != "binary" and entry.kind != "symlink" and entry.kind != "tree" {
-      return Err(types.PmError.PackageContract(f"${pkg.name} declares invalid filetree kind ${entry.kind} for ${key}"))
-    }
-
     if declared.has(key) {
       return Err(types.PmError.PackageContract(f"${pkg.name} declares ${key} more than once"))
     }
 
     declared[key] = entry.kind
 
-    if entry.kind == "binary" {
+    if entry.kind == types.Binary {
       binaries = binaries.push(entry.path)
     }
 
-    if entry.kind == "tree" {
+    if entry.kind == types.Tree {
       if fs.metadata(fp"${dest}/${entry.path}")?.kind != "dir" {
         return Err(types.PmError.PackageContract(f"${pkg.name} declares ${key} as a tree, but it is not a directory"))
       }
@@ -158,15 +120,13 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
     let key = rel_path.display()
     let path_value = fp"${dest}/${rel_path}"
     let actual_kind = fs.metadata(path_value)?.kind
-    var declared_kind = declared.get(key, "")
-
-    if declared_kind == "" {
+    if ! declared.has(key) {
       var covered_by_tree = false
 
       for entry in pkg.filetree {
         let tree = entry.path.display()
 
-        if entry.kind == "tree" and key.starts_with(f"${tree}/") {
+        if entry.kind == types.Tree and key.starts_with(f"${tree}/") {
           covered_by_tree = true
         }
       }
@@ -190,11 +150,13 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
       continue
     }
 
-    if declared_kind == "tree" {
+    let declared_kind = declared.get(key)?
+
+    if declared_kind == types.Tree {
       return Err(types.PmError.PackageContract(f"${pkg.name} filetree tree ${key} overlaps an output file"))
     }
 
-    if declared_kind == "symlink" {
+    if declared_kind == types.Symlink {
       if actual_kind != "symlink" {
         return Err(types.PmError.PackageContract(f"${pkg.name} declares ${key} as a symlink, found ${actual_kind}"))
       }
@@ -204,19 +166,21 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
 
     if actual_kind != "file" {
       return Err(
-        types.PmError.PackageContract(f"${pkg.name} declares ${key} as ${declared_kind}, found ${actual_kind}"),
+        types.PmError.PackageContract(
+          f"${pkg.name} declares ${key} as ${types.file_kind_text(declared_kind)}, found ${actual_kind}",
+        ),
       )
     }
 
     match elf.inspect(path_value) {
-      Ok(info) if info.type != "not-elf" and declared_kind == "file" => return Err(
+      Ok(info) if info.type != "not-elf" and declared_kind == types.File => return Err(
         types.PmError.PackageContract(f"${pkg.name} ELF output ${key} must be declared as binary"),
       )
-      Ok(info) if info.type == "not-elf" and declared_kind == "binary" => return Err(
+      Ok(info) if info.type == "not-elf" and declared_kind == types.Binary => return Err(
         types.PmError.PackageContract(f"${pkg.name} declares non-ELF output ${key} as binary"),
       )
       Ok(_) => {}
-      Err(_) if declared_kind == "binary" => return Err(
+      Err(_) if declared_kind == types.Binary => return Err(
         types.PmError.PackageContract(f"${pkg.name} declares non-ELF output ${key} as binary"),
       )
       Err(_) => {}
@@ -226,7 +190,7 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
   for entry in pkg.filetree {
     let key = entry.path.display()
 
-    if entry.kind != "tree" and ! fp"${dest}/${entry.path}".exists()? {
+    if entry.kind != types.Tree and ! fp"${dest}/${entry.path}".exists()? {
       return Err(types.PmError.PackageContract(f"${pkg.name} declares missing file ${key}"))
     }
   }
@@ -287,7 +251,7 @@ mkdeps_host	${pkg.mkdeps_host.join(" ")}
   }
 
   for entry in pkg.filetree {
-    body = f"""${body}filetree	${entry.path.display()}	${entry.kind}
+    body = f"""${body}filetree	${entry.path.display()}	${types.file_kind_text(entry.kind)}
 """
   }
 
@@ -320,7 +284,7 @@ export proc write_package_metadata(path_value: Path, arch: Str, item: types.Buil
       deps: item.pkg.deps,
       mkdeps_host: item.pkg.mkdeps_host,
       mkdeps_target: item.pkg.mkdeps_target,
-      filetree: [{path: entry.path.display(), kind: entry.kind} for entry in item.pkg.filetree],
+      filetree: [{path: entry.path.display(), kind: types.file_kind_text(entry.kind)} for entry in item.pkg.filetree],
       manifest,
       metadata_sha256: item.metadata_sha256,
       files: item.metadata_files,
@@ -542,43 +506,22 @@ export proc write_package_db(
       deps: pkg.deps,
       mkdeps_host: pkg.mkdeps_host,
       mkdeps_target: pkg.mkdeps_target,
-      filetree: [{path: entry.path.display(), kind: entry.kind} for entry in pkg.filetree],
+      package_kind: types.package_kind_text(pkg.kind),
+      filetree: [{path: entry.path.display(), kind: types.file_kind_text(entry.kind)} for entry in pkg.filetree],
       nostrip: pkg.nostrip,
-      extract_install: pkg.extract_install,
       dir: pkg.dir.display(),
     },
   )?
 }
 
 ## Exported PM declaration `call_pkg_hook`.
-export proc call_pkg_hook(pkg: types.Package, hook_name: Str, root: Path) [error] {
-  let exports = pkg.exports
-
-  if exports.has(hook_name) {
-    let hook: Proc = exports.get(hook_name)?
-    hook.call(root)?
-  }
+export proc call_pkg_hook(pkg: types.Package, hook_name: Str, root: Path) [fs, process, env, error] {
+  recipe.call_hook(pkg, hook_name, root)?
 }
 
 ## Exported PM declaration `call_installed_hook`.
-export proc call_installed_hook(metadata: Record, hook_name: Str, root: Path) [fs, error] {
-  if ! metadata.has("dir") {
-    return
-  }
-
-  let dir_text: Str = metadata.get("dir")?
-  let pkgbuild = fp"${fp"${dir_text}"}/PKGBUILD.xsh"
-
-  if ! fs.exists(pkgbuild)? {
-    return
-  }
-
-  let exports = module.load(pkgbuild)?
-
-  if exports.has(hook_name) {
-    let hook: Proc = exports.get(hook_name)?
-    hook.call(root)?
-  }
+export proc call_installed_hook(metadata: Record, hook_name: Str, root: Path) [fs, process, env, error] {
+  recipe.call_recipe_installed_hook(metadata, hook_name, root)?
 }
 
 ## Exported PM declaration `load_package_dirs`.
@@ -587,86 +530,14 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
   var seen: Map[Bool] = {}
 
   for dir in dirs {
-    let pkgbuild = fp"${dir}/PKGBUILD.xsh"
-    let exports = module.load(pkgbuild).context("package-load", pkgbuild.display())?
-    let name: Str = exports.get("name").context("package-load", pkgbuild.display())?
-    let ver: Str = exports.get("ver")?
-    let rel: Str = exports.get("rel")?
-    let deps: List[Str] = exports.get("deps")?
-    let mkdeps_host: List[Str] = exports.get("mkdeps_host")?
-    var mkdeps_target = []
+    let pkg = recipe.load_package(dir)?
 
-    let upstream_sources: List[types.UpstreamSource] = exports.get("upstream_sources")
-      .context("package-load", pkgbuild.display())?
-
-    let base_filetree: List[types.FileTreeEntry] = exports.get("filetree").context("package-load", pkgbuild.display())?
-    let filetree = sources.select_filetree(exports, base_filetree)?
-    var nostrip = false
-    var extract_install = false
-    var source_mirror = true
-
-    if exports.has("mkdeps_target") {
-      mkdeps_target = exports.get("mkdeps_target")?
+    if seen.has(pkg.name) {
+      return Err(types.PmError.PackageContract(f"duplicate package ${pkg.name}"))
     }
 
-    if exports.has("nostrip") {
-      let value: Bool = exports.get("nostrip")?
-      nostrip = value
-    }
-
-    if exports.has("extract_install") {
-      let value: Bool = exports.get("extract_install")?
-      extract_install = value
-    }
-
-    if exports.has("source_mirror") {
-      let value: Bool = exports.get("source_mirror")?
-      source_mirror = value
-    }
-
-    if name == "" {
-      return Err(types.PmError.PackageContract(f"${dir.display()} exports an empty name"))
-    }
-
-    if ver == "" or rel == "" {
-      return Err(types.PmError.PackageContract(f"${name} exports an empty version or release"))
-    }
-
-    for source in upstream_sources {
-      if ! sources.source_kind_valid(source.kind) {
-        return Err(types.PmError.PackageContract(f"${name} has invalid upstream source kind ${source.kind}"))
-      }
-
-      if source.architectures.len() == 0 {
-        return Err(types.PmError.PackageContract(f"${name} has an upstream source with no target architectures"))
-      }
-
-      if source.checksums.len() == 0 {
-        return Err(types.PmError.PackageContract(f"${name} has an upstream source with no checksums"))
-      }
-    }
-
-    if seen.has(name) {
-      return Err(types.PmError.PackageContract(f"duplicate package ${name}"))
-    }
-
-    seen[name] = true
-
-    packages = packages.push({
-      dir,
-      exports,
-      name,
-      ver,
-      rel,
-      deps,
-      mkdeps_host,
-      mkdeps_target,
-      upstream_sources,
-      filetree,
-      nostrip,
-      extract_install,
-      source_mirror,
-    })
+    seen[pkg.name] = true
+    packages = packages.push(pkg)
   }
 
   packages

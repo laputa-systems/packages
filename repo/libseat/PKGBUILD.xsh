@@ -1,5 +1,9 @@
 ##! XSH module `PKGBUILD` package and build operations.
+## Package recipe export.
 export let name = "libseat"
+
+## Explicit payload or metapackage classification.
+export let package_kind = "meta"
 
 ## Exported declaration `ver`.
 export let ver = "0.9.3"

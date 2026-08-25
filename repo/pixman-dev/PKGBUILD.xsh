@@ -1,16 +1,26 @@
+##! Package recipe metadata and build operations.
 use pm.env as pm_env
 use pm.util as pm_util
 
+## Package recipe export.
 export let name = "pixman-dev"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "0.46.4"
 
+## Package recipe export.
 export let rel = "9"
 
+## Package recipe export.
 export let deps = ["pixman"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://xorg.freedesktop.org/releases/individual/lib/pixman-VERSION.tar.xz",
@@ -27,6 +37,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/include/pixman-1/pixman-version.h",
@@ -58,6 +69,7 @@ proc patch_musl_math() [fs, error] {
   )?
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"

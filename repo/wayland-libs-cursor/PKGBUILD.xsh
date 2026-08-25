@@ -1,16 +1,26 @@
+##! Package recipe metadata and build operations.
 use pm.env as pm_env
 use pm.util as pm_util
 
+## Package recipe export.
 export let name = "wayland-libs-cursor"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "1.24.0"
 
+## Package recipe export.
 export let rel = "9"
 
+## Package recipe export.
 export let deps = ["musl", "wayland-libs-client"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "expat", "libffi"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/wayland/wayland/-/releases/VERSION/downloads/wayland-VERSION.tar.xz",
@@ -27,6 +37,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/lib/libwayland-cursor.so",
@@ -159,6 +170,7 @@ proc build_wayland(dest: Path) [fs, process, env, error] {
   } ?
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   build_wayland(dest)?
 

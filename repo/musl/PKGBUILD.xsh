@@ -7,6 +7,9 @@ error MuslError = Failed(message: Str)
 ## Package name.
 export let name = "musl"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
 ## Upstream musl version.
 export let ver = "1.2.6"
 

@@ -127,7 +127,6 @@ export proc install_remote_tarball(
     let stage_db = util.package_db_path(install_stage, pkg.name)
     manifest = local.load_manifest(stage_db)?
     etcsums = json.read(fp"${stage_db}/etcsums.json")?
-    local_pkg = local.package_with_extract_install(local_pkg, local.load_extract_install(stage_db)?)
   }
 
   if have_sidecar and prepared_stage.display() == "" {
@@ -143,7 +142,6 @@ export proc install_remote_tarball(
       let stage_db = util.package_db_path(install_stage, pkg.name)
       manifest = local.load_manifest(stage_db)?
       etcsums = json.read(fp"${stage_db}/etcsums.json")?
-      local_pkg = local.package_with_extract_install(local_pkg, local.load_extract_install(stage_db)?)
       have_sidecar = false
       print --flush "pm-install-metadata-mismatch" $pkg.name "using tarball metadata"
     }
@@ -155,16 +153,6 @@ export proc install_remote_tarball(
   let installed_owners = local.load_installed_owners(ctx.root)?
 
   if have_sidecar and ! fs.exists(db)? {
-    extensions.run_lifecycle_hooks("pre-install", pkg.name, ctx, "remote-tarball")?
-    local.direct_extract_package(ctx, local_pkg, tarball, manifest, etcsums, installed_owners)?
-    extensions.run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-tarball")?
-    print ${pkg.name} manifest.len() $label
-    let elapsed = time.now() - started
-    print --flush "pm-install-package-done" $pkg.name $elapsed "ms" manifest.len() $label
-    return
-  }
-
-  if local_pkg.extract_install and ! fs.exists(db)? {
     extensions.run_lifecycle_hooks("pre-install", pkg.name, ctx, "remote-tarball")?
     local.direct_extract_package(ctx, local_pkg, tarball, manifest, etcsums, installed_owners)?
     extensions.run_lifecycle_hooks("post-install", pkg.name, ctx, "remote-tarball")?
@@ -298,16 +286,6 @@ export proc install_built_packages(ctx: types.PmContext, built: List[types.Built
     let old_sums = local.load_etcsums(db)?
     let new_sums = local.map_etcsums(item.etcsums)?
     let installed_owners = local.load_installed_owners(ctx.root)?
-
-    if item.pkg.extract_install and ! fs.exists(db)? {
-      extensions.run_lifecycle_hooks("pre-install", item.pkg.name, ctx, "local")?
-      local.call_pkg_hook(item.pkg, "pre_install", ctx.root)?
-      local.direct_extract_package(ctx, item.pkg, item.tarball, item.manifest, item.etcsums, installed_owners)?
-      local.call_pkg_hook(item.pkg, "post_install", ctx.root)?
-      extensions.run_lifecycle_hooks("post-install", item.pkg.name, ctx, "local")?
-      print ${item.pkg.name} item.manifest.len() archive.tar_list(item.tarball)?.collect().len() installed
-      continue
-    }
 
     local.ensure_installable(ctx.root, item.pkg, item.manifest, installed_owners)?
     extensions.run_lifecycle_hooks("pre-install", item.pkg.name, ctx, "local")?

@@ -835,17 +835,16 @@ export proc fetch_remote_metadata_sidecar(
 export pure package_from_remote(pkg: types.RemotePackage) -> Result[types.Package] {
   {
     dir: p".",
-    exports: {},
     name: pkg.name,
     ver: pkg.ver,
     rel: pkg.rel,
+    kind: if pkg.metapackage { types.Meta } else { types.Payload },
     deps: pkg.deps,
     mkdeps_host: pkg.mkdeps_host,
     mkdeps_target: pkg.mkdeps_target,
     upstream_sources: [],
     filetree: [],
     nostrip: false,
-    extract_install: false,
     source_mirror: false,
   }
 }

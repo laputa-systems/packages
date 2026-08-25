@@ -1,16 +1,26 @@
+##! Package recipe metadata and build operations.
 use pm.env as pm_env
 use pm.util as pm_util
 
+## Package recipe export.
 export let name = "wayland-dev"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "1.24.0"
 
+## Package recipe export.
 export let rel = "10"
 
+## Package recipe export.
 export let deps = ["musl", "expat", "wayland-libs-client", "wayland-libs-server", "wayland-libs-cursor"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain", "muon", "samurai", "pkgconf", "expat", "libffi"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://gitlab.freedesktop.org/wayland/wayland/-/releases/VERSION/downloads/wayland-VERSION.tar.xz",
@@ -27,6 +37,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/bin/wayland-scanner",
@@ -213,6 +224,7 @@ endif
   }
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"

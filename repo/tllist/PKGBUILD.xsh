@@ -1,13 +1,23 @@
+##! Package recipe metadata and build operations.
+## Package recipe export.
 export let name = "tllist"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "1.1.0"
 
+## Package recipe export.
 export let rel = "9"
 
+## Package recipe export.
 export let deps = []
 
+## Package recipe export.
 export let mkdeps_host = []
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://codeberg.org/dnkl/tllist/archive/VERSION.tar.gz",
@@ -24,6 +34,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/include/tllist.h",
@@ -35,6 +46,7 @@ export let filetree = [
   },
 ]
 
+## Package recipe export.
 export proc build(dest: Path) [fs, error] {
   fs.install(p"tllist.h", fp"${dest}/usr/include/tllist.h", 0o644, parents: true, overwrite: true)?
   fs.mkdir(fp"${dest}/usr/lib/pkgconfig")?

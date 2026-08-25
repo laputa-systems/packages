@@ -4,6 +4,9 @@ use pm.env as pm_env
 ## Exported declaration `name`.
 export let name = "expat"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
 ## Exported declaration `ver`.
 export let ver = "2.7.3"
 

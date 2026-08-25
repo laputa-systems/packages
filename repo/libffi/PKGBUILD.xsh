@@ -5,6 +5,9 @@ use pm.util as pm_util
 ## Exported declaration `name`.
 export let name = "libffi"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
 ## Exported declaration `ver`.
 export let ver = "3.5.2"
 

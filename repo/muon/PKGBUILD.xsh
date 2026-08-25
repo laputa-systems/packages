@@ -1,15 +1,25 @@
+##! Package recipe metadata and build operations.
 use pm.util as pm_util
 
+## Package recipe export.
 export let name = "muon"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "0.5.0"
 
+## Package recipe export.
 export let rel = "9"
 
+## Package recipe export.
 export let deps = ["musl"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain", "samurai"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://github.com/muon-build/muon/archive/refs/tags/VERSION.tar.gz",
@@ -26,8 +36,10 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [{path: p"usr/bin/muon", kind: "binary"}]
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let cross_build = pm_util.build_arch()? != pm_util.target_arch()?

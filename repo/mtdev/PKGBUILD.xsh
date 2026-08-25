@@ -1,16 +1,26 @@
+##! Package recipe metadata and build operations.
 use pm.make as make
 use pm.util as pm_util
 
+## Package recipe export.
 export let name = "mtdev"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "1.1.7"
 
+## Package recipe export.
 export let rel = "9"
 
+## Package recipe export.
 export let deps = ["musl", "linux"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain", "linux"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"http://bitmath.org/code/mtdev/mtdev-VERSION.tar.gz",
@@ -27,6 +37,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/include/mtdev-mapping.h",
@@ -88,6 +99,7 @@ proc write_config() [fs, error] {
   )?
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let arch = pm_util.target_arch()?

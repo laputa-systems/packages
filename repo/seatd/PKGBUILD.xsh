@@ -1,15 +1,25 @@
+##! Package recipe metadata and build operations.
 use pm.env as pm_env
 
+## Package recipe export.
 export let name = "seatd"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "0.9.3"
 
+## Package recipe export.
 export let rel = "8"
 
+## Package recipe export.
 export let deps = ["musl"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain", "linux", "muon", "samurai", "pkgconf", "xinit"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://github.com/kennylevinsen/seatd/archive/refs/tags/VERSION.tar.gz",
@@ -39,6 +49,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/bin/seatd",
@@ -155,6 +166,7 @@ realtime = declare_dependency()""",
   )?
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let muon = process.which("muon")?
   let jobs_flag = f"-j${cpu.count()}"

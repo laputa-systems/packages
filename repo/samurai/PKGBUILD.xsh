@@ -1,15 +1,25 @@
+##! Package recipe metadata and build operations.
 use pm.make as make
 
+## Package recipe export.
 export let name = "samurai"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "1.2"
 
+## Package recipe export.
 export let rel = "9"
 
+## Package recipe export.
 export let deps = ["musl"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://github.com/michaelforney/samurai/releases/download/VERSION/samurai-VERSION.tar.gz",
@@ -26,8 +36,10 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [{path: p"usr/bin/ninja", kind: "symlink"}, {path: p"usr/bin/samu", kind: "binary"}]
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let os = system.uname()?

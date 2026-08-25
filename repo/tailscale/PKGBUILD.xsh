@@ -1,13 +1,23 @@
+##! Package recipe metadata and build operations.
+## Package recipe export.
 export let name = "tailscale"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "1.96.4"
 
+## Package recipe export.
 export let rel = "12"
 
+## Package recipe export.
 export let deps = ["iptables", "xinit"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://pkgs.tailscale.com/stable/tailscale_VERSION_GOARCH.tgz",
@@ -45,6 +55,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/bin/tailscale",
@@ -64,6 +75,7 @@ export let filetree = [
   },
 ]
 
+## Package recipe export.
 export proc build(dest: Path) [fs, error] {
   fs.install(p"tailscale", fp"${dest}/usr/bin/tailscale", 0o755, parents: true, overwrite: true)?
   fs.install(p"tailscaled", fp"${dest}/usr/bin/tailscaled", 0o755, parents: true, overwrite: true)?

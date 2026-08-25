@@ -1,13 +1,23 @@
+##! Package recipe metadata and build operations.
+## Package recipe export.
 export let name = "xsh"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "0.0.0"
 
+## Package recipe export.
 export let rel = "13"
 
+## Package recipe export.
 export let deps = []
 
+## Package recipe export.
 export let mkdeps_host = []
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://github.com/laputa-systems/xsh/releases/download/release-d09c6c3305ab8c650043bd8d32e03f2db6509e97/xsh-release-d09c6c3305ab8c650043bd8d32e03f2db6509e97-ARCH-linux-musl => xsh-bin",
@@ -79,10 +89,12 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let nostrip = true
 
 error XshPackageError = Source(message: Str)
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/bin/basename",
@@ -558,6 +570,7 @@ export let filetree = [
   },
 ]
 
+## Package recipe export.
 export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/usr/bin")?
   for pair in [
@@ -600,6 +613,7 @@ export proc build(dest: Path) [fs, error] {
   }
 }
 
+## Package recipe export.
 export proc pre_install(root: Path) [fs, error] {
   for command_name in ["sh", "xsh", "xshi", "xsht"] {
     fs.remove(fp"${root}/bin/${command_name}", missing_ok: true)?

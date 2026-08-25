@@ -5,6 +5,9 @@ use pm.make as make
 ## Exported declaration `name`.
 export let name = "libevent"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
 ## Exported declaration `ver`.
 export let ver = "2.1.12-stable"
 

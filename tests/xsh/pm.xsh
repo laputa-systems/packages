@@ -4,6 +4,7 @@ use pm.elfdeps as pm_elfdeps
 use pm.local as pm_local
 use pm.make
 use pm.remote as pm_remote
+use pm.types
 use pm.world as pm_world
 
 pure xsh_bin() -> Path {
@@ -223,7 +224,7 @@ proc test_pm_install_remove_lifecycle(ctx: TestContext) [fs, process, error] {
   test.eq(fp"${root}/usr/share/app.txt".exists()?, false)?
 }
 
-proc test_pm_extract_install_preserves_tree_entries(ctx: TestContext) [fs, process, error] {
+proc test_pm_archive_preserves_tree_entries(ctx: TestContext) [fs, process, error] {
   let root = test.temp_dir(ctx, name: "extract-root")?
   let work = test.temp_dir(ctx, name: "extract-work")?
   let out = test.temp_dir(ctx, name: "extract-out")?
@@ -485,8 +486,9 @@ proc test_pm_buildroot_missing_dependency_selection(ctx: TestContext) [fs, env, 
       deps: [],
       mkdeps_host: [],
       mkdeps_target: [],
+      package_kind: types.package_kind_text(types.Payload),
       nostrip: false,
-      extract_install: false,
+      source_mirror: false,
       dir: "tests/xsh/fixtures/dep",
     },
   )?

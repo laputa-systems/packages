@@ -1,18 +1,28 @@
+##! Package recipe metadata and build operations.
 use pm.make as make
 use pm.util as pm_util
 
 error ScriptError = Failed(kind: Str, message: Str)
 
+## Package recipe export.
 export let name = "mdevd"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "0.1.8.2"
 
+## Package recipe export.
 export let rel = "8"
 
+## Package recipe export.
 export let deps = ["musl"]
 
+## Package recipe export.
 export let mkdeps_host = ["llvm-toolchain", "xinit"]
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://skarnet.org/software/mdevd/mdevd-VERSION.tar.gz",
@@ -55,6 +65,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr/bin/mdevd",
@@ -490,6 +501,7 @@ proc compile_skalibs(cc: Path, triple: Str, target: Str) [fs, process, env, erro
   return skarnet_archive
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let cc = process.which("cc")?
   let arch = pm_util.target_arch()?

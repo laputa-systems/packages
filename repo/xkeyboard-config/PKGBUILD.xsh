@@ -1,13 +1,23 @@
+##! Package recipe metadata and build operations.
+## Package recipe export.
 export let name = "xkeyboard-config"
 
+## Explicit payload or metapackage classification.
+export let package_kind = "payload"
+
+## Package recipe export.
 export let ver = "2.45"
 
+## Package recipe export.
 export let rel = "9"
 
+## Package recipe export.
 export let deps = []
 
+## Package recipe export.
 export let mkdeps_host = []
 
+## Package recipe export.
 export let upstream_sources = [
   {
     source: p"https://xorg.freedesktop.org/archive/individual/data/xkeyboard-config/xkeyboard-config-VERSION.tar.xz",
@@ -24,6 +34,7 @@ export let upstream_sources = [
   },
 ]
 
+## Package recipe export.
 export let filetree = [
   {
     path: p"usr",
@@ -128,6 +139,7 @@ ${lines[0]}
   output
 }
 
+## Package recipe export.
 export proc build(dest: Path) [fs, error] {
   let base = fp"${dest}/usr/share/xkeyboard-config-2"
   fs.mkdir(base)?
