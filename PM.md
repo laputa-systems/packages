@@ -75,6 +75,43 @@ Packages may keep source mirrors in a repository `.out/source-mirrors` cache.
 `repo source-audit` verifies that cache for its explicitly named packages.
 `source_mirror: false` keeps an input private to execution.
 
+## Catalog and graph
+
+`pm/catalog.xsh` is the repository-wide typed catalog boundary. It rejects
+duplicate package names and malformed recipes before resolution.
+`pm/policy.xsh` contains the explicit aarch64 bootstrap exceptions, while
+`pm/graph.xsh` resolves stable runtime, build-host, and build-target edges.
+The graph never adds an implicit package-manager dependency. Its sorted
+topological levels and typed edge kinds are persisted in `BuildPlan`.
+
+## Identity, store, and snapshots
+
+`pm/fingerprint.xsh` hashes canonical sorted input lines: recipe/package
+inputs, proof input, PM tree, core tree, and runner bytes. The plan digest and
+artifact/proof keys therefore exclude mtimes, absolute checkout paths, and
+`.git` state. A proof-only change changes the proof identity without rebuilding
+the payload.
+
+`pm/store.xsh` accepts only validated keys. It locks a key, stages the payload,
+verifies its inventory and proof, writes the receipt last, and atomically
+renames the final directory. Corrupt final artifacts are rejected rather than
+overwritten. `pm/repo.xsh` publishes only those verified plan receipts and
+updates a file or remote snapshot index last.
+
+## Root composition
+
+`pm/root.xsh` preflights the exact artifact inventories and ownership before it
+mutates a generation root. `pm/generation.xsh` chooses direct runtime roots and
+the runtime closure only, then writes the deterministic receipt used by Laputa
+to construct a disk image. Build tools do not leak into that closure unless a
+separate typed runtime edge requires them.
+
+## Scope
+
+PM currently supports the aarch64 Linux-musl target only. The shell-compatible
+surface is limited to packages whose declared runtime capability requires it;
+package construction itself uses typed XSH process and filesystem boundaries.
+
 ## Verification
 
 PM behavior is covered by the focused modules under `tests/xsh/`:
