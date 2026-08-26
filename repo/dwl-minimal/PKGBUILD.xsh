@@ -12,7 +12,7 @@ export let package_kind = "payload"
 export let ver = "0.8"
 
 ## Exported declaration `rel`.
-export let rel = "10"
+export let rel = "11"
 
 ## Exported declaration `deps`.
 export let deps = ["musl", "wlroots0.19-mesa", "wayland-libs-server", "libxkbcommon", "libinput"]
@@ -190,6 +190,21 @@ run(char *startup_cmd)
   fs.write(source, text)?
 }
 
+## Remove bindings whose launcher is intentionally absent from the minimal
+## runtime profile. Keep the keyboard array nonempty and retain foot's direct
+## terminal binding.
+export pure config_without_unavailable_menu(config: Str) -> Str {
+  var lines: List[Str] = []
+
+  for line in config.split("\n") {
+    if ! line.contains("menucmd") {
+      lines = lines.push(line)
+    }
+  }
+
+  lines.join("\n")
+}
+
 proc write_config() [fs, error] {
   var config = p"config.def.h".read_text()?
 
@@ -206,11 +221,7 @@ static const char *termcmd[] = { "/usr/bin/foot", NULL };
 """,
   )
 
-  config = config.replace(
-    """\\t{ MODKEY,                    XKB_KEY_p,           spawn,            {.v = menucmd} },
-""",
-    "",
-  )
+  config = config_without_unavailable_menu(config)
 
   fs.write(p"config.h", config)?
 }

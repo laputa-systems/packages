@@ -1,5 +1,5 @@
 #!/bin/xsh
-##! XSH module `kbuild-pool-worker` package and build operations.
+# Kbuild discovery-worker entry script, executed from the staged recipe tree.
 use kbuild
 
 proc main(...argv: List[Str]) [fs, time, error] {

@@ -222,6 +222,18 @@ proc xsht_runner() [fs, process, env, error] -> Result[Path] {
 export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball: Path) [fs, process, env, error] {
   let packages = local.load_package_dirs([pkg_dir])?
   let pkg = packages[0]
+
+  # A metapackage is a graph selector, never an installable payload.  Store
+  # still requires a staged byte object, but it must not contain the legacy
+  # package database that payload builds append before archiving.
+  if pkg.kind == types.package_meta() {
+    fs.remove(dest, missing_ok: true)?
+    fs.mkdir(dest)?
+    fs.mkdir(tarball.parent)?
+    fs.write(tarball, "laputa metapackage payload marker\n")?
+    return
+  }
+
   let makeflags = env.get("MAKEFLAGS") ?? f"-s -j${cpu.count()}"
 
   env {
@@ -238,6 +250,13 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
     XSH_PM_NAME = pkg.name
     XSH_PM_VERSION = pkg.ver
     XSH_PM_RELEASE = pkg.rel
+    # Deferred dynamic builds run from the prepared source tree.  Preserve that
+    # typed staging root so recipe inputs never depend on the process cwd.
+    XSH_PM_SOURCE_DIR = src.display()
+    # Dynamic recipes cannot infer their copied checkout location from the
+    # source-tree working directory.  Keep it explicit for deferred build
+    # programs such as the Linux Kbuild runner.
+    XSH_PM_RECIPE_DIR = pkg_dir.display()
     XSH_PM_QUIET = "1"
     MAKEFLAGS = makeflags
     SHELL = "/bin/xshi"
@@ -293,22 +312,10 @@ main(@args)?
   local.validate_and_strip_package(pkg, dest, manifest)?
   let etcsums = local.collect_etcsums(dest, manifest)?
   local.write_package_db(dest, pkg, manifest, etcsums)?
-  let dest_text = dest.display()
-  var archive_paths: List[Path] = []
-
-  for entry in fs.walk(dest) {
-    var include = entry.kind == "file" or entry.kind == "symlink"
-
-    if entry.kind == "dir" and entry.path.display() != dest_text and local.dir_empty(entry.path)? {
-      include = true
-    }
-
-    if include {
-      archive_paths = archive_paths.push(entry.path.strip_prefix(dest)?)
-    }
-  }
-
-  archive_paths = archive_paths |> sort-by .display()
+  # Metadata and payload share one inventory. A recipe may remove a generated
+  # child such as `usr/share/man` while leaving an otherwise undeclared empty
+  # parent; that parent must be present in both the receipt and the archive.
+  let archive_paths = local.collect_archive_paths(dest, pkg.filetree)?
   fs.mkdir(tarball.parent)?
   archive.tar_create(tarball, dest, archive_paths, compression: "gz", overwrite: true)?
 }

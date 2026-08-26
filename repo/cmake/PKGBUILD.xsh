@@ -15,7 +15,7 @@ export let package_kind = "payload"
 export let ver = "4.3.1"
 
 ## Exported declaration `rel`.
-export let rel = "17"
+export let rel = "18"
 
 ## Exported declaration `deps`.
 export let deps = ["musl", "llvm-toolchain"]

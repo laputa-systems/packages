@@ -107,11 +107,11 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
 
     declared[key] = entry.kind
 
-    if entry.kind == types.Binary {
+    if entry.kind == types.file_kind_binary() {
       binaries = binaries.push(entry.path)
     }
 
-    if entry.kind == types.Tree {
+    if entry.kind == types.file_kind_tree() {
       if fs.metadata(fp"${dest}/${entry.path}")?.kind != "dir" {
         return Err(types.PmError.PackageContract(f"${pkg.name} declares ${key} as a tree, but it is not a directory"))
       }
@@ -128,7 +128,7 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
       for entry in pkg.filetree {
         let tree = entry.path.display()
 
-        if entry.kind == types.Tree and key.starts_with(f"${tree}/") {
+        if entry.kind == types.file_kind_tree() and key.starts_with(f"${tree}/") {
           covered_by_tree = true
         }
       }
@@ -154,11 +154,11 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
 
     let declared_kind = declared.get(key)?
 
-    if declared_kind == types.Tree {
+    if declared_kind == types.file_kind_tree() {
       return Err(types.PmError.PackageContract(f"${pkg.name} filetree tree ${key} overlaps an output file"))
     }
 
-    if declared_kind == types.Symlink {
+    if declared_kind == types.file_kind_symlink() {
       if actual_kind != "symlink" {
         return Err(types.PmError.PackageContract(f"${pkg.name} declares ${key} as a symlink, found ${actual_kind}"))
       }
@@ -175,14 +175,14 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
     }
 
     match elf.inspect(path_value) {
-      Ok(info) if info.type != "not-elf" and declared_kind == types.File => return Err(
+      Ok(info) if info.type != "not-elf" and declared_kind == types.file_kind_file() => return Err(
         types.PmError.PackageContract(f"${pkg.name} ELF output ${key} must be declared as binary"),
       )
-      Ok(info) if info.type == "not-elf" and declared_kind == types.Binary => return Err(
+      Ok(info) if info.type == "not-elf" and declared_kind == types.file_kind_binary() => return Err(
         types.PmError.PackageContract(f"${pkg.name} declares non-ELF output ${key} as binary"),
       )
       Ok(_) => {}
-      Err(_) if declared_kind == types.Binary => return Err(
+      Err(_) if declared_kind == types.file_kind_binary() => return Err(
         types.PmError.PackageContract(f"${pkg.name} declares non-ELF output ${key} as binary"),
       )
       Err(_) => {}
@@ -192,7 +192,7 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
   for entry in pkg.filetree {
     let key = entry.path.display()
 
-    if entry.kind != types.Tree and ! fp"${dest}/${entry.path}".exists()? {
+    if entry.kind != types.file_kind_tree() and ! fp"${dest}/${entry.path}".exists()? {
       return Err(types.PmError.PackageContract(f"${pkg.name} declares missing file ${key}"))
     }
   }
@@ -218,7 +218,7 @@ export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error]
     match fs.root_readlink(root_handle, rel_path) {
       Ok(target) => {
         files = files.push(
-          {path: rel_path.display(), kind: types.Symlink, mode: 0o777, sha256: "", target: target.display()},
+          {path: rel_path.display(), kind: types.file_kind_symlink(), mode: 0o777, sha256: "", target: target.display()},
         )
 
         continue
@@ -233,11 +233,11 @@ export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error]
       sha256 = fs.root_read(root_handle, rel_path)?.sha256().hex()
     }
 
-    var kind = types.File
+    var kind = types.file_kind_file()
 
     match meta.kind {
-      "file" => kind = types.File
-      "dir" => kind = types.Tree
+      "file" => kind = types.file_kind_file()
+      "dir" => kind = types.file_kind_tree()
       _ => return Err(types.PmError.PackageContract(f"metadata cannot represent ${rel_path.display()} as ${meta.kind}"))
     }
     files = files.push({path: rel_path.display(), kind, mode: meta.mode % 4096, sha256, target: ""})
@@ -246,9 +246,14 @@ export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error]
   files
 }
 
-## Exported PM declaration `collect_artifact_entries`.
-## Captures files, symlinks, and explicitly archived empty directories for immutable artifact metadata.
-export proc collect_artifact_entries(root: Path) [fs, error] -> Result[List[types.ArtifactEntry]] {
+## Exported PM declaration `collect_archive_paths`.
+## Defines the exact payload inventory shared by archive creation and receipt metadata.
+## Empty directories created incidentally by a package build remain payload entries: omitting them
+## from the archive would make a verified receipt describe a root that cannot be materialized.
+export proc collect_archive_paths(
+  root: Path,
+  filetree: List[types.FileTreeEntry],
+) [fs, error] -> Result[List[Path]] {
   var entries: List[Path] = []
   let root_text = root.display()
 
@@ -264,7 +269,43 @@ export proc collect_artifact_entries(root: Path) [fs, error] -> Result[List[type
     }
   }
 
-  collect_metadata_files(root, entries |> sort-by .display())?
+  # `fs.walk` is the general inventory, but an explicitly declared empty
+  # directory is a durable payload member even when the walker did not report
+  # it.  Recording it here keeps receipt metadata exactly aligned with the
+  # archive assembled by `pm.build`.
+  for entry in filetree {
+    if entry.kind == types.file_kind_tree() {
+      let tree = fp"${root}/${entry.path}"
+
+      if dir_empty(tree)? {
+        entries = entries.push(entry.path)
+      }
+    }
+  }
+
+  var unique: Map[Bool] = {}
+  var canonical: List[Path] = []
+
+  for entry in entries |> sort-by .display() {
+    let key = entry.display()
+
+    if !unique.has(key) {
+      unique[key] = true
+      canonical = canonical.push(entry)
+    }
+  }
+
+  canonical
+}
+
+## Exported PM declaration `collect_artifact_entries`.
+## Captures the exact archive inventory as immutable artifact metadata.
+export proc collect_artifact_entries(
+  root: Path,
+  filetree: List[types.FileTreeEntry],
+) [fs, error] -> Result[List[types.ArtifactEntry]] {
+  let canonical = collect_archive_paths(root, filetree)?
+  collect_metadata_files(root, canonical)?
 }
 
 ## Exported PM declaration `metadata_files_sha256`.
@@ -576,7 +617,7 @@ export proc order_packages(
 
   let value = catalog.from_packages(root, packages, available_names)?
   let edges = graph.edges(value, policy.aarch64_docker())?
-  let runtime_edges = [edge for edge in edges if edge.kind == types.Runtime]
+  let runtime_edges = [edge for edge in edges if edge.kind == types.dependency_runtime()]
   let levels = graph.topological_levels(catalog.package_names(value), runtime_edges)?
   let by_name = catalog.package_map(value)
   var ordered: List[types.Package] = []
@@ -651,10 +692,24 @@ export proc load_built_package_from_dest(
   tarball: Path,
   dest: Path,
 ) [fs, error] -> Result[types.BuiltPackage] {
+  if pkg.kind == types.package_meta() {
+    let metadata_files: List[types.ArtifactEntry] = []
+
+    return {
+      pkg,
+      id,
+      tarball,
+      manifest: [],
+      etcsums: [],
+      metadata_sha256: metadata_files_sha256(pkg, metadata_files)?,
+      metadata_files,
+    }
+  }
+
   let db = util.package_db_path(dest, pkg.name)
   let manifest = load_manifest(db)?
   let etcsums: List[types.EtcSum] = json.read(fp"${db}/etcsums.json")?
-  let metadata_files = collect_artifact_entries(dest)?
+  let metadata_files = collect_artifact_entries(dest, pkg.filetree)?
   let metadata_sha256 = metadata_files_sha256(pkg, metadata_files)?
 
   return {

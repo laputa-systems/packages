@@ -67,13 +67,47 @@ proc package_source_lines(pkg: types.Package) [fs, error] -> Result[List[Str]] {
   lines
 }
 
+# Repository inputs are explicit recipe declarations, but live outside the
+# recipe directory. Hash their complete declared file/tree contents so a PM
+# module edit changes laputa-pm's package build identity without recording an
+# absolute checkout path.
+proc repository_input_lines(repo_root: Path, pkg: types.Package) [fs, error] -> Result[List[Str]] {
+  var lines: List[Str] = []
+
+  for source in pkg.upstream_sources {
+    let parsed = util.parse_source_line(source.source)?
+
+    continue unless parsed.source.starts_with("repository/")
+    let relative = fp"${parsed.source.replace("repository/", "")}".normalize()
+    util.ensure_relative_path(relative, f"repository source ${parsed.source}")?
+    let input = fp"${repo_root}/${relative}"
+
+    if ! fs.exists(input)? {
+      return Err(types.PmError.PackageContract(f"${pkg.name}: repository source ${parsed.source} is missing"))
+    }
+
+    if fs.metadata(input)?.kind == "dir" {
+      for entry in fs.walk(input) |> sort-by .path {
+        let rel = entry.path.strip_prefix(repo_root)?
+
+        if ! ignored_tree_path(rel) {
+          lines = lines.push(tree_entry_line(repo_root, entry.path, "repository-input")?)
+        }
+      }
+    } else {
+      lines = lines.push(tree_entry_line(repo_root, input, "repository-input")?)
+    }
+  }
+
+  lines
+}
+
 ## Hashes every semantic package build input without absolute checkout state or modification times.
 export proc package_build_input(
   repo_root: Path,
   pkg: types.Package,
   target: types.Target,
 ) [fs, error] -> Result[Str] {
-  let _ = repo_root
   var lines = [
     "format\tlaputa-package-build-input-1",
     f"package\t${canonical_field(pkg.name)}\t${canonical_field(pkg.ver)}\t${canonical_field(pkg.rel)}",
@@ -84,15 +118,15 @@ export proc package_build_input(
   ]
 
   for dependency in pkg.deps {
-    lines = lines.push(f"dependency\t${types.dependency_kind_text(types.Runtime)}\t${canonical_field(dependency)}")
+    lines = lines.push(f"dependency\t${types.dependency_kind_text(types.dependency_runtime())}\t${canonical_field(dependency)}")
   }
 
   for dependency in pkg.mkdeps_host {
-    lines = lines.push(f"dependency\t${types.dependency_kind_text(types.BuildHost)}\t${canonical_field(dependency)}")
+    lines = lines.push(f"dependency\t${types.dependency_kind_text(types.dependency_build_host())}\t${canonical_field(dependency)}")
   }
 
   for dependency in pkg.mkdeps_target {
-    lines = lines.push(f"dependency\t${types.dependency_kind_text(types.BuildTarget)}\t${canonical_field(dependency)}")
+    lines = lines.push(f"dependency\t${types.dependency_kind_text(types.dependency_build_target())}\t${canonical_field(dependency)}")
   }
 
   for source in pkg.upstream_sources {
@@ -106,6 +140,7 @@ export proc package_build_input(
   }
 
   lines = lines.extend(package_source_lines(pkg)?)
+  lines = lines.extend(repository_input_lines(repo_root, pkg)?)
   digest_lines(lines)?
 }
 

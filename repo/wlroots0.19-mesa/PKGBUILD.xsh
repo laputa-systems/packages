@@ -12,7 +12,7 @@ export let package_kind = "payload"
 export let ver = "0.19.3"
 
 ## Package recipe export.
-export let rel = "18"
+export let rel = "19"
 
 ## Package recipe export.
 export let deps = [
@@ -25,6 +25,7 @@ export let deps = [
   "mesa-minimal",
   "libudev-zero",
   "libseat",
+  "seatd",
   "libinput",
   "libdisplay-info",
 ]

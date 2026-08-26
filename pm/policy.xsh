@@ -7,8 +7,8 @@ use types
 ## `gnu-stubs -> llvm-toolchain` likewise uses the seeded compiler until the replacement LLVM is built.
 export pure aarch64_docker() -> types.BuildPolicy {
   {
-    target: types.Aarch64LinuxMusl,
-    build_target: types.Aarch64LinuxMusl,
+    target: types.target_aarch64(),
+    build_target: types.target_aarch64(),
     native_build: true,
     bootstrap_seeds: [
       {

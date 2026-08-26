@@ -106,6 +106,73 @@ proc stage_artifact(
   }
 }
 
+proc write_legacy_sidecar_metadata(
+  staged: types.StagedArtifact,
+  name: Str,
+  entries: List[EntrySpec],
+) [fs, error] {
+  fs.write(
+    staged.metadata,
+    json.encode({
+      arch: "aarch64",
+      name,
+      ver: "1.0.0",
+      rel: "1",
+      deps: [],
+      mkdeps_host: [],
+      mkdeps_target: [],
+      filetree: [{path: entry.path, kind: types.file_kind_text(entry.kind)} for entry in entries],
+      manifest: [entry.path for entry in entries],
+      files: metadata_rows(entries),
+    })? + "\n",
+  )?
+}
+
+proc rewrite_legacy_database_payload(
+  ctx: TestContext,
+  staged: types.StagedArtifact,
+  name: Str,
+  entries: List[EntrySpec],
+  unexpected: Bool = false,
+) [fs, error] {
+  let contents = test.temp_dir(ctx, name: f"root-legacy-payload-${name}")?
+
+  for entry in entries {
+    write_payload_entry(contents, entry)?
+  }
+
+  let database = fp"${contents}/var/lib/xsh-pm/packages/${name}"
+  fs.mkdir(database, parents: true)?
+  fs.write(fp"${database}/manifest.json", json.encode([entry.path for entry in entries])?)?
+  let etcsums = [
+    {path: entry.path, sha256: digest(entry.content)}
+    for entry in entries
+    if (entry.kind == types.file_kind_file() or entry.kind == types.file_kind_binary()) and entry.path.starts_with("etc/")
+  ]
+  fs.write(fp"${database}/etcsums.json", json.encode(etcsums)?)?
+  fs.write(
+    fp"${database}/metadata.json",
+    json.encode({
+      name,
+      ver: "1.0.0",
+      rel: "1",
+      deps: [],
+      mkdeps_host: [],
+      mkdeps_target: [],
+      filetree: [{path: entry.path, kind: types.file_kind_text(entry.kind)} for entry in entries],
+      nostrip: false,
+      dir: f"/var/tmp/pm-build/${name}-1.0.0-1/pkg",
+      extract_install: true,
+    })?,
+  )?
+
+  if unexpected {
+    fs.write(fp"${database}/unexpected.json", "not a known legacy package database record")?
+  }
+
+  archive.tar_create(staged.payload, contents, [p"."], compression: "gz", overwrite: true)?
+}
+
 proc commit_artifact(
   ctx: TestContext,
   store_root: Path,
@@ -142,8 +209,53 @@ proc test_root_composes_empty_and_metapackage_roots(ctx: TestContext) [fs, error
   test.eq(root.compose_artifacts(output, meta_plan, [meta])?.artifacts[0].package_name, "meta")?
 }
 
+proc test_root_legacy_metadata_defaults_only_omitted_package_kind_to_payload(ctx: TestContext) [fs, error] {
+  let store_root = test.temp_dir(ctx, name: "root-legacy-metadata-store")?
+  let entries = [payload_file("usr/bin/legacy", "legacy", mode: 0o755)]
+  let legacy = stage_artifact(ctx, "legacy", types.Payload, entries)?
+  # The legacy remote boundary had the verified `files` inventory but no
+  # package_kind. Root decoding owns the one payload-default compatibility rule.
+  write_legacy_sidecar_metadata(legacy.staged, "legacy", entries)?
+  rewrite_legacy_database_payload(ctx, legacy.staged, "legacy", entries)?
+  let receipt = store.commit(store_root, legacy.node, legacy.staged)?
+  let plan = root.preflight([receipt])?
+  test.eq(plan.artifacts[0].payload, true)?
+  test.eq(plan.entries[0].path, "usr/bin/legacy")?
+  test.eq(plan.entries.len(), 4)?
+  let output = fp"${test.temp_dir(ctx, name: "root-legacy-metadata-output")?}/root"
+  let composed = root.compose_artifacts(output, plan, [receipt])?
+  test.ok(fs.exists(fp"${output}/var/lib/xsh-pm/packages/legacy/metadata.json")?)?
+  root.verify(output, composed)?
+
+  let unexpected = stage_artifact(ctx, "legacy-extra", types.Payload, entries)?
+  write_legacy_sidecar_metadata(unexpected.staged, "legacy-extra", entries)?
+  rewrite_legacy_database_payload(ctx, unexpected.staged, "legacy-extra", entries, unexpected: true)?
+  let unexpected_receipt = store.commit(store_root, unexpected.node, unexpected.staged)?
+  expect_root_error(
+    ctx,
+    root.preflight([unexpected_receipt]),
+    "payload contains undeclared var/lib/xsh-pm/packages/legacy-extra/unexpected.json",
+  )?
+
+  let invalid = stage_artifact(ctx, "invalid-kind", types.Payload, entries)?
+  fs.write(
+    invalid.staged.metadata,
+    json.encode({
+      name: "invalid-kind",
+      ver: "1.0.0",
+      rel: "1",
+      package_kind: "",
+      files: metadata_rows(entries),
+    })? + "\n",
+  )?
+  let invalid_receipt = store.commit(store_root, invalid.node, invalid.staged)?
+  expect_root_error(ctx, root.preflight([invalid_receipt]), "invalid package kind")?
+}
+
 proc test_root_preserves_file_mode_symlink_and_empty_directory(ctx: TestContext) [fs, error] {
   let store_root = test.temp_dir(ctx, name: "root-single-store")?
+  # The receipt validates the lexically contained late link without resolving
+  # its target; package composition may supply that target later.
   let receipt = commit_artifact(
     ctx,
     store_root,
@@ -151,8 +263,9 @@ proc test_root_preserves_file_mode_symlink_and_empty_directory(ctx: TestContext)
     types.Payload,
     [
       payload_file("usr/bin/tool", "tool", mode: 0o755),
-      payload_tree("usr/share/empty"),
+      payload_tree("usr/share/empty", mode: 0o700),
       payload_symlink("bin/tool", "../usr/bin/tool"),
+      payload_symlink("usr/lib/late-link", "late-target"),
     ],
   )?
   let plan = root.preflight([receipt])?
@@ -160,8 +273,27 @@ proc test_root_preserves_file_mode_symlink_and_empty_directory(ctx: TestContext)
   let composed = root.compose_artifacts(output, plan, [receipt])?
   test.eq(fs.metadata(fp"${output}/usr/bin/tool")?.mode % 512, 0o755)?
   test.eq(fp"${output}/bin/tool".readlink()?.display(), "../usr/bin/tool")?
-  test.eq(fs.metadata(fp"${output}/usr/share/empty")?.kind, "dir")?
+  let empty_metadata = fs.metadata(fp"${output}/usr/share/empty")?
+  test.eq(empty_metadata.kind, "dir")?
+  test.eq(empty_metadata.mode % 512, 0o700)?
   root.verify(output, composed)?
+}
+
+proc test_root_rejects_cyclic_payload_link_that_differs_from_receipt(ctx: TestContext) [fs, error] {
+  let store_root = test.temp_dir(ctx, name: "root-symlink-loop-store")?
+  let prepared = stage_artifact(
+    ctx,
+    "loop-link",
+    types.Payload,
+    [payload_symlink("usr/lib/link", "expected-target")],
+  )?
+  let payload_root = test.temp_dir(ctx, name: "root-symlink-loop-payload")?
+  fs.mkdir(fp"${payload_root}/usr/lib", parents: true)?
+  fs.symlink(p"link", fp"${payload_root}/usr/lib/link")?
+  archive.tar_create(prepared.staged.payload, payload_root, [p"."], compression: "gz", overwrite: true)?
+  let receipt = store.commit(store_root, prepared.node, prepared.staged)?
+
+  expect_root_error(ctx, root.preflight([receipt]), "root symlink usr/lib/link does not match metadata")?
 }
 
 proc test_root_plan_and_receipt_are_deterministic_for_multiple_artifacts(ctx: TestContext) [fs, error] {
@@ -175,6 +307,37 @@ proc test_root_plan_and_receipt_are_deterministic_for_multiple_artifacts(ctx: Te
   let first_output = fp"${test.temp_dir(ctx, name: "root-multiple-first")?}/root"
   let second_output = fp"${test.temp_dir(ctx, name: "root-multiple-second")?}/root"
   test.eq(root.compose_artifacts(first_output, first, [alpha, beta])?, root.compose_artifacts(second_output, second, [beta, alpha])?)?
+}
+
+proc test_root_coalesces_identical_nested_directories_with_a_canonical_owner(ctx: TestContext) [fs, error] {
+  let store_root = test.temp_dir(ctx, name: "root-shared-directories-store")?
+  let alpha = commit_artifact(
+    ctx,
+    store_root,
+    "alpha",
+    types.Payload,
+    [payload_tree("usr", mode: 0o755), payload_tree("usr/share", mode: 0o755), payload_file("usr/share/alpha", "alpha")],
+  )?
+  let beta = commit_artifact(
+    ctx,
+    store_root,
+    "beta",
+    types.Payload,
+    [payload_tree("usr", mode: 0o755), payload_tree("usr/share", mode: 0o755), payload_file("usr/share/beta", "beta")],
+  )?
+  let first = root.preflight([beta, alpha])?
+  let second = root.preflight([alpha, beta])?
+  test.eq(first, second)?
+  test.eq(first.entries.len(), 4)?
+  test.eq([entry.path for entry in first.entries], ["usr", "usr/share", "usr/share/alpha", "usr/share/beta"])?
+  test.eq([entry.package_name for entry in first.entries if entry.kind == types.Tree], ["alpha", "alpha"])?
+
+  let output = fp"${test.temp_dir(ctx, name: "root-shared-directories-output")?}/root"
+  let receipt = root.compose_artifacts(output, first, [beta, alpha])?
+  test.eq(receipt.entries, first.entries)?
+  test.eq(fp"${output}/usr/share/alpha".read_text()?, "alpha")?
+  test.eq(fp"${output}/usr/share/beta".read_text()?, "beta")?
+  root.verify(output, receipt)?
 }
 
 proc test_root_rejects_collisions_and_same_owner_duplicate_entries_before_mutation(ctx: TestContext) [fs, error] {
@@ -191,6 +354,14 @@ proc test_root_rejects_collisions_and_same_owner_duplicate_entries_before_mutati
   }
 
   test.eq(fs.exists(collision_output)?, false)?
+
+  let linked_left = commit_artifact(ctx, store_root, "linked-left", types.Payload, [payload_symlink("usr/bin/shared-link", "tool")])?
+  let linked_right = commit_artifact(ctx, store_root, "linked-right", types.Payload, [payload_symlink("usr/bin/shared-link", "tool")])?
+  expect_root_error(ctx, root.preflight([linked_left, linked_right]), "owned by both")?
+
+  let directory_left = commit_artifact(ctx, store_root, "directory-left", types.Payload, [payload_tree("usr/share/incompatible", mode: 0o755)])?
+  let directory_right = commit_artifact(ctx, store_root, "directory-right", types.Payload, [payload_tree("usr/share/incompatible", mode: 0o700)])?
+  expect_root_error(ctx, root.preflight([directory_left, directory_right]), "incompatible metadata")?
 
   let duplicate = stage_artifact(ctx, "duplicate", types.Payload, [payload_file("usr/bin/duplicate", "one")])?
   fs.write(
@@ -240,6 +411,27 @@ proc test_root_rejects_traversal_and_corrupt_payloads(ctx: TestContext) [fs, err
   let receipt = commit_artifact(ctx, store_root, "corrupt", types.Payload, [payload_file("usr/bin/corrupt", "clean")])?
   fs.write(fp"${receipt.artifact_dir}/payload.tar.gz", "corrupt payload")?
   expect_root_error(ctx, root.preflight([receipt]), "payload SHA-256 does not match receipt")?
+}
+
+proc test_root_identifies_the_missing_payload_inventory_entry(ctx: TestContext) [fs, error] {
+  let store_root = test.temp_dir(ctx, name: "root-missing-entry-store")?
+  let staged = stage_artifact(
+    ctx,
+    "missing-entry",
+    types.Payload,
+    [payload_file("usr/bin/present", "present"), payload_tree("usr/share")],
+  )?
+  let archive_root = test.temp_dir(ctx, name: "root-missing-entry-archive")?
+  fs.mkdir(fp"${archive_root}/usr/bin", parents: true)?
+  fs.write(fp"${archive_root}/usr/bin/present", "present")?
+  archive.tar_create(staged.staged.payload, archive_root, [p"."], compression: "gz", overwrite: true)?
+  let receipt = store.commit(store_root, staged.node, staged.staged)?
+
+  expect_root_error(
+    ctx,
+    root.preflight([receipt]),
+    "artifact missing-entry payload entry usr/share failed verification: root entry usr/share is absent or unreadable",
+  )?
 }
 
 proc test_root_runtime_closure_ignores_build_only_dependency(ctx: TestContext) [fs, error] {

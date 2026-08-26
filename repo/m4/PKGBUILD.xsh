@@ -9,7 +9,7 @@ export let package_kind = "payload"
 export let ver = "1.0"
 
 ## Package recipe export.
-export let rel = "9"
+export let rel = "10"
 
 ## Package recipe export.
 export let deps = ["musl"]

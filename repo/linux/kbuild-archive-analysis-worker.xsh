@@ -1,5 +1,5 @@
 #!/bin/xsh
-##! XSH module `kbuild-archive-analysis-worker` package and build operations.
+# Kbuild archive-analysis worker entry script, executed from the staged recipe tree.
 use kbuild
 
 proc main(...argv: List[Str]) [fs, error] {

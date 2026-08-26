@@ -9,7 +9,7 @@ export let package_kind = "payload"
 export let ver = "1"
 
 ## Exported declaration `rel`.
-export let rel = "12"
+export let rel = "15"
 
 ## Exported declaration `deps`.
 export let deps = ["xsh"]
@@ -18,15 +18,18 @@ export let deps = ["xsh"]
 export let mkdeps_host = []
 
 ## Exported declaration `upstream_sources`.
+## The package manager is an explicit repository input. The executor stages
+## this declared root through XSH_PM_REPOSITORY_ROOT before the recipe is
+## isolated, so package builds never depend on `../../` traversal.
 export let upstream_sources = [
   {
-    source: ../../pm.xsh,
+    source: p"repository/pm.xsh",
     kind: "auto",
     architectures: ["all"],
     checksums: [{arch: "all", sha256: "SKIP"}],
   },
   {
-    source: p"../../pm => pm",
+    source: p"repository/pm => pm",
     kind: "auto",
     architectures: ["all"],
     checksums: [{arch: "all", sha256: "SKIP"}],
@@ -46,6 +49,7 @@ export let filetree = [
   {path: p"usr/lib/pm/pm/execute.xsh", kind: "file"},
   {path: p"usr/lib/pm/pm/fingerprint.xsh", kind: "file"},
   {path: p"usr/lib/pm/pm/generation.xsh", kind: "file"},
+  {path: p"usr/lib/pm/pm/generation_adapter.xsh", kind: "file"},
   {path: p"usr/lib/pm/pm/graph.xsh", kind: "file"},
   {path: p"usr/lib/pm/pm/local.xsh", kind: "file"},
   {path: p"usr/lib/pm/pm/make.xsh", kind: "file"},

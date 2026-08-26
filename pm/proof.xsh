@@ -149,7 +149,7 @@ proc proof_xsh_runner() [fs, process, env, error] -> Result[Path] {
 
 ## Runs one package proof against an already composed mutable proof work root.
 ## Callers must seed the explicit executor substrate before invoking this boundary.
-export proc run_artifact_proof(root: Path, pkg: types.Package) [fs, process, env, error] {
+export proc run_artifact_proof(root: Path, pkg: types.Package) [fs, process, env, error] -> Result[Unit] {
   let script = fp"${pkg.dir}/proof.xsh"
 
   if ! fs.exists(script)? {
@@ -160,6 +160,13 @@ export proc run_artifact_proof(root: Path, pkg: types.Package) [fs, process, env
   verify_package_elf_dependencies(root, pkg.name)?
   let xsh = proof_xsh_runner()?
 
+  # Preserve a nonzero proof Status as data at this boundary. Returning an Err
+  # from inside the effect block and then applying `?` would bypass a parallel
+  # executor worker's typed completion marker on the published runner.
+  var proof_ok = false
+  var proof_exited = false
+  var proof_exit_code = 0
+
   env {
     LAPUTA_ROOT = root.display()
     PATH = f"${root}/bin:${root}/usr/bin:${env.get("PATH") ?? ""}"
@@ -169,15 +176,23 @@ export proc run_artifact_proof(root: Path, pkg: types.Package) [fs, process, env
     SHELL = fp"${root}/bin/xshi"
   } {
     let status = process.run(process.command_argv(xsh, [xsh.display(), script.display(), "--", root.display()]))?
+    proof_ok = status.ok
+    proof_exited = status.exited()
 
-    if ! status.ok {
-      if status.exited() {
-        return Err(types.PmError.ExtensionFailed(f"package proof for ${pkg.name} exited with status ${status.exit_code()?}"))
-      }
-
-      return Err(types.PmError.ExtensionFailed(f"package proof for ${pkg.name} was signaled"))
+    if proof_exited {
+      proof_exit_code = status.exit_code()?
     }
   } ?
+
+  if ! proof_ok {
+    if proof_exited {
+      return Err(types.PmError.ExtensionFailed(f"package proof for ${pkg.name} exited with status ${proof_exit_code}"))
+    }
+
+    return Err(types.PmError.ExtensionFailed(f"package proof for ${pkg.name} was signaled"))
+  }
+
+  return Ok()
 }
 
 ## Writes the deterministic proof receipt that binds a proof input to one exact payload artifact.

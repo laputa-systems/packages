@@ -1138,17 +1138,7 @@ proc kbuild_compile_flags_for_dir(
 
   match kbuild_file(join_root(root, dir)) {
     Ok(value) => file = value
-    Err(err) => {
-      match err {
-        ScriptError.Failed {kind: kind, message: _} => {
-          if kind == "kbuild-missing" {
-            return map.empty()
-          }
-
-          return Err(err)
-        }
-      }
-    }
+    Err(_) => return map.empty()
   }
 
   var vars = kbuild_vars_for_dir(dir, srcarch)
@@ -1387,15 +1377,11 @@ proc cached_kbuild_compile_flags_for_dirs(
         write_compile_flags_cache(local_cache_path, fingerprint, flags)?
         return flags
       }
-      Err(err) => {
-        match err {
-          ScriptError.Failed {kind: kind, message: _} => write_text_if_changed(
-            fp"${root}/.xsh-kbuild-progress",
-            f"""xsh-kbuild-compile-flags-cache stable-miss ${kind}
+      Err(error) => write_text_if_changed(
+        fp"${root}/.xsh-kbuild-progress",
+        f"""xsh-kbuild-compile-flags-cache stable-miss ${error.message}
 """,
-          )?
-        }
-      }
+      )?
     }
   }
 
@@ -1412,15 +1398,11 @@ proc cached_kbuild_compile_flags_for_dirs(
         write_compile_flags_cache(stable_cache_path, fingerprint, flags)?
         return flags
       }
-      Err(err) => {
-        match err {
-          ScriptError.Failed {kind: kind, message: _} => write_text_if_changed(
-            fp"${root}/.xsh-kbuild-progress",
-            f"""xsh-kbuild-compile-flags-cache local-miss ${kind}
+      Err(error) => write_text_if_changed(
+        fp"${root}/.xsh-kbuild-progress",
+        f"""xsh-kbuild-compile-flags-cache local-miss ${error.message}
 """,
-          )?
-        }
-      }
+      )?
     }
   }
 
@@ -1451,24 +1433,20 @@ export proc augment_missing_composites(
   for obj in plan_objects(plan) {
     match source_for_object(obj) {
       Ok(_) => {}
-      Err(err) => {
-        match err {
-          ScriptError.Failed {kind: kind, message: _} => {
-            if kind == "kbuild-missing-source" and ! is_known_generated_object(obj) {
-              match composite_for(composites, obj) {
-                Ok(_) => {}
-                Err(_) => {
-                  let dir = object_dir(obj)
-                  let dir_key = path_key(dir)
-                  let current = missing_by_dir.get(dir_key, [])
+      Err(_) => {
+        if ! is_known_generated_object(obj) {
+          match composite_for(composites, obj) {
+            Ok(_) => {}
+            Err(_) => {
+              let dir = object_dir(obj)
+              let dir_key = path_key(dir)
+              let current = missing_by_dir.get(dir_key, [])
 
-                  if current.len() == 0 {
-                    dirs = dirs.push(dir)
-                  }
-
-                  missing_by_dir[dir_key] = current.push(obj)
-                }
+              if current.len() == 0 {
+                dirs = dirs.push(dir)
               }
+
+              missing_by_dir[dir_key] = current.push(obj)
             }
           }
         }
@@ -6948,19 +6926,11 @@ proc analyze_archive_items_impl(
             archive_outputs = archive_outputs.push(member_out)
             archive_deps = archive_deps.push(member_out.display())
           }
-          Err(err) => {
-            match err {
-              ScriptError.Failed {kind: kind, message: _} => {
-                if kind == "kbuild-missing-source" {
-                  if is_known_generated_object(member) {
-                    generated_objects = generated_objects.push(member)
-                  } else {
-                    missing_sources = missing_sources.push(member)
-                  }
-                } else {
-                  return Err(err)
-                }
-              }
+          Err(_) => {
+            if is_known_generated_object(member) {
+              generated_objects = generated_objects.push(member)
+            } else {
+              missing_sources = missing_sources.push(member)
             }
           }
         }
@@ -7023,23 +6993,15 @@ proc analyze_archive_items_impl(
           archive_outputs = archive_outputs.push(out)
           archive_deps = archive_deps.push(out.display())
         }
-        Err(err) => {
-          match err {
-            ScriptError.Failed {kind: kind, message: _} => {
-              if kind == "kbuild-missing-source" {
-                let out = obj_out_path(obj)
+        Err(_) => {
+          let out = obj_out_path(obj)
 
-                if out.exists()? {
-                  link_inputs = link_inputs.push(out)
-                } else if is_known_generated_object(obj) {
-                  generated_objects = generated_objects.push(obj)
-                } else {
-                  missing_sources = missing_sources.push(obj)
-                }
-              } else {
-                return Err(err)
-              }
-            }
+          if out.exists()? {
+            link_inputs = link_inputs.push(out)
+          } else if is_known_generated_object(obj) {
+            generated_objects = generated_objects.push(obj)
+          } else {
+            missing_sources = missing_sources.push(obj)
           }
         }
       }

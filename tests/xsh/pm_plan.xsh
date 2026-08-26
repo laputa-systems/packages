@@ -145,6 +145,20 @@ pure retrieval_for(name: Str, ver: Str, rel: Str) -> types.RemoteRetrieval {
   }
 }
 
+pure plan_test_sha256(value: Str) -> Str {
+  bytes.from_text(value).sha256().hex()
+}
+
+pure legacy_retrieval_for(name: Str, ver: Str, rel: Str) -> types.RemoteRetrieval {
+  {
+    arch: "aarch64",
+    tarball: f"packages/aarch64/${name}/${name}-${ver}-${rel}.tar.gz",
+    tarball_sha256: plan_test_sha256(f"legacy payload ${name}-${ver}-${rel}"),
+    metadata: f"metadata/aarch64/${name}/${name}-${ver}-${rel}.json",
+    metadata_sha256: plan_test_sha256(f"legacy metadata ${name}-${ver}-${rel}"),
+  }
+}
+
 proc exact_remote_snapshot(value: types.BuildPlan) [error] -> Result[types.RemoteSnapshot] {
   var packages: List[types.RemotePlanArtifact] = []
   let executor_sha256 = plan.executor_fingerprint(value.executor)?
@@ -235,6 +249,34 @@ proc test_build_plan_reuses_exact_remote_and_carries_retrieval(ctx: TestContext)
   test.eq(app.artifact_key, node_named(initial, "app")?.artifact_key)?
 }
 
+proc test_build_plan_marks_only_retrieval_derived_remote_keys_as_legacy(ctx: TestContext) [fs, env, error] {
+  let value = plan_catalog(ctx, "plan-legacy-remote")?
+  let initial = resolve_plan(value, ["app"], empty_remote_snapshot())?
+  let app = node_named(initial, "app")?
+  let legacy_packages: List[types.RemotePlanArtifact] = [
+    {
+      name: node.name,
+      ver: node.ver,
+      rel: node.rel,
+      retrieval: legacy_retrieval_for(node.name, node.ver, node.rel),
+      artifact_key: "",
+      recipe_sha256: "",
+      executor_sha256: "",
+      proof_key: "",
+      proof_sha256: "",
+    }
+    for node in initial.nodes
+  ]
+  let legacy = {
+    target: types.Aarch64LinuxMusl,
+    index_sha256: "legacy-remote-index",
+    packages: legacy_packages,
+  }
+  let resolved = resolve_plan(value, ["app"], legacy)?
+  test.ok(plan.node_uses_legacy_remote_identity(resolved, node_named(resolved, "app")?)?)?
+  test.eq(plan.node_uses_legacy_remote_identity(initial, app)?, false)?
+}
+
 proc test_build_plan_reports_tuple_reasons_and_rejects_behind_remote(ctx: TestContext) [fs, env, error] {
   let value = plan_catalog(ctx, "plan-reasons")?
   let initial = resolve_plan(value, ["runtime-lib"], empty_remote_snapshot())?
@@ -267,6 +309,35 @@ proc test_build_plan_propagates_dependency_keys(ctx: TestContext) [fs, env, erro
   let rebuilt = resolve_plan(changed_catalog, ["app"], empty_remote_snapshot())?
   test.eq(node_named(initial, "runtime-lib")?.artifact_key == node_named(rebuilt, "runtime-lib")?.artifact_key, false)?
   test.eq(node_named(initial, "app")?.artifact_key == node_named(rebuilt, "app")?.artifact_key, false)?
+}
+
+proc test_build_plan_keeps_same_package_dependency_edges_by_kind(ctx: TestContext) [fs, env, error] {
+  let original = plan_catalog(ctx, "plan-edge-kinds")?
+  var packages: List[types.Package] = []
+
+  for pkg in original.packages {
+    packages = packages.push(
+      if pkg.name == "app" { {...pkg, mkdeps_host: pkg.mkdeps_host.push("runtime-lib")} } else { pkg },
+    )
+  }
+
+  let value = catalog.from_packages(original.root, packages)?
+  let resolved = resolve_plan(value, ["app"], empty_remote_snapshot())?
+  let app = node_named(resolved, "app")?
+  let runtime_edges = [dependency for dependency in app.dependencies if dependency.name == "runtime-lib"]
+  test.eq([types.dependency_kind_text(dependency.kind) for dependency in runtime_edges], ["build-host", "runtime"])?
+  test.eq(runtime_edges[0].artifact_key, runtime_edges[1].artifact_key)?
+
+  let repeated = {...app, dependencies: app.dependencies.push(app.dependencies[0])}
+  let malformed = {...resolved, nodes: [if node.name == "app" { repeated } else { node } for node in resolved.nodes]}
+
+  match plan.fingerprint(malformed) {
+    Ok(_) => test.fail("same-kind duplicate dependency unexpectedly validated")?
+    Err(problem) => test.contains(
+      problem.message,
+      f"repeats ${types.dependency_kind_text(app.dependencies[0].kind)} dependency ${app.dependencies[0].name}",
+    )?
+  }
 }
 
 proc test_build_plan_requires_release_bump_for_changed_dependency(ctx: TestContext) [fs, env, error] {

@@ -1,5 +1,6 @@
 ##! Behavior coverage for the typed package-recipe boundary.
 use pm.recipe
+use pm.sources
 use pm.types
 
 pure fixture(name: Str) -> Path {
@@ -10,6 +11,19 @@ proc expect_contract_rejection(dir: Path, description: Str) [fs, env, error] {
   match recipe.load_package(dir) {
     Ok(_) => test.fail(f"${description}: recipe unexpectedly loaded")?
     Err(error) => test.ok(error.message != "", f"${description}: error has a message")?
+  }
+}
+
+proc assert_local_source_checksums(package: Str) [fs, env, error] {
+  let package_dir = Path(f"repo/${package}")
+  let pkg = recipe.load_package(package_dir)?
+
+  for source in pkg.upstream_sources {
+    let raw = source.source.display()
+    continue unless raw.starts_with("files/")
+    let staged = Path(f"repo/${package}/${raw}")
+    let expected = sources.source_checksum(source, "aarch64")?
+    test.eq(hash.sha256(staged)?.hex(), expected)?
   }
 }
 
@@ -26,6 +40,25 @@ proc test_recipe_loads_valid_metapackage() [fs, env, error] {
   let pkg = recipe.load_package(fixture("recipe-valid-meta"))?
   test.eq(pkg.kind, types.Meta)?
   test.eq(pkg.filetree, [])?
+}
+
+proc test_recipe_loads_linux_metadata_without_kbuild_dynamic_import() [fs, env, error] {
+  let pkg = recipe.load_package(p"repo/linux")?
+  test.eq(pkg.name, "linux")?
+  test.eq(pkg.ver, "7.0.5")?
+  test.eq(pkg.kind, types.Payload)?
+}
+
+proc test_ca_certificates_local_sources_match_declared_checksums() [fs, env, error] {
+  assert_local_source_checksums("ca-certificates")?
+}
+
+proc test_bison_local_source_matches_declared_checksum() [fs, env, error] {
+  assert_local_source_checksums("bison")?
+}
+
+proc test_flex_local_source_matches_declared_checksum() [fs, env, error] {
+  assert_local_source_checksums("flex")?
 }
 
 proc test_recipe_selects_target_filetree_variant() [fs, env, error] {

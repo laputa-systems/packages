@@ -9,7 +9,7 @@ export let package_kind = "payload"
 export let ver = "1"
 
 ## Exported declaration `rel`.
-export let rel = "14"
+export let rel = "15"
 
 ## Exported declaration `deps`.
 export let deps = []
@@ -35,7 +35,33 @@ export let upstream_sources = [
 ]
 
 ## Exported declaration `filetree`.
+## Empty mount and state directories are payload, not ambient host state. In
+## particular, the kernel mounts devtmpfs before PID 1 can create /dev.
 export let filetree = [
+  {path: p"boot", kind: "tree"},
+  {path: p"dev", kind: "tree"},
+  {path: p"dev/pts", kind: "tree"},
+  {path: p"dev/shm", kind: "tree"},
+  {path: p"etc/rc.d", kind: "tree"},
+  {path: p"mnt", kind: "tree"},
+  {path: p"opt", kind: "tree"},
+  {path: p"proc", kind: "tree"},
+  {path: p"root", kind: "tree"},
+  {path: p"run", kind: "tree"},
+  {path: p"sys", kind: "tree"},
+  {path: p"tmp", kind: "tree"},
+  {path: p"usr/include", kind: "tree"},
+  {path: p"usr/lib/init/rc.d", kind: "tree"},
+  {path: p"usr/local/bin", kind: "tree"},
+  {path: p"usr/share", kind: "tree"},
+  {path: p"var/cache", kind: "tree"},
+  {path: p"var/empty", kind: "tree"},
+  {path: p"var/lib/init", kind: "tree"},
+  {path: p"var/local", kind: "tree"},
+  {path: p"var/log", kind: "tree"},
+  {path: p"var/opt", kind: "tree"},
+  {path: p"var/spool/mail", kind: "tree"},
+  {path: p"var/tmp", kind: "tree"},
   {
     path: p"bin",
     kind: "symlink",
@@ -146,7 +172,42 @@ export let filetree = [
 export proc build(dest: Path) [fs, error] {
   let _ = fs.copy_tree(p".", dest, parents: true, overwrite: true)?
 
-  for keep in fs.walk(dest) |> where .kind == "file" and .name == ".keep" {
+  # `copy_tree` need not retain an otherwise empty source directory. Materialize
+  # every declared base-layout directory before removing its `.keep` marker, so
+  # the immutable payload archives the boot mountpoints.
+  for tree in [
+    "boot",
+    "dev",
+    "dev/pts",
+    "dev/shm",
+    "etc/rc.d",
+    "mnt",
+    "opt",
+    "proc",
+    "root",
+    "run",
+    "sys",
+    "tmp",
+    "usr/include",
+    "usr/lib/init/rc.d",
+    "usr/local/bin",
+    "usr/share",
+    "var/cache",
+    "var/empty",
+    "var/lib/init",
+    "var/local",
+    "var/log",
+    "var/opt",
+    "var/spool/mail",
+    "var/tmp",
+  ] {
+    fs.mkdir(fp"${dest}/${tree}")?
+  }
+
+  # `.keep` is hidden, so it must be visible to the cleanup walk. Leaving it
+  # behind makes every declared directory non-empty and drops the real
+  # mountpoint from the immutable archive.
+  for keep in fs.walk(dest, hidden: true) |> where .kind == "file" and .name == ".keep" {
     keep.path.remove()?
   }
 }

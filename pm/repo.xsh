@@ -6,7 +6,10 @@ use store
 use types
 use util
 
-type RepoArtifactMetadataDto = {name: Str, ver: Str, rel: Str, package_kind: Str?}
+# Artifact metadata gained `package_kind` after the legacy repository format.
+# Keep the required tuple typed, then accept only that one omitted legacy field
+# at this boundary.  New metadata must name an explicit valid kind.
+type RepoArtifactMetadataDto = {name: Str, ver: Str, rel: Str}
 type RepoIndexMerge = {index: List[types.RemotePackage], already_published: Bool}
 type RepoPublishStage = {publication: types.RepoPublication, entry: types.RemotePackage, metadata: Path}
 
@@ -20,38 +23,41 @@ proc repo_verify_node_receipt(
   receipt: types.ArtifactReceipt,
 ) [error] {
   let executor_sha256 = repo_expected_executor_sha256(value)?
-  let dependency_keys = [dependency.artifact_key for dependency in node.dependencies]
-  let runtime_dependency_keys = [dependency.artifact_key for dependency in node.dependencies if dependency.kind == types.Runtime]
+  let dependency_keys = store.receipt_dependency_keys(node)
+  let runtime_dependency_keys = store.receipt_runtime_dependency_keys(node)
 
-  if receipt.key != node.artifact_key or receipt.target != value.target or receipt.package_name != node.name or receipt.package_id != node.package_id or receipt.recipe_sha256 != node.recipe_sha256 or receipt.executor_sha256 != executor_sha256 or receipt.dependency_keys != dependency_keys or receipt.runtime_dependency_keys != runtime_dependency_keys {
+  if receipt.key != node.artifact_key or receipt.target != value.target or receipt.package_name != node.name or receipt.package_id != node.package_id or receipt.recipe_sha256 != node.recipe_sha256 or receipt.dependency_keys != dependency_keys or receipt.runtime_dependency_keys != runtime_dependency_keys {
     return Err(types.PmError.PackageContract(f"artifact receipt ${node.artifact_key} does not match BuildPlan node ${node.package_id}"))
   }
 
+  if ! build_plan.node_uses_legacy_remote_identity(value, node)? and receipt.executor_sha256 != executor_sha256 {
+    return Err(types.PmError.PackageContract(f"artifact receipt ${node.artifact_key} executor does not match BuildPlan node ${node.package_id}"))
+  }
+
   if types.plan_action_is_build(node.action) {
-    if receipt.origin != types.Built {
+    if receipt.origin != types.artifact_origin_built() {
       return Err(types.PmError.PackageContract(f"BuildPlan build node ${node.package_id} is not a locally proved artifact"))
     }
-  } else if receipt.origin != types.Remote {
+  } else if receipt.origin != types.artifact_origin_remote() {
     return Err(types.PmError.PackageContract(f"BuildPlan remote node ${node.package_id} is not a verified imported artifact"))
   }
 }
 
 proc repo_package_kind(receipt: types.ArtifactReceipt, node: types.PlanNode) [fs, error] -> Result[types.PackageKind] {
   let metadata = fp"${receipt.artifact_dir}/metadata.json"
-  let core = json.read(metadata)?.require(RepoArtifactMetadataDto)?
+  let raw: Record = json.read(metadata)?
+  let core = raw.require(RepoArtifactMetadataDto)?
 
   if core.name != node.name or core.ver != node.ver or core.rel != node.rel {
     return Err(types.PmError.PackageContract(f"artifact metadata ${metadata.display()} does not match ${node.package_id}"))
   }
 
-  let package_kind = core.package_kind ?? ""
-
-  if package_kind != "" {
-    return types.parse_package_kind(package_kind)
+  if raw.has("package_kind") {
+    return types.parse_package_kind(raw.get("package_kind")?.require(Str)?)
   }
 
-  # Package-kind fields appeared after legacy remote metadata. Their omitted form was payload.
-  types.Payload
+  # Package-kind fields appeared after legacy remote metadata. Its omitted form was payload.
+  types.package_payload()
 }
 
 proc repo_verified_proof_path(
@@ -62,7 +68,7 @@ proc repo_verified_proof_path(
   let payload = fp"${receipt.artifact_dir}/payload.tar.gz"
   let primary = fp"${receipt.artifact_dir}/proof.json"
 
-  if receipt.origin == types.Remote {
+  if receipt.origin == types.artifact_origin_remote() {
     # import_remote hashes and verifies its opaque remote proof object through the Store receipt.
     return primary
   }
@@ -138,12 +144,12 @@ proc repo_publication_entry(value: types.RepoPublication, metadata: Path) [fs, e
     name: node.name,
     ver: node.ver,
     rel: node.rel,
-    deps: [dependency.name for dependency in node.dependencies if dependency.kind == types.Runtime],
-    mkdeps_host: [dependency.name for dependency in node.dependencies if dependency.kind == types.BuildHost],
-    mkdeps_target: [dependency.name for dependency in node.dependencies if dependency.kind == types.BuildTarget],
-    sha256: if value.kind == types.Meta { "" } else { hash.sha256(value.payload)?.hex() },
-    size: if value.kind == types.Meta { 0 } else { fs.metadata(value.payload)?.size },
-    tarball: if value.kind == types.Meta { "" } else { payload_rel.display() },
+    deps: [dependency.name for dependency in node.dependencies if dependency.kind == types.dependency_runtime()],
+    mkdeps_host: [dependency.name for dependency in node.dependencies if dependency.kind == types.dependency_build_host()],
+    mkdeps_target: [dependency.name for dependency in node.dependencies if dependency.kind == types.dependency_build_target()],
+    sha256: if value.kind == types.package_meta() { "" } else { hash.sha256(value.payload)?.hex() },
+    size: if value.kind == types.package_meta() { 0 } else { fs.metadata(value.payload)?.size },
+    tarball: if value.kind == types.package_meta() { "" } else { payload_rel.display() },
     metadata: metadata_rel.display(),
     metadata_sha256,
     artifact_key: node.artifact_key,
@@ -154,7 +160,7 @@ proc repo_publication_entry(value: types.RepoPublication, metadata: Path) [fs, e
     proof: proof_rel.display(),
     proof_receipt_sha256,
     source_sha256: "",
-    metapackage: value.kind == types.Meta,
+    metapackage: value.kind == types.package_meta(),
   }
 }
 
@@ -196,7 +202,7 @@ proc repo_publish_immutable_object(repo_url: Str, rel: Path, source: Path, token
 
 ## Publishes a verified repository snapshot: immutable package objects first and the remote index last.
 export proc publish(snapshot: types.RepoSnapshot, remote_repo: Str, token: Str, work: Path) [fs, net, time, error] {
-  if snapshot.format != "laputa-repo-snapshot-1" or snapshot.target != types.Aarch64LinuxMusl {
+  if snapshot.format != "laputa-repo-snapshot-1" or snapshot.target != types.target_aarch64() {
     return Err(types.PmError.PackageContract("unsupported repository snapshot"))
   }
 
@@ -218,7 +224,7 @@ export proc publish(snapshot: types.RepoSnapshot, remote_repo: Str, token: Str, 
       return Err(types.PmError.PackageContract(f"repository snapshot receipt changed for ${publication.node.package_id}"))
     }
 
-    if publication.receipt.origin == types.Built {
+    if publication.receipt.origin == types.artifact_origin_built() {
       pm_proof.verify_artifact_receipt(publication.proof, publication.node, publication.payload)?
     }
 

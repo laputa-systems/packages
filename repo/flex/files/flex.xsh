@@ -759,11 +759,15 @@ proc parse_options(argv: List[Str]) [error, io] -> Result[LexOptions] {
   var verbose = false
   var delegate = false
   var delegate_reason = ""
-  let tokens = cli.tokens(argv, ["outfile"])?
+  # `cli.tokens` needs every spelling that consumes a following argv element.
+  # Flex uses the attached short form (`-oFILE`) in Linux's Kconfig build.
+  let tokens = cli.tokens(argv, ["o", "outfile"])?
 
   for token in tokens {
     if token.kind == "operand" {
-      input = token.value
+      # `cli.tokens` reserves `value` for option values.  A lexer source is an
+      # operand, so preserve its caller-provided path from `name`.
+      input = token.name
       continue
     }
 

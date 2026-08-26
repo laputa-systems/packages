@@ -50,11 +50,15 @@ proc execute_require_receipt(
   receipt: types.ArtifactReceipt,
 ) [error] {
   let expected_executor = execute_executor_digest(plan_value)?
-  let expected_dependencies = [dependency.artifact_key for dependency in node.dependencies]
-  let expected_runtime_dependencies = [dependency.artifact_key for dependency in node.dependencies if dependency.kind == types.Runtime]
+  let expected_dependencies = store.receipt_dependency_keys(node)
+  let expected_runtime_dependencies = store.receipt_runtime_dependency_keys(node)
 
-  if receipt.key != node.artifact_key or receipt.package_name != node.name or receipt.package_id != node.package_id or receipt.recipe_sha256 != node.recipe_sha256 or receipt.executor_sha256 != expected_executor or receipt.dependency_keys != expected_dependencies or receipt.runtime_dependency_keys != expected_runtime_dependencies {
+  if receipt.key != node.artifact_key or receipt.package_name != node.name or receipt.package_id != node.package_id or receipt.recipe_sha256 != node.recipe_sha256 or receipt.dependency_keys != expected_dependencies or receipt.runtime_dependency_keys != expected_runtime_dependencies {
     return Err(types.PmError.PackageContract(f"stored artifact ${node.artifact_key} does not match plan node ${node.package_id}"))
+  }
+
+  if ! build_plan.node_uses_legacy_remote_identity(plan_value, node)? and receipt.executor_sha256 != expected_executor {
+    return Err(types.PmError.PackageContract(f"stored artifact ${node.artifact_key} executor does not match plan node ${node.package_id}"))
   }
 }
 
@@ -90,6 +94,7 @@ proc execute_mutable_root(
   root_handle: FsRoot,
   label: Str,
   artifacts: List[types.ArtifactReceipt],
+  seed_executor: Bool,
 ) [fs, process, env, error] -> Result[Path] {
   let work = fs.root_path(root_handle)?
   let immutable = fp"${work}/${label}-dependencies"
@@ -97,7 +102,12 @@ proc execute_mutable_root(
   let root_plan = pm_root.preflight(artifacts)?
   let _ = pm_root.compose_artifacts(immutable, root_plan, artifacts)?
   let _ = fs.copy_tree(immutable, mutable, parents: true, overwrite: true)?
-  pm_build.seed_executor_substrate(mutable)?
+  # Only compilation receives the host executor substrate.  A proof root is a
+  # target runtime closure; leaking /bin and /usr from the runner both masks
+  # missing dependencies and conflicts with baselayout's owned symlinks.
+  if seed_executor {
+    pm_build.seed_executor_substrate(mutable)?
+  }
   mutable
 }
 
@@ -105,6 +115,7 @@ proc execute_stage_local(
   plan_value: types.BuildPlan,
   node: types.PlanNode,
   pkg: types.Package,
+  repo_root: Path,
   build_root: Path,
   work: Path,
 ) [fs, net, process, env, time, error] -> Result[types.StagedArtifact] {
@@ -119,7 +130,14 @@ proc execute_stage_local(
   let _ = fs.copy_tree(pkg.dir, recipe_dir, parents: true, overwrite: true)?
   let isolated_pkg = {...pkg, dir: recipe_dir}
   fs.mkdir(source)?
-  sources.prepare_package_source_tree(work, work, isolated_pkg, source, false, false, false)?
+  # Package recipes may explicitly name repository-owned inputs (for example
+  # laputa-pm's PM entrypoint/tree). Resolve those against the plan repository
+  # while the recipe itself remains isolated under `work/recipe`.
+  env {
+    XSH_PM_REPOSITORY_ROOT = repo_root.display()
+  } {
+    sources.prepare_package_source_tree(work, work, isolated_pkg, source, false, false, false)?
+  } ?
 
   env {
     LAPUTA_ROOT = build_root.display()
@@ -155,7 +173,7 @@ proc execute_publish_proof_cache(
   node: types.PlanNode,
   payload: Path,
   proof: Path,
-) [fs, error] {
+) [fs, error] -> Result[Unit] {
   pm_proof.verify_artifact_receipt(proof, node, payload)?
   let cached = execute_proof_cache_path(store_root, node.artifact_key, node.proof_key)
   fs.mkdir(cached.parent)?
@@ -164,7 +182,7 @@ proc execute_publish_proof_cache(
 
   if fs.exists(cached)? {
     pm_proof.verify_artifact_receipt(cached, node, payload)?
-    return
+    return Ok()
   }
 
   let temporary = fp"${cached}.tmp"
@@ -173,6 +191,7 @@ proc execute_publish_proof_cache(
   fs.copy(proof, temporary, overwrite: true)?
   fs.rename(temporary, cached)?
   pm_proof.verify_artifact_receipt(cached, node, payload)?
+  return Ok()
 }
 
 proc execute_run_proof(
@@ -181,20 +200,40 @@ proc execute_run_proof(
   store_root: Path,
   payload: Path,
   proof: Path,
-) [fs, process, env, error] {
+) [fs, process, env, error] -> Result[Unit] {
   if execute_cached_proof_is_valid(store_root, node, payload)? {
-    return
+    return Ok()
   }
 
-  let runtime_keys = [dependency.artifact_key for dependency in node.dependencies if dependency.kind == types.Runtime]
+  # Metapackages select an already-proved dependency closure. They own neither
+  # a payload archive nor a proof program, but still receive an immutable proof
+  # receipt that binds this exact selector node to its opaque Store marker.
+  if pkg.kind == types.package_meta() {
+    pm_proof.write_artifact_receipt(proof, node, payload)?
+    execute_publish_proof_cache(store_root, node, payload, proof)?
+    return Ok()
+  }
+
+  let runtime_keys = [dependency.artifact_key for dependency in node.dependencies if dependency.kind == types.dependency_runtime()]
   let runtime_artifacts = execute_receipt_closure(store_root, runtime_keys)?
   let root_handle = fs.tempdir()?
   defer fs.close_root(root_handle)?
-  let proof_root = execute_mutable_root(root_handle, "proof", runtime_artifacts)?
-  archive.tar_extract(payload, proof_root, 0, "auto", true)?
-  pm_proof.run_artifact_proof(proof_root, pkg)?
+  let proof_root = execute_mutable_root(root_handle, "proof", runtime_artifacts, false)?
+  # Payload archives contain their top-level directories (for example `usr`).
+  # The proof root already has the executor substrate and runtime closure, so
+  # extracting directly would reject that legitimate shared directory.  Extract
+  # into a fresh path, then merge the verified tree with normal path-type
+  # checks before the proof sees it.
+  let payload_root = fp"${fs.root_path(root_handle)?}/proof-payload"
+  archive.tar_extract(payload, payload_root, 0, "auto", true)?
+  let _ = fs.copy_tree(payload_root, proof_root, parents: true, overwrite: true)?
+  match pm_proof.run_artifact_proof(proof_root, pkg) {
+    Ok(_) => {}
+    Err(problem) => return Err(problem)
+  }
   pm_proof.write_artifact_receipt(proof, node, payload)?
   execute_publish_proof_cache(store_root, node, payload, proof)?
+  return Ok()
 }
 
 proc execute_build_local(
@@ -204,14 +243,29 @@ proc execute_build_local(
   store_root: Path,
 ) [fs, net, process, env, time, error] -> Result[types.ArtifactReceipt] {
   let pkg = execute_load_package(plan_value, node, repo_root)?
-  let dependency_keys = [dependency.artifact_key for dependency in node.dependencies]
-  let dependencies = execute_receipt_closure(store_root, dependency_keys)?
   let root_handle = fs.tempdir()?
   defer fs.close_root(root_handle)?
-  let build_root = execute_mutable_root(root_handle, "build", dependencies)?
   let work = fs.root_path(root_handle)?
-  let staged = execute_stage_local(plan_value, node, pkg, build_root, work)?
-  execute_run_proof(node, pkg, store_root, staged.payload, staged.proof)?
+  var build_root = fp"${work}/meta-build-root"
+
+  if pkg.kind == types.package_meta() {
+    # Selectors have no build sandbox; their declared dependencies are ordered
+    # by the BuildPlan and proved independently before this node executes.
+    fs.mkdir(build_root)?
+  } else {
+    let dependency_keys = store.receipt_dependency_keys(node)
+    let dependencies = execute_receipt_closure(store_root, dependency_keys)?
+    build_root = execute_mutable_root(root_handle, "build", dependencies, true)?
+  }
+
+  let staged = execute_stage_local(plan_value, node, pkg, repo_root, build_root, work)?
+  # Keep the proof outcome as Result data through this build-node boundary.
+  # The published runner otherwise propagates a failing Unit proc directly out
+  # of a par-map worker before its node-status marker can be written.
+  match execute_run_proof(node, pkg, store_root, staged.payload, staged.proof) {
+    Ok(_) => {}
+    Err(problem) => return Err(problem)
+  }
   let receipt = store.commit(store_root, node, staged)?
   execute_require_receipt(plan_value, node, receipt)?
   execute_publish_proof_cache(store_root, node, fp"${receipt.artifact_dir}/payload.tar.gz", staged.proof)?
@@ -258,6 +312,135 @@ proc execute_remote_node(
   receipt
 }
 
+# Every node in a completed level must be a fully verified immutable receipt
+# before its dependents may start. `par-map` keeps worker failures in-band
+# unless the worker propagates them, so this boundary deliberately verifies
+# both the returned receipt and the published store object by plan node order.
+proc execute_verified_level(
+  plan_value: types.BuildPlan,
+  nodes: List[types.PlanNode],
+  completed: List[types.ArtifactReceipt],
+  store_root: Path,
+) [fs, error] -> Result[List[types.ArtifactReceipt]] {
+  if nodes.len() != completed.len() {
+    return Err(types.PmError.PackageContract("executor level result count does not match its plan nodes"))
+  }
+
+  var receipts: List[types.ArtifactReceipt] = []
+  var index = 0
+
+  while index < nodes.len() {
+    let node = nodes[index]
+    let receipt = completed[index]
+    execute_require_receipt(plan_value, node, receipt)?
+
+    # `store.lookup` re-reads and hashes the renamed final directory. This
+    # prevents a dependent level from observing merely a worker return value
+    # rather than the receipt-last, atomic publication it requires.
+    let published = store.lookup(store_root, node.artifact_key)?
+    execute_require_receipt(plan_value, node, published)?
+    receipts = receipts.push(published)
+    index += 1
+  }
+
+  receipts
+}
+
+# The published runner erases `par-map`'s result element schema, including
+# primitive `Str` values. Do not expose or type-bind that transient result.
+# Each worker writes one unique transient outcome marker before its `?`
+# propagation; after all workers stop, the parent converts that non-generic
+# status back into the original node failure before it ever reads Store. This
+# retains worker error propagation on runners that leave par-map errors
+# in-band, while Store receipt-last publication remains the level boundary.
+pure execute_parallel_level_ok_marker(status: Path, node: types.PlanNode) -> Path {
+  fp"${status}/${node.artifact_key}.ok"
+}
+
+pure execute_parallel_level_error_marker(status: Path, node: types.PlanNode) -> Path {
+  fp"${status}/${node.artifact_key}.error"
+}
+
+proc execute_parallel_level_worker(
+  plan_value: types.BuildPlan,
+  node: types.PlanNode,
+  repo_root: Path,
+  store_root: Path,
+  remote_repo: Str,
+  status: Path,
+) [fs, net, process, env, time, error] -> Result[Unit] {
+  # Keep the node Result as data until its failure marker is durable. The
+  # caller reconstructs that marker after par-map completion; propagating it
+  # here would make runner-specific erased par-map control flow observable.
+  match build_node(plan_value, node, repo_root, store_root, remote_repo) {
+    Ok(_) => {
+      fs.write(execute_parallel_level_ok_marker(status, node), "ok\n")?
+      return Ok()
+    }
+    Err(problem) => {
+      fs.write(execute_parallel_level_error_marker(status, node), problem.message + "\n")?
+      # The parent reconstructs and propagates this failure only after every
+      # worker has joined. Returning success here avoids an erased par-map
+      # result becoming a runner-dependent control-flow boundary.
+      return Ok()
+    }
+  }
+}
+
+proc execute_parallel_level_require_workers(
+  nodes: List[types.PlanNode],
+  status: Path,
+) [fs, error] {
+  for node in nodes {
+    let error_marker = execute_parallel_level_error_marker(status, node)
+
+    if fs.exists(error_marker)? {
+      let message = fs.read_text(error_marker)?.trim()
+      return Err(types.PmError.ExtensionFailed(f"parallel executor node ${node.package_id} failed: ${message}"))
+    }
+
+    if !fs.exists(execute_parallel_level_ok_marker(status, node))? {
+      return Err(types.PmError.PackageContract(f"parallel executor node ${node.package_id} did not report completion"))
+    }
+  }
+}
+
+# Once the ephemeral completion barrier succeeds, derive immutable keys from
+# the known plan nodes and re-read receipt-last Store objects in ordinal order.
+# This makes Store publication, rather than an erased parallel result, the
+# executor's typed boundary.
+proc execute_parallel_level(
+  plan_value: types.BuildPlan,
+  nodes: List[types.PlanNode],
+  repo_root: Path,
+  store_root: Path,
+  remote_repo: Str,
+  jobs: Int,
+) [fs, net, process, env, time, error] -> Result[List[types.ArtifactReceipt]] {
+  let handle = fs.tempdir()?
+  defer fs.close_root(handle)?
+  let status = fp"${fs.root_path(handle)?}/parallel-level-status"
+  fs.mkdir(status)?
+
+  let _ = nodes
+    |> par-map --jobs=jobs { |node|
+      execute_parallel_level_worker(plan_value, node, repo_root, store_root, remote_repo, status)?
+      # The value is deliberately ignored: only its completion/error behavior
+      # matters, and the published runner erases the par-map element schema.
+      0
+    }
+
+  execute_parallel_level_require_workers(nodes, status)?
+
+  var receipts: List[types.ArtifactReceipt] = []
+  for node in nodes {
+    let receipt = store.lookup(store_root, node.artifact_key)?
+    execute_require_receipt(plan_value, node, receipt)?
+    receipts = receipts.push(receipt)
+  }
+  return receipts
+}
+
 ## Executes one exact BuildPlan node using only verified dependency artifacts from the immutable store.
 export proc build_node(
   plan_value: types.BuildPlan,
@@ -272,10 +455,14 @@ export proc build_node(
     return execute_existing_local(plan_value, node, repo_root, store_root)
   }
 
-  match node.action {
-    types.ReuseRemote(_) => execute_remote_node(plan_value, node, store_root, remote_repo)?
-    types.Build(_) => execute_build_local(plan_value, node, repo_root, store_root)?
+  # Keep action dispatch out of a constructor-pattern boundary.  The pinned
+  # published runner parses qualified tag patterns differently from the newer
+  # host checker; the typed predicate is stable across both runners.
+  if types.plan_action_is_build(node.action) {
+    return execute_build_local(plan_value, node, repo_root, store_root)
   }
+
+  return execute_remote_node(plan_value, node, store_root, remote_repo)
 }
 
 ## Executes each topological BuildPlan level with bounded, deterministic result ordering; artifact-store receipts are the only resume state.
@@ -304,21 +491,34 @@ export proc build_plan(
       index += 1
     }
 
+    var completed: List[types.ArtifactReceipt] = []
+
     if jobs == 1 or level_nodes.len() == 1 {
       for node in level_nodes {
-        artifacts = artifacts.push(build_node(plan_value, node, repo_root, store_root, remote_repo)?)
+        completed = completed.push(build_node(plan_value, node, repo_root, store_root, remote_repo)?)
       }
     } else {
-      # par-map preserves ordinal result order, while every node owns a fresh root and artifact key lock.
-      let completed = level_nodes
-        |> par-map --jobs=jobs { |node| build_node(plan_value, node, repo_root, store_root, remote_repo) }
-        |> collect()
+      # The postfix `?` is the scheduling boundary: without it par-map keeps
+      # a failed worker in-band and a later level can attempt to consume that
+      # worker's absent receipt. The verified-level barrier makes completion
+      # of receipt-last publication explicit before advancing the plan.
+      completed = execute_parallel_level(plan_value, level_nodes, repo_root, store_root, remote_repo, jobs)?
+    }
 
-      for result in completed {
-        artifacts = artifacts.push(result)
-      }
+    let verified = execute_verified_level(plan_value, level_nodes, completed, store_root)?
+
+    for receipt in verified {
+      artifacts = artifacts.push(receipt)
     }
   }
 
-  {format: "laputa-build-result-1", plan_sha256: plan_value.plan_sha256, artifacts}
+  # Keep the receipt list concrete at the public executor boundary. The
+  # generated profile adapter crosses this boundary in a separate module and
+  # must never receive an unparameterized List from the published runner.
+  let result: types.BuildResult = {
+    format: "laputa-build-result-1",
+    plan_sha256: plan_value.plan_sha256,
+    artifacts,
+  }
+  return result
 }

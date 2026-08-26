@@ -1445,11 +1445,16 @@ proc parse_options(argv: List[Str]) [error, io] -> Result[YaccOptions] {
   var verbose = false
   var prefix = "y"
   var output_set = false
-  let tokens = cli.tokens(argv, ["output", "file-prefix", "name-prefix"])?
+  # `cli.tokens` needs every spelling that consumes a following argv element.
+  # Keep short GNU yacc spellings alongside long ones so `-o FILE` cannot turn
+  # FILE into the grammar operand.
+  let tokens = cli.tokens(argv, ["o", "output", "b", "file-prefix", "p", "name-prefix"])?
 
   for token in tokens {
     if token.kind == "operand" {
-      input = token.value
+      # `cli.tokens` reserves `value` for option values.  A grammar is an
+      # operand, so preserve its caller-provided path from `name`.
+      input = token.name
       continue
     }
 

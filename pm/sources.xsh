@@ -4,6 +4,26 @@ use recipe
 use types
 use util
 
+# `repository/` names a declared package-repository input rather than a path
+# relative to an isolated recipe copy. The executor supplies its exact
+# repository root, so recipes can stage repository-owned source trees without
+# `..` traversal or an ambient working directory.
+pure sources_is_repository_input(source: Str) -> Bool {
+  source.starts_with("repository/")
+}
+
+proc sources_repository_input_path(source: Str) [fs, env, error] -> Result[Path] {
+  let root = (env.get("XSH_PM_REPOSITORY_ROOT") ?? "").trim()
+  let relative = fp"${source.replace("repository/", "")}".normalize()
+
+  if root == "" {
+    return Err(types.PmError.PackageContract(f"repository source ${source} needs XSH_PM_REPOSITORY_ROOT"))
+  }
+
+  let _ = util.ensure_relative_path(relative, f"repository source ${source}")?
+  fp"${root}/${relative}"
+}
+
 ## Exported PM declaration `ensure_source_dest`.
 export pure ensure_source_dest(dest: Path) -> Result[Unit] {
   let _ = util.ensure_relative_path(dest, "source destination")?
@@ -211,8 +231,13 @@ export proc resolve_source(
   let source_path = fp"${source}"
   var local = source_path
 
-  if ! source.starts_with("/") {
-    local = fp"${pkg.dir}/${source_path}"
+  if sources_is_repository_input(source) {
+    local = sources_repository_input_path(source)?
+  } else if ! source.starts_with("/") {
+    # Recipe-local paths are durable package inputs, including explicit parent
+    # inputs such as laputa-pm's checked-in PM entrypoint.  Normalize after
+    # anchoring to the typed recipe directory so no process cwd participates.
+    local = fp"${pkg.dir}/${source_path}".normalize()
   }
 
   if ! fs.exists(local)? {
@@ -285,20 +310,20 @@ export proc stage_resolved_source(
   verify_source_checksum(source_path, checksum, resolved_kind)?
   let dest = util.source_stage_dir(src, line)
 
-  if source_kind == types.Git or resolved_kind == "git" {
+  if source_kind == types.source_git() or resolved_kind == "git" {
     fs.mkdir(dest)?
     prune_git_dirs(source_path)?
     fs.copy_tree(source_path, dest, parents: true, overwrite: true)?
     return
   }
 
-  if source_kind == types.Directory or resolved_kind == "dir" {
+  if source_kind == types.source_directory() or resolved_kind == "dir" {
     fs.mkdir(dest)?
     fs.copy_tree(source_path, dest, parents: true, overwrite: true)?
     return
   }
 
-  if source_kind == types.Archive and util.is_tar_source(source_path) or source_kind == types.Auto and util.is_tar_source(
+  if source_kind == types.source_archive() and util.is_tar_source(source_path) or source_kind == types.source_auto() and util.is_tar_source(
     source_path,
   ) {
     fs.remove(dest, missing_ok: true)?
@@ -307,14 +332,14 @@ export proc stage_resolved_source(
     return
   }
 
-  if source_kind == types.Zip or source_kind == types.Auto and util.is_zip_source(source_path) {
+  if source_kind == types.source_zip() or source_kind == types.source_auto() and util.is_zip_source(source_path) {
     fs.remove(dest, missing_ok: true)?
     dest.parent.mkdir()?
     archive.zip_extract(source_path, dest, overwrite: true)?
     return
   }
 
-  if source_kind == types.Cpio or source_kind == types.Auto and util.is_cpio_source(source_path) {
+  if source_kind == types.source_cpio() or source_kind == types.source_auto() and util.is_cpio_source(source_path) {
     fs.remove(dest, missing_ok: true)?
     dest.parent.mkdir()?
     archive.cpio_extract(source_path, dest, overwrite: true)?
@@ -417,10 +442,10 @@ proc validate_source_mirror(out: Path, pkg: types.Package, mirror: Path) [fs, en
 
 pure source_mirror_fingerprint_target(arch: Str) -> types.Target {
   if arch == "aarch64" {
-    return types.Aarch64LinuxMusl
+    return types.target_aarch64()
   }
 
-  types.TargetReserved
+  types.target_reserved()
 }
 
 proc source_mirror_build_input(pkg: types.Package) [fs, env, error] -> Result[Str] {

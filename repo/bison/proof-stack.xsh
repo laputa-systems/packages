@@ -16,7 +16,11 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
 """,
   )?
 
-  let m4_out = run.text $m4_bin fp"${tmp}/test.m4" ?
+  # This is a generated file path, not a literal `fp` expression: under the
+  # published runner an interpolated `fp` operand resolves to the cwd and
+  # would give m4 the temporary directory rather than this source file.
+  let m4_input = Path(f"${tmp}/test.m4")
+  let m4_out = run.text $m4_bin $m4_input ?
   let m4_result = m4_out.trim()
 
   if m4_result != "hello from m4" {

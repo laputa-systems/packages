@@ -47,6 +47,24 @@ proc generation_build_plan(ctx: TestContext, name: Str) [fs, env, error] -> Resu
   )?
 }
 
+proc generation_baselayout_build_plan(ctx: TestContext, name: Str) [fs, env, error] -> Result[types.BuildPlan] {
+  let repo_root = copied_generation_repository(ctx, name)?
+  let _ = fs.copy_tree(
+    fixture("generation-overlay/baselayout"),
+    fp"${repo_root}/repo/baselayout",
+    parents: true,
+    overwrite: true,
+  )?
+  plan.resolve(
+    catalog.load(repo_root)?,
+    generation_empty_remote(),
+    policy.aarch64_docker(),
+    ["baselayout"],
+    false,
+    generation_executor_identity(),
+  )?
+}
+
 proc stage_generation_artifacts(ctx: TestContext, value: types.BuildPlan, store_root: Path) [fs, error] {
   let executor_sha256 = plan.executor_fingerprint(value.executor)?
 
@@ -82,6 +100,41 @@ proc stage_generation_artifacts(ctx: TestContext, value: types.BuildPlan, store_
     fs.write(proof, f"proof ${node.name}\n")?
     let _ = store.commit(store_root, node, {payload, metadata, proof, executor_sha256})?
   }
+}
+
+proc stage_generation_baselayout_artifact(ctx: TestContext, value: types.BuildPlan, store_root: Path) [fs, error] {
+  let node = value.nodes[0]
+  let executor_sha256 = plan.executor_fingerprint(value.executor)?
+  let stage = test.temp_dir(ctx, name: "generation-stage-baselayout")?
+  let contents = fp"${stage}/contents"
+  let payload = fp"${stage}/payload.tar.gz"
+  let metadata = fp"${stage}/metadata.json"
+  let proof = fp"${stage}/proof.json"
+  let init_directory = fp"${contents}/usr/lib/init/rc.d"
+  fs.mkdir(init_directory, parents: true)?
+  fs.chmod(init_directory, 0o755)?
+  archive.tar_create(payload, contents, [p"."], compression: "gz")?
+  json.write(
+    metadata,
+    {
+      arch: "aarch64",
+      name: node.name,
+      ver: node.ver,
+      rel: node.rel,
+      package_kind: "payload",
+      files: [
+        {
+          path: "usr/lib/init/rc.d",
+          kind: "tree",
+          mode: 0o755,
+          sha256: "",
+          target: "",
+        },
+      ],
+    },
+  )?
+  fs.write(proof, "proof baselayout\n")?
+  let _ = store.commit(store_root, node, {payload, metadata, proof, executor_sha256})?
 }
 
 proc empty_overlay(ctx: TestContext, name: Str) [fs, error] -> Result[Path] {
@@ -197,4 +250,43 @@ proc test_generation_profile_overlay_metadata_and_explicit_replacement(ctx: Test
   let replacement_output = fp"${test.temp_dir(ctx, name: "generation-replacement-output")?}/root"
   let _ = generation.compose(replacement, store_root, replacement_output, conflict_overlay)?
   test.eq(fp"${replacement_output}/usr/share/app".read_text()?, "replaced app\n")?
+}
+
+proc test_generation_overlay_coalesces_matching_baselayout_directory_and_rejects_conflicts(ctx: TestContext) [fs, env, error] {
+  let build_value = generation_baselayout_build_plan(ctx, "generation-baselayout-plan")?
+  let store_root = test.temp_dir(ctx, name: "generation-baselayout-store")?
+  stage_generation_baselayout_artifact(ctx, build_value, store_root)?
+
+  # The profile owns a new hook below baselayout's directory.  Its matching
+  # directory declaration is structural, not a package replacement; the
+  # profile's overlay digest remains explicit receipt provenance.
+  let overlay = empty_overlay(ctx, "generation-baselayout-overlay")?
+  let hook_directory = fp"${overlay}/usr/lib/init/rc.d"
+  fs.mkdir(hook_directory, parents: true)?
+  fs.chmod(hook_directory, 0o755)?
+  fs.write(fp"${hook_directory}/laputa-test.boot", "profile hook\n")?
+  let profile = generation.overlay_profile(overlay)?
+  let value = generation.plan_profile(build_value, ["baselayout"], profile)?
+  let output = fp"${test.temp_dir(ctx, name: "generation-baselayout-output")?}/root"
+  let receipt = generation.compose(value, store_root, output, overlay)?
+  test.eq(receipt.profile.overlay_sha256, generation.overlay_digest(overlay)?)?
+  test.eq(fp"${output}/usr/lib/init/rc.d/laputa-test.boot".read_text()?, "profile hook\n")?
+  generation.verify_generation(output, receipt)?
+
+  let file_conflict = empty_overlay(ctx, "generation-baselayout-file-conflict")?
+  fs.mkdir(fp"${file_conflict}/usr/lib/init", parents: true)?
+  fs.write(fp"${file_conflict}/usr/lib/init/rc.d", "not a directory\n")?
+  let file_plan = generation.plan(build_value, ["baselayout"], generation.overlay_digest(file_conflict)?)?
+  let file_output = fp"${test.temp_dir(ctx, name: "generation-baselayout-file-output")?}/root"
+  expect_generation_error(ctx, generation.compose(file_plan, store_root, file_output, file_conflict), "incompatible directory type or mode metadata")?
+  test.eq(fs.exists(file_output)?, false)?
+
+  let mode_conflict = empty_overlay(ctx, "generation-baselayout-mode-conflict")?
+  let mode_directory = fp"${mode_conflict}/usr/lib/init/rc.d"
+  fs.mkdir(mode_directory, parents: true)?
+  fs.chmod(mode_directory, 0o700)?
+  let mode_plan = generation.plan(build_value, ["baselayout"], generation.overlay_digest(mode_conflict)?)?
+  let mode_output = fp"${test.temp_dir(ctx, name: "generation-baselayout-mode-output")?}/root"
+  expect_generation_error(ctx, generation.compose(mode_plan, store_root, mode_output, mode_conflict), "incompatible directory type or mode metadata")?
+  test.eq(fs.exists(mode_output)?, false)?
 }

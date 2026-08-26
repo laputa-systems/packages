@@ -13,7 +13,7 @@ export let package_kind = "payload"
 export let ver = "23.1.0-rc2"
 
 ## Package release revision.
-export let rel = "13"
+export let rel = "14"
 
 ## Runtime package dependencies.
 export let deps = ["musl"]
@@ -201,7 +201,7 @@ proc include_controlled(argv: List[Str]) [] -> Bool {
   return "-nostdinc" in argv or "-nostdlibinc" in argv or "-nostdsysteminc" in argv
 }
 
-proc sysroot_arg(argv: List[Str]) [error] -> Result[Path] {
+proc sysroot_arg(argv: List[Str]) [env, error] -> Result[Path] {
   var index = 0
 
   while index < argv.len() {
@@ -216,6 +216,16 @@ proc sysroot_arg(argv: List[Str]) [error] -> Result[Path] {
     }
 
     index += 1
+  }
+
+  # Artifact proofs and isolated package builds execute the installed wrapper
+  # from the host namespace.  Their root is explicit in LAPUTA_ROOT; using it
+  # here makes an unqualified `cc` link against the verified runtime closure.
+  # Normal installed use has no such variable and deliberately retains `/`.
+  let scoped_root = env.get("LAPUTA_ROOT") ?? ""
+
+  if scoped_root != "" {
+    return Path(scoped_root)
   }
 
   return p"/"
@@ -354,6 +364,7 @@ env {
 
   let arch = target_arch(argv)?
   let sysroot = sysroot_arg(argv)?
+  let resource_dir = rooted(sysroot, "usr/lib/llvm23/lib/clang/23")
   let frontend = needs_frontend_flags(argv)
   let linking = ! compile_only(argv)
   let runtime = default_runtime(argv)
@@ -361,24 +372,29 @@ env {
   var exec_args = [
     "--no-default-config",
     f"--target=\${arch}-linux-musl",
-    "--sysroot=/",
+    f"--sysroot=\${sysroot.display()}",
     "-resource-dir",
-    "/usr/lib/llvm23/lib/clang/23",
+    resource_dir.display(),
   ]
 
   if frontend and ! include_controlled(argv) {
     exec_args = exec_args.push("-nostdinc")
 
     if is_cxx {
-      exec_args = exec_args.extend(["-isystem", "/usr/lib/llvm23/include/c++/v1"])
-      let cxx_target = fp"/usr/lib/llvm23/include/\${arch}-linux-musl/c++/v1"
+      exec_args = exec_args.extend(["-isystem", rooted(sysroot, "usr/lib/llvm23/include/c++/v1").display()])
+      let cxx_target = rooted(sysroot, f"usr/lib/llvm23/include/\${arch}-linux-musl/c++/v1")
 
       if fs.exists(cxx_target)? {
         exec_args = exec_args.extend(["-isystem", cxx_target.display()])
       }
     }
 
-    exec_args = exec_args.extend(["-isystem", "/usr/lib/llvm23/lib/clang/23/include", "-isystem", "/usr/include"])
+    exec_args = exec_args.extend([
+      "-isystem",
+      rooted(sysroot, "usr/lib/llvm23/lib/clang/23/include").display(),
+      "-isystem",
+      rooted(sysroot, "usr/include").display(),
+    ])
   }
 
   if frontend {

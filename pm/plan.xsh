@@ -229,7 +229,7 @@ proc dependency_nodes(
   var dependencies: List[types.PlanDependency] = []
 
   for edge in edges {
-    continue unless edge.from == name and edge.kind != types.Bootstrap and selected.get(edge.to, false)
+    continue unless edge.from == name and edge.kind != types.dependency_bootstrap() and selected.get(edge.to, false)
 
     if ! keys.has(edge.to) {
       return Err(types.PmError.PackageContract(f"${name} dependency ${edge.to} was not resolved before its build-plan node"))
@@ -250,7 +250,7 @@ proc built_dependency_names(
   var changed: List[Str] = []
 
   for edge in edges {
-    continue unless edge.from == name and edge.kind != types.Bootstrap and selected.get(edge.to, false)
+    continue unless edge.from == name and edge.kind != types.dependency_bootstrap() and selected.get(edge.to, false)
 
     if types.plan_action_is_build(actions.get(edge.to)?) {
       changed = changed.push(edge.to)
@@ -319,7 +319,7 @@ export proc resolve(
       let local_proof_key = proof_key_for(package_id, local_artifact_key, proof_sha256)?
       let changed_dependencies = built_dependency_names(name, edges, selected, actions)?
       var artifact_key = local_artifact_key
-      var action: types.PlanAction = types.Build("new package")
+      var action: types.PlanAction = types.plan_action_build("new package")
       var remote: types.RemoteRetrieval? = null
 
       let candidate = find_remote(snapshot, name)?
@@ -341,7 +341,7 @@ export proc resolve(
             } else {
               f"local release is above remote ${util.version_id(candidate.ver, candidate.rel)}"
             }
-            action = types.Build(reason)
+            action = types.plan_action_build(reason)
           } else if changed_dependencies.len() > 0 {
             return Err(
               types.PmError.PackageContract(
@@ -349,13 +349,13 @@ export proc resolve(
               ),
             )
           } else if remote_is_exact(candidate, recipe_sha256, proof_sha256, local_artifact_key, local_proof_key, identity)? {
-            action = types.ReuseRemote("exact remote artifact")
+            action = types.plan_action_reuse_remote("exact remote artifact")
             remote = candidate.retrieval
           } else if candidate.artifact_key != "" {
-            action = types.Build("remote artifact identity differs")
+            action = types.plan_action_build("remote artifact identity differs")
           } else {
             artifact_key = legacy_remote_artifact_key(package_id, candidate.retrieval)?
-            action = types.ReuseRemote("legacy remote artifact")
+            action = types.plan_action_reuse_remote("legacy remote artifact")
             remote = candidate.retrieval
           }
       }
@@ -441,8 +441,14 @@ proc validate_node(
   var prior_dependency: types.PlanDependency? = null
 
   for dependency in node.dependencies {
-    if dependency_seen.get(dependency.name, false) {
-      return Err(types.PmError.PackageContract(f"build plan node ${node.name} repeats dependency ${dependency.name}"))
+    let key = dependency_key(dependency)
+
+    if dependency_seen.get(key, false) {
+      return Err(
+        types.PmError.PackageContract(
+          f"build plan node ${node.name} repeats ${types.dependency_kind_text(dependency.kind)} dependency ${dependency.name}",
+        ),
+      )
     }
 
     if prior_dependency != null {
@@ -467,7 +473,7 @@ proc validate_node(
       )
     }
 
-    dependency_seen[dependency.name] = true
+    dependency_seen[key] = true
     prior_dependency = dependency
   }
 
@@ -498,6 +504,29 @@ proc validate_node(
 
   if node.proof_key != proof_key_for(node.package_id, node.artifact_key, node.proof_sha256)? {
     return Err(types.PmError.PackageContract(f"build plan node ${node.name} proof key does not match its inputs"))
+  }
+}
+
+## Reports whether one validated remote node uses the retrieval-derived legacy artifact identity.
+## Legacy metadata predates executor fingerprints, so its receipt is bound to verified metadata bytes instead.
+export proc node_uses_legacy_remote_identity(value: types.BuildPlan, node: types.PlanNode) [error] -> Result[Bool] {
+  if types.plan_action_is_build(node.action) {
+    return false
+  }
+
+  let retrieval = node.remote
+
+  if retrieval == null {
+    return false
+  } else {
+    let expected_local = artifact_key_for(value.target, node.package_id, node.recipe_sha256, value.executor, node.dependencies)?
+
+    if node.artifact_key == expected_local {
+      return false
+    }
+
+    let expected_legacy = legacy_remote_artifact_key(node.package_id, retrieval)?
+    return node.artifact_key == expected_legacy
   }
 }
 

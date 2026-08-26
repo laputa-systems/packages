@@ -865,7 +865,7 @@ export pure package_from_remote(pkg: types.RemotePackage) -> Result[types.Packag
     name: pkg.name,
     ver: pkg.ver,
     rel: pkg.rel,
-    kind: if pkg.metapackage { types.Meta } else { types.Payload },
+    kind: if pkg.metapackage { types.package_meta() } else { types.package_payload() },
     deps: pkg.deps,
     mkdeps_host: pkg.mkdeps_host,
     mkdeps_target: pkg.mkdeps_target,
@@ -980,6 +980,43 @@ export proc plan_artifact_from_package(value: types.RemotePackage) [error] -> Re
     proof_key: value.proof_key,
     proof_sha256: value.proof_sha256,
   }
+}
+
+proc remote_legacy_metadata_rel(value: types.RemotePackage) [error] -> Result[Path] {
+  let raw = if value.metadata == "" {
+    util.remote_metadata_rel(value.arch, value.name, value.ver, value.rel).display()
+  } else {
+    value.metadata
+  }
+
+  util.ensure_relative_path(fp"${raw}", f"remote metadata for ${value.name}")?
+}
+
+## Resolves the omitted metadata hash in a legacy index into the exact retrieval bytes recorded in a BuildPlan.
+## Modern rows already carry that digest and require no additional request.
+export proc plan_artifact_from_package_at_repo(
+  value: types.RemotePackage,
+  repo: Str,
+  cache: Path,
+) [fs, net, error] -> Result[types.RemotePlanArtifact] {
+  if value.metadata_sha256 != "" {
+    return plan_artifact_from_package(value)?
+  }
+
+  if repo == "" {
+    return Err(types.PmError.RemoteRepo(f"legacy remote package ${value.name} needs a repository URL to hash its metadata"))
+  }
+
+  let rel = remote_legacy_metadata_rel(value)?
+  let cache_path = fp"${cache}/legacy-metadata/${bytes.from_text(rel.display()).sha256().hex()}.json"
+  let failure = try_fetch_repo_file(repo, rel, cache_path)?
+
+  if failure != "" {
+    return Err(types.PmError.RemoteFetch(failure))
+  }
+
+  let metadata_sha256 = hash.sha256(cache_path)?.hex()
+  plan_artifact_from_package({...value, metadata: rel.display(), metadata_sha256})?
 }
 
 ## Exported PM declaration `upload_package_source`.

@@ -6,7 +6,6 @@ error ScriptError = Failed(kind: Str, message: Str)
 
 proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   let cmake = fp"${rootfs}/usr/bin/cmake"
-  let samu = fp"${rootfs}/usr/bin/samu"
   proof.target_elf(rootfs, p"usr/bin/cmake", "cmake")?
   proof.target_elf(rootfs, p"usr/bin/cpack", "cpack")?
   proof.target_elf(rootfs, p"usr/bin/ctest", "ctest")?
@@ -20,43 +19,46 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
     return
   }
 
-  let os = system.uname()?
-  let arch = os.machine
-  let ldso = fp"/usr/lib/ld-musl-${arch}.so.1"
-  let dynlinker = fp"${rootfs}${ldso.display()}"
   let tmp = fp"${rootfs}/var/tmp/proof-cmake"
   fs.remove(tmp, missing_ok: true)?
   fs.mkdir(tmp)?
   defer fs.remove(tmp, missing_ok: true)?
 
+  # Artifact proofs deliberately compose runtime edges only. `samurai` is a
+  # build-host tool, so use this explicit proof-local generator instead of
+  # resolving a build dependency through the proof root. It gives CMake the
+  # generator capability required for a configure-only package smoke test;
+  # `llvm-toolchain` proves compiler execution independently.
+  let proof_samu = fp"${tmp}/proof-samu"
   fs.write(
-    fp"${tmp}/CMakeLists.txt",
-    """cmake_minimum_required(VERSION 3.13)
-project(hello C)
-set(CMAKE_C_STANDARD 99)
-add_executable(hello hello.c)
+    proof_samu,
+    """#!/bin/xsh
+proc main(...argv: List[Str]) [] {
+  print "1.12.0"
+}
+
+main(@args)?
 """,
   )?
+  fs.chmod(proof_samu, 0o755)?
 
   fs.write(
-    fp"${tmp}/hello.c",
-    """#include <stdio.h>
-int main(void) { puts("hello cmake"); return 0; }
+    fp"${tmp}/CMakeLists.txt",
+    r"""cmake_minimum_required(VERSION 3.13)
+project(laputa_cmake_runtime NONE)
+file(WRITE "${CMAKE_BINARY_DIR}/proof-output.txt" "cmake runtime closure\n")
 """,
   )?
 
   fs.mkdir(fp"${tmp}/build")?
 
   cd fp"${tmp}/build" {
-    let linker_flags = f"-dynamic -Wl,-rpath,/usr/lib -Wl,-dynamic-linker,${dynlinker.display()}"
-
-    var cmake_args = [
+    let cmake_args = [
       cmake.display(),
       "..",
       "-G",
       "Ninja",
-      f"-DCMAKE_MAKE_PROGRAM=${samu.display()}",
-      f"-DCMAKE_EXE_LINKER_FLAGS=${linker_flags}",
+      f"-DCMAKE_MAKE_PROGRAM=${proof_samu.display()}",
     ]
 
     let cmake_proc = process.command_argv(cmake_args[0], cmake_args)
@@ -66,16 +68,14 @@ int main(void) { puts("hello cmake"); return 0; }
       Err(ScriptError.Failed("cmake-proof-configure", "cmake configure failed"))?
     }
 
-    run $samu ?
-    let hello = fp"${tmp}/build/hello"
-    let out = run.text $dynlinker $hello ?
-    let trimmed = out.trim()
+    let cache = fs.read_text(fp"${tmp}/build/CMakeCache.txt")?
+    let marker = fs.read_text(fp"${tmp}/build/proof-output.txt")?
 
-    if trimmed != "hello cmake" {
-      Err(ScriptError.Failed("cmake-proof", f"unexpected output: ${trimmed}"))?
+    if ! cache.contains(proof_samu.display()) or marker != "cmake runtime closure\n" {
+      Err(ScriptError.Failed("cmake-proof", "configure did not use the isolated runtime proof inputs"))?
     }
 
-    print "cmake ok: "${trimmed}
+    print "cmake ok: runtime configure"
   } ?
 }
 

@@ -28,17 +28,17 @@ pure package_edges(pkg: types.Package, value: types.BuildPolicy) -> List[types.D
   var result: List[types.DependencyEdge] = []
 
   for dependency in pkg.deps {
-    let kind = if policy.is_bootstrap_dependency(value, pkg.name, dependency) { types.Bootstrap } else { types.Runtime }
+    let kind = if policy.is_bootstrap_dependency(value, pkg.name, dependency) { types.dependency_bootstrap() } else { types.dependency_runtime() }
     result = result.push({from: pkg.name, to: dependency, kind})
   }
 
   for dependency in pkg.mkdeps_host {
-    let kind = if policy.is_bootstrap_dependency(value, pkg.name, dependency) { types.Bootstrap } else { types.BuildHost }
+    let kind = if policy.is_bootstrap_dependency(value, pkg.name, dependency) { types.dependency_bootstrap() } else { types.dependency_build_host() }
     result = result.push({from: pkg.name, to: dependency, kind})
   }
 
   for dependency in pkg.mkdeps_target {
-    let kind = if policy.is_bootstrap_dependency(value, pkg.name, dependency) { types.Bootstrap } else { types.BuildTarget }
+    let kind = if policy.is_bootstrap_dependency(value, pkg.name, dependency) { types.dependency_bootstrap() } else { types.dependency_build_target() }
     result = result.push({from: pkg.name, to: dependency, kind})
   }
 
@@ -170,7 +170,7 @@ export proc edges(
     let key = edge_key(rule.package, rule.dependency)
 
     if ! declared_pairs.get(key, false) {
-      result = result.push({from: rule.package, to: rule.dependency, kind: types.Bootstrap})
+      result = result.push({from: rule.package, to: rule.dependency, kind: types.dependency_bootstrap()})
     }
   }
 
@@ -196,7 +196,7 @@ export proc topological_levels(
   let local_edges = [
     edge
     for edge in edges
-    if edge.kind != types.Bootstrap and selected_map.get(edge.from, false) and selected_map.get(edge.to, false)
+    if edge.kind != types.dependency_bootstrap() and selected_map.get(edge.from, false) and selected_map.get(edge.to, false)
   ]
   var unresolved: Map[Int] = {}
   var emitted: Map[Bool] = {}
@@ -246,7 +246,7 @@ export proc topological_levels(
 
 ## Resolves runtime dependencies only, excluding host and target build dependencies.
 export proc runtime_closure(catalog: types.PackageCatalog, roots: List[Str]) [error] -> Result[List[Str]] {
-  closure(catalog, roots, [types.Runtime])?
+  closure(catalog, roots, [types.dependency_runtime()])?
 }
 
 ## Resolves all runtime, host-build, target-build, and bootstrap dependencies required to build selected roots.
@@ -258,7 +258,7 @@ export proc build_closure(
   closure_from_edges(
     catalog,
     roots,
-    [types.Runtime, types.BuildHost, types.BuildTarget, types.Bootstrap],
+    [types.dependency_runtime(), types.dependency_build_host(), types.dependency_build_target(), types.dependency_bootstrap()],
     edges(catalog, value)?,
   )?
 }

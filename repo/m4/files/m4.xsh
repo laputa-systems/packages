@@ -24,6 +24,20 @@ type RawRest = {raw: Str, rest: Str}
 
 type ExpandResult = {text: Str, st: Map[Str]}
 
+proc read_input_file(filepath: Str) [fs, error] -> Result[Str] {
+  # `fp"${...}"` is a literal-path form in the pinned published runner: it
+  # resolves a dynamic operand as the current directory. Convert CLI text
+  # explicitly so m4 reads the requested file, never its cwd.
+  let input = Path(filepath)
+  let metadata = fs.metadata(input)?
+
+  if metadata.kind != "file" {
+    return Err(ScriptError.Failed("m4-input", f"cannot read non-file input: ${filepath}"))
+  }
+
+  fs.read_text(input)
+}
+
 pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {
   let re = regex.compile(pattern)?
   return re.captures(text)
@@ -1872,14 +1886,14 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
   if name == "include" or name == "sinclude" {
     let filepath = if margs.len() >= 1 { margs[0] } else { "" }
     let paths_str = sg(st, "include_paths", "")
-    var found_path = fp"${filepath}"
+    var found_path = Path(filepath)
     var found = false
 
     for p in paths_str.split("\n") {
       if p != "" {
-        let cand = fp"${p}/${filepath}"
+        let cand = Path(f"${p}/${filepath}")
 
-        if fs.exists(cand)? {
+        if fs.exists(cand)? and fs.metadata(cand)?.kind == "file" {
           found_path = cand
           found = true
         }
@@ -1887,9 +1901,9 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
     }
 
     if ! found {
-      let cand = fp"${filepath}"
+      let cand = Path(filepath)
 
-      if fs.exists(cand)? {
+      if fs.exists(cand)? and fs.metadata(cand)?.kind == "file" {
         found_path = cand
         found = true
       }
@@ -2295,7 +2309,9 @@ proc main(margs: List[Str] = []) [fs, process, env, error, io] {
 
   for token in tokens {
     if token.kind == "operand" {
-      files = files.push(token.value)
+      # `cli.tokens` stores positional text in `name`; `value` belongs to
+      # option arguments. Preserve the exact caller path for file reads.
+      files = files.push(token.name)
     } else if token.name == "version" {
       io.write_stdout("""m4.xsh 1.0
 """)?
@@ -2349,7 +2365,7 @@ proc main(margs: List[Str] = []) [fs, process, env, error, io] {
     st = r.st
   } else {
     for filepath in files {
-      let content = if filepath == "-" { io.stdin_text()? } else { fs.read_text(fp"${filepath}")? }
+      let content = if filepath == "-" { io.stdin_text()? } else { read_input_file(filepath)? }
       st["file"] = if filepath == "-" { "stdin" } else { filepath }
       let r = expand_full(content, st)?
       st = r.st

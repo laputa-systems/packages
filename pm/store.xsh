@@ -68,6 +68,36 @@ proc require_key(key: Str) [error] {
   require_sha256(key, "artifact key")?
 }
 
+pure store_unique_artifact_keys(keys: List[Str]) -> List[Str] {
+  var seen: Map[Bool] = {}
+  var result: List[Str] = []
+
+  for key in keys {
+    if ! seen.has(key) {
+      seen[key] = true
+      result = result.push(key)
+    }
+  }
+
+  result
+}
+
+## Returns canonical artifact identities for every typed PlanNode dependency edge.
+## A receipt does not serialize edge kinds: shared Runtime and BuildHost artifacts retain
+## their first planned occurrence exactly once while PlanNode keeps the complete edge list.
+export pure receipt_dependency_keys(node: types.PlanNode) -> List[Str] {
+  store_unique_artifact_keys([dependency.artifact_key for dependency in node.dependencies])
+}
+
+## Returns the canonical runtime-only subset of `receipt_dependency_keys`.
+export pure receipt_runtime_dependency_keys(node: types.PlanNode) -> List[Str] {
+  store_unique_artifact_keys([
+    dependency.artifact_key
+    for dependency in node.dependencies
+    if dependency.kind == types.dependency_runtime()
+  ])
+}
+
 pure receipt_dto(value: types.ArtifactReceipt) -> ArtifactReceiptDto {
   {
     format: value.format,
@@ -119,7 +149,7 @@ proc validate_receipt(value: types.ArtifactReceipt, expected_key: Str) [error] {
     return Err(types.PmError.PackageContract(f"artifact receipt key ${value.key} does not match ${expected_key}"))
   }
 
-  if value.target != types.Aarch64LinuxMusl {
+  if value.target != types.target_aarch64() {
     return Err(types.PmError.PackageContract("artifact receipt must target aarch64-linux-musl"))
   }
 
@@ -227,7 +257,7 @@ proc receipt_for(
   {
     format: "laputa-package-artifact-1",
     key: node.artifact_key,
-    target: types.Aarch64LinuxMusl,
+    target: types.target_aarch64(),
     package_name: node.name,
     package_id: node.package_id,
     origin,
@@ -237,8 +267,8 @@ proc receipt_for(
     metadata_sha256: hash.sha256(metadata)?.hex(),
     proof_key: node.proof_key,
     proof_sha256: hash.sha256(proof)?.hex(),
-    dependency_keys: [dependency.artifact_key for dependency in node.dependencies],
-    runtime_dependency_keys: [dependency.artifact_key for dependency in node.dependencies if dependency.kind == types.Runtime],
+    dependency_keys: receipt_dependency_keys(node),
+    runtime_dependency_keys: receipt_runtime_dependency_keys(node),
     artifact_dir: dir,
   }
 }
@@ -388,7 +418,7 @@ export proc verify_receipt(value: types.ArtifactReceipt) [fs, error] -> Result[t
 
 ## Commits one locally built artifact through a locked temporary directory and an atomic final rename.
 export proc commit(root: Path, node: types.PlanNode, staged: types.StagedArtifact) [fs, error] -> Result[types.ArtifactReceipt] {
-  commit_staged(root, node, staged, types.Built)?
+  commit_staged(root, node, staged, types.artifact_origin_built())?
 }
 
 ## Imports one exact remote artifact into the immutable store without re-resolving remote metadata.
@@ -409,7 +439,7 @@ export proc import_remote(
     return verify_artifact(root, key)
   }
 
-  commit_locked(root, node, remote_staged_artifact(node, remote_repo, cache)?, types.Remote)?
+  commit_locked(root, node, remote_staged_artifact(node, remote_repo, cache)?, types.artifact_origin_remote())?
 }
 
 ## Verifies a completed artifact receipt, its key, and hashes of payload, metadata, and proof objects.

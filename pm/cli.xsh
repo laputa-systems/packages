@@ -53,7 +53,7 @@ repository commands:
 
 root commands:
   root compose PLAN --store STORE --runtime-root PACKAGE... --output GENERATION
-  root inspect GENERATION
+  root inspect GENERATION_OR_RECEIPT
 
 store commands:
   store verify --store STORE
@@ -74,11 +74,16 @@ pure repo_help_text() -> Str {
 """
 }
 
+pure repo_plan_help_text() -> Str {
+  """usage: pm repo plan [--repo PATH] (--all | --root PACKAGE...) --target aarch64-linux-musl --output PLAN
+"""
+}
+
 pure root_help_text() -> Str {
   """usage: pm root COMMAND [OPTIONS]
 
   compose PLAN --store STORE --runtime-root PACKAGE... --output GENERATION
-  inspect GENERATION
+  inspect GENERATION_OR_RECEIPT
 """
 }
 
@@ -183,7 +188,7 @@ proc parse_repo_command(argv: List[Str]) [fs, error] -> Result[PmCommand] {
   }
 
   if args.len() == 1 and args[0] in ["-h", "--help", "help"] {
-    return Help(repo_help_text())
+    return Help(if action == "plan" { repo_plan_help_text() } else { repo_help_text() })
   }
 
   match action {
@@ -413,12 +418,11 @@ proc remote_snapshot_for_plan(cache_root: Path) [fs, net, env, time, error] -> R
   var index: List[types.RemotePackage] = []
   let cache = util.remote_index_cache_path(cache_root)
   let offline = (env.get("XSH_PM_OFFLINE") ?? "") == "1"
+  let urls = remote.load_repo_urls()?
 
   if cache.exists()? {
     index = remote.load_cached_remote_index(cache_root)?
   } else if ! offline {
-    let urls = remote.load_repo_urls()?
-
     for endpoint in [urls.public_repo, urls.repo] {
       continue when endpoint == ""
       let fetched = remote.load_remote_index_from_repo(endpoint, cache_root)?
@@ -436,10 +440,10 @@ proc remote_snapshot_for_plan(cache_root: Path) [fs, net, env, time, error] -> R
 
   for entry in index {
     continue unless entry.arch == "aarch64"
-    packages = packages.push(remote.plan_artifact_from_package(entry)?)
+    packages = packages.push(remote.plan_artifact_from_package_at_repo(entry, urls.repo, cache_root)?)
   }
 
-  {target: types.Aarch64LinuxMusl, index_sha256, packages}
+  {target: types.target_aarch64(), index_sha256, packages}
 }
 
 proc selected_packages(repo_root: Path, names: List[Str]) [fs, env, error] -> Result[List[types.Package]] {
@@ -550,7 +554,14 @@ proc command_root_compose(args: RootComposeArgs) [fs, error] {
 }
 
 proc command_root_inspect(args: RootInspectArgs) [fs, error] {
-  let receipt = generation.read_generation_receipt(args.input)?
+  # Image builders retain the receipt JSON after atomically publishing their final
+  # image and removing container-local generation staging. Accept that durable
+  # boundary as well as an intact generation root.
+  let receipt = if fs.metadata(args.input)?.kind == "file" {
+    generation.read_generation_receipt_file(args.input)?
+  } else {
+    generation.read_generation_receipt(args.input)?
+  }
   print "root" "inspect" $receipt.generation_sha256 $receipt.root_sha256
   print "runtime-roots" receipt.runtime_roots.join(" ")
   print "artifacts" receipt.artifacts.len()

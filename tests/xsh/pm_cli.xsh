@@ -1,6 +1,10 @@
 ##! Behavior coverage for explicit typed repository planning commands.
 use pm.plan_json
 use pm.types
+use pm.catalog
+use pm.generation
+use pm.plan
+use pm.policy
 
 pure fixture(name: Str) -> Path {
   fp"tests/xsh/fixtures/${name}"
@@ -26,6 +30,54 @@ proc copied_repository(ctx: TestContext, name: Str) [fs, error] -> Result[Path] 
   fs.mkdir(fp"${root}/pm")?
   fs.copy(p"pm/proof.xsh", fp"${root}/pm/proof.xsh", overwrite: true)?
   root
+}
+
+pure cli_executor_identity() -> types.ExecutorIdentity {
+  {
+    format: "laputa-pm-executor-1",
+    pm_sha256: "cli-pm",
+    xsh_sha256: "cli-runners",
+    core_sha256: "cli-core",
+  }
+}
+
+pure cli_empty_remote() -> types.RemoteSnapshot {
+  {target: types.target_aarch64(), index_sha256: "cli-empty-remote", packages: []}
+}
+
+proc published_generation_receipt(ctx: TestContext) [fs, env, error] -> Result[Path] {
+  let repository = copied_repository(ctx, "root-inspect-receipt")?
+  let build_value = plan.resolve(
+    catalog.load(repository)?,
+    cli_empty_remote(),
+    policy.aarch64_docker(),
+    ["app"],
+    false,
+    cli_executor_identity(),
+  )?
+  let overlay = test.temp_dir(ctx, name: "root-inspect-overlay")?
+  fs.mkdir(fp"${overlay}/overlay")?
+  let generation_value = generation.plan(build_value, ["app"], generation.overlay_digest(fp"${overlay}/overlay")?)?
+  let receipt = test.temp_path(ctx, name: "published-generation.json")
+  json.write(
+    receipt,
+    {
+      format: "laputa-generation-1",
+      generation_sha256: generation_value.generation_sha256,
+      build_plan_sha256: generation_value.build_plan_sha256,
+      profile: generation_value.profile.name,
+      overlay_sha256: generation_value.profile.overlay_sha256,
+      replacements: generation_value.profile.replacements,
+      target: "aarch64-linux-musl",
+      runtime_roots: generation_value.runtime_roots,
+      artifacts: [
+        {package_name: artifact.package_name, package_id: artifact.package_id, artifact_key: artifact.artifact_key}
+        for artifact in generation_value.artifacts
+      ],
+      root_sha256: "0000000000000000000000000000000000000000000000000000000000000000",
+    },
+  )?
+  receipt
 }
 
 proc pm_output(args: List[Str]) [fs, process, env, error] -> Result[Str] {
@@ -66,6 +118,15 @@ proc test_store_verify_accepts_explicit_empty_store(ctx: TestContext) [fs, proce
   let output = pm_output(["store", "verify", "--store", store_root.display()])?
 
   test.contains(output, "store verify 0 artifacts")?
+}
+
+proc test_root_inspect_accepts_published_generation_receipt_file(ctx: TestContext) [fs, process, env, error] {
+  let receipt = published_generation_receipt(ctx)?
+  let output = pm_output(["root", "inspect", receipt.display()])?
+
+  test.contains(output, "root inspect")?
+  test.contains(output, "runtime-roots app")?
+  test.contains(output, "artifacts 2")?
 }
 
 proc test_repo_check_validates_catalog(ctx: TestContext) [fs, process, env, error] {
@@ -122,7 +183,7 @@ proc test_repo_plan_writes_and_show_renders_verified_fields(ctx: TestContext) [f
   let shown = pm_output(["repo", "show", output.display()])?
 
   test.ok(output.exists()?)?
-  test.eq(value.target, types.Aarch64LinuxMusl)?
+  test.eq(value.target, types.target_aarch64())?
   test.contains(planned, "level 1 app build")?
   test.contains(shown, "level 1 app build")?
   test.contains(shown, "new package")?

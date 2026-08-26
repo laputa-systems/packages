@@ -23,6 +23,125 @@ export type PlanAction = Build(Str) | ReuseRemote(Str)
 ## The immutable origin of one package artifact in the local store.
 export type ArtifactOrigin = Built | Remote
 
+# The pinned published XSH runner exposes imported tagged-union constructors as
+# global tags, not module-record methods.  Keep PM callers on these typed
+# accessors so a plan behaves the same under the release runner and the newer
+# host checker without relying on a shared global tag spelling.
+## Return the sole build target without a qualified union-tag expression.
+export pure target_aarch64() -> Target {
+  return Aarch64LinuxMusl
+}
+
+## Return the internal unsupported-target sentinel.
+export pure target_reserved() -> Target {
+  return TargetReserved
+}
+
+## Return the package kind that owns a payload.
+export pure package_payload() -> PackageKind {
+  return Payload
+}
+
+## Return the package kind that owns no payload.
+export pure package_meta() -> PackageKind {
+  return Meta
+}
+
+## Return the runtime dependency edge kind.
+export pure dependency_runtime() -> DependencyKind {
+  return Runtime
+}
+
+## Return the host build dependency edge kind.
+export pure dependency_build_host() -> DependencyKind {
+  return BuildHost
+}
+
+## Return the target build dependency edge kind.
+export pure dependency_build_target() -> DependencyKind {
+  return BuildTarget
+}
+
+## Return the policy-provided bootstrap edge kind.
+export pure dependency_bootstrap() -> DependencyKind {
+  return Bootstrap
+}
+
+## Return automatic source-kind inference.
+export pure source_auto() -> SourceKind {
+  return Auto
+}
+
+## Return archive source staging.
+export pure source_archive() -> SourceKind {
+  return Archive
+}
+
+## Return ZIP source staging.
+export pure source_zip() -> SourceKind {
+  return Zip
+}
+
+## Return CPIO source staging.
+export pure source_cpio() -> SourceKind {
+  return Cpio
+}
+
+## Return a single-file source staging kind.
+export pure source_file() -> SourceKind {
+  return SourceFile
+}
+
+## Return a directory source staging kind.
+export pure source_directory() -> SourceKind {
+  return Directory
+}
+
+## Return Git source staging.
+export pure source_git() -> SourceKind {
+  return Git
+}
+
+## Return the regular-file metadata kind.
+export pure file_kind_file() -> FileKind {
+  return File
+}
+
+## Return the ELF/binary metadata kind.
+export pure file_kind_binary() -> FileKind {
+  return Binary
+}
+
+## Return the symlink metadata kind.
+export pure file_kind_symlink() -> FileKind {
+  return Symlink
+}
+
+## Return the directory-tree metadata kind.
+export pure file_kind_tree() -> FileKind {
+  return Tree
+}
+
+## Construct the local-build action with its durable reason.
+export pure plan_action_build(reason: Str) -> PlanAction {
+  return Build(reason)
+}
+
+## Construct the remote-reuse action with its durable reason.
+export pure plan_action_reuse_remote(reason: Str) -> PlanAction {
+  return ReuseRemote(reason)
+}
+
+## Return the local-build artifact origin.
+export pure artifact_origin_built() -> ArtifactOrigin {
+  return Built
+}
+
+## Return the imported-remote artifact origin.
+export pure artifact_origin_remote() -> ArtifactOrigin {
+  return Remote
+}
+
 ## Renders the supported target as its stable external text form.
 export pure target_text(target: Target) -> Str {
   match target {

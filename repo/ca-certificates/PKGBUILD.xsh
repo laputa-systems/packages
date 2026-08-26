@@ -9,7 +9,7 @@ export let package_kind = "payload"
 export let ver = "2026.03.19"
 
 ## Exported declaration `rel`.
-export let rel = "9"
+export let rel = "10"
 
 ## Exported declaration `deps`.
 export let deps = []
@@ -41,7 +41,7 @@ export let upstream_sources = [
     checksums: [
       {
         arch: "all",
-        sha256: "176ed1182db55c90455a55bf883a1985a741840b405717bd32409d7b7bb23c30",
+        sha256: "a90c9d3dd224705b3128b3e5b25f03ecfa6ad26d7de6b7bcaa62c20c766ed372",
       },
     ],
   },

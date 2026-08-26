@@ -13,7 +13,7 @@ export let package_kind = "payload"
 export let ver = "2.6.4"
 
 ## Exported declaration `rel`.
-export let rel = "10"
+export let rel = "13"
 
 ## Exported declaration `deps`.
 export let deps = ["musl", "m4"]
@@ -45,7 +45,7 @@ export let upstream_sources = [
     checksums: [
       {
         arch: "all",
-        sha256: "554d03a029e143cca1dad6a9b9d14dfb9940ccad7dc9d28e2fc8a5602603d0ef",
+        sha256: "3348a0e673bbf04446bfa80b8681a8288b1651ed61dbe1944a43ccf1d64bc303",
       },
     ],
   },

@@ -316,11 +316,11 @@ export proc load_package(dir: Path) [fs, env, error] -> Result[types.Package] {
     return Err(types.PmError.PackageContract(f"${name}: production recipe must export package_kind"))
   }
 
-  let kind = if metadata.has_package_kind { types.parse_package_kind(metadata.package_kind)? } else { types.Payload }
+  let kind = if metadata.has_package_kind { types.parse_package_kind(metadata.package_kind)? } else { types.package_payload() }
   let upstream_sources = decode_upstream_sources(name, metadata.upstream_sources)?
   let filetree = decode_filetree(name, select_filetree(metadata)?)?
 
-  if kind == types.Payload {
+  if kind == types.package_payload() {
     if ! metadata.has_build {
       return Err(types.PmError.PackageContract(f"${name}: payload package must export build"))
     }
@@ -370,7 +370,7 @@ export proc call_prepare(pkg: types.Package, src: Path) [fs, process, env, error
 
 ## Invokes the required payload `build` procedure through the dynamic recipe boundary.
 export proc call_build(pkg: types.Package, src: Path, dest: Path) [fs, process, env, error] {
-  if pkg.kind == types.Meta {
+  if pkg.kind == types.package_meta() {
     return
   }
 

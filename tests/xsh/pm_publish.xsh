@@ -63,6 +63,8 @@ proc stage_plan_artifacts(
   value: types.BuildPlan,
   store_root: Path,
   valid_proofs: Bool = true,
+  include_package_kind: Bool = true,
+  package_kind: Str = "payload",
 ) [fs, error] {
   let executor_sha256 = plan.executor_fingerprint(value.executor)?
 
@@ -72,17 +74,24 @@ proc stage_plan_artifacts(
     let metadata = fp"${staged_root}/metadata.json"
     let proof = fp"${staged_root}/proof.json"
     fs.write(payload, f"payload ${node.package_id}\n")?
-    json.write(
-      metadata,
-      {
+    if include_package_kind {
+      json.write(metadata, {
         arch: "aarch64",
         name: node.name,
         ver: node.ver,
         rel: node.rel,
-        package_kind: "payload",
+        package_kind,
         files: [],
-      },
-    )?
+      })?
+    } else {
+      json.write(metadata, {
+        arch: "aarch64",
+        name: node.name,
+        ver: node.ver,
+        rel: node.rel,
+        files: [],
+      })?
+    }
 
     if valid_proofs {
       pm_proof.write_artifact_receipt(proof, node, payload)?
@@ -99,6 +108,21 @@ proc expect_snapshot_error(ctx: TestContext, value: types.BuildPlan, store_root:
     Ok(_) => test.fail(f"${expected}: snapshot unexpectedly succeeded")?
     Err(problem) => test.contains(problem.message, expected)?
   }
+}
+
+proc test_snapshot_defaults_only_omitted_legacy_package_kind_to_payload(ctx: TestContext) [fs, env, error] {
+  let value = publish_plan(ctx, "publish-legacy-package-kind-repo")?
+  let legacy_store = test.temp_dir(ctx, name: "publish-legacy-package-kind-store")?
+  stage_plan_artifacts(ctx, value, legacy_store, true, false)?
+  let legacy = repo.snapshot(value, legacy_store)?
+
+  for publication in legacy.packages {
+    test.eq(publication.kind, types.package_payload())?
+  }
+
+  let invalid_store = test.temp_dir(ctx, name: "publish-invalid-package-kind-store")?
+  stage_plan_artifacts(ctx, value, invalid_store, true, true, "")?
+  expect_snapshot_error(ctx, value, invalid_store, "invalid package kind")?
 }
 
 proc test_snapshot_rejects_missing_unproved_and_corrupt_plan_artifacts(ctx: TestContext) [fs, env, error] {
@@ -213,6 +237,17 @@ proc test_remote_decoder_preserves_legacy_fallback_and_new_identity(ctx: TestCon
   test.eq(legacy_plan.artifact_key, "")?
   test.ok(legacy_plan.retrieval.metadata_sha256 != "")?
 
+  let legacy_remote = test.temp_dir(ctx, name: "publish-legacy-metadata-remote")?
+  let legacy_metadata = fp"${legacy_remote}/metadata/aarch64/legacy/legacy-1-1.json"
+  fs.mkdir(legacy_metadata.parent)?
+  json.write(legacy_metadata, {name: "legacy", ver: "1", rel: "1"})?
+  let hydrated_legacy = remote.plan_artifact_from_package_at_repo(
+    legacy,
+    f"file://${legacy_remote}",
+    test.temp_dir(ctx, name: "publish-legacy-metadata-cache")?,
+  )?
+  test.eq(hydrated_legacy.retrieval.metadata_sha256, hash.sha256(legacy_metadata)?.hex())?
+
   let modern = remote.decode_remote_package({
     arch: "aarch64",
     name: "modern",
@@ -269,6 +304,59 @@ proc test_remote_decoder_preserves_legacy_fallback_and_new_identity(ctx: TestCon
   test.eq(imported.origin, types.Remote)?
 }
 
+proc test_legacy_metadata_hash_is_fetched_into_retrieval_and_enforced_on_import(ctx: TestContext) [fs, net, env, error] {
+  let value = publish_plan(ctx, "publish-legacy-hash-repo")?
+  let node = node_named(value, "app")?
+  let remote_root = test.temp_dir(ctx, name: "publish-legacy-hash-remote")?
+  let payload = fp"${remote_root}/packages/aarch64/app/app-1-1.tar.gz"
+  let metadata = fp"${remote_root}/metadata/aarch64/app/app-1-1.json"
+  fs.mkdir(payload.parent)?
+  fs.mkdir(metadata.parent)?
+  fs.write(payload, "legacy hash payload")?
+  json.write(metadata, {name: node.name, ver: node.ver, rel: node.rel, executor_sha256: plan.executor_fingerprint(value.executor)?})?
+  let legacy = remote.decode_remote_package({
+    arch: "aarch64",
+    name: node.name,
+    ver: node.ver,
+    rel: node.rel,
+    deps: [],
+    mkdeps: [],
+    sha256: hash.sha256(payload)?.hex(),
+    size: fs.metadata(payload)?.size,
+    tarball: payload.relative_to(remote_root).display(),
+    metadata: metadata.relative_to(remote_root).display(),
+    source_sha256: "",
+    metapackage: false,
+  })?
+  let hydrated = remote.plan_artifact_from_package_at_repo(
+    legacy,
+    f"file://${remote_root}",
+    test.temp_dir(ctx, name: "publish-legacy-hash-cache")?,
+  )?
+  test.eq(hydrated.retrieval.metadata_sha256, hash.sha256(metadata)?.hex())?
+
+  let remote_node = {...node, action: types.ReuseRemote("legacy remote artifact"), remote: hydrated.retrieval}
+  let imported = store.import_remote(
+    test.temp_dir(ctx, name: "publish-legacy-hash-store")?,
+    remote_node,
+    f"file://${remote_root}",
+    test.temp_dir(ctx, name: "publish-legacy-hash-import-cache")?,
+  )?
+  test.eq(imported.metadata_sha256, hydrated.retrieval.metadata_sha256)?
+
+  fs.write(metadata, "changed legacy metadata")?
+
+  match store.import_remote(
+    test.temp_dir(ctx, name: "publish-legacy-hash-corrupt-store")?,
+    remote_node,
+    f"file://${remote_root}",
+    test.temp_dir(ctx, name: "publish-legacy-hash-corrupt-cache")?,
+  ) {
+    Ok(_) => test.fail("changed legacy metadata unexpectedly imported")?
+    Err(problem) => test.contains(problem.message, "remote metadata SHA-256 mismatch")?
+  }
+}
+
 proc test_publish_requires_token_only_for_network_remote(ctx: TestContext) [fs, net, env, time, error] {
   let value = publish_plan(ctx, "publish-token-repo")?
   let store_root = test.temp_dir(ctx, name: "publish-token-store")?
@@ -278,6 +366,6 @@ proc test_publish_requires_token_only_for_network_remote(ctx: TestContext) [fs, 
 
   match repo.publish(snapshot, "https://example.invalid/repo", "", work) {
     Ok(_) => test.fail("network publication without a token unexpectedly succeeded")?
-    Err(problem) => test.contains(problem.message, "needs a token")?
+    Err(problem) => test.contains(problem.message, "needs LAPUTA_TOKEN")?
   }
 }

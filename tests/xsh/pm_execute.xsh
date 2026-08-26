@@ -31,9 +31,13 @@ proc copied_execute_repository(ctx: TestContext, name: Str) [fs, env, error] -> 
   root
 }
 
-proc resolve_execute_plan(repo_root: Path) [fs, env, error] -> Result[types.BuildPlan] {
+proc resolve_execute_plan_for_roots(repo_root: Path, roots: List[Str]) [fs, env, error] -> Result[types.BuildPlan] {
   let value = catalog.load(repo_root)?
-  plan.resolve(value, empty_remote_snapshot(), policy.aarch64_docker(), ["execute-app"], false, executor_identity())?
+  plan.resolve(value, empty_remote_snapshot(), policy.aarch64_docker(), roots, false, executor_identity())?
+}
+
+proc resolve_execute_plan(repo_root: Path) [fs, env, error] -> Result[types.BuildPlan] {
+  resolve_execute_plan_for_roots(repo_root, ["execute-app"])?
 }
 
 proc node_named(value: types.BuildPlan, name: Str) [error] -> Result[types.PlanNode] {
@@ -58,6 +62,52 @@ proc receipt_named(value: types.BuildResult, name: Str) [error] -> Result[types.
 
 proc execute_store(ctx: TestContext, name: Str) [fs, error] -> Result[Path] {
   test.temp_dir(ctx, name: name)
+}
+
+proc write_execute_metapackage(repo_root: Path) [fs, error] {
+  let package = fp"${repo_root}/repo/execute-meta"
+  fs.mkdir(package)?
+  fs.write(
+    fp"${package}/PKGBUILD.xsh",
+    """##! Executor metapackage fixture without a payload proof.
+export let name = "execute-meta"
+export let package_kind = "meta"
+export let ver = "1.0.0"
+export let rel = "1"
+export let deps = ["execute-dep"]
+export let mkdeps_host = []
+export let mkdeps_target = []
+export let upstream_sources = []
+export let filetree = []
+""",
+  )?
+}
+
+proc write_execute_leaf(repo_root: Path) [fs, error] {
+  let package = fp"${repo_root}/repo/execute-leaf"
+  fs.mkdir(package)?
+  fs.write(
+    fp"${package}/PKGBUILD.xsh",
+    r"""##! Executor fixture that must not start until execute-app publishes.
+export let name = "execute-leaf"
+export let package_kind = "payload"
+export let ver = "1.0.0"
+export let rel = "1"
+export let deps = ["execute-app"]
+export let mkdeps_host = []
+export let mkdeps_target = []
+export let upstream_sources = []
+export let filetree = [{path: p"usr/share/execute-leaf.txt", kind: "file"}]
+
+export proc build(dest: Path) [fs, env, error] -> Result[Unit] {
+  let root = env("LAPUTA_ROOT")?
+  let _ = fs.read_text(fp"${root}/usr/share/execute-app.txt")?
+  let target = fp"${dest}/usr/share/execute-leaf.txt"
+  fs.mkdir(target.parent)?
+  fs.write(target, "leaf\\n")?
+}
+""",
+  )?
 }
 
 proc exact_remote_snapshot(
@@ -137,6 +187,41 @@ proc test_execute_reproofs_changed_proof_without_rebuilding_payload(ctx: TestCon
   test.ok(fs.exists(fp"${object_store}/v1/proofs/${reproved_app.artifact_key}/${reproved_app.proof_key}.json")?)?
 }
 
+proc test_execute_parallel_level_requires_published_dependency_receipts(ctx: TestContext) [fs, net, process, env, time, error] {
+  let repo_root = copied_execute_repository(ctx, "execute-level-barrier-repo")?
+  write_execute_leaf(repo_root)?
+  let object_store = execute_store(ctx, "execute-level-barrier-store")?
+  let app_proof = fp"${repo_root}/repo/app/proof.xsh"
+  fs.write(
+    app_proof,
+    """error ProofError = Failed(message: Str)
+
+proc main(root: Path) [error] {
+  return Err(ProofError.Failed("intentional level-one proof failure"))
+}
+
+main(@args)?
+""",
+  )?
+  let value = resolve_execute_plan_for_roots(repo_root, ["execute-leaf"])?
+  let app = node_named(value, "execute-app")?
+  let leaf = node_named(value, "execute-leaf")?
+  test.eq(app.level, 1)?
+  test.eq(leaf.level, 2)?
+  test.eq([dependency.name for dependency in leaf.dependencies], ["execute-app"])?
+
+  # Level zero has independent dep/tool work under two workers. The level-one
+  # proof then fails. A dependent level must never run and replace that cause
+  # with an absent-artifact error.
+  match execute.build_plan(value, repo_root, object_store, "", 2) {
+    Ok(_) => test.fail("parallel executor advanced past a failed dependency level")?
+    Err(problem) => test.contains(problem.message, "package proof for execute-app")?
+  }
+
+  test.eq(fs.exists(store.artifact_path(object_store, app.artifact_key))?, false)?
+  test.eq(fs.exists(store.artifact_path(object_store, leaf.artifact_key))?, false)?
+}
+
 proc test_execute_rebuilds_changed_recipe_and_dependents(ctx: TestContext) [fs, net, process, env, time, error] {
   let repo_root = copied_execute_repository(ctx, "execute-package-change-repo")?
   let object_store = execute_store(ctx, "execute-package-change-store")?
@@ -169,6 +254,28 @@ proc test_execute_rebuilds_when_package_source_input_changes(ctx: TestContext) [
   test.eq(changed_app.artifact_key == initial_app.artifact_key, false)?
   let result = execute.build_plan(changed, repo_root, object_store, "", 1)?
   test.eq(receipt_named(result, "execute-app")?.key, changed_app.artifact_key)?
+}
+
+proc test_execute_metapackage_keeps_opaque_marker_and_proves_runtime_dependencies(ctx: TestContext) [fs, net, process, env, time, error] {
+  let repo_root = copied_execute_repository(ctx, "execute-meta-repo")?
+  write_execute_metapackage(repo_root)?
+  let value = resolve_execute_plan_for_roots(repo_root, ["execute-meta"])?
+  test.eq([node.name for node in value.nodes], ["execute-dep", "execute-meta"])?
+  let object_store = execute_store(ctx, "execute-meta-store")?
+  let result = execute.build_plan(value, repo_root, object_store, "", 1)?
+  let dependency = receipt_named(result, "execute-dep")?
+  let meta = receipt_named(result, "execute-meta")?
+  let meta_metadata: Record = json.read(fp"${meta.artifact_dir}/metadata.json")?
+  let files = meta_metadata.get("files")?.require(List[Record])?
+
+  # No meta proof script exists. Success therefore proves the executor did not
+  # attempt to extract or run the opaque marker, while its runtime dependency
+  # still completed the regular proof path first.
+  test.eq(fs.read_text(fp"${meta.artifact_dir}/payload.tar.gz")?, "laputa metapackage payload marker\n")?
+  test.eq(meta_metadata.get("package_kind")?, "meta")?
+  test.eq(files, [])?
+  test.ok(fs.exists(fp"${meta.artifact_dir}/proof.json")?)?
+  test.ok(fs.exists(fp"${dependency.artifact_dir}/proof.json")?)?
 }
 
 proc test_execute_imports_exact_remote_artifacts_without_remote_index_resolution(ctx: TestContext) [fs, net, process, env, time, error] {

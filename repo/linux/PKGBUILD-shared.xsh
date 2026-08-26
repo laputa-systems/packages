@@ -59,14 +59,34 @@ export proc discover_options_from_env() [env, error] -> Result[kbuild.DiscoverOp
   }
 }
 
+# Kbuild workers are recipe programs, not source-tree files.  The executor
+# copies the complete typed recipe into XSH_PM_RECIPE_DIR, whose .xsh inputs are
+# fingerprinted with the package build input; resolving from ../pkg silently
+# depended on a legacy staging layout that no longer exists.
+proc staged_recipe_helper(name: Str) [fs, env, error] -> Result[Path] {
+  let recipe_dir = (env.get("XSH_PM_RECIPE_DIR") ?? "").trim()
+
+  if recipe_dir == "" {
+    return Err(kbuild.ScriptError.Failed("linux-recipe-helper", f"missing XSH_PM_RECIPE_DIR for ${name}"))
+  }
+
+  let helper = fp"${recipe_dir}/${name}"
+
+  if ! helper.exists()? {
+    return Err(kbuild.ScriptError.Failed("linux-recipe-helper", f"missing staged recipe helper: ${helper.display()}"))
+  }
+
+  return helper
+}
+
 ## Exported declaration `discover_package_plan`.
 export proc discover_package_plan(srcarch: Str) [fs, process, env, time, error] -> Result[kbuild.KbuildPlan] {
   let config = kbuild.load_config(p".config")?
   let options = discover_options_from_env()?
 
   if ! options.local_record_cache {
-    let xsh_bin = /bin/xsh
-    let worker = path.absolute(../pkg/kbuild-pool-worker.xsh)?
+    let xsh_bin = process.which("xsh")?
+    let worker = staged_recipe_helper("kbuild-pool-worker.xsh")?
     return kbuild.discover_plan_with_process_pool(
       p".",
       p".config",
@@ -254,8 +274,8 @@ export proc cached_archive_plan(
 
             return archive_plan
           }
-          Err(kbuild.ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
-            f"xsh-kbuild-archive-plan-summary-cache miss ${kind}",
+          Err(error) => emit_kbuild_progress(
+            f"xsh-kbuild-archive-plan-summary-cache miss ${error.message}",
           )?
         }
       }
@@ -272,8 +292,8 @@ export proc cached_archive_plan(
 
           return archive_plan
         }
-        Err(kbuild.ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
-          f"xsh-kbuild-archive-plan-cache miss ${kind}",
+        Err(error) => emit_kbuild_progress(
+          f"xsh-kbuild-archive-plan-cache miss ${error.message}",
         )?
       }
     }
@@ -290,8 +310,8 @@ export proc cached_archive_plan(
             write_archive_plan_fingerprint(archive_fingerprint, fingerprint)?
             return archive_plan
           }
-          Err(kbuild.ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
-            f"xsh-kbuild-archive-plan-stable-summary-cache miss ${kind}",
+          Err(error) => emit_kbuild_progress(
+            f"xsh-kbuild-archive-plan-stable-summary-cache miss ${error.message}",
           )?
         }
       }
@@ -306,8 +326,8 @@ export proc cached_archive_plan(
           write_archive_plan_fingerprint(archive_fingerprint, fingerprint)?
           return archive_plan
         }
-        Err(kbuild.ScriptError.Failed {kind: kind, message: _}) => emit_kbuild_progress(
-          f"xsh-kbuild-archive-plan-stable-cache miss ${kind}",
+        Err(error) => emit_kbuild_progress(
+          f"xsh-kbuild-archive-plan-stable-cache miss ${error.message}",
         )?
       }
     }
@@ -318,7 +338,7 @@ export proc cached_archive_plan(
   )?
 
   let analysis_jobs = archive_analysis_jobs()?
-  let worker = path.absolute(../pkg/kbuild-archive-analysis-worker.xsh)?
+  let worker = staged_recipe_helper("kbuild-archive-analysis-worker.xsh")?
   let archive_plan = kbuild.plan_builtin_archives_with_analysis_workers(
     plan,
     cc,

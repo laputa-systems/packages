@@ -42,6 +42,28 @@ pure test_node(key: Str) -> types.PlanNode {
   }
 }
 
+pure node_with_shared_runtime_and_build_host_dependency(
+  key: Str,
+  dependency_key: Str,
+  build_host_first: Bool = false,
+) -> types.PlanNode {
+  let runtime: types.PlanDependency = {
+    name: "llvm-toolchain",
+    kind: types.dependency_runtime(),
+    artifact_key: dependency_key,
+  }
+  let build_host: types.PlanDependency = {
+    name: "llvm-toolchain",
+    kind: types.dependency_build_host(),
+    artifact_key: dependency_key,
+  }
+
+  {
+    ...test_node(key),
+    dependencies: if build_host_first { [build_host, runtime] } else { [runtime, build_host] },
+  }
+}
+
 proc staged_artifact(ctx: TestContext, name: Str, payload: Str = "payload", metadata: Str = "metadata", proof: Str = "proof") [fs, error] -> Result[TestStage] {
   let root = test.temp_dir(ctx, name: name)?
   let payload_path = fp"${root}/payload.tar.gz"
@@ -94,6 +116,32 @@ proc test_store_commits_atomically_and_reuses_exact_artifact(ctx: TestContext) [
   let reused = store.commit(root, test_node(key), replacement.staged)?
   test.eq(reused, first)?
   test.eq(fp"${final_dir}/payload.tar.gz".read_text()?, "first payload")?
+}
+
+proc test_store_receipts_deduplicate_shared_runtime_and_build_host_artifacts(ctx: TestContext) [fs, error] {
+  let root = store_root(ctx, "store-shared-edge")?
+  let key = digest("shared-edge-artifact")
+  let dependency_key = digest("shared-edge-dependency")
+  let runtime_first = node_with_shared_runtime_and_build_host_dependency(key, dependency_key)
+  let build_host_first = node_with_shared_runtime_and_build_host_dependency(key, dependency_key, true)
+
+  # Edge order and kind stay in PlanNode; receipt lists are canonical artifact identities.
+  test.eq(store.receipt_dependency_keys(runtime_first), [dependency_key])?
+  test.eq(store.receipt_dependency_keys(build_host_first), [dependency_key])?
+  test.eq(store.receipt_runtime_dependency_keys(runtime_first), [dependency_key])?
+  test.eq(store.receipt_runtime_dependency_keys(build_host_first), [dependency_key])?
+
+  let receipt = store.commit(root, runtime_first, staged_artifact(ctx, "store-shared-edge-stage")?.staged)?
+  test.eq(receipt.dependency_keys, [dependency_key])?
+  test.eq(receipt.runtime_dependency_keys, [dependency_key])?
+
+  let final_dir = store.artifact_path(root, key)
+  let raw = json.read(fp"${final_dir}/artifact.json")?.require(ReceiptDto)?
+  fs.write(
+    fp"${final_dir}/artifact.json",
+    json.encode({...raw, dependency_keys: [dependency_key, dependency_key]})? + "\n",
+  )?
+  expect_store_error(ctx, store.verify_artifact(root, key), "repeats dependency key")?
 }
 
 proc test_store_discards_incomplete_temporary_artifacts(ctx: TestContext) [fs, error] {

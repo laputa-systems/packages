@@ -167,7 +167,7 @@ proc generation_validate_plan(value: types.GenerationPlan) [error] {
     return Err(types.PmError.PackageContract(f"unsupported generation plan format ${value.format}"))
   }
 
-  if value.target != types.Aarch64LinuxMusl {
+  if value.target != types.target_aarch64() {
     return Err(types.PmError.PackageContract("generation plan must target aarch64-linux-musl"))
   }
 
@@ -248,7 +248,7 @@ proc generation_runtime_artifacts(
 
     # BuildPlan dependencies are the typed graph projection; only Runtime edges reach a system root.
     for dependency in node.dependencies {
-      if dependency.kind == types.Runtime and ! selected.get(dependency.name, false) {
+      if dependency.kind == types.dependency_runtime() and ! selected.get(dependency.name, false) {
         pending = pending.push(dependency.name)
       }
     }
@@ -396,6 +396,29 @@ proc generation_overlay_entries(overlay_root: Path) [fs, error] -> Result[List[G
   entries
 }
 
+# Overlay directory entries are structural declarations, just like RootPlan tree
+# entries.  They may share a package directory only when their exact metadata
+# agrees.  The completed generation receipt binds the overlay digest, while the
+# RootReceipt retains the canonical package owner, so this coalescing cannot
+# erase either source of provenance.
+pure generation_same_directory_metadata(entry: GenerationOverlayEntry, package_entry: types.RootEntry) -> Bool {
+  entry.kind == "dir"
+    and package_entry.kind == types.file_kind_tree()
+    and entry.mode == package_entry.mode
+    and entry.sha256 == package_entry.sha256
+    and entry.target == package_entry.target
+}
+
+pure generation_replacement_preserves_file_metadata(entry: GenerationOverlayEntry, package_entry: types.RootEntry) -> Bool {
+  let same_kind = if entry.kind == "file" {
+    package_entry.kind == types.file_kind_file() or package_entry.kind == types.file_kind_binary()
+  } else {
+    entry.kind == "symlink" and package_entry.kind == types.file_kind_symlink()
+  }
+
+  same_kind and entry.mode == package_entry.mode
+}
+
 proc generation_preflight_overlay(
   entries: List[GenerationOverlayEntry],
   root_plan: types.RootPlan,
@@ -410,12 +433,32 @@ proc generation_preflight_overlay(
 
     for package_entry in root_plan.entries {
       if entry.path == package_entry.path {
-        if package_entry.kind == types.Tree or entry.kind == "dir" or entry.path not in profile.replacements {
+        if generation_same_directory_metadata(entry, package_entry) {
+          continue
+        }
+
+        if package_entry.kind == types.file_kind_tree() or entry.kind == "dir" {
+          return Err(
+            types.PmError.PackageConflict(
+              f"generation overlay ${entry.path} has incompatible directory type or mode metadata with package ${package_entry.package_name}",
+            ),
+          )
+        }
+
+        if entry.path not in profile.replacements {
           return Err(types.PmError.PackageConflict(f"generation overlay ${entry.path} conflicts with package ${package_entry.package_name}"))
         }
 
+        if ! generation_replacement_preserves_file_metadata(entry, package_entry) {
+          return Err(
+            types.PmError.PackageConflict(
+              f"generation overlay replacement ${entry.path} must preserve package file type and mode",
+            ),
+          )
+        }
+
         used_replacements[entry.path] = true
-      } else if entry.path.starts_with(f"${package_entry.path}/") and package_entry.kind != types.Tree {
+      } else if entry.path.starts_with(f"${package_entry.path}/") and package_entry.kind != types.file_kind_tree() {
         return Err(types.PmError.PackageConflict(f"generation overlay ${entry.path} conflicts below package file ${package_entry.path}"))
       } else if package_entry.path.starts_with(f"${entry.path}/") and entry.kind != "dir" {
         return Err(types.PmError.PackageConflict(f"generation overlay ${entry.path} conflicts above package path ${package_entry.path}"))
@@ -566,12 +609,18 @@ proc generation_receipt_for(value: types.GenerationPlan, root_receipt: types.Roo
   }
 }
 
-## Reads and validates a completed generation receipt without consulting a package repository.
-export proc read_generation_receipt(output_root: Path) [fs, error] -> Result[types.GenerationReceipt] {
-  let dto = json.read(generation_receipt_path(output_root))?.require(GenerationReceiptDto)?
+## Reads and validates a standalone completed generation receipt without consulting a package repository.
+## Profile builders publish this file next to disk images after their temporary generation root is removed.
+export proc read_generation_receipt_file(receipt_path: Path) [fs, error] -> Result[types.GenerationReceipt] {
+  let dto = json.read(receipt_path)?.require(GenerationReceiptDto)?
   let receipt = generation_receipt_from_dto(dto)?
   generation_validate_receipt(receipt)?
   receipt
+}
+
+## Reads and validates the receipt embedded in a completed generation root.
+export proc read_generation_receipt(output_root: Path) [fs, error] -> Result[types.GenerationReceipt] {
+  read_generation_receipt_file(generation_receipt_path(output_root))?
 }
 
 ## Composes a complete runtime generation after Store, package-root, and overlay ownership preflight succeeds.
