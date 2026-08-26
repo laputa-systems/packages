@@ -12,7 +12,7 @@ export let package_kind = "payload"
 export let ver = "1.6.50"
 
 ## Exported declaration `rel`.
-export let rel = "9"
+export let rel = "10"
 
 ## Exported declaration `deps`.
 export let deps = ["musl", "zlib"]
@@ -133,6 +133,10 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   fs.write(p"CMakeLists.txt", cmake_lists)?
 
+  # CMake sees the executor architecture rather than the aarch64 compiler
+  # target, so PNG_ARM_NEON is not an effective cache option here.  Set the
+  # source-level option explicitly: otherwise core objects select NEON helpers
+  # which CMake failed to add to the target, leaving unresolved ELF symbols.
   var cmake_args = [
     "-S",
     ".",
@@ -145,6 +149,7 @@ export proc build(dest: Path) [fs, process, env, error] {
     pm_env.cmake_install_libdir_arg(),
     "-DPNG_SHARED=ON",
     "-DPNG_STATIC=OFF",
+    "-DCMAKE_C_FLAGS=-DPNG_ARM_NEON_OPT=0",
     "-DPNG_TESTS=OFF",
     "-DPNG_TOOLS=OFF",
     "-DPNG_EXECUTABLES=OFF",

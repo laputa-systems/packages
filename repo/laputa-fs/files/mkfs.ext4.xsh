@@ -531,7 +531,10 @@ proc inode_bytes(
   out = put_le(out, 26, links, 2)?
   out = put_le(out, 28, alloc.sectors, 4)?
 
-  if fast_symlink.len() > 0 and fast_symlink.len() <= 60 {
+  # ext4's 60-byte inline inode field cannot represent a 60-byte fast link:
+  # Linux treats that exact length as block-backed.  Keep the boundary strict
+  # so the final byte is never misread as an inode block pointer.
+  if fast_symlink.len() > 0 and fast_symlink.len() < 60 {
     out = put(out, 40, bytes.concat([fast_symlink, bytes.zero(60 - fast_symlink.len())?]))?
   } else {
     var index = 0
@@ -874,7 +877,7 @@ proc format_ext_image(image: Path, source_root: Path, label: Str) [fs, error] {
         )?,
       )?
     } else if entry.kind == "symlink" {
-      if entry.target.len() <= 60 {
+      if entry.target.len() < 60 {
         result = {
           used,
           next,

@@ -9,7 +9,7 @@ export let package_kind = "payload"
 export let ver = "1"
 
 ## Exported declaration `rel`.
-export let rel = "8"
+export let rel = "9"
 
 ## Exported declaration `deps`.
 export let deps = ["xsh"]

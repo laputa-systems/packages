@@ -9,7 +9,7 @@ XSH_RELEASE ?= release-d09c6c3305ab8c650043bd8d32e03f2db6509e97
 CARGO ?= $(shell command -v cargo 2>/dev/null || echo /home/josh/.cargo/bin/cargo)
 PM_XSH_MODULE_PATH ?= .:/usr/lib/pm
 PKGDIRS ?= $(sort $(patsubst %/PKGBUILD.xsh,%,$(wildcard repo/*/PKGBUILD.xsh)))
-PM_TESTS := tests/xsh/pm_recipe.xsh tests/xsh/pm_graph.xsh tests/xsh/pm_plan.xsh tests/xsh/pm_store.xsh tests/xsh/pm_root.xsh tests/xsh/pm_execute.xsh tests/xsh/pm_publish.xsh tests/xsh/pm_generation.xsh tests/xsh/pm_cli.xsh
+PM_TESTS := tests/xsh/pm_recipe.xsh tests/xsh/pm_graph.xsh tests/xsh/pm_plan.xsh tests/xsh/pm_store.xsh tests/xsh/pm_root.xsh tests/xsh/pm_execute.xsh tests/xsh/pm_publish.xsh tests/xsh/pm_generation.xsh tests/xsh/pm_cli.xsh tests/xsh/laputa_fs.xsh
 UPDATE_CHECKSUM_JOBS ?= 8
 
 ifeq ($(LAPUTA_DOCKER_PLATFORM),linux/amd64)

@@ -12,7 +12,7 @@ export let package_kind = "payload"
 export let ver = "0.46.4"
 
 ## Package recipe export.
-export let rel = "9"
+export let rel = "10"
 
 ## Package recipe export.
 export let deps = ["musl"]
@@ -49,10 +49,26 @@ export let filetree = [
   },
 ]
 
+# Musl provides libm through libc.  Letting Meson discover the staged libm
+# symlink records the executor-local build root as an ELF dependency; link by
+# name so the installed library instead resolves through the target libc.
+proc patch_musl_math() [fs, error] {
+  let meson = p"meson.build"
+
+  fs.write(
+    meson,
+    meson.read_text()?.replace(
+      "dep_m = cc.find_library('m', required : false)",
+      "dep_m = declare_dependency(link_args : ['-lm'])",
+    ),
+  )?
+}
+
 ## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
   let jobs_flag = f"-j${cpu.count()}"
   let arch = pm_util.target_arch()?
+  patch_musl_math()?
 
   if arch == "x86_64" {
     run "muon" "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "-Dlibpng=disabled" "-Dgtk=disabled" "-Dtests=disabled" "-Ddemos=disabled" "build" ?
