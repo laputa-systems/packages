@@ -441,6 +441,14 @@ proc execute_parallel_level(
   return receipts
 }
 
+# Plans may describe x86_64 artifacts, but this executor still creates
+# aarch64 receipts and roots. Reject that target before touching the store.
+proc execute_require_native_target(value: types.BuildPlan) [error] {
+  if value.target != types.target_aarch64() {
+    return Err(types.PmError.PackageContract(f"native executor does not yet support ${types.target_text(value.target)}"))
+  }
+}
+
 ## Executes one exact BuildPlan node using only verified dependency artifacts from the immutable store.
 export proc build_node(
   plan_value: types.BuildPlan,
@@ -450,6 +458,8 @@ export proc build_node(
   remote_repo: Str,
 ) [fs, net, process, env, time, error] -> Result[types.ArtifactReceipt] {
   build_plan.validate(plan_value)?
+
+  execute_require_native_target(plan_value)?
 
   if fs.exists(store.artifact_path(store_root, node.artifact_key))? {
     return execute_existing_local(plan_value, node, repo_root, store_root)
@@ -474,6 +484,8 @@ export proc build_plan(
   jobs: Int,
 ) [fs, net, process, env, time, error] -> Result[types.BuildResult] {
   build_plan.validate(plan_value)?
+
+  execute_require_native_target(plan_value)?
 
   if jobs < 1 {
     return Err(types.PmError.Usage("build jobs must be at least one"))

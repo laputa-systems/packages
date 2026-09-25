@@ -89,7 +89,6 @@ proc decode_upstream_source(name: Str, raw: Record) [error] -> Result[types.Upst
     return Err(types.PmError.PackageContract(f"${name}: upstream source ${source.display()} has no target architectures"))
   }
 
-  var applies_to_aarch64 = false
   var architecture_seen: Map[Bool] = {}
 
   for architecture in architectures {
@@ -97,27 +96,18 @@ proc decode_upstream_source(name: Str, raw: Record) [error] -> Result[types.Upst
       return Err(types.PmError.PackageContract(f"${name}: upstream source ${source.display()} repeats architecture ${architecture}"))
     }
 
-    if architecture != "aarch64" and architecture != "all" {
+    if architecture != "aarch64" and architecture != "x86_64" and architecture != "all" {
       return Err(
         types.PmError.PackageContract(
-          f"${name}: upstream source ${source.display()} must apply to aarch64 or all, not ${architecture}",
+          f"${name}: upstream source ${source.display()} has unsupported architecture ${architecture}",
         ),
       )
-    }
-
-    if architecture == "aarch64" or architecture == "all" {
-      applies_to_aarch64 = true
     }
 
     architecture_seen[architecture] = true
   }
 
-  if ! applies_to_aarch64 {
-    return Err(types.PmError.PackageContract(f"${name}: upstream source ${source.display()} does not apply to aarch64"))
-  }
-
   var checksums: List[types.SourceChecksum] = []
-  var applicable_checksums = 0
   var checksum_seen: Map[Bool] = {}
 
   for raw_checksum in raw_checksums {
@@ -125,10 +115,6 @@ proc decode_upstream_source(name: Str, raw: Record) [error] -> Result[types.Upst
 
     if checksum_seen.has(checksum.arch) {
       return Err(types.PmError.PackageContract(f"${name}: upstream source ${source.display()} repeats ${checksum.arch} checksum"))
-    }
-
-    if checksum.arch == "aarch64" or checksum.arch == "all" {
-      applicable_checksums += 1
     }
 
     if checksum.sha256 == "SKIP" and ! source_is_repository_local(source) {
@@ -139,12 +125,23 @@ proc decode_upstream_source(name: Str, raw: Record) [error] -> Result[types.Upst
     checksums = checksums.push(checksum)
   }
 
-  if applicable_checksums != 1 {
-    return Err(
-      types.PmError.PackageContract(
-        f"${name}: upstream source ${source.display()} needs exactly one aarch64 or all checksum",
-      ),
-    )
+  for target_arch in ["aarch64", "x86_64"] {
+    continue unless target_arch in architectures or "all" in architectures
+    var applicable_checksums = 0
+
+    for checksum in checksums {
+      if checksum.arch == target_arch or checksum.arch == "all" {
+        applicable_checksums += 1
+      }
+    }
+
+    if applicable_checksums != 1 {
+      return Err(
+        types.PmError.PackageContract(
+          f"${name}: upstream source ${source.display()} needs exactly one ${target_arch} or all checksum",
+        ),
+      )
+    }
   }
 
   {source, kind, architectures, checksums}
@@ -197,8 +194,7 @@ proc decode_filetree(name: Str, raw_entries: List[Record]) [error] -> Result[Lis
   entries
 }
 
-proc select_filetree(metadata: PackageMetadata) [env, error] -> Result[List[Record]] {
-  let arch = util.machine_arch()?
+pure select_filetree(metadata: PackageMetadata, arch: Str) -> List[Record] {
 
   if arch == "aarch64" and metadata.has_filetree_aarch64 {
     return metadata.filetree_aarch64
@@ -282,7 +278,11 @@ proc decode_metadata(pkgbuild: Path) [fs, error] -> Result[PackageMetadata] {
 }
 
 ## Loads, decodes, and validates one package recipe into its typed metadata record.
-export proc load_package(dir: Path) [fs, env, error] -> Result[types.Package] {
+export proc load_package_for_target(dir: Path, target: types.Target) [fs, env, error] -> Result[types.Package] {
+  let arch = types.pm_target_arch(target)
+  if arch == "" {
+    return Err(types.PmError.PackageContract("recipe target is unsupported"))
+  }
   let pkgbuild = fp"${dir}/PKGBUILD.xsh"
 
   if ! fs.exists(pkgbuild)? {
@@ -318,7 +318,7 @@ export proc load_package(dir: Path) [fs, env, error] -> Result[types.Package] {
 
   let kind = if metadata.has_package_kind { types.parse_package_kind(metadata.package_kind)? } else { types.package_payload() }
   let upstream_sources = decode_upstream_sources(name, metadata.upstream_sources)?
-  let filetree = decode_filetree(name, select_filetree(metadata)?)?
+  let filetree = decode_filetree(name, select_filetree(metadata, arch))?
 
   if kind == types.package_payload() {
     if ! metadata.has_build {
@@ -346,6 +346,11 @@ export proc load_package(dir: Path) [fs, env, error] -> Result[types.Package] {
     nostrip,
     source_mirror,
   }
+}
+
+## Loads a recipe using the ambient target architecture for legacy PM callers.
+export proc load_package(dir: Path) [fs, env, error] -> Result[types.Package] {
+  load_package_for_target(dir, types.parse_target(util.machine_arch()?)?)?
 }
 
 proc load_dynamic_recipe(pkg: types.Package) [fs, error] -> Result[Any] {

@@ -196,8 +196,8 @@ pure plan_compare_version_release(left_ver: Str, left_rel: Str, right_ver: Str, 
 }
 
 proc require_supported_target(target: types.Target, label: Str) [error] {
-  if types.target_text(target) != "aarch64-linux-musl" {
-    return Err(types.PmError.PackageContract(f"${label} must target aarch64-linux-musl"))
+  if types.pm_target_arch(target) == "" {
+    return Err(types.PmError.PackageContract(f"${label} has an unsupported target"))
   }
 }
 
@@ -408,9 +408,9 @@ proc validate_executor(value: types.ExecutorIdentity) [error] {
   }
 }
 
-proc validate_retrieval(value: types.RemoteRetrieval) [error] {
-  if value.arch != "aarch64" {
-    return Err(types.PmError.PackageContract(f"unsupported remote artifact architecture ${value.arch}"))
+proc validate_retrieval(value: types.RemoteRetrieval, target: types.Target) [error] {
+  if value.arch != types.pm_target_arch(target) {
+    return Err(types.PmError.PackageContract(f"remote artifact architecture ${value.arch} does not match ${types.target_text(target)}"))
   }
 
   let _ = util.ensure_relative_path(fp"${value.tarball}", "plan remote tarball")?
@@ -493,7 +493,7 @@ proc validate_node(
     if retrieval == null {
       return Err(types.PmError.PackageContract(f"build plan node ${node.name} reuses remote without retrieval data"))
     } else {
-      validate_retrieval(retrieval)?
+      validate_retrieval(retrieval, value.target)?
       let expected_legacy = legacy_remote_artifact_key(node.package_id, retrieval)?
 
       if node.artifact_key != expected_local and node.artifact_key != expected_legacy {

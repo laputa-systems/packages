@@ -1,6 +1,7 @@
 ##! Typed package catalog discovery and validation.
 use recipe
 use types
+use util
 
 pure sorted_unique_names(names: List[Str]) -> List[Str] {
   var unique: List[Str] = []
@@ -81,8 +82,8 @@ export pure package_map(value: types.PackageCatalog) -> Map[types.Package] {
   {pkg.name: pkg for pkg in value.packages}
 }
 
-## Discovers and validates every `repo/*/PKGBUILD.xsh` package below a repository root.
-export proc load(root: Path) [fs, env, error] -> Result[types.PackageCatalog] {
+## Discovers every recipe with filetrees selected by the explicit plan target.
+export proc load_for_target(root: Path, target: types.Target) [fs, env, error] -> Result[types.PackageCatalog] {
   let absolute_root = path.absolute(root)?
   let recipe_root = fp"${absolute_root}/repo"
 
@@ -96,10 +97,15 @@ export proc load(root: Path) [fs, env, error] -> Result[types.PackageCatalog] {
     continue unless entry.kind == "dir"
     continue unless fs.exists(fp"${entry.path}/PKGBUILD.xsh")?
 
-    let pkg = recipe.load_package(entry.path)?
+    let pkg = recipe.load_package_for_target(entry.path, target)?
     let durable_dir = pkg.dir.relative_to(absolute_root)
     packages = packages.push({...pkg, dir: durable_dir})
   }
 
   make_catalog(absolute_root, packages, [])?
+}
+
+## Discovers recipes using the ambient target architecture for legacy PM callers.
+export proc load(root: Path) [fs, env, error] -> Result[types.PackageCatalog] {
+  load_for_target(root, types.parse_target(util.machine_arch()?)?)?
 }

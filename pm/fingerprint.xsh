@@ -37,11 +37,12 @@ proc digest_lines(lines: List[Str]) [error] -> Result[Str] {
   bytes.from_text((lines |> sort).join("\n") + "\n").sha256().hex()
 }
 
-pure applicable_aarch64_checksum(source: types.UpstreamSource) -> Str {
+pure applicable_checksum(source: types.UpstreamSource, target: types.Target) -> Result[Str] {
+  let arch = types.pm_target_arch(target)
   var all_checksum = ""
 
   for checksum in source.checksums {
-    if checksum.arch == "aarch64" {
+    if checksum.arch == arch {
       return checksum.sha256
     }
 
@@ -50,7 +51,11 @@ pure applicable_aarch64_checksum(source: types.UpstreamSource) -> Str {
     }
   }
 
-  all_checksum
+  if all_checksum != "" {
+    return all_checksum
+  }
+
+  Err(types.PmError.PackageContract(f"${source.source.display()} has no checksum for ${arch}"))
 }
 
 proc package_source_lines(pkg: types.Package) [fs, error] -> Result[List[Str]] {
@@ -108,6 +113,10 @@ export proc package_build_input(
   pkg: types.Package,
   target: types.Target,
 ) [fs, error] -> Result[Str] {
+  if types.pm_target_arch(target) == "" {
+    return Err(types.PmError.PackageContract("package build input target is unsupported"))
+  }
+
   var lines = [
     "format\tlaputa-package-build-input-1",
     f"package\t${canonical_field(pkg.name)}\t${canonical_field(pkg.ver)}\t${canonical_field(pkg.rel)}",
@@ -130,8 +139,9 @@ export proc package_build_input(
   }
 
   for source in pkg.upstream_sources {
+    continue unless types.pm_target_arch(target) in source.architectures or "all" in source.architectures
     lines = lines.push(
-      f"source\t${canonical_field(source.source.display())}\t${types.source_kind_text(source.kind)}\t${canonical_field(applicable_aarch64_checksum(source))}",
+      f"source\t${canonical_field(source.source.display())}\t${types.source_kind_text(source.kind)}\t${canonical_field(applicable_checksum(source, target)?)}",
     )
   }
 

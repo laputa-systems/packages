@@ -34,7 +34,7 @@ build identity.
 ```text
 pm repo check [--repo PATH]
 pm repo plan [--repo PATH] (--all | --root PACKAGE...) \
-  --target aarch64-linux-musl --output PLAN
+  [--target TARGET] --output PLAN
 pm repo show PLAN
 pm repo build PLAN --store STORE [-j N|--jobs N]
 pm repo publish PLAN --store STORE
@@ -54,7 +54,11 @@ pm store extract PLAN --store STORE --package PACKAGE --path PATH --output FILE
 `repo plan` is the only resolution boundary. It records the target, typed
 dependency graph, remote retrieval identity, build/proof inputs, executor
 identity, action reasons, and sorted artifact keys in an atomically written
-plan. The target is currently fixed to `aarch64-linux-musl`.
+plan. `aarch64-linux-musl` remains the default build target.
+`x86_64-linux-musl` can be planned and inspected with target-specific source
+checksums, filetrees, remote index entries, and artifact keys. `repo build`
+rejects that target before creating a store until the native x86_64 executor,
+receipt, root, and generation boundaries are ported.
 
 `repo build` discovers the repository only by walking to a directory containing
 both `pm.xsh` and `repo/`. It executes the saved plan with `pm/execute.xsh`;

@@ -36,6 +36,20 @@ proc test_package_build_fingerprint_is_repeatable_and_ignores_mtime(ctx: TestCon
   test.eq(build_input(pkg)?, first)?
 }
 
+proc test_x86_build_fingerprint_uses_x86_source_checksum(ctx: TestContext) [fs, env, error] {
+  let pkg = copied_package(ctx, "fingerprint-x86-source")?
+  let source = pkg.upstream_sources[0]
+  let arm_checksum = {arch: "aarch64", sha256: "arm-source"}
+  let x86_checksum = {arch: "x86_64", sha256: "x86-source"}
+  let selected = {...pkg, upstream_sources: [{...source, checksums: [arm_checksum, x86_checksum]}]}
+  let baseline = fingerprint.package_build_input(p".", selected, types.target_x86_64())?
+  let arm_changed = {...selected, upstream_sources: [{...source, checksums: [{...arm_checksum, sha256: "changed-arm"}, x86_checksum]}]}
+  let x86_changed = {...selected, upstream_sources: [{...source, checksums: [arm_checksum, {...x86_checksum, sha256: "changed-x86"}]}]}
+
+  test.eq(fingerprint.package_build_input(p".", arm_changed, types.target_x86_64())?, baseline)?
+  test.eq(fingerprint.package_build_input(p".", x86_changed, types.target_x86_64())? == baseline, false)?
+}
+
 proc test_package_build_fingerprint_changes_for_pkgbuild(ctx: TestContext) [fs, env, error] {
   let pkg = copied_package(ctx, "fingerprint-pkgbuild")?
   let first = build_input(pkg)?
@@ -421,13 +435,14 @@ proc test_build_plan_json_rejects_dependency_key_mismatch(ctx: TestContext) [fs,
   }
 }
 
-proc test_build_plan_normalizes_aarch64_alias_and_rejects_other_targets(ctx: TestContext) [fs, env, error] {
+proc test_build_plan_normalizes_target_aliases_and_rejects_reserved_target(ctx: TestContext) [fs, env, error] {
   test.eq(types.parse_target("arm64")?, types.Aarch64LinuxMusl)?
+  test.eq(types.parse_target("amd64")?, types.X86_64LinuxMusl)?
   let value = plan_catalog(ctx, "plan-target")?
   let unsupported = {...policy.aarch64_docker(), target: types.TargetReserved}
 
   match plan.resolve(value, empty_remote_snapshot(), unsupported, ["app"], false, plan_executor_identity()) {
     Ok(_) => test.fail("unsupported target unexpectedly planned")?
-    Err(problem) => test.contains(problem.message, "must target aarch64-linux-musl")?
+    Err(problem) => test.contains(problem.message, "unsupported target")?
   }
 }

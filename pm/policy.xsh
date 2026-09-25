@@ -33,6 +33,11 @@ export pure aarch64_docker() -> types.BuildPolicy {
   }
 }
 
+## Returns the x86_64 native Docker build policy with the same bootstrap seed rules.
+export pure x86_64_docker() -> types.BuildPolicy {
+  {...aarch64_docker(), target: types.target_x86_64(), build_target: types.target_x86_64()}
+}
+
 ## Returns a copy of a policy configured for native or cross build graph resolution.
 export pure with_native_build(value: types.BuildPolicy, native_build: Bool) -> types.BuildPolicy {
   {...value, native_build}

@@ -2,8 +2,8 @@
 ## The package-manager error family is returned by PM operations.
 export error PmError = Usage(message: Str) : Usage | MissingDependency(message: Str) : Dependency | DependencyCycle(message: Str) : Dependency | ExtensionFailed(message: Str) | LifecycleHook(message: Str) | PackageTarball(message: Str) : NotFound | PackageConflict(message: Str) : Conflict | DirtyFilesystem(message: Str) : Conflict | PackageContract(message: Str) : InvalidData | DependentPackage(message: Str) : Dependency | PackageNotInstalled(message: Str) : NotFound | RemoteRepo(message: Str) : Remote | Auth(message: Str) : PermissionDenied | RemoteFetch(message: Str) : Remote | RemoteUpload(message: Str) : Remote | RemoteIndex(message: Str) : Remote | RemotePackage(message: Str) : NotFound | SourceDestination(message: Str) : InvalidData | SourceName(message: Str) : InvalidData | DownloadFailed(message: Str) : Remote | DownloadTool(message: Str) : NotFound | SourceNotFound(message: Str) : NotFound | SourceChecksum(message: Str) : InvalidData | ChecksumField(message: Str) : InvalidData
 
-## The sole supported package build target.
-export type Target = Aarch64LinuxMusl | TargetReserved
+## The package build target carried by plans, artifacts, and roots.
+export type Target = Aarch64LinuxMusl | X86_64LinuxMusl | TargetReserved
 
 ## The package payload model selected explicitly by every recipe.
 export type PackageKind = Payload | Meta
@@ -27,9 +27,14 @@ export type ArtifactOrigin = Built | Remote
 # global tags, not module-record methods.  Keep PM callers on these typed
 # accessors so a plan behaves the same under the release runner and the newer
 # host checker without relying on a shared global tag spelling.
-## Return the sole build target without a qualified union-tag expression.
+## Return the aarch64 build target without a qualified union-tag expression.
 export pure target_aarch64() -> Target {
   return Aarch64LinuxMusl
+}
+
+## Return the x86_64 build target without a qualified union-tag expression.
+export pure target_x86_64() -> Target {
+  return X86_64LinuxMusl
 }
 
 ## Return the internal unsupported-target sentinel.
@@ -142,21 +147,35 @@ export pure artifact_origin_remote() -> ArtifactOrigin {
   return Remote
 }
 
-## Renders the supported target as its stable external text form.
+## Renders a target as its stable external text form.
 export pure target_text(target: Target) -> Str {
   match target {
     Aarch64LinuxMusl => return "aarch64-linux-musl"
+    X86_64LinuxMusl => return "x86_64-linux-musl"
     TargetReserved => return ""
   }
 }
 
-## Decodes the one supported target from a public text boundary.
+## Returns the package architecture selected by a supported target.
+export pure pm_target_arch(target: Target) -> Str {
+  match target {
+    Aarch64LinuxMusl => return "aarch64"
+    X86_64LinuxMusl => return "x86_64"
+    TargetReserved => return ""
+  }
+}
+
+## Decodes a supported target from a public text boundary.
 export pure parse_target(raw: Str) -> Result[Target] {
   match raw {
     "aarch64-linux-musl" => return Aarch64LinuxMusl
     "aarch64" => return Aarch64LinuxMusl
     "arm64" => return Aarch64LinuxMusl
     "arm64-linux-musl" => return Aarch64LinuxMusl
+    "x86_64-linux-musl" => return X86_64LinuxMusl
+    "x86_64" => return X86_64LinuxMusl
+    "amd64" => return X86_64LinuxMusl
+    "amd64-linux-musl" => return X86_64LinuxMusl
     _ => return Err(PmError.PackageContract(f"unsupported target ${raw}"))
   }
 }

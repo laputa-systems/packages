@@ -445,6 +445,10 @@ pure source_mirror_fingerprint_target(arch: Str) -> types.Target {
     return types.target_aarch64()
   }
 
+  if arch == "x86_64" {
+    return types.target_x86_64()
+  }
+
   types.target_reserved()
 }
 

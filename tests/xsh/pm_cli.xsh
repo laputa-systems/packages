@@ -98,7 +98,8 @@ proc test_repo_help_is_explicit(ctx: TestContext) [fs, process, env, error] {
   let repository = pm_output(["repo", "--help"])?
   let plan = pm_output(["repo", "plan", "--help"])?
 
-  test.contains(top, "repo plan [--repo PATH] (--all | --root PACKAGE...) --target aarch64-linux-musl --output PLAN")?
+  test.contains(top, "repo plan [--repo PATH] (--all | --root PACKAGE...) [--target TARGET] --output PLAN")?
+  test.contains(plan, "x86_64-linux-musl (plan only)")?
   test.contains(top, "repo build PLAN --store STORE")?
   test.contains(top, "root compose PLAN --store STORE --runtime-root PACKAGE... --output GENERATION")?
   test.eq(top.contains("world-plan"), false)?
@@ -214,9 +215,9 @@ proc test_repo_plan_requires_explicit_selection_output_and_target(ctx: TestConte
   test.eq(missing_output.ok, false)?
   test.contains(err.read_text()?, "missing required argument --output")?
 
-  let unsupported_target = pm_status(["repo", "plan", "--repo", root.display(), "--root", "app", "--output", output.display(), "--target", "x86_64-linux-musl"], err)?
+  let unsupported_target = pm_status(["repo", "plan", "--repo", root.display(), "--root", "app", "--output", output.display(), "--target", "sparc64-linux-musl"], err)?
   test.eq(unsupported_target.ok, false)?
-  test.contains(err.read_text()?, "unsupported target x86_64-linux-musl")?
+  test.contains(err.read_text()?, "unsupported target sparc64-linux-musl")?
 }
 
 proc test_repo_plan_does_not_infer_path_arguments(ctx: TestContext) [fs, process, env, error] {
@@ -248,6 +249,27 @@ proc test_repo_plan_writes_and_show_renders_verified_fields(ctx: TestContext) [f
   test.contains(shown, "level 1 app build")?
   test.contains(shown, "new package")?
   test.contains(shown, value.nodes[0].artifact_key)?
+}
+
+proc test_repo_plan_records_x86_64_target_and_distinct_artifact_keys(ctx: TestContext) [fs, process, env, error] {
+  let root = copied_repository(ctx, "repo-x86-plan")?
+  let arm_output = fp"${root}/out/arm-plan.json"
+  let x86_output = fp"${root}/out/x86-plan.json"
+  let _ = pm_output(["repo", "plan", "--repo", root.display(), "--root", "app", "--output", arm_output.display()])?
+  let _ = pm_output(["repo", "plan", "--repo", root.display(), "--root", "app", "--target", "x86_64-linux-musl", "--output", x86_output.display()])?
+  let arm = plan_json.read(arm_output)?
+  let x86 = plan_json.read(x86_output)?
+
+  test.eq(types.target_text(x86.target), "x86_64-linux-musl")?
+  test.eq(arm.nodes.len(), x86.nodes.len())?
+  test.eq(arm.nodes[0].artifact_key == x86.nodes[0].artifact_key, false)?
+
+  let store = fp"${root}/store"
+  let err = test.temp_path(ctx, name: "repo-x86-build.err")
+  let build_status = pm_status(["repo", "build", x86_output.display(), "--store", store.display()], err)?
+  test.eq(build_status.ok, false)?
+  test.contains(err.read_text()?, "native executor does not yet support x86_64-linux-musl")?
+  test.eq(store.exists()?, false)?
 }
 
 proc test_repo_show_rejects_corrupt_plan(ctx: TestContext) [fs, process, env, error] {

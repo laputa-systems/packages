@@ -46,7 +46,7 @@ pure help_text() -> Str {
 
 repository commands:
   repo check [--repo PATH]
-  repo plan [--repo PATH] (--all | --root PACKAGE...) --target aarch64-linux-musl --output PLAN
+  repo plan [--repo PATH] (--all | --root PACKAGE...) [--target TARGET] --output PLAN
   repo show PLAN
   repo build PLAN --store STORE [-j N|--jobs N]
   repo publish PLAN --store STORE
@@ -61,6 +61,8 @@ root commands:
 store commands:
   store verify --store STORE
   store extract PLAN --store STORE --package PACKAGE --path PATH --output FILE
+
+planning targets: aarch64-linux-musl (default), x86_64-linux-musl (plan only)
 """
 }
 
@@ -68,18 +70,22 @@ pure repo_help_text() -> Str {
   """usage: pm repo COMMAND [OPTIONS]
 
   check [--repo PATH]
-  plan [--repo PATH] (--all | --root PACKAGE...) --target aarch64-linux-musl --output PLAN
+  plan [--repo PATH] (--all | --root PACKAGE...) [--target TARGET] --output PLAN
   show PLAN
   build PLAN --store STORE [-j N|--jobs N]
   publish PLAN --store STORE
   checksum [--repo PATH] PACKAGE...
   update-checksums [--repo PATH] PACKAGE...
   source-audit [--repo PATH] PACKAGE...
+
+planning targets: aarch64-linux-musl (default), x86_64-linux-musl (plan only)
 """
 }
 
 pure repo_plan_help_text() -> Str {
-  """usage: pm repo plan [--repo PATH] (--all | --root PACKAGE...) --target aarch64-linux-musl --output PLAN
+  """usage: pm repo plan [--repo PATH] (--all | --root PACKAGE...) [--target TARGET] --output PLAN
+
+targets: aarch64-linux-musl (default), x86_64-linux-musl (plan only)
 """
 }
 
@@ -440,7 +446,7 @@ proc cli_executor_identity(repo_root: Path) [fs, process, env, error] -> Result[
   }
 }
 
-proc remote_snapshot_for_plan(cache_root: Path) [fs, net, env, time, error] -> Result[types.RemoteSnapshot] {
+proc remote_snapshot_for_plan(cache_root: Path, target: types.Target) [fs, net, env, time, error] -> Result[types.RemoteSnapshot] {
   var index: List[types.RemotePackage] = []
   let cache = util.remote_index_cache_path(cache_root)
   let offline = (env.get("XSH_PM_OFFLINE") ?? "") == "1"
@@ -465,11 +471,11 @@ proc remote_snapshot_for_plan(cache_root: Path) [fs, net, env, time, error] -> R
   var packages: List[types.RemotePlanArtifact] = []
 
   for entry in index {
-    continue unless entry.arch == "aarch64"
+    continue unless entry.arch == types.pm_target_arch(target)
     packages = packages.push(remote.plan_artifact_from_package_at_repo(entry, urls.repo, cache_root)?)
   }
 
-  {target: types.target_aarch64(), index_sha256, packages}
+  {target, index_sha256, packages}
 }
 
 proc selected_packages(repo_root: Path, names: List[Str]) [fs, env, error] -> Result[List[types.Package]] {
@@ -503,18 +509,14 @@ proc command_repo_check(args: RepoCheckArgs) [fs, env, error] {
 
 proc command_repo_plan(args: RepoPlanArgs) [fs, net, process, env, time, error] {
   let target = types.parse_target(args.target)?
-  let policy_value = policy.aarch64_docker()
-
-  if target != policy_value.target {
-    return Err(types.PmError.PackageContract(f"unsupported planning target ${args.target}"))
-  }
+  let policy_value = if target == types.target_aarch64() { policy.aarch64_docker() } else { policy.x86_64_docker() }
 
   let cache_handle = fs.tempdir()?
   defer fs.close_root(cache_handle)?
   let cache_root = fs.root_path(cache_handle)?
   let value = pm_plan.resolve(
-    catalog.load(args.repo)?,
-    remote_snapshot_for_plan(cache_root)?,
+    catalog.load_for_target(args.repo, target)?,
+    remote_snapshot_for_plan(cache_root, target)?,
     policy_value,
     args.roots,
     args.all,
