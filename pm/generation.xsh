@@ -9,6 +9,17 @@ use util
 
 type OverlayConfigDto = {format: Str, profile: Str, replacements: List[Str]}
 type GenerationArtifactDto = {package_name: Str, package_id: Str, artifact_key: Str}
+type GenerationPlanDto = {
+  format: Str,
+  target: Str,
+  build_plan_sha256: Str,
+  profile: Str,
+  overlay_sha256: Str,
+  replacements: List[Str],
+  runtime_roots: List[Str],
+  artifacts: List[GenerationArtifactDto],
+  generation_sha256: Str,
+}
 type GenerationReceiptDto = {
   format: Str,
   generation_sha256: Str,
@@ -296,6 +307,47 @@ export proc plan_profile(
   let planned = {...bare, generation_sha256: generation_digest(bare)?}
   generation_validate_plan(planned)?
   planned
+}
+
+pure generation_plan_dto(value: types.GenerationPlan) -> GenerationPlanDto {
+  {
+    format: value.format,
+    target: types.target_text(value.target),
+    build_plan_sha256: value.build_plan_sha256,
+    profile: value.profile.name,
+    overlay_sha256: value.profile.overlay_sha256,
+    replacements: value.profile.replacements,
+    runtime_roots: value.runtime_roots,
+    artifacts: [generation_artifact_dto(artifact) for artifact in value.artifacts],
+    generation_sha256: value.generation_sha256,
+  }
+}
+
+proc generation_plan_from_dto(value: GenerationPlanDto) [error] -> Result[types.GenerationPlan] {
+  {
+    format: value.format,
+    target: types.parse_target(value.target)?,
+    build_plan_sha256: value.build_plan_sha256,
+    profile: {name: value.profile, overlay_sha256: value.overlay_sha256, replacements: value.replacements},
+    runtime_roots: value.runtime_roots,
+    artifacts: [generation_artifact_from_dto(artifact) for artifact in value.artifacts],
+    generation_sha256: value.generation_sha256,
+  }
+}
+
+## Atomically writes the validated runtime-only generation plan as a durable JSON value.
+export proc write_generation_plan(path_value: Path, value: types.GenerationPlan) [fs, error] {
+  generation_validate_plan(value)?
+  fs.mkdir(path_value.parent)?
+  fs.write_atomic(path_value, json.encode(generation_plan_dto(value))? + "\n")?
+}
+
+## Reads a saved generation plan and verifies its canonical content identity.
+export proc read_generation_plan(path_value: Path) [fs, error] -> Result[types.GenerationPlan] {
+  let dto = json.read(path_value)?.require(GenerationPlanDto)?
+  let value = generation_plan_from_dto(dto)?
+  generation_validate_plan(value)?
+  value
 }
 
 ## Decodes profile-owned overlay metadata. An overlay without `overlay.json` is the strict default profile with no replacements.

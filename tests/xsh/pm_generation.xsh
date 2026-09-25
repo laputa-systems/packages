@@ -192,6 +192,26 @@ proc test_generation_plan_and_receipt_are_deterministic_for_root_order_and_dupli
   )?
 }
 
+proc test_generation_plan_json_round_trips_and_rejects_changed_identity(ctx: TestContext) [fs, env, error] {
+  let build_value = generation_build_plan(ctx, "generation-plan-json")?
+  let overlay = empty_overlay(ctx, "generation-plan-json-overlay")?
+  let planned = generation.plan_profile(
+    build_value,
+    ["app"],
+    {name: "qemu-dwl-foot", overlay_sha256: generation.overlay_digest(overlay)?, replacements: []},
+  )?
+  let path_value = test.temp_path(ctx, name: "generation-plan.json")
+  generation.write_generation_plan(path_value, planned)?
+  test.eq(generation.read_generation_plan(path_value)?, planned)?
+
+  let dto = json.read(path_value)?.require(Record)?
+  json.write(path_value, {...dto, generation_sha256: "0000000000000000000000000000000000000000000000000000000000000000"})?
+  match generation.read_generation_plan(path_value) {
+    Ok(_) => test.fail("changed generation plan digest was accepted")?
+    Err(problem) => test.contains(problem.message, "digest does not match")?,
+  }
+}
+
 proc test_generation_rejects_missing_and_corrupt_runtime_artifacts_before_mutation(ctx: TestContext) [fs, env, error] {
   let build_value = generation_build_plan(ctx, "generation-invalid-plan")?
   let overlay = empty_overlay(ctx, "generation-invalid-overlay")?

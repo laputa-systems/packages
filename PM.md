@@ -68,6 +68,11 @@ PM does not store credentials. `file://` repositories need no token.
 `root compose` selects only typed runtime edges from the saved plan and writes
 an immutable generation receipt. It never installs into a live root. `root
 inspect` and `store verify` are read-only receipt checks.
+For a profile-owned overlay, `pm/generation.xsh::plan_profile` selects the
+runtime closure and binds the overlay digest into its identity.
+`write_generation_plan` and `read_generation_plan` persist and validate that
+typed plan before `compose` uses it; the saved plan must match the BuildPlan and
+overlay used for execution.
 
 ## Source Mirrors
 
