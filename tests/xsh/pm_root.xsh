@@ -378,6 +378,18 @@ proc test_root_rejects_collisions_and_same_owner_duplicate_entries_before_mutati
   expect_root_error(ctx, root.preflight([same_owner]), "repeats usr/bin/duplicate")?
 }
 
+proc test_root_rejects_file_ownership_across_parent_and_child_paths(ctx: TestContext) [fs, error] {
+  let store_root = test.temp_dir(ctx, name: "root-parent-child-store")?
+  let parent = commit_artifact(ctx, store_root, "alpha-parent", types.Payload, [payload_file("usr/share/item", "parent")])?
+  let child = commit_artifact(ctx, store_root, "beta-child", types.Payload, [payload_file("usr/share/item/child", "child")])?
+
+  expect_root_error(ctx, root.preflight([parent, child]), "root non-directory usr/share/item owned by alpha-parent conflicts with usr/share/item/child")?
+
+  let later_parent = commit_artifact(ctx, store_root, "beta-parent", types.Payload, [payload_file("usr/share/other", "parent")])?
+  let earlier_child = commit_artifact(ctx, store_root, "alpha-child", types.Payload, [payload_file("usr/share/other/child", "child")])?
+  expect_root_error(ctx, root.preflight([earlier_child, later_parent]), "root non-directory usr/share/other conflicts with usr/share/other/child owned by alpha-child")?
+}
+
 proc test_root_rejects_traversal_and_corrupt_payloads(ctx: TestContext) [fs, error] {
   let store_root = test.temp_dir(ctx, name: "root-invalid-store")?
   let traversal = stage_artifact(ctx, "traversal", types.Payload, [payload_file("usr/bin/safe", "safe")])?

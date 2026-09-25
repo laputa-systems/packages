@@ -572,6 +572,10 @@ export proc preflight(artifacts: List[types.ArtifactReceipt]) [fs, error] -> Res
   let verified = root_verified_artifacts(artifacts)?
   var planned_artifacts: List[types.RootArtifact] = []
   var entries: List[types.RootEntry] = []
+  # Exact owners catch duplicate paths; the first owner below each prefix
+  # catches a later file that would replace an existing subtree.
+  var owners: Map[types.RootEntry] = {}
+  var first_descendants: Map[types.RootEntry] = {}
 
   for receipt in verified {
     let metadata = root_artifact_metadata(receipt)?
@@ -596,42 +600,59 @@ export proc preflight(artifacts: List[types.ArtifactReceipt]) [fs, error] -> Res
         target: entry.target,
       }
 
-      for owner in entries {
-        if owner.path == planned.path {
-          if root_same_directory_metadata(owner, planned) {
-            continue
-          }
+      var coalesced = false
 
+      if owners.has(planned.path) {
+        let owner = owners.get(planned.path)?
+        if root_same_directory_metadata(owner, planned) {
+          coalesced = true
+        } else {
           if owner.kind == types.file_kind_tree() and planned.kind == types.file_kind_tree() {
             return Err(types.PmError.PackageConflict(f"root directory ${planned.path} has incompatible metadata from ${owner.package_name} and ${receipt.package_name}"))
           }
 
           return Err(types.PmError.PackageConflict(f"root path ${planned.path} is owned by both ${owner.package_name} and ${receipt.package_name}"))
         }
+      }
 
-        if owner.path.starts_with(f"${planned.path}/") and planned.kind != types.file_kind_tree() {
+      if ! coalesced {
+        let components = planned.path.split("/")
+        var prefix = ""
+        var index = 0
+
+        while index + 1 < components.len() {
+          prefix = if prefix == "" { components[index] } else { f"${prefix}/${components[index]}" }
+
+          if owners.has(prefix) {
+            let owner = owners.get(prefix)?
+            if owner.kind != types.file_kind_tree() {
+              return Err(types.PmError.PackageConflict(f"root non-directory ${owner.path} owned by ${owner.package_name} conflicts with ${planned.path}"))
+            }
+          }
+
+          index += 1
+        }
+
+        if planned.kind != types.file_kind_tree() and first_descendants.has(planned.path) {
+          let owner = first_descendants.get(planned.path)?
           return Err(types.PmError.PackageConflict(f"root non-directory ${planned.path} conflicts with ${owner.path} owned by ${owner.package_name}"))
         }
 
-        if planned.path.starts_with(f"${owner.path}/") and owner.kind != types.file_kind_tree() {
-          return Err(types.PmError.PackageConflict(f"root non-directory ${owner.path} owned by ${owner.package_name} conflicts with ${planned.path}"))
+        entries = entries.push(planned)
+        owners[planned.path] = planned
+        prefix = ""
+        index = 0
+
+        while index + 1 < components.len() {
+          prefix = if prefix == "" { components[index] } else { f"${prefix}/${components[index]}" }
+          if ! first_descendants.has(prefix) {
+            first_descendants[prefix] = planned
+          }
+          index += 1
         }
       }
 
       artifact_entries = artifact_entries.push(planned)
-
-      var coalesced = false
-
-      for owner in entries {
-        if owner.path == planned.path and root_same_directory_metadata(owner, planned) {
-          coalesced = true
-          break
-        }
-      }
-
-      if ! coalesced {
-        entries = entries.push(planned)
-      }
     }
 
     if payload {
