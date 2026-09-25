@@ -142,3 +142,27 @@ proc test_recipe_loads_every_migrated_production_recipe() [fs, env, error] {
     test.eq(pkg.name, entry.name)?
   }
 }
+
+proc test_cargo_proof_accepts_rust_std_at_declared_lib_path(ctx: TestContext) [fs, process, env, error] {
+  if system.uname()?.sysname != "Linux" {
+    test.skip("cargo's ELF proof runs in the pinned Linux build environment")
+    return
+  }
+
+  let root = test.temp_dir(ctx, name: "cargo-proof-root")?
+  let xsh = process.which("xsh")?
+  fs.install(xsh, fp"${root}/usr/bin/cargo", 0o755, parents: true, overwrite: true)?
+  fs.install(xsh, fp"${root}/usr/bin/rustc", 0o755, parents: true, overwrite: true)?
+  fs.mkdir(fp"${root}/usr/lib/rustlib/aarch64-unknown-linux-musl/lib")?
+  let stderr_path = test.temp_path(ctx, name: "cargo-proof-stderr")
+  let status = process.run(
+    process.command_argv(
+      xsh,
+      ["xsh", "repo/cargo/proof.xsh", "--", root.display()],
+      fs.cwd()?,
+      {XSH_PM_BUILD_ARCH: "x86_64", XSH_PM_TARGET_ARCH: "aarch64"},
+      stderr: stderr_path,
+    ),
+  )?
+  test.ok(status.ok, fs.read_text(stderr_path)?)?
+}

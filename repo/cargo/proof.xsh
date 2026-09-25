@@ -8,7 +8,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   let target_arch = pm_util.target_arch()?
   let rust_triple = if target_arch == "aarch64" { "aarch64-unknown-linux-musl" } else { "x86_64-unknown-linux-musl" }
 
-  if ! fs.exists(fp"${rootfs}/usr/lib64/rustlib/${rust_triple}/lib")? {
+  if ! fs.exists(fp"${rootfs}/usr/lib/rustlib/${rust_triple}/lib")? {
     return Err(proof.ProofError.Failed("proof-cargo", f"missing rust std for ${rust_triple}"))
   }
 
