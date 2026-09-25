@@ -9,6 +9,7 @@ use plan_json as pm_plan_json
 use remote as pm_remote
 use store as pm_store
 use types
+use util
 
 error GenerationAdapterError = Failed(message: Str) : InvalidData
 
@@ -169,6 +170,11 @@ export proc generation_adapter_copy_manifest_file(
   package_path: Path,
   output: Path,
 ) [fs, error] {
+  let relative_path = util.ensure_relative_path(package_path, "store extraction path")?
+  if relative_path.display() == "" or relative_path.display() == "." or relative_path.display() != package_path.display() {
+    return Err(GenerationAdapterError.Failed("store extraction path must be canonical and nonempty"))
+  }
+
   let build_plan = pm_plan_json.read(build_plan_path)?
   let node = generation_adapter_find_node(build_plan, package_name)?
   let receipt = pm_store.lookup(store_root, node.artifact_key)?
@@ -178,18 +184,18 @@ export proc generation_adapter_copy_manifest_file(
   }
 
   let metadata = json.read(fp"${receipt.artifact_dir}/metadata.json")?.require(GenerationAdapterMetadataDto)?
-  let manifest = generation_adapter_manifest_file(metadata, package_name, package_path)?
+  let manifest = generation_adapter_manifest_file(metadata, package_name, relative_path)?
   let handle = fs.tempdir()?
   defer fs.close_root(handle)?
   let extracted = fs.root_path(handle)?
   archive.tar_extract(fp"${receipt.artifact_dir}/payload.tar.gz", extracted, 0, "auto", true)?
-  let source = fp"${extracted}/${package_path.display()}"
+  let source = fp"${extracted}/${relative_path.display()}"
 
   if ! fs.exists(source)? or fs.metadata(source)?.kind != "file" {
-    return Err(GenerationAdapterError.Failed(f"artifact payload does not contain ${package_path.display()}"))
+    return Err(GenerationAdapterError.Failed(f"artifact payload does not contain ${relative_path.display()}"))
   }
   if hash.sha256(source)?.hex() != manifest.sha256 {
-    return Err(GenerationAdapterError.Failed(f"artifact payload digest does not match metadata for ${package_path.display()}"))
+    return Err(GenerationAdapterError.Failed(f"artifact payload digest does not match metadata for ${relative_path.display()}"))
   }
 
   let temporary = fp"${output}.tmp"

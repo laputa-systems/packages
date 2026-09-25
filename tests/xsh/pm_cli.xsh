@@ -170,6 +170,14 @@ proc test_store_extract_copies_only_manifest_declared_file_from_saved_plan(ctx: 
   test.eq(missing.ok, false)?
   test.contains(error_output.read_text()?, "artifact metadata does not declare boot/missing")?
   test.eq(output.read_text()?, "previous output\n")?
+
+  let traversal = pm_status([
+    "store", "extract", plan_path.display(), "--store", store_root.display(),
+    "--package", selected.name, "--path", "../outside", "--output", output.display(),
+  ], error_output)?
+  test.eq(traversal.ok, false)?
+  test.contains(error_output.read_text()?, "store extraction path must stay relative")?
+  test.eq(output.read_text()?, "previous output\n")?
 }
 
 proc test_root_inspect_accepts_published_generation_receipt_file(ctx: TestContext) [fs, process, env, error] {
