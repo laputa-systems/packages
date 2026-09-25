@@ -209,6 +209,22 @@ proc test_root_composes_empty_and_metapackage_roots(ctx: TestContext) [fs, error
   test.eq(root.compose_artifacts(output, meta_plan, [meta])?.artifacts[0].package_name, "meta")?
 }
 
+proc test_root_preserves_setuid_mode_from_verified_artifact(ctx: TestContext) [fs, error] {
+  let store_root = test.temp_dir(ctx, name: "root-setuid-store")?
+  let privileged = commit_artifact(
+    ctx,
+    store_root,
+    "privileged",
+    types.Payload,
+    [payload_tree("usr"), payload_tree("usr/bin"), payload_file("usr/bin/unix_chkpwd", "helper", 0o4755)],
+  )?
+  let plan = root.preflight([privileged])?
+  let output = fp"${test.temp_dir(ctx, name: "root-setuid-output")?}/root"
+  let receipt = root.compose_artifacts(output, plan, [privileged])?
+  test.eq(fp"${output}/usr/bin/unix_chkpwd".metadata()?.mode % 4096, 0o4755)?
+  root.verify(output, receipt)?
+}
+
 proc test_root_legacy_metadata_defaults_only_omitted_package_kind_to_payload(ctx: TestContext) [fs, error] {
   let store_root = test.temp_dir(ctx, name: "root-legacy-metadata-store")?
   let entries = [payload_file("usr/bin/legacy", "legacy", mode: 0o755)]

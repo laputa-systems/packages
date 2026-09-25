@@ -120,6 +120,8 @@ mutates a generation root. `pm/generation.xsh` chooses direct runtime roots and
 the runtime closure only, then writes the deterministic receipt used by Laputa
 to construct a disk image. Build tools do not leak into that closure unless a
 separate typed runtime edge requires them.
+Regular files and directories retain permission bits through `0o7777`,
+including setuid helpers; symlink metadata remains fixed at `0o777`.
 
 ## Scope
 

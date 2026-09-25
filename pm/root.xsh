@@ -112,7 +112,7 @@ proc root_validate_metadata_entry(value: types.ArtifactEntry) [error] {
     return Err(types.PmError.PackageContract("artifact metadata may not own var/lib/laputa/root.json"))
   }
 
-  if value.mode < 0 or value.mode > 0o777 {
+  if value.mode < 0 or value.mode > 0o7777 {
     return Err(types.PmError.PackageContract(f"artifact metadata mode for ${value.path} is invalid"))
   }
 
@@ -127,6 +127,10 @@ proc root_validate_metadata_entry(value: types.ArtifactEntry) [error] {
       return Err(types.PmError.PackageContract(f"directory ${value.path} must not have a hash or target"))
     }
   } else if value.kind == types.file_kind_symlink() {
+    if value.mode != 0o777 {
+      return Err(types.PmError.PackageContract(f"symlink ${value.path} must have mode 0777"))
+    }
+
     if value.sha256 != "" {
       return Err(types.PmError.PackageContract(f"symlink ${value.path} must not have a file hash"))
     }
