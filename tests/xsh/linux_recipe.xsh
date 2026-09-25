@@ -135,6 +135,25 @@ proc test_baselayout_build_materializes_empty_boot_mount_directories(ctx: TestCo
   }
 }
 
+proc test_laputa_net_hook_directories_are_empty_package_payload(ctx: TestContext) [fs, net, process, env, time, error] {
+  let pkg = recipe.load_package(p"repo/laputa-net")?
+  let root = test.temp_dir(ctx, name: "laputa-net-hook-directories")?
+  let source = fp"${root}/source"
+  let dest = fp"${root}/dest"
+  fs.mkdir(source)?
+  sources.stage_package_sources(root, pkg, source, false)?
+  recipe.call_build(pkg, source, dest)?
+
+  for hook in ["if-pre-up.d", "if-up.d", "if-down.d", "if-pre-down.d", "if-post-down.d"] {
+    let relative = fp"etc/network/${hook}"
+    test.ok({path: relative, kind: types.file_kind_tree()} in pkg.filetree)?
+    test.eq(fs.metadata(fp"${dest}/${relative}")?.kind, "dir")?
+    for entry in fs.children(fp"${dest}/${relative}")? {
+      test.fail(f"network hook directory contains ${entry.name}")?
+    }
+  }
+}
+
 proc test_baselayout_artifact_archives_empty_boot_mount_directories(ctx: TestContext) [fs, net, process, env, time, error] {
   let root = test.temp_dir(ctx, name: "baselayout-artifact-directories")?
   let recipe_dir = fp"${root}/recipe"

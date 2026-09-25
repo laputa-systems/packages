@@ -9,7 +9,7 @@ export let package_kind = "payload"
 export let ver = "1"
 
 ## Exported declaration `rel`.
-export let rel = "10"
+export let rel = "11"
 
 # ifup/ifdown are xsh core applets; the net service drives them.
 # wpa_supplicant provides Wi-Fi association for wireless interfaces.
@@ -52,24 +52,24 @@ export let upstream_sources = [
 ## Exported declaration `filetree`.
 export let filetree = [
   {
-    path: p"etc/network/if-down.d/keep",
-    kind: "file",
+    path: p"etc/network/if-down.d",
+    kind: "tree",
   },
   {
-    path: p"etc/network/if-post-down.d/keep",
-    kind: "file",
+    path: p"etc/network/if-post-down.d",
+    kind: "tree",
   },
   {
-    path: p"etc/network/if-pre-down.d/keep",
-    kind: "file",
+    path: p"etc/network/if-pre-down.d",
+    kind: "tree",
   },
   {
-    path: p"etc/network/if-pre-up.d/keep",
-    kind: "file",
+    path: p"etc/network/if-pre-up.d",
+    kind: "tree",
   },
   {
-    path: p"etc/network/if-up.d/keep",
-    kind: "file",
+    path: p"etc/network/if-up.d",
+    kind: "tree",
   },
   {
     path: p"etc/network/interfaces",
@@ -91,7 +91,4 @@ export proc build(dest: Path) [fs, error] {
   fs.mkdir(fp"${dest}/etc/network/if-pre-down.d")?
   fs.mkdir(fp"${dest}/etc/network/if-post-down.d")?
 
-  for hook_dir in ["if-pre-up.d", "if-up.d", "if-down.d", "if-pre-down.d", "if-post-down.d"] {
-    fs.write(fp"${dest}/etc/network/${hook_dir}/keep", "")?
-  }
 }
