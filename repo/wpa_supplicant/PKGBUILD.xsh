@@ -104,17 +104,8 @@ export let filetree = [
 
 ## Package recipe export.
 export proc build(dest: Path) [fs, process, env, error] {
-  let cwd = fs.cwd()?
-  let tgz = fp"${cwd}/wpa_supplicant-2.11.tar.gz"
-
-  # Extract into a src directory under dest's parent.
-  let src = fp"${dest}/../src"
+  let src = fs.cwd()?
   let objs = fp"${dest}/../objs"
-
-  if ! fs.exists(src)? {
-    fs.mkdir(src)?
-    archive.tar_extract(tgz, src, 1, "auto", true)?
-  }
 
   fs.mkdir(objs)?
   fs.install(p"config", fp"${src}/wpa_supplicant/.config", 0o644, parents: true, overwrite: true)?

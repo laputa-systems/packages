@@ -166,3 +166,40 @@ proc test_cargo_proof_accepts_rust_std_at_declared_lib_path(ctx: TestContext) [f
   )?
   test.ok(status.ok, fs.read_text(stderr_path)?)?
 }
+
+proc test_wpa_proof_runs_binary_with_composed_libraries(ctx: TestContext) [fs, process, env, error] {
+  if system.uname()?.sysname != "Linux" {
+    test.skip("the WPA proof runs a Linux executable")
+    return
+  }
+
+  let root = test.temp_dir(ctx, name: "wpa-proof-root")?
+  let xsh = process.which("xsh")?
+  let bin = fp"${root}/usr/bin/wpa_supplicant"
+  fs.mkdir(fp"${root}/usr/bin", parents: true)?
+  fs.mkdir(fp"${root}/usr/lib/xinit/services", parents: true)?
+  fs.mkdir(fp"${root}/etc/wpa_supplicant", parents: true)?
+  fs.mkdir(fp"${root}/var/lib/xsh-pm/packages/wpa_supplicant", parents: true)?
+  fs.write(
+    bin,
+    f"""#!${xsh.display()}
+proc main(...argv: List[Str]) [env, error] {
+  if ! (env.get("LD_LIBRARY_PATH") ?? "").starts_with("${root}/usr/lib") {
+    abort(3)
+  }
+}
+main(@args)?
+""",
+  )?
+  fs.chmod(bin, 0o755)?
+  fs.write(fp"${root}/usr/bin/wpa_cli", "")?
+  fs.write(fp"${root}/usr/bin/wpa_passphrase", "")?
+  fs.write(fp"${root}/usr/lib/xinit/services/wpa_supplicant.xsh", "")?
+  fs.write(fp"${root}/etc/wpa_supplicant/wpa_supplicant.conf", "")?
+  fs.write(fp"${root}/var/lib/xsh-pm/packages/wpa_supplicant/metadata.json", "{}")?
+  let stderr_path = test.temp_path(ctx, name: "wpa-proof-stderr")
+  let status = process.run(
+    process.command_argv(xsh, ["xsh", "repo/wpa_supplicant/proof.xsh", "--", root.display()], fs.cwd()?, {}, stderr: stderr_path),
+  )?
+  test.ok(status.ok, fs.read_text(stderr_path)?)?
+}

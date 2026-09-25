@@ -20,7 +20,12 @@ proc main(root: Path = /rootfs) [fs, process, error] {
 
   # Smoke test: binary should at least print help.
   let status = process.run(
-    process.command_argv(fp"${root}/usr/bin/wpa_supplicant", ["wpa_supplicant", "--help"], /, {}),
+    process.command_argv(
+      fp"${root}/usr/bin/wpa_supplicant",
+      ["wpa_supplicant", "--help"],
+      /,
+      {LD_LIBRARY_PATH: fp"${root}/usr/lib".display()},
+    ),
   )?
 
   if status.exited() and status.exit_code()? != 0 {
