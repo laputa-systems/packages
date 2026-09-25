@@ -266,7 +266,7 @@ proc execute_build_local(
     Ok(_) => {}
     Err(problem) => return Err(problem)
   }
-  let receipt = store.commit(store_root, node, staged)?
+  let receipt = store.commit(plan_value.target, store_root, node, staged)?
   execute_require_receipt(plan_value, node, receipt)?
   execute_publish_proof_cache(store_root, node, fp"${receipt.artifact_dir}/payload.tar.gz", staged.proof)?
   receipt
@@ -307,7 +307,7 @@ proc execute_remote_node(
   let cache_handle = fs.tempdir()?
   defer fs.close_root(cache_handle)?
   let cache = fs.root_path(cache_handle)?
-  let receipt = store.import_remote(store_root, node, remote_repo, cache)?
+  let receipt = store.import_remote(plan_value.target, store_root, node, remote_repo, cache)?
   execute_require_receipt(plan_value, node, receipt)?
   receipt
 }

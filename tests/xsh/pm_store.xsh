@@ -105,7 +105,7 @@ proc test_store_commits_atomically_and_reuses_exact_artifact(ctx: TestContext) [
   let root = store_root(ctx, "store-commit")?
   let key = digest("commit")
   let first_stage = staged_artifact(ctx, "store-commit-first", payload: "first payload")?
-  let first = store.commit(root, test_node(key), first_stage.staged)?
+  let first = store.commit(types.target_aarch64(), root, test_node(key), first_stage.staged)?
   let final_dir = store.artifact_path(root, key)
   test.eq(first.origin, types.Built)?
   test.eq(first.key, key)?
@@ -113,9 +113,24 @@ proc test_store_commits_atomically_and_reuses_exact_artifact(ctx: TestContext) [
   test.eq(store.lookup(root, key)?, first)?
 
   let replacement = staged_artifact(ctx, "store-commit-replacement", payload: "replacement payload")?
-  let reused = store.commit(root, test_node(key), replacement.staged)?
+  let reused = store.commit(types.target_aarch64(), root, test_node(key), replacement.staged)?
   test.eq(reused, first)?
   test.eq(fp"${final_dir}/payload.tar.gz".read_text()?, "first payload")?
+}
+
+proc test_store_receipt_preserves_x86_64_target(ctx: TestContext) [fs, error] {
+  let root = store_root(ctx, "store-x86-target")?
+  let key = digest("x86-target")
+  let stage = staged_artifact(ctx, "store-x86-target-stage")?
+  let receipt = store.commit(types.target_x86_64(), root, test_node(key), stage.staged)?
+
+  test.eq(types.target_text(receipt.target), "x86_64-linux-musl")?
+  test.eq(types.target_text(store.lookup(root, key)?.target), "x86_64-linux-musl")?
+
+  match store.commit(types.target_aarch64(), root, test_node(key), stage.staged) {
+    Ok(_) => test.fail("artifact key was reused across targets")?
+    Err(problem) => test.contains(problem.message, "target does not match requested aarch64-linux-musl")?
+  }
 }
 
 proc test_store_receipts_deduplicate_shared_runtime_and_build_host_artifacts(ctx: TestContext) [fs, error] {
@@ -131,7 +146,7 @@ proc test_store_receipts_deduplicate_shared_runtime_and_build_host_artifacts(ctx
   test.eq(store.receipt_runtime_dependency_keys(runtime_first), [dependency_key])?
   test.eq(store.receipt_runtime_dependency_keys(build_host_first), [dependency_key])?
 
-  let receipt = store.commit(root, runtime_first, staged_artifact(ctx, "store-shared-edge-stage")?.staged)?
+  let receipt = store.commit(types.target_aarch64(), root, runtime_first, staged_artifact(ctx, "store-shared-edge-stage")?.staged)?
   test.eq(receipt.dependency_keys, [dependency_key])?
   test.eq(receipt.runtime_dependency_keys, [dependency_key])?
 
@@ -150,7 +165,7 @@ proc test_store_discards_incomplete_temporary_artifacts(ctx: TestContext) [fs, e
   let temporary = fp"${root}/v1/tmp/${key}"
   fs.mkdir(temporary)?
   fs.write(fp"${temporary}/payload.tar.gz", "incomplete")?
-  let receipt = store.commit(root, test_node(key), staged_artifact(ctx, "store-temporary-stage")?.staged)?
+  let receipt = store.commit(types.target_aarch64(), root, test_node(key), staged_artifact(ctx, "store-temporary-stage")?.staged)?
   test.eq(receipt.key, key)?
   test.eq(fs.exists(temporary)?, false)?
 }
@@ -158,7 +173,7 @@ proc test_store_discards_incomplete_temporary_artifacts(ctx: TestContext) [fs, e
 proc test_store_verify_all_ignores_temporary_state_and_checks_finals(ctx: TestContext) [fs, error] {
   let root = store_root(ctx, "store-verify-all")?
   let key = digest("verify-all")
-  let receipt = store.commit(root, test_node(key), staged_artifact(ctx, "store-verify-all-stage")?.staged)?
+  let receipt = store.commit(types.target_aarch64(), root, test_node(key), staged_artifact(ctx, "store-verify-all-stage")?.staged)?
   let temporary = fp"${root}/v1/tmp/${digest("ignored")}"
   fs.mkdir(temporary)?
   fs.write(fp"${temporary}/partial", "interrupted")?
@@ -197,6 +212,7 @@ proc main(...argv: List[Str]) [fs, error] {
     remote: null,
   }
   let _ = store.commit(
+    types.target_aarch64(),
     fp"${argv[0]}",
     node,
     {payload: fp"${argv[2]}", metadata: fp"${argv[3]}", proof: fp"${argv[4]}", executor_sha256: digest("executor")},
@@ -221,7 +237,7 @@ proc test_store_detects_payload_receipt_and_key_corruption(ctx: TestContext) [fs
   let key = digest("corrupt")
   let final_dir = store.artifact_path(root, key)
   let stage = staged_artifact(ctx, "store-corrupt-stage")?
-  let _ = store.commit(root, test_node(key), stage.staged)?
+  let _ = store.commit(types.target_aarch64(), root, test_node(key), stage.staged)?
 
   fs.write(fp"${final_dir}/payload.tar.gz", "corrupted payload")?
   expect_store_error(ctx, store.verify_artifact(root, key), "payload SHA-256 does not match receipt")?
@@ -232,7 +248,7 @@ proc test_store_detects_payload_receipt_and_key_corruption(ctx: TestContext) [fs
 
   let clean_root = store_root(ctx, "store-key-corrupt")?
   let clean_dir = store.artifact_path(clean_root, key)
-  let _ = store.commit(clean_root, test_node(key), staged_artifact(ctx, "store-key-corrupt-stage")?.staged)?
+  let _ = store.commit(types.target_aarch64(), clean_root, test_node(key), staged_artifact(ctx, "store-key-corrupt-stage")?.staged)?
   let raw = json.read(fp"${clean_dir}/artifact.json")?.require(ReceiptDto)?
   fs.write(fp"${clean_dir}/artifact.json", json.encode({...raw, key: digest("other key")})? + "\n")?
   expect_store_error(ctx, store.verify_artifact(clean_root, key), "does not match")?
@@ -243,7 +259,7 @@ proc test_store_staging_failure_never_publishes_final(ctx: TestContext) [fs, err
   let key = digest("staging-failure")
   let stage = staged_artifact(ctx, "store-staging-failure-stage")?
   let broken = {...stage.staged, payload: fp"${stage.root}/missing-payload.tar.gz"}
-  expect_store_error(ctx, store.commit(root, test_node(key), broken), "No such file")?
+  expect_store_error(ctx, store.commit(types.target_aarch64(), root, test_node(key), broken), "No such file")?
   test.eq(fs.exists(store.artifact_path(root, key))?, false)?
 }
 
@@ -278,7 +294,7 @@ proc test_store_imports_verified_remote_artifact(ctx: TestContext) [fs, net, err
   let remote_root = remote_fixture(ctx, "store-remote", payload, metadata)?
   let root = store_root(ctx, "store-remote-local")?
   let key = digest("remote")
-  let receipt = store.import_remote(root, remote_node(key, payload, metadata), f"file://${remote_root}", test.temp_dir(ctx, name: "store-remote-cache")?)?
+  let receipt = store.import_remote(types.target_aarch64(), root, remote_node(key, payload, metadata), f"file://${remote_root}", test.temp_dir(ctx, name: "store-remote-cache")?)?
   test.eq(receipt.origin, types.Remote)?
   test.eq(receipt.payload_sha256, digest(payload))?
   test.eq(store.verify_artifact(root, key)?, receipt)?
@@ -292,7 +308,7 @@ proc test_store_rejects_remote_hash_and_metadata_mismatches(ctx: TestContext) [f
   let root = store_root(ctx, "store-remote-hash-local")?
   let key = digest("remote-hash-mismatch")
   let bad_hash_node = remote_node(key, "different expected payload", metadata)
-  expect_store_error(ctx, store.import_remote(root, bad_hash_node, repo, test.temp_dir(ctx, name: "store-remote-hash-cache")?), "payload SHA-256 mismatch")?
+  expect_store_error(ctx, store.import_remote(types.target_aarch64(), root, bad_hash_node, repo, test.temp_dir(ctx, name: "store-remote-hash-cache")?), "payload SHA-256 mismatch")?
   test.eq(fs.exists(store.artifact_path(root, key))?, false)?
 
   let bad_metadata = json.encode({name: "not-demo", ver: "1.0.0", rel: "1", executor_sha256: digest("remote executor")})?
@@ -301,6 +317,7 @@ proc test_store_rejects_remote_hash_and_metadata_mismatches(ctx: TestContext) [f
   expect_store_error(
     ctx,
     store.import_remote(
+      types.target_aarch64(),
       root,
       remote_node(metadata_key, payload, bad_metadata),
       f"file://${metadata_remote}",

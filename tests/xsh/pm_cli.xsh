@@ -153,7 +153,7 @@ proc test_store_extract_copies_only_manifest_declared_file_from_saved_plan(ctx: 
   let proof = fp"${stage}/proof.json"
   fs.write(proof, "proof\n")?
   let store_root = test.temp_dir(ctx, name: "store-extract-store")?
-  let _ = store.commit(store_root, selected, {payload, metadata, proof, executor_sha256: plan.executor_fingerprint(build_plan.executor)?})?
+  let _ = store.commit(types.target_aarch64(), store_root, selected, {payload, metadata, proof, executor_sha256: plan.executor_fingerprint(build_plan.executor)?})?
   let output = test.temp_path(ctx, name: "extracted-vmlinuz")
 
   let _ = pm_output([

@@ -317,7 +317,7 @@ proc published_legacy_package_kind_regression(
   json.write(metadata, {arch: "aarch64", name: node.name, ver: node.ver, rel: node.rel, files: []})?
   pm_proof.write_artifact_receipt(proof, node, payload)?
   let executor_sha256 = plan.executor_fingerprint(value.executor)?
-  let _ = artifact_store.commit(legacy_store, node, {payload, metadata, proof, executor_sha256})?
+  let _ = artifact_store.commit(types.target_aarch64(), legacy_store, node, {payload, metadata, proof, executor_sha256})?
   let snapshot = pm_repo.snapshot(value, legacy_store)?
 
   if snapshot.packages[0].kind != types.package_payload() {
@@ -333,7 +333,7 @@ proc published_legacy_package_kind_regression(
   fs.write(invalid_payload, "published invalid payload\n")?
   json.write(invalid_metadata, {arch: "aarch64", name: node.name, ver: node.ver, rel: node.rel, package_kind: "", files: []})?
   pm_proof.write_artifact_receipt(invalid_proof, node, invalid_payload)?
-  let _ = artifact_store.commit(invalid_store, node, {payload: invalid_payload, metadata: invalid_metadata, proof: invalid_proof, executor_sha256})?
+  let _ = artifact_store.commit(types.target_aarch64(), invalid_store, node, {payload: invalid_payload, metadata: invalid_metadata, proof: invalid_proof, executor_sha256})?
 
   match pm_repo.snapshot(value, invalid_store) {
     Ok(_) => return error.fail("published explicit empty package_kind unexpectedly published")

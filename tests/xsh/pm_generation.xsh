@@ -98,7 +98,7 @@ proc stage_generation_artifacts(ctx: TestContext, value: types.BuildPlan, store_
       },
     )?
     fs.write(proof, f"proof ${node.name}\n")?
-    let _ = store.commit(store_root, node, {payload, metadata, proof, executor_sha256})?
+    let _ = store.commit(types.target_aarch64(), store_root, node, {payload, metadata, proof, executor_sha256})?
   }
 }
 
@@ -134,7 +134,7 @@ proc stage_generation_baselayout_artifact(ctx: TestContext, value: types.BuildPl
     },
   )?
   fs.write(proof, "proof baselayout\n")?
-  let _ = store.commit(store_root, node, {payload, metadata, proof, executor_sha256})?
+  let _ = store.commit(types.target_aarch64(), store_root, node, {payload, metadata, proof, executor_sha256})?
 }
 
 proc empty_overlay(ctx: TestContext, name: Str) [fs, error] -> Result[Path] {

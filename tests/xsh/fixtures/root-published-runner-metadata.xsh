@@ -80,7 +80,7 @@ proc main() [fs, error] {
     dependencies: [],
     remote: null,
   }
-  let receipt = store.commit(store_root, node, {payload, metadata, proof, executor_sha256: digest("published executor")})?
+  let receipt = store.commit(types.target_aarch64(), store_root, node, {payload, metadata, proof, executor_sha256: digest("published executor")})?
   let plan = root.preflight([receipt])?
 
   if plan.entries.len() != 4 or plan.entries[0].path != "usr/bin/demo" {
@@ -131,6 +131,7 @@ proc main() [fs, error] {
     remote: null,
   }
   let shared_alpha = store.commit(
+    types.target_aarch64(),
     store_root,
     shared_alpha_node,
     {payload: shared_alpha_payload, metadata: shared_alpha_metadata, proof: shared_alpha_proof, executor_sha256: digest("published executor")},
@@ -177,6 +178,7 @@ proc main() [fs, error] {
     remote: null,
   }
   let shared_beta = store.commit(
+    types.target_aarch64(),
     store_root,
     shared_beta_node,
     {payload: shared_beta_payload, metadata: shared_beta_metadata, proof: shared_beta_proof, executor_sha256: digest("published executor")},

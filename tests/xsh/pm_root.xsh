@@ -182,7 +182,7 @@ proc commit_artifact(
   dependencies: List[types.PlanDependency] = [],
 ) [fs, error] -> Result[types.ArtifactReceipt] {
   let prepared = stage_artifact(ctx, name, kind, entries, dependencies)?
-  store.commit(store_root, prepared.node, prepared.staged)?
+  store.commit(types.target_aarch64(), store_root, prepared.node, prepared.staged)?
 }
 
 proc expect_root_error(ctx: TestContext, result: Result[types.RootPlan], expected: Str) [error] {
@@ -233,7 +233,7 @@ proc test_root_legacy_metadata_defaults_only_omitted_package_kind_to_payload(ctx
   # package_kind. Root decoding owns the one payload-default compatibility rule.
   write_legacy_sidecar_metadata(legacy.staged, "legacy", entries)?
   rewrite_legacy_database_payload(ctx, legacy.staged, "legacy", entries)?
-  let receipt = store.commit(store_root, legacy.node, legacy.staged)?
+  let receipt = store.commit(types.target_aarch64(), store_root, legacy.node, legacy.staged)?
   let plan = root.preflight([receipt])?
   test.eq(plan.artifacts[0].payload, true)?
   test.eq(plan.entries[0].path, "usr/bin/legacy")?
@@ -246,7 +246,7 @@ proc test_root_legacy_metadata_defaults_only_omitted_package_kind_to_payload(ctx
   let unexpected = stage_artifact(ctx, "legacy-extra", types.Payload, entries)?
   write_legacy_sidecar_metadata(unexpected.staged, "legacy-extra", entries)?
   rewrite_legacy_database_payload(ctx, unexpected.staged, "legacy-extra", entries, unexpected: true)?
-  let unexpected_receipt = store.commit(store_root, unexpected.node, unexpected.staged)?
+  let unexpected_receipt = store.commit(types.target_aarch64(), store_root, unexpected.node, unexpected.staged)?
   expect_root_error(
     ctx,
     root.preflight([unexpected_receipt]),
@@ -264,7 +264,7 @@ proc test_root_legacy_metadata_defaults_only_omitted_package_kind_to_payload(ctx
       files: metadata_rows(entries),
     })? + "\n",
   )?
-  let invalid_receipt = store.commit(store_root, invalid.node, invalid.staged)?
+  let invalid_receipt = store.commit(types.target_aarch64(), store_root, invalid.node, invalid.staged)?
   expect_root_error(ctx, root.preflight([invalid_receipt]), "invalid package kind")?
 }
 
@@ -307,7 +307,7 @@ proc test_root_rejects_cyclic_payload_link_that_differs_from_receipt(ctx: TestCo
   fs.mkdir(fp"${payload_root}/usr/lib", parents: true)?
   fs.symlink(p"link", fp"${payload_root}/usr/lib/link")?
   archive.tar_create(prepared.staged.payload, payload_root, [p"."], compression: "gz", overwrite: true)?
-  let receipt = store.commit(store_root, prepared.node, prepared.staged)?
+  let receipt = store.commit(types.target_aarch64(), store_root, prepared.node, prepared.staged)?
 
   expect_root_error(ctx, root.preflight([receipt]), "root symlink usr/lib/link does not match metadata")?
 }
@@ -390,7 +390,7 @@ proc test_root_rejects_collisions_and_same_owner_duplicate_entries_before_mutati
       files: metadata_rows([payload_file("usr/bin/duplicate", "one"), payload_file("usr/bin/duplicate", "one")]),
     })? + "\n",
   )?
-  let same_owner = store.commit(store_root, duplicate.node, duplicate.staged)?
+  let same_owner = store.commit(types.target_aarch64(), store_root, duplicate.node, duplicate.staged)?
   expect_root_error(ctx, root.preflight([same_owner]), "repeats usr/bin/duplicate")?
 }
 
@@ -419,7 +419,7 @@ proc test_root_rejects_traversal_and_corrupt_payloads(ctx: TestContext) [fs, err
       files: [{path: "../escape", kind: "file", mode: 0o644, sha256: digest("safe"), target: ""}],
     })? + "\n",
   )?
-  let traversal_receipt = store.commit(store_root, traversal.node, traversal.staged)?
+  let traversal_receipt = store.commit(types.target_aarch64(), store_root, traversal.node, traversal.staged)?
   expect_root_error(ctx, root.preflight([traversal_receipt]), "must stay relative")?
 
   let invalid_link = stage_artifact(ctx, "invalid-link", types.Payload, [payload_file("usr/bin/unused", "unused")])?
@@ -433,7 +433,7 @@ proc test_root_rejects_traversal_and_corrupt_payloads(ctx: TestContext) [fs, err
       files: [{path: "bin/invalid", kind: "symlink", mode: 0o777, sha256: "", target: "../../outside"}],
     })? + "\n",
   )?
-  let invalid_link_receipt = store.commit(store_root, invalid_link.node, invalid_link.staged)?
+  let invalid_link_receipt = store.commit(types.target_aarch64(), store_root, invalid_link.node, invalid_link.staged)?
   expect_root_error(ctx, root.preflight([invalid_link_receipt]), "escapes the root")?
 
   let receipt = commit_artifact(ctx, store_root, "corrupt", types.Payload, [payload_file("usr/bin/corrupt", "clean")])?
@@ -453,7 +453,7 @@ proc test_root_identifies_the_missing_payload_inventory_entry(ctx: TestContext) 
   fs.mkdir(fp"${archive_root}/usr/bin", parents: true)?
   fs.write(fp"${archive_root}/usr/bin/present", "present")?
   archive.tar_create(staged.staged.payload, archive_root, [p"."], compression: "gz", overwrite: true)?
-  let receipt = store.commit(store_root, staged.node, staged.staged)?
+  let receipt = store.commit(types.target_aarch64(), store_root, staged.node, staged.staged)?
 
   expect_root_error(
     ctx,

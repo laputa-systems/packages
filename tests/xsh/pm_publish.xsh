@@ -99,7 +99,7 @@ proc stage_plan_artifacts(
       fs.write(proof, "not a package proof receipt\n")?
     }
 
-    let _ = store.commit(store_root, node, {payload, metadata, proof, executor_sha256})?
+    let _ = store.commit(types.target_aarch64(), store_root, node, {payload, metadata, proof, executor_sha256})?
   }
 }
 
@@ -286,6 +286,7 @@ proc test_remote_decoder_preserves_legacy_fallback_and_new_identity(ctx: TestCon
   json.write(metadata, {name: node.name, ver: node.ver, rel: node.rel, executor_sha256: plan.executor_fingerprint(value.executor)?})?
   let imported_store = test.temp_dir(ctx, name: "publish-legacy-import-store")?
   let imported = store.import_remote(
+    types.target_aarch64(),
     imported_store,
     {
       ...node,
@@ -337,6 +338,7 @@ proc test_legacy_metadata_hash_is_fetched_into_retrieval_and_enforced_on_import(
 
   let remote_node = {...node, action: types.ReuseRemote("legacy remote artifact"), remote: hydrated.retrieval}
   let imported = store.import_remote(
+    types.target_aarch64(),
     test.temp_dir(ctx, name: "publish-legacy-hash-store")?,
     remote_node,
     f"file://${remote_root}",
@@ -347,6 +349,7 @@ proc test_legacy_metadata_hash_is_fetched_into_retrieval_and_enforced_on_import(
   fs.write(metadata, "changed legacy metadata")?
 
   match store.import_remote(
+    types.target_aarch64(),
     test.temp_dir(ctx, name: "publish-legacy-hash-corrupt-store")?,
     remote_node,
     f"file://${remote_root}",

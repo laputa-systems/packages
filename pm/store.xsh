@@ -149,8 +149,8 @@ proc validate_receipt(value: types.ArtifactReceipt, expected_key: Str) [error] {
     return Err(types.PmError.PackageContract(f"artifact receipt key ${value.key} does not match ${expected_key}"))
   }
 
-  if value.target != types.target_aarch64() {
-    return Err(types.PmError.PackageContract("artifact receipt must target aarch64-linux-musl"))
+  if types.pm_target_arch(value.target) == "" {
+    return Err(types.PmError.PackageContract("artifact receipt has an unsupported target"))
   }
 
   if value.package_name == "" or value.package_name.contains("\n") {
@@ -236,6 +236,7 @@ proc verify_dir(dir: Path, expected_key: Str) [fs, error] -> Result[types.Artifa
 }
 
 proc receipt_for(
+  target: types.Target,
   node: types.PlanNode,
   dir: Path,
   executor_sha256: Str,
@@ -257,7 +258,7 @@ proc receipt_for(
   {
     format: "laputa-package-artifact-1",
     key: node.artifact_key,
-    target: types.target_aarch64(),
+    target,
     package_name: node.name,
     package_id: node.package_id,
     origin,
@@ -284,6 +285,7 @@ proc copy_staged(dir: Path, staged: types.StagedArtifact) [fs, error] {
 }
 
 proc commit_locked(
+  target: types.Target,
   root: Path,
   node: types.PlanNode,
   staged: types.StagedArtifact,
@@ -293,7 +295,11 @@ proc commit_locked(
   let final_dir = artifact_path(root, key)
 
   if fs.exists(final_dir)? {
-    return verify_artifact(root, key)
+    let existing = verify_artifact(root, key)?
+    if existing.target != target {
+      return Err(types.PmError.PackageContract(f"artifact ${key} target does not match requested ${types.target_text(target)}"))
+    }
+    return existing
   }
 
   let temporary = temporary_path(root, key)
@@ -301,7 +307,7 @@ proc commit_locked(
   defer fs.remove(temporary, missing_ok: true)?
   fs.mkdir(temporary)?
   copy_staged(temporary, staged)?
-  let value = receipt_for(node, temporary, staged.executor_sha256, origin)?
+  let value = receipt_for(target, node, temporary, staged.executor_sha256, origin)?
 
   # artifact.json is intentionally the final temporary write: a directory with it is complete only after verification.
   write_receipt(temporary, value)?
@@ -312,18 +318,23 @@ proc commit_locked(
 }
 
 proc commit_staged(
+  target: types.Target,
   root: Path,
   node: types.PlanNode,
   staged: types.StagedArtifact,
   origin: types.ArtifactOrigin,
 ) [fs, error] -> Result[types.ArtifactReceipt] {
+  if types.pm_target_arch(target) == "" {
+    return Err(types.PmError.PackageContract("artifact commit target is unsupported"))
+  }
+
   let key = node.artifact_key
   require_key(key)?
   let lock_file = lock_path(root, key)
   fs.mkdir(lock_file.parent)?
   let lock = fs.lock(lock_file)?
   defer fs.unlock(lock)?
-  commit_locked(root, node, staged, origin)?
+  commit_locked(target, root, node, staged, origin)?
 }
 
 proc fetch_remote_object(
@@ -417,17 +428,22 @@ export proc verify_receipt(value: types.ArtifactReceipt) [fs, error] -> Result[t
 }
 
 ## Commits one locally built artifact through a locked temporary directory and an atomic final rename.
-export proc commit(root: Path, node: types.PlanNode, staged: types.StagedArtifact) [fs, error] -> Result[types.ArtifactReceipt] {
-  commit_staged(root, node, staged, types.artifact_origin_built())?
+export proc commit(target: types.Target, root: Path, node: types.PlanNode, staged: types.StagedArtifact) [fs, error] -> Result[types.ArtifactReceipt] {
+  commit_staged(target, root, node, staged, types.artifact_origin_built())?
 }
 
 ## Imports one exact remote artifact into the immutable store without re-resolving remote metadata.
 export proc import_remote(
+  target: types.Target,
   root: Path,
   node: types.PlanNode,
   remote_repo: Str,
   cache: Path,
 ) [fs, net, error] -> Result[types.ArtifactReceipt] {
+  if types.pm_target_arch(target) == "" {
+    return Err(types.PmError.PackageContract("artifact import target is unsupported"))
+  }
+
   let key = node.artifact_key
   require_key(key)?
   let lock_file = lock_path(root, key)
@@ -436,10 +452,14 @@ export proc import_remote(
   defer fs.unlock(lock)?
 
   if fs.exists(artifact_path(root, key))? {
-    return verify_artifact(root, key)
+    let existing = verify_artifact(root, key)?
+    if existing.target != target {
+      return Err(types.PmError.PackageContract(f"artifact ${key} target does not match requested ${types.target_text(target)}"))
+    }
+    return existing
   }
 
-  commit_locked(root, node, remote_staged_artifact(node, remote_repo, cache)?, types.artifact_origin_remote())?
+  commit_locked(target, root, node, remote_staged_artifact(node, remote_repo, cache)?, types.artifact_origin_remote())?
 }
 
 ## Verifies a completed artifact receipt, its key, and hashes of payload, metadata, and proof objects.
