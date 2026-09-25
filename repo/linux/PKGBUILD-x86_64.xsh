@@ -395,13 +395,7 @@ proc generate_x86_capflags_source() [fs, error] {
 }
 
 proc generate_x86_inat_tables() [fs, error] {
-  var source = p"inat-tables-x86.c"
-
-  if ! source.exists()? {
-    source = ../pkg/files/generated/inat-tables-x86.c
-  }
-
-  kbuild.copy_text_if_changed(source, p"arch/x86/lib/inat-tables.c")?
+  kbuild.copy_text_if_changed(p"inat-tables-x86.c", p"arch/x86/lib/inat-tables.c")?
 }
 
 pure realmode_object_paths(objects: List[Str]) -> List[Str] {
@@ -648,18 +642,18 @@ export proc build_x86_64_scratch(cc: Path, srcarch: Str, ver: Str) [fs, process,
   let prepare_start = PKGBUILD_shared.timing_start("prepare")
   kbuild.write_config_headers(p".config", p".", ver, srcarch)?
   kbuild.write_build_headers(p".", ver, srcarch)?
-  kbuild.copy_text_if_changed(../pkg/files/generated/timeconst.h, p"include/generated/timeconst.h")?
+  kbuild.copy_text_if_changed(p"timeconst.h", p"include/generated/timeconst.h")?
   write_x86_bounds_header()?
   kbuild.write_asm_generic_wrappers(p".", srcarch)?
   kbuild.copy_text_if_changed(
-    ../pkg/files/generated/cpufeaturemasks-x86.h,
+    p"cpufeaturemasks-x86.h",
     p"arch/x86/include/generated/asm/cpufeaturemasks.h",
   )?
   kbuild.generate_x86_syscall_tables(p".")?
   generate_x86_asm_offsets_header(cc)?
   generate_x86_kvm_asm_offsets_header(cc)?
   write_x86_orc_hash_header()?
-  kbuild.copy_text_if_changed(../pkg/files/generated/rq-offsets.h, p"include/generated/rq-offsets.h")?
+  kbuild.copy_text_if_changed(p"rq-offsets.h", p"include/generated/rq-offsets.h")?
   generate_x86_capflags_source()?
   generate_x86_inat_tables()?
   kbuild.generate_empty_root_dtb_asm(p".")?

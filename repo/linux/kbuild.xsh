@@ -6211,10 +6211,6 @@ proc x86_jump_label_helper_source() [fs, error] -> Result[Path] {
     return p"x86-jump-label-patch.c"
   }
 
-  if p"../pkg/files/x86-jump-label-patch.c".exists()? {
-    return ../pkg/files/x86-jump-label-patch.c
-  }
-
   return Err(ScriptError.Failed("kbuild-x86-jump-label-helper", "missing x86-jump-label-patch.c"))
 }
 

@@ -71,6 +71,31 @@ proc test_linux_config_fragment_is_explicit_staged_fingerprinted_input(ctx: Test
   test.eq(fingerprint.package_build_input(copied_root, after, types.target_aarch64())? == first, false)?
 }
 
+proc test_linux_x86_generated_inputs_are_staged_at_build_source_root(ctx: TestContext) [fs, net, process, env, time, error] {
+  let original = recipe.load_package(p"repo/linux")?
+  let required = [
+    "timeconst.h",
+    "cpufeaturemasks-x86.h",
+    "rq-offsets.h",
+    "inat-tables-x86.c",
+    "x86-jump-label-patch.c",
+  ]
+  let local_sources = [
+    input for input in original.upstream_sources
+    if input.source.name in required
+  ]
+  test.eq(local_sources.len(), required.len())?
+
+  let stage_root = test.temp_dir(ctx, name: "linux-x86-generated-inputs")?
+  let source = fp"${stage_root}/source"
+  fs.mkdir(source)?
+  sources.stage_package_sources(stage_root, {...original, upstream_sources: local_sources}, source, false)?
+
+  for name in required {
+    test.ok(fs.exists(fp"${source}/${name}")?, f"missing staged ${name}")?
+  }
+}
+
 proc test_laputa_pm_repository_inputs_stage_and_fingerprint_from_an_isolated_recipe(ctx: TestContext) [fs, net, process, env, time, error] {
   let root = test.temp_dir(ctx, name: "laputa-pm-repository-input")?
   let package_dir = fp"${root}/repo/laputa-pm"
