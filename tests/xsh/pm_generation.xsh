@@ -81,7 +81,7 @@ proc stage_generation_artifacts(ctx: TestContext, value: types.BuildPlan, store_
     json.write(
       metadata,
       {
-        arch: "aarch64",
+        arch: types.pm_target_arch(value.target),
         name: node.name,
         ver: node.ver,
         rel: node.rel,
@@ -98,7 +98,7 @@ proc stage_generation_artifacts(ctx: TestContext, value: types.BuildPlan, store_
       },
     )?
     fs.write(proof, f"proof ${node.name}\n")?
-    let _ = store.commit(types.target_aarch64(), store_root, node, {payload, metadata, proof, executor_sha256})?
+    let _ = store.commit(value.target, store_root, node, {payload, metadata, proof, executor_sha256})?
   }
 }
 
@@ -117,7 +117,7 @@ proc stage_generation_baselayout_artifact(ctx: TestContext, value: types.BuildPl
   json.write(
     metadata,
     {
-      arch: "aarch64",
+      arch: types.pm_target_arch(value.target),
       name: node.name,
       ver: node.ver,
       rel: node.rel,
@@ -134,7 +134,7 @@ proc stage_generation_baselayout_artifact(ctx: TestContext, value: types.BuildPl
     },
   )?
   fs.write(proof, "proof baselayout\n")?
-  let _ = store.commit(types.target_aarch64(), store_root, node, {payload, metadata, proof, executor_sha256})?
+  let _ = store.commit(value.target, store_root, node, {payload, metadata, proof, executor_sha256})?
 }
 
 proc empty_overlay(ctx: TestContext, name: Str) [fs, error] -> Result[Path] {
@@ -170,6 +170,33 @@ proc test_generation_runtime_closure_excludes_build_toolchain(ctx: TestContext) 
   test.eq(fp"${output}/usr/share/runtime-lib".read_text()?, "payload runtime-lib\n")?
   test.eq(fs.exists(fp"${output}/usr/share/host-tool")?, false)?
   test.eq(fs.exists(fp"${output}/usr/share/target-sdk")?, false)?
+  generation.verify_generation(output, receipt)?
+}
+
+proc test_generation_x86_64_plan_and_composition_preserve_target(ctx: TestContext) [fs, env, error] {
+  let target = types.target_x86_64()
+  let repo_root = copied_generation_repository(ctx, "generation-x86-plan")?
+  let build_value = plan.resolve(
+    catalog.load_for_target(repo_root, target)?,
+    {...generation_empty_remote(), target},
+    policy.x86_64_docker(),
+    ["app"],
+    false,
+    generation_executor_identity(),
+  )?
+  let overlay = empty_overlay(ctx, "generation-x86-overlay")?
+  let planned = generation.plan(build_value, ["app"], generation.overlay_digest(overlay)?)?
+  test.eq(types.target_text(planned.target), "x86_64-linux-musl")?
+  let plan_path = test.temp_path(ctx, name: "generation-x86-plan.json")
+  generation.write_generation_plan(plan_path, planned)?
+  test.eq(generation.read_generation_plan(plan_path)?, planned)?
+
+  let store_root = test.temp_dir(ctx, name: "generation-x86-store")?
+  stage_generation_artifacts(ctx, build_value, store_root)?
+  let output = fp"${test.temp_dir(ctx, name: "generation-x86-output")?}/root"
+  let receipt = generation.compose(planned, store_root, output, overlay)?
+  test.eq(types.target_text(receipt.target), "x86_64-linux-musl")?
+  test.eq(generation.read_generation_receipt(output)?, receipt)?
   generation.verify_generation(output, receipt)?
 }
 

@@ -178,8 +178,8 @@ proc generation_validate_plan(value: types.GenerationPlan) [error] {
     return Err(types.PmError.PackageContract(f"unsupported generation plan format ${value.format}"))
   }
 
-  if value.target != types.target_aarch64() {
-    return Err(types.PmError.PackageContract("generation plan must target aarch64-linux-musl"))
+  if types.pm_target_arch(value.target) == "" {
+    return Err(types.PmError.PackageContract("generation plan has an unsupported target"))
   }
 
   generation_require_sha256(value.build_plan_sha256, "generation build_plan_sha256")?

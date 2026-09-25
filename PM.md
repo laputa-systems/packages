@@ -59,8 +59,9 @@ plan. `aarch64-linux-musl` remains the default build target.
 checksums, filetrees, remote index entries, and artifact keys. `repo build`
 rejects that target before creating a store. Artifact receipts can carry either
 target and reject cross-target reuse of the same key. Root preflight and
-composition preserve an explicit target and reject mixed receipts. Native
-x86_64 execution and generation through `pm root compose` remain pending.
+composition preserve an explicit target and reject mixed receipts. Generation
+plans and receipts also preserve x86_64 when supplied with verified x86_64
+artifacts. Native x86_64 package execution remains pending.
 
 `repo build` discovers the repository only by walking to a directory containing
 both `pm.xsh` and `repo/`. It executes the saved plan with `pm/execute.xsh`;
