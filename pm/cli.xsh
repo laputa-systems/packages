@@ -3,6 +3,7 @@ use catalog
 use execute as pm_execute
 use fingerprint as pm_fingerprint
 use generation
+use generation_adapter as pm_generation_adapter
 use graph
 use local
 use plan as pm_plan
@@ -25,8 +26,9 @@ type RepoPackagesArgs = {repo: Path, packages: List[Str]}
 type RootComposeArgs = {input: Path, store: Path, runtime_roots: List[Str], output: Path}
 type RootInspectArgs = {input: Path}
 type StoreVerifyArgs = {store: Path}
+type StoreExtractArgs = {input: Path, store: Path, package: Str, path: Path, output: Path}
 
-type PmCommand = Help(Str) | RepoCheck(RepoCheckArgs) | RepoPlan(RepoPlanArgs) | RepoShow(RepoShowArgs) | RepoBuild(RepoBuildArgs) | RepoPublish(RepoPublishArgs) | RepoChecksum(RepoPackagesArgs) | RepoUpdateChecksums(RepoPackagesArgs) | RepoSourceAudit(RepoPackagesArgs) | RootCompose(RootComposeArgs) | RootInspect(RootInspectArgs) | StoreVerify(StoreVerifyArgs)
+type PmCommand = Help(Str) | RepoCheck(RepoCheckArgs) | RepoPlan(RepoPlanArgs) | RepoShow(RepoShowArgs) | RepoBuild(RepoBuildArgs) | RepoPublish(RepoPublishArgs) | RepoChecksum(RepoPackagesArgs) | RepoUpdateChecksums(RepoPackagesArgs) | RepoSourceAudit(RepoPackagesArgs) | RootCompose(RootComposeArgs) | RootInspect(RootInspectArgs) | StoreVerify(StoreVerifyArgs) | StoreExtract(StoreExtractArgs)
 
 type RepoCheckOptions = {repo: Str}
 type RepoPlanOptions = {repo: Str, all: Bool, roots: List[Str], target: Str, output: Path}
@@ -37,6 +39,7 @@ type RepoPackagesOptions = {repo: Str, packages: List[Str]}
 type RootComposeOptions = {input: Path, store: Path, runtime_roots: List[Str], output: Path}
 type RootInspectOptions = {input: Path}
 type StoreVerifyOptions = {store: Path}
+type StoreExtractOptions = {input: Path, store: Path, package: Str, path: Path, output: Path}
 
 pure help_text() -> Str {
   """usage: pm COMMAND [OPTIONS]
@@ -57,6 +60,7 @@ root commands:
 
 store commands:
   store verify --store STORE
+  store extract PLAN --store STORE --package PACKAGE --path PATH --output FILE
 """
 }
 
@@ -88,7 +92,10 @@ pure root_help_text() -> Str {
 }
 
 pure store_help_text() -> Str {
-  """usage: pm store verify --store STORE
+  """usage: pm store COMMAND [OPTIONS]
+
+  verify --store STORE
+  extract PLAN --store STORE --package PACKAGE --path PATH --output FILE
 """
 }
 
@@ -320,6 +327,25 @@ proc parse_root_command(argv: List[Str]) [error] -> Result[PmCommand] {
 proc parse_store_command(argv: List[Str]) [error] -> Result[PmCommand] {
   if argv.len() == 1 or argv[1] in ["-h", "--help", "help"] {
     return Help(store_help_text())
+  }
+
+  if argv[1] == "extract" {
+    var extracted: StoreExtractOptions = {input: p"", store: p"", package: "", path: p"", output: p""}
+    match cli.parse(
+      tail_after(argv, 2),
+      {
+        input: {form: "PLAN", kind: "Path", required: true},
+        store: {form: "--store STORE", kind: "Path", required: true},
+        package: {form: "--package PACKAGE", required: true},
+        path: {form: "--path PATH", kind: "Path", required: true},
+        output: {form: "--output FILE", kind: "Path", required: true},
+      },
+      "pm store extract",
+    ) {
+      Ok(value) => extracted = value
+      Err(problem) => return Err(problem)
+    }
+    return StoreExtract({input: extracted.input, store: extracted.store, package: extracted.package, path: extracted.path, output: extracted.output})
   }
 
   if argv[1] != "verify" {
@@ -572,6 +598,11 @@ proc command_store_verify(args: StoreVerifyArgs) [fs, error] {
   print "store" "verify" receipts.len() "artifacts"
 }
 
+proc command_store_extract(args: StoreExtractArgs) [fs, error] {
+  pm_generation_adapter.generation_adapter_copy_manifest_file(args.input, args.store, args.package, args.path, args.output)?
+  print f"store extract ${args.package} ${args.path.display()}"
+}
+
 proc handle(command: PmCommand) [fs, net, process, env, time, error] {
   match command {
     Help(text) => print $text
@@ -586,6 +617,7 @@ proc handle(command: PmCommand) [fs, net, process, env, time, error] {
     RootCompose(args) => command_root_compose(args)?
     RootInspect(args) => command_root_inspect(args)?
     StoreVerify(args) => command_store_verify(args)?
+    StoreExtract(args) => command_store_extract(args)?
   }
 }
 

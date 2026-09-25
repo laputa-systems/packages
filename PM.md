@@ -48,6 +48,7 @@ pm root compose PLAN \
   --output GENERATION
 pm root inspect GENERATION
 pm store verify --store STORE
+pm store extract PLAN --store STORE --package PACKAGE --path PATH --output FILE
 ```
 
 `repo plan` is the only resolution boundary. It records the target, typed
@@ -68,6 +69,11 @@ PM does not store credentials. `file://` repositories need no token.
 `root compose` selects only typed runtime edges from the saved plan and writes
 an immutable generation receipt. It never installs into a live root. `root
 inspect` and `store verify` are read-only receipt checks.
+`store extract` copies one manifest-declared file from the exact artifact named
+by a saved BuildPlan. `pm/generation_adapter.xsh::generation_adapter_copy_manifest_file`
+checks the Store receipt and payload digest, verifies the file against artifact
+metadata, and publishes the output by atomic rename. Image builders use it for
+kernel files that are deliberately absent from the runtime generation.
 For a profile-owned overlay, `pm/generation.xsh::plan_profile` selects the
 runtime closure and binds the overlay digest into its identity.
 `write_generation_plan` and `read_generation_plan` persist and validate that

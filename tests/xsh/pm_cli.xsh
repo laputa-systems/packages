@@ -5,6 +5,7 @@ use pm.catalog
 use pm.generation
 use pm.plan
 use pm.policy
+use pm.store
 
 pure fixture(name: Str) -> Path {
   fp"tests/xsh/fixtures/${name}"
@@ -118,6 +119,57 @@ proc test_store_verify_accepts_explicit_empty_store(ctx: TestContext) [fs, proce
   let output = pm_output(["store", "verify", "--store", store_root.display()])?
 
   test.contains(output, "store verify 0 artifacts")?
+}
+
+proc test_store_extract_copies_only_manifest_declared_file_from_saved_plan(ctx: TestContext) [fs, process, env, error] {
+  let repository = copied_repository(ctx, "store-extract-repository")?
+  let build_plan = plan.resolve(
+    catalog.load(repository)?,
+    cli_empty_remote(),
+    policy.aarch64_docker(),
+    ["app"],
+    false,
+    cli_executor_identity(),
+  )?
+  let selected = [node for node in build_plan.nodes if node.name == "runtime-lib"][0]
+  let plan_path = test.temp_path(ctx, name: "store-extract-plan.json")
+  plan_json.write_plan(plan_path, build_plan)?
+  let stage = test.temp_dir(ctx, name: "store-extract-stage")?
+  let contents = fp"${stage}/contents"
+  let kernel = fp"${contents}/boot/vmlinuz"
+  fs.mkdir(kernel.parent)?
+  fs.write(kernel, "kernel payload\n")?
+  let payload = fp"${stage}/payload.tar.gz"
+  archive.tar_create(payload, contents, [p"."], compression: "gz")?
+  let metadata = fp"${stage}/metadata.json"
+  json.write(metadata, {
+    name: selected.name,
+    ver: selected.ver,
+    rel: selected.rel,
+    package_kind: "payload",
+    files: [{path: "boot/vmlinuz", kind: "file", mode: 0o644, sha256: bytes.from_text("kernel payload\n").sha256().hex(), target: ""}],
+  })?
+  let proof = fp"${stage}/proof.json"
+  fs.write(proof, "proof\n")?
+  let store_root = test.temp_dir(ctx, name: "store-extract-store")?
+  let _ = store.commit(store_root, selected, {payload, metadata, proof, executor_sha256: plan.executor_fingerprint(build_plan.executor)?})?
+  let output = test.temp_path(ctx, name: "extracted-vmlinuz")
+
+  let _ = pm_output([
+    "store", "extract", plan_path.display(), "--store", store_root.display(),
+    "--package", selected.name, "--path", "boot/vmlinuz", "--output", output.display(),
+  ])?
+  test.eq(output.read_text()?, "kernel payload\n")?
+
+  fs.write(output, "previous output\n")?
+  let error_output = test.temp_path(ctx, name: "store-extract-error.txt")
+  let missing = pm_status([
+    "store", "extract", plan_path.display(), "--store", store_root.display(),
+    "--package", selected.name, "--path", "boot/missing", "--output", output.display(),
+  ], error_output)?
+  test.eq(missing.ok, false)?
+  test.contains(error_output.read_text()?, "artifact metadata does not declare boot/missing")?
+  test.eq(output.read_text()?, "previous output\n")?
 }
 
 proc test_root_inspect_accepts_published_generation_receipt_file(ctx: TestContext) [fs, process, env, error] {
