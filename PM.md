@@ -55,15 +55,15 @@ pm store extract PLAN --store STORE --package PACKAGE --path PATH --output FILE
 dependency graph, remote retrieval identity, build/proof inputs, executor
 identity, action reasons, and sorted artifact keys in an atomically written
 plan. `aarch64-linux-musl` remains the default build target.
-`x86_64-linux-musl` can be planned and inspected with target-specific source
-checksums, filetrees, remote index entries, and artifact keys. `repo build`
-rejects that target before creating a store. Artifact receipts can carry either
+`x86_64-linux-musl` can be planned and built on a native Linux x86_64 runner
+with target-specific source checksums, filetrees, remote index entries, and
+artifact keys. On other hosts, `repo build` rejects x86_64 before creating a
+store. Artifact receipts can carry either
 target and reject cross-target reuse of the same key. Root preflight and
 composition preserve an explicit target and reject mixed receipts. Generation
 plans and receipts also preserve x86_64 when supplied with verified x86_64
 artifacts. The executor preserves x86_64 through recipe selection, build
-metadata, proofs, receipts, and root composition. The public `repo build`
-command remains gated until an x86_64 runner is configured.
+metadata, proofs, receipts, and root composition.
 
 `repo build` discovers the repository only by walking to a directory containing
 both `pm.xsh` and `repo/`. It executes the saved plan with `pm/execute.xsh`;
@@ -134,8 +134,8 @@ including setuid helpers; symlink metadata remains fixed at `0o777`.
 
 ## Scope
 
-PM has an aarch64 Linux-musl build runner; x86_64 plans and verified artifact
-composition are available for installer work. The shell-compatible
+PM builds aarch64 Linux-musl packages through the existing runner and x86_64
+Linux-musl packages on a native Linux x86_64 runner. The shell-compatible
 surface is limited to packages whose declared runtime capability requires it;
 package construction itself uses typed XSH process and filesystem boundaries.
 

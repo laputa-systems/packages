@@ -62,7 +62,7 @@ store commands:
   store verify --store STORE
   store extract PLAN --store STORE --package PACKAGE --path PATH --output FILE
 
-planning targets: aarch64-linux-musl (default), x86_64-linux-musl (plan only)
+targets: aarch64-linux-musl (default), x86_64-linux-musl (native Linux runner)
 """
 }
 
@@ -78,14 +78,14 @@ pure repo_help_text() -> Str {
   update-checksums [--repo PATH] PACKAGE...
   source-audit [--repo PATH] PACKAGE...
 
-planning targets: aarch64-linux-musl (default), x86_64-linux-musl (plan only)
+targets: aarch64-linux-musl (default), x86_64-linux-musl (native Linux runner)
 """
 }
 
 pure repo_plan_help_text() -> Str {
   """usage: pm repo plan [--repo PATH] (--all | --root PACKAGE...) [--target TARGET] --output PLAN
 
-targets: aarch64-linux-musl (default), x86_64-linux-musl (plan only)
+targets: aarch64-linux-musl (default), x86_64-linux-musl (native Linux runner)
 """
 }
 
@@ -535,8 +535,8 @@ proc command_repo_show(args: RepoShowArgs) [fs, error] {
 
 proc command_repo_build(args: RepoBuildArgs) [fs, net, process, env, time, error] {
   let value = pm_plan_json.read(args.input)?
-  if value.target != types.target_aarch64() {
-    return Err(types.PmError.PackageContract(f"repo build has no configured runner for ${types.target_text(value.target)}"))
+  if value.target == types.target_x86_64() and (system.uname()?.sysname != "Linux" or util.host_arch()? != "x86_64") {
+    return Err(types.PmError.PackageContract("repo build requires a native Linux x86_64 runner for x86_64-linux-musl"))
   }
   let urls = remote.load_repo_urls()?
   let result = pm_execute.build_plan(value, execution_repo_root()?, args.store, urls.repo, args.jobs)?

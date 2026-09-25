@@ -99,7 +99,7 @@ proc test_repo_help_is_explicit(ctx: TestContext) [fs, process, env, error] {
   let plan = pm_output(["repo", "plan", "--help"])?
 
   test.contains(top, "repo plan [--repo PATH] (--all | --root PACKAGE...) [--target TARGET] --output PLAN")?
-  test.contains(plan, "x86_64-linux-musl (plan only)")?
+  test.contains(plan, "x86_64-linux-musl (native Linux runner)")?
   test.contains(top, "repo build PLAN --store STORE")?
   test.contains(top, "root compose PLAN --store STORE --runtime-root PACKAGE... --output GENERATION")?
   test.eq(top.contains("world-plan"), false)?
@@ -264,11 +264,15 @@ proc test_repo_plan_records_x86_64_target_and_distinct_artifact_keys(ctx: TestCo
   test.eq(arm.nodes.len(), x86.nodes.len())?
   test.eq(arm.nodes[0].artifact_key == x86.nodes[0].artifact_key, false)?
 
+  if system.uname()?.sysname == "Linux" and system.uname()?.machine == "x86_64" {
+    return
+  }
+
   let store = fp"${root}/store"
   let err = test.temp_path(ctx, name: "repo-x86-build.err")
   let build_status = pm_status(["repo", "build", x86_output.display(), "--store", store.display()], err)?
   test.eq(build_status.ok, false)?
-  test.contains(err.read_text()?, "repo build has no configured runner for x86_64-linux-musl")?
+  test.contains(err.read_text()?, "repo build requires a native Linux x86_64 runner")?
   test.eq(store.exists()?, false)?
 }
 
