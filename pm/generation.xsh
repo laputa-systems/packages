@@ -696,7 +696,7 @@ export proc compose(
   }
 
   let artifacts = generation_store_artifacts(value, store_root)?
-  let root_plan = pm_root.preflight(artifacts)?
+  let root_plan = pm_root.preflight(value.target, artifacts)?
   let entries = generation_overlay_entries(overlay_root)?
   generation_preflight_overlay(entries, root_plan, value.profile)?
 

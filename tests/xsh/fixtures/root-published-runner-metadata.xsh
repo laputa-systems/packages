@@ -81,7 +81,7 @@ proc main() [fs, error] {
     remote: null,
   }
   let receipt = store.commit(types.target_aarch64(), store_root, node, {payload, metadata, proof, executor_sha256: digest("published executor")})?
-  let plan = root.preflight([receipt])?
+  let plan = root.preflight(types.target_aarch64(), [receipt])?
 
   if plan.entries.len() != 4 or plan.entries[0].path != "usr/bin/demo" {
     return error.fail("published legacy metadata did not materialize its package database entries")
@@ -183,7 +183,7 @@ proc main() [fs, error] {
     shared_beta_node,
     {payload: shared_beta_payload, metadata: shared_beta_metadata, proof: shared_beta_proof, executor_sha256: digest("published executor")},
   )?
-  let shared_directories = root.preflight([shared_beta, shared_alpha])?
+  let shared_directories = root.preflight(types.target_aarch64(), [shared_beta, shared_alpha])?
 
   if shared_directories.entries.len() != 4
     or [entry.package_name for entry in shared_directories.entries if entry.kind == types.file_kind_tree()] != ["shared-alpha", "shared-alpha"] {

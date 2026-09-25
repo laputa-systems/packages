@@ -193,7 +193,7 @@ proc expect_root_error(ctx: TestContext, result: Result[types.RootPlan], expecte
 }
 
 proc test_root_composes_empty_and_metapackage_roots(ctx: TestContext) [fs, error] {
-  let empty = root.preflight([])?
+  let empty = root.preflight(types.target_aarch64(), [])?
   test.eq(empty.artifacts, [])?
   let empty_output = fp"${test.temp_dir(ctx, name: "root-empty-output")?}/root"
   let empty_receipt = root.compose_artifacts(empty_output, empty, [])?
@@ -202,11 +202,31 @@ proc test_root_composes_empty_and_metapackage_roots(ctx: TestContext) [fs, error
 
   let store_root = test.temp_dir(ctx, name: "root-meta-store")?
   let meta = commit_artifact(ctx, store_root, "meta", types.Meta, [])?
-  let meta_plan = root.preflight([meta])?
+  let meta_plan = root.preflight(types.target_aarch64(), [meta])?
   test.eq(meta_plan.artifacts[0].payload, false)?
   test.eq(meta_plan.entries, [])?
   let output = fp"${test.temp_dir(ctx, name: "root-meta-output")?}/root"
   test.eq(root.compose_artifacts(output, meta_plan, [meta])?.artifacts[0].package_name, "meta")?
+}
+
+proc test_root_preflight_preserves_x86_64_target_and_rejects_mixed_receipts(ctx: TestContext) [fs, error] {
+  let store_root = test.temp_dir(ctx, name: "root-target-store")?
+  let x86_stage = stage_artifact(ctx, "x86-payload", types.Payload, [payload_file("usr/share/x86.txt", "x86")])?
+  let x86 = store.commit(types.target_x86_64(), store_root, x86_stage.node, x86_stage.staged)?
+  let plan = root.preflight(types.target_x86_64(), [x86])?
+  test.eq(types.target_text(plan.target), "x86_64-linux-musl")?
+  let output = fp"${test.temp_dir(ctx, name: "root-x86-output")?}/root"
+  let receipt = root.compose_artifacts(output, plan, [x86])?
+  test.eq(types.target_text(receipt.target), "x86_64-linux-musl")?
+  test.eq(fp"${output}/usr/share/x86.txt".read_text()?, "x86")?
+  root.verify(output, receipt)?
+
+  let empty = root.preflight(types.target_x86_64(), [])?
+  test.eq(types.target_text(empty.target), "x86_64-linux-musl")?
+
+  let arm_stage = stage_artifact(ctx, "arm-meta", types.Meta, [])?
+  let arm = store.commit(types.target_aarch64(), store_root, arm_stage.node, arm_stage.staged)?
+  expect_root_error(ctx, root.preflight(types.target_x86_64(), [x86, arm]), "target does not match")?
 }
 
 proc test_root_preserves_setuid_mode_from_verified_artifact(ctx: TestContext) [fs, error] {
@@ -218,7 +238,7 @@ proc test_root_preserves_setuid_mode_from_verified_artifact(ctx: TestContext) [f
     types.Payload,
     [payload_tree("usr"), payload_tree("usr/bin"), payload_file("usr/bin/unix_chkpwd", "helper", 0o4755)],
   )?
-  let plan = root.preflight([privileged])?
+  let plan = root.preflight(types.target_aarch64(), [privileged])?
   let output = fp"${test.temp_dir(ctx, name: "root-setuid-output")?}/root"
   let receipt = root.compose_artifacts(output, plan, [privileged])?
   test.eq(fp"${output}/usr/bin/unix_chkpwd".metadata()?.mode % 4096, 0o4755)?
@@ -234,7 +254,7 @@ proc test_root_legacy_metadata_defaults_only_omitted_package_kind_to_payload(ctx
   write_legacy_sidecar_metadata(legacy.staged, "legacy", entries)?
   rewrite_legacy_database_payload(ctx, legacy.staged, "legacy", entries)?
   let receipt = store.commit(types.target_aarch64(), store_root, legacy.node, legacy.staged)?
-  let plan = root.preflight([receipt])?
+  let plan = root.preflight(types.target_aarch64(), [receipt])?
   test.eq(plan.artifacts[0].payload, true)?
   test.eq(plan.entries[0].path, "usr/bin/legacy")?
   test.eq(plan.entries.len(), 4)?
@@ -249,7 +269,7 @@ proc test_root_legacy_metadata_defaults_only_omitted_package_kind_to_payload(ctx
   let unexpected_receipt = store.commit(types.target_aarch64(), store_root, unexpected.node, unexpected.staged)?
   expect_root_error(
     ctx,
-    root.preflight([unexpected_receipt]),
+    root.preflight(types.target_aarch64(), [unexpected_receipt]),
     "payload contains undeclared var/lib/xsh-pm/packages/legacy-extra/unexpected.json",
   )?
 
@@ -265,7 +285,7 @@ proc test_root_legacy_metadata_defaults_only_omitted_package_kind_to_payload(ctx
     })? + "\n",
   )?
   let invalid_receipt = store.commit(types.target_aarch64(), store_root, invalid.node, invalid.staged)?
-  expect_root_error(ctx, root.preflight([invalid_receipt]), "invalid package kind")?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [invalid_receipt]), "invalid package kind")?
 }
 
 proc test_root_preserves_file_mode_symlink_and_empty_directory(ctx: TestContext) [fs, error] {
@@ -284,7 +304,7 @@ proc test_root_preserves_file_mode_symlink_and_empty_directory(ctx: TestContext)
       payload_symlink("usr/lib/late-link", "late-target"),
     ],
   )?
-  let plan = root.preflight([receipt])?
+  let plan = root.preflight(types.target_aarch64(), [receipt])?
   let output = fp"${test.temp_dir(ctx, name: "root-single-output")?}/root"
   let composed = root.compose_artifacts(output, plan, [receipt])?
   test.eq(fs.metadata(fp"${output}/usr/bin/tool")?.mode % 512, 0o755)?
@@ -309,15 +329,15 @@ proc test_root_rejects_cyclic_payload_link_that_differs_from_receipt(ctx: TestCo
   archive.tar_create(prepared.staged.payload, payload_root, [p"."], compression: "gz", overwrite: true)?
   let receipt = store.commit(types.target_aarch64(), store_root, prepared.node, prepared.staged)?
 
-  expect_root_error(ctx, root.preflight([receipt]), "root symlink usr/lib/link does not match metadata")?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [receipt]), "root symlink usr/lib/link does not match metadata")?
 }
 
 proc test_root_plan_and_receipt_are_deterministic_for_multiple_artifacts(ctx: TestContext) [fs, error] {
   let store_root = test.temp_dir(ctx, name: "root-multiple-store")?
   let alpha = commit_artifact(ctx, store_root, "alpha", types.Payload, [payload_file("usr/share/alpha", "a")])?
   let beta = commit_artifact(ctx, store_root, "beta", types.Payload, [payload_file("usr/share/beta", "b")])?
-  let first = root.preflight([beta, alpha])?
-  let second = root.preflight([alpha, beta])?
+  let first = root.preflight(types.target_aarch64(), [beta, alpha])?
+  let second = root.preflight(types.target_aarch64(), [alpha, beta])?
   test.eq(first, second)?
   test.eq([artifact.package_name for artifact in first.artifacts], ["alpha", "beta"])?
   let first_output = fp"${test.temp_dir(ctx, name: "root-multiple-first")?}/root"
@@ -341,8 +361,8 @@ proc test_root_coalesces_identical_nested_directories_with_a_canonical_owner(ctx
     types.Payload,
     [payload_tree("usr", mode: 0o755), payload_tree("usr/share", mode: 0o755), payload_file("usr/share/beta", "beta")],
   )?
-  let first = root.preflight([beta, alpha])?
-  let second = root.preflight([alpha, beta])?
+  let first = root.preflight(types.target_aarch64(), [beta, alpha])?
+  let second = root.preflight(types.target_aarch64(), [alpha, beta])?
   test.eq(first, second)?
   test.eq(first.entries.len(), 4)?
   test.eq([entry.path for entry in first.entries], ["usr", "usr/share", "usr/share/alpha", "usr/share/beta"])?
@@ -360,9 +380,9 @@ proc test_root_rejects_collisions_and_same_owner_duplicate_entries_before_mutati
   let store_root = test.temp_dir(ctx, name: "root-collision-store")?
   let left = commit_artifact(ctx, store_root, "left", types.Payload, [payload_file("usr/bin/shared", "left")])?
   let right = commit_artifact(ctx, store_root, "right", types.Payload, [payload_file("usr/bin/shared", "right")])?
-  expect_root_error(ctx, root.preflight([left, right]), "owned by both")?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [left, right]), "owned by both")?
   let collision_output = fp"${test.temp_dir(ctx, name: "root-collision-output")?}/root"
-  let empty_plan = root.preflight([])?
+  let empty_plan = root.preflight(types.target_aarch64(), [])?
 
   match root.compose_artifacts(collision_output, empty_plan, [left, right]) {
     Ok(_) => test.fail("colliding artifacts unexpectedly composed")?
@@ -373,11 +393,11 @@ proc test_root_rejects_collisions_and_same_owner_duplicate_entries_before_mutati
 
   let linked_left = commit_artifact(ctx, store_root, "linked-left", types.Payload, [payload_symlink("usr/bin/shared-link", "tool")])?
   let linked_right = commit_artifact(ctx, store_root, "linked-right", types.Payload, [payload_symlink("usr/bin/shared-link", "tool")])?
-  expect_root_error(ctx, root.preflight([linked_left, linked_right]), "owned by both")?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [linked_left, linked_right]), "owned by both")?
 
   let directory_left = commit_artifact(ctx, store_root, "directory-left", types.Payload, [payload_tree("usr/share/incompatible", mode: 0o755)])?
   let directory_right = commit_artifact(ctx, store_root, "directory-right", types.Payload, [payload_tree("usr/share/incompatible", mode: 0o700)])?
-  expect_root_error(ctx, root.preflight([directory_left, directory_right]), "incompatible metadata")?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [directory_left, directory_right]), "incompatible metadata")?
 
   let duplicate = stage_artifact(ctx, "duplicate", types.Payload, [payload_file("usr/bin/duplicate", "one")])?
   fs.write(
@@ -391,7 +411,7 @@ proc test_root_rejects_collisions_and_same_owner_duplicate_entries_before_mutati
     })? + "\n",
   )?
   let same_owner = store.commit(types.target_aarch64(), store_root, duplicate.node, duplicate.staged)?
-  expect_root_error(ctx, root.preflight([same_owner]), "repeats usr/bin/duplicate")?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [same_owner]), "repeats usr/bin/duplicate")?
 }
 
 proc test_root_rejects_file_ownership_across_parent_and_child_paths(ctx: TestContext) [fs, error] {
@@ -399,11 +419,11 @@ proc test_root_rejects_file_ownership_across_parent_and_child_paths(ctx: TestCon
   let parent = commit_artifact(ctx, store_root, "alpha-parent", types.Payload, [payload_file("usr/share/item", "parent")])?
   let child = commit_artifact(ctx, store_root, "beta-child", types.Payload, [payload_file("usr/share/item/child", "child")])?
 
-  expect_root_error(ctx, root.preflight([parent, child]), "root non-directory usr/share/item owned by alpha-parent conflicts with usr/share/item/child")?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [parent, child]), "root non-directory usr/share/item owned by alpha-parent conflicts with usr/share/item/child")?
 
   let later_parent = commit_artifact(ctx, store_root, "beta-parent", types.Payload, [payload_file("usr/share/other", "parent")])?
   let earlier_child = commit_artifact(ctx, store_root, "alpha-child", types.Payload, [payload_file("usr/share/other/child", "child")])?
-  expect_root_error(ctx, root.preflight([earlier_child, later_parent]), "root non-directory usr/share/other conflicts with usr/share/other/child owned by alpha-child")?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [earlier_child, later_parent]), "root non-directory usr/share/other conflicts with usr/share/other/child owned by alpha-child")?
 }
 
 proc test_root_rejects_traversal_and_corrupt_payloads(ctx: TestContext) [fs, error] {
@@ -420,7 +440,7 @@ proc test_root_rejects_traversal_and_corrupt_payloads(ctx: TestContext) [fs, err
     })? + "\n",
   )?
   let traversal_receipt = store.commit(types.target_aarch64(), store_root, traversal.node, traversal.staged)?
-  expect_root_error(ctx, root.preflight([traversal_receipt]), "must stay relative")?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [traversal_receipt]), "must stay relative")?
 
   let invalid_link = stage_artifact(ctx, "invalid-link", types.Payload, [payload_file("usr/bin/unused", "unused")])?
   fs.write(
@@ -434,11 +454,11 @@ proc test_root_rejects_traversal_and_corrupt_payloads(ctx: TestContext) [fs, err
     })? + "\n",
   )?
   let invalid_link_receipt = store.commit(types.target_aarch64(), store_root, invalid_link.node, invalid_link.staged)?
-  expect_root_error(ctx, root.preflight([invalid_link_receipt]), "escapes the root")?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [invalid_link_receipt]), "escapes the root")?
 
   let receipt = commit_artifact(ctx, store_root, "corrupt", types.Payload, [payload_file("usr/bin/corrupt", "clean")])?
   fs.write(fp"${receipt.artifact_dir}/payload.tar.gz", "corrupt payload")?
-  expect_root_error(ctx, root.preflight([receipt]), "payload SHA-256 does not match receipt")?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [receipt]), "payload SHA-256 does not match receipt")?
 }
 
 proc test_root_identifies_the_missing_payload_inventory_entry(ctx: TestContext) [fs, error] {
@@ -457,7 +477,7 @@ proc test_root_identifies_the_missing_payload_inventory_entry(ctx: TestContext) 
 
   expect_root_error(
     ctx,
-    root.preflight([receipt]),
+    root.preflight(types.target_aarch64(), [receipt]),
     "artifact missing-entry payload entry usr/share failed verification: root entry usr/share is absent or unreadable",
   )?
 }
@@ -478,8 +498,8 @@ proc test_root_runtime_closure_ignores_build_only_dependency(ctx: TestContext) [
     ],
   )?
   test.eq(app.runtime_dependency_keys, [runtime.key])?
-  expect_root_error(ctx, root.preflight([app]), "runtime dependency artifact")?
-  let plan = root.preflight([app, runtime])?
+  expect_root_error(ctx, root.preflight(types.target_aarch64(), [app]), "runtime dependency artifact")?
+  let plan = root.preflight(types.target_aarch64(), [app, runtime])?
   let output = fp"${test.temp_dir(ctx, name: "root-runtime-output")?}/root"
   let _ = root.compose_artifacts(output, plan, [app, runtime])?
   test.ok(fs.exists(fp"${output}/usr/bin/app")?)?
@@ -490,7 +510,7 @@ proc test_root_runtime_closure_ignores_build_only_dependency(ctx: TestContext) [
 proc test_root_failed_composition_leaves_completed_output_untouched(ctx: TestContext) [fs, error] {
   let store_root = test.temp_dir(ctx, name: "root-immutable-store")?
   let artifact = commit_artifact(ctx, store_root, "immutable", types.Payload, [payload_file("usr/bin/immutable", "new")])?
-  let plan = root.preflight([artifact])?
+  let plan = root.preflight(types.target_aarch64(), [artifact])?
   let output = fp"${test.temp_dir(ctx, name: "root-immutable-output")?}/root"
   fs.mkdir(output)?
   fs.write(fp"${output}/marker", "previous root")?

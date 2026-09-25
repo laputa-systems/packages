@@ -91,6 +91,7 @@ proc execute_receipt_closure(store_root: Path, keys: List[Str]) [fs, error] -> R
 }
 
 proc execute_mutable_root(
+  target: types.Target,
   root_handle: FsRoot,
   label: Str,
   artifacts: List[types.ArtifactReceipt],
@@ -99,7 +100,7 @@ proc execute_mutable_root(
   let work = fs.root_path(root_handle)?
   let immutable = fp"${work}/${label}-dependencies"
   let mutable = fp"${work}/${label}-work"
-  let root_plan = pm_root.preflight(artifacts)?
+  let root_plan = pm_root.preflight(target, artifacts)?
   let _ = pm_root.compose_artifacts(immutable, root_plan, artifacts)?
   let _ = fs.copy_tree(immutable, mutable, parents: true, overwrite: true)?
   # Only compilation receives the host executor substrate.  A proof root is a
@@ -195,6 +196,7 @@ proc execute_publish_proof_cache(
 }
 
 proc execute_run_proof(
+  target: types.Target,
   node: types.PlanNode,
   pkg: types.Package,
   store_root: Path,
@@ -218,7 +220,7 @@ proc execute_run_proof(
   let runtime_artifacts = execute_receipt_closure(store_root, runtime_keys)?
   let root_handle = fs.tempdir()?
   defer fs.close_root(root_handle)?
-  let proof_root = execute_mutable_root(root_handle, "proof", runtime_artifacts, false)?
+  let proof_root = execute_mutable_root(target, root_handle, "proof", runtime_artifacts, false)?
   # Payload archives contain their top-level directories (for example `usr`).
   # The proof root already has the executor substrate and runtime closure, so
   # extracting directly would reject that legitimate shared directory.  Extract
@@ -255,14 +257,14 @@ proc execute_build_local(
   } else {
     let dependency_keys = store.receipt_dependency_keys(node)
     let dependencies = execute_receipt_closure(store_root, dependency_keys)?
-    build_root = execute_mutable_root(root_handle, "build", dependencies, true)?
+    build_root = execute_mutable_root(plan_value.target, root_handle, "build", dependencies, true)?
   }
 
   let staged = execute_stage_local(plan_value, node, pkg, repo_root, build_root, work)?
   # Keep the proof outcome as Result data through this build-node boundary.
   # The published runner otherwise propagates a failing Unit proc directly out
   # of a par-map worker before its node-status marker can be written.
-  match execute_run_proof(node, pkg, store_root, staged.payload, staged.proof) {
+  match execute_run_proof(plan_value.target, node, pkg, store_root, staged.payload, staged.proof) {
     Ok(_) => {}
     Err(problem) => return Err(problem)
   }
@@ -290,7 +292,7 @@ proc execute_existing_local(
   defer fs.close_root(root_handle)?
   let work = fs.root_path(root_handle)?
   let proof = fp"${work}/proof.json"
-  execute_run_proof(node, pkg, store_root, fp"${receipt.artifact_dir}/payload.tar.gz", proof)?
+  execute_run_proof(plan_value.target, node, pkg, store_root, fp"${receipt.artifact_dir}/payload.tar.gz", proof)?
   receipt
 }
 

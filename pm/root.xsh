@@ -415,8 +415,8 @@ proc root_validate_plan(value: types.RootPlan) [error] {
     return Err(types.PmError.PackageContract(f"unsupported root plan format ${value.format}"))
   }
 
-  if value.target != types.target_aarch64() {
-    return Err(types.PmError.PackageContract("root plan must target aarch64-linux-musl"))
+  if types.pm_target_arch(value.target) == "" {
+    return Err(types.PmError.PackageContract("root plan has an unsupported target"))
   }
 
   var artifacts = value.artifacts
@@ -572,7 +572,11 @@ proc root_read_receipt(output: Path) [fs, error] -> Result[types.RootReceipt] {
 }
 
 ## Builds and verifies the complete ownership, runtime closure, metadata, and payload contract before root mutation.
-export proc preflight(artifacts: List[types.ArtifactReceipt]) [fs, error] -> Result[types.RootPlan] {
+export proc preflight(target: types.Target, artifacts: List[types.ArtifactReceipt]) [fs, error] -> Result[types.RootPlan] {
+  if types.pm_target_arch(target) == "" {
+    return Err(types.PmError.PackageContract("root preflight target is unsupported"))
+  }
+
   let verified = root_verified_artifacts(artifacts)?
   var planned_artifacts: List[types.RootArtifact] = []
   var entries: List[types.RootEntry] = []
@@ -582,6 +586,10 @@ export proc preflight(artifacts: List[types.ArtifactReceipt]) [fs, error] -> Res
   var first_descendants: Map[types.RootEntry] = {}
 
   for receipt in verified {
+    if receipt.target != target {
+      return Err(types.PmError.PackageContract(f"artifact ${receipt.package_name} target does not match ${types.target_text(target)}"))
+    }
+
     let metadata = root_artifact_metadata(receipt)?
     let payload = metadata.kind != types.package_meta()
     planned_artifacts = planned_artifacts.push({
@@ -668,10 +676,10 @@ export proc preflight(artifacts: List[types.ArtifactReceipt]) [fs, error] -> Res
   let ordered_entries = entries |> sort-by .path
   let value: types.RootPlan = {
     format: "laputa-root-plan-1",
-    target: types.target_aarch64(),
+    target,
     artifacts: ordered_artifacts,
     entries: ordered_entries,
-    root_sha256: root_digest(types.target_aarch64(), ordered_artifacts, ordered_entries),
+    root_sha256: root_digest(target, ordered_artifacts, ordered_entries),
   }
   root_validate_plan(value)?
   value
@@ -680,7 +688,7 @@ export proc preflight(artifacts: List[types.ArtifactReceipt]) [fs, error] -> Res
 ## Composes package artifacts into a verified root plan. The explicit `compose_artifacts` spelling
 ## avoids XSH's shared-module export collision with the public `generation.compose` boundary.
 export proc compose_artifacts(output: Path, plan: types.RootPlan, artifacts: List[types.ArtifactReceipt]) [fs, error] -> Result[types.RootReceipt] {
-  let expected = preflight(artifacts)?
+  let expected = preflight(plan.target, artifacts)?
 
   if expected != plan {
     return Err(types.PmError.PackageContract("root plan does not match verified artifacts"))
