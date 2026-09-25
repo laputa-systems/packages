@@ -199,6 +199,43 @@ proc test_execute_builds_dependency_levels_in_isolated_roots_and_reuses(ctx: Tes
   test.eq(second, first)?
 }
 
+proc test_execute_x86_64_plan_preserves_target_and_metadata(ctx: TestContext) [fs, net, process, env, time, error] {
+  let repo_root = copied_execute_repository(ctx, "execute-x86-repo")?
+  let pkgbuild = fp"${repo_root}/repo/execute-dep/PKGBUILD.xsh"
+  fs.write(
+    pkgbuild,
+    pkgbuild.read_text()?.replace(
+      "export let filetree = [{path: p\"usr/share/execute-dep.txt\", kind: \"file\"}]",
+      "export let filetree = []\n## Target-specific declared output.\nexport let filetree_x86_64 = [{path: p\"usr/share/execute-dep.txt\", kind: \"file\"}]",
+    ),
+  )?
+  let proof = fp"${repo_root}/repo/execute-app/proof.xsh"
+  fs.write(
+    proof,
+    proof.read_text()?.replace(
+      "proc main(root: Path = /rootfs) [fs, error] {",
+      "proc main(root: Path = /rootfs) [fs, env, error] {\n  if env(\"XSH_PM_TARGET_ARCH\")? != \"x86_64\" {\n    return Err(ProofError.Failed(\"proof ran under the wrong target\"))\n  }",
+    ),
+  )?
+  let value = plan.resolve(
+    catalog.load_for_target(repo_root, types.target_x86_64())?,
+    {target: types.target_x86_64(), index_sha256: "execute-empty-x86-remote", packages: []},
+    policy.x86_64_docker(),
+    ["execute-app"],
+    false,
+    executor_identity(),
+  )?
+  let object_store = execute_store(ctx, "execute-x86-store")?
+  let result = execute.build_plan(value, repo_root, object_store, "", 2)?
+
+  for receipt in result.artifacts {
+    test.eq(receipt.target, types.target_x86_64())?
+    let metadata: Record = json.read(fp"${receipt.artifact_dir}/metadata.json")?
+    test.eq(metadata.get("arch")?, "x86_64")?
+  }
+  test.eq([receipt.package_name for receipt in result.artifacts], ["execute-dep", "execute-tool", "execute-app"])?
+}
+
 proc test_execute_reproofs_changed_proof_without_rebuilding_payload(ctx: TestContext) [fs, net, process, env, time, error] {
   let repo_root = copied_execute_repository(ctx, "execute-reproof-repo")?
   let object_store = execute_store(ctx, "execute-reproof-store")?

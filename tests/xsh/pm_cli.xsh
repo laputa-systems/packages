@@ -268,7 +268,7 @@ proc test_repo_plan_records_x86_64_target_and_distinct_artifact_keys(ctx: TestCo
   let err = test.temp_path(ctx, name: "repo-x86-build.err")
   let build_status = pm_status(["repo", "build", x86_output.display(), "--store", store.display()], err)?
   test.eq(build_status.ok, false)?
-  test.contains(err.read_text()?, "native executor does not yet support x86_64-linux-musl")?
+  test.contains(err.read_text()?, "repo build has no configured runner for x86_64-linux-musl")?
   test.eq(store.exists()?, false)?
 }
 

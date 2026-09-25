@@ -61,7 +61,9 @@ rejects that target before creating a store. Artifact receipts can carry either
 target and reject cross-target reuse of the same key. Root preflight and
 composition preserve an explicit target and reject mixed receipts. Generation
 plans and receipts also preserve x86_64 when supplied with verified x86_64
-artifacts. Native x86_64 package execution remains pending.
+artifacts. The executor preserves x86_64 through recipe selection, build
+metadata, proofs, receipts, and root composition. The public `repo build`
+command remains gated until an x86_64 runner is configured.
 
 `repo build` discovers the repository only by walking to a directory containing
 both `pm.xsh` and `repo/`. It executes the saved plan with `pm/execute.xsh`;
@@ -132,7 +134,8 @@ including setuid helpers; symlink metadata remains fixed at `0o777`.
 
 ## Scope
 
-PM currently supports the aarch64 Linux-musl target only. The shell-compatible
+PM has an aarch64 Linux-musl build runner; x86_64 plans and verified artifact
+composition are available for installer work. The shell-compatible
 surface is limited to packages whose declared runtime capability requires it;
 package construction itself uses typed XSH process and filesystem boundaries.
 

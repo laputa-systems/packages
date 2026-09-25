@@ -27,7 +27,7 @@ proc execute_load_package(
   repo_root: Path,
 ) [fs, env, error] -> Result[types.Package] {
   let relative = util.ensure_relative_path(node.recipe_dir, f"plan recipe directory for ${node.name}")?
-  let pkg = recipe.load_package(fp"${repo_root}/${relative}")?
+  let pkg = recipe.load_package_for_target(fp"${repo_root}/${relative}", plan_value.target)?
 
   if pkg.name != node.name or pkg.ver != node.ver or pkg.rel != node.rel or util.package_id(pkg.name, pkg.ver, pkg.rel) != node.package_id {
     return Err(types.PmError.PackageContract(f"recipe ${node.recipe_dir.display()} does not match plan node ${node.package_id}"))
@@ -53,7 +53,7 @@ proc execute_require_receipt(
   let expected_dependencies = store.receipt_dependency_keys(node)
   let expected_runtime_dependencies = store.receipt_runtime_dependency_keys(node)
 
-  if receipt.key != node.artifact_key or receipt.package_name != node.name or receipt.package_id != node.package_id or receipt.recipe_sha256 != node.recipe_sha256 or receipt.dependency_keys != expected_dependencies or receipt.runtime_dependency_keys != expected_runtime_dependencies {
+  if receipt.target != plan_value.target or receipt.key != node.artifact_key or receipt.package_name != node.name or receipt.package_id != node.package_id or receipt.recipe_sha256 != node.recipe_sha256 or receipt.dependency_keys != expected_dependencies or receipt.runtime_dependency_keys != expected_runtime_dependencies {
     return Err(types.PmError.PackageContract(f"stored artifact ${node.artifact_key} does not match plan node ${node.package_id}"))
   }
 
@@ -136,6 +136,7 @@ proc execute_stage_local(
   # while the recipe itself remains isolated under `work/recipe`.
   env {
     XSH_PM_REPOSITORY_ROOT = repo_root.display()
+    XSH_PM_TARGET_ARCH = types.pm_target_arch(plan_value.target)
   } {
     sources.prepare_package_source_tree(work, work, isolated_pkg, source, false, false, false)?
   } ?
@@ -144,12 +145,13 @@ proc execute_stage_local(
     LAPUTA_ROOT = build_root.display()
     PATH = f"${build_root}/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}"
     XSH_PM_BUILD_CHROOT = "0"
+    XSH_PM_TARGET_ARCH = types.pm_target_arch(plan_value.target)
   } {
     pm_build.build_prepared_package(recipe_dir, source, dest, payload)?
   } ?
 
   let built = local.load_built_package_from_dest(isolated_pkg, node.package_id, payload, dest)?
-  local.write_package_metadata(metadata, "aarch64", built)?
+  local.write_package_metadata(metadata, types.pm_target_arch(plan_value.target), built)?
   pm_proof.write_artifact_receipt(proof, node, payload)?
   {payload, metadata, proof, executor_sha256: execute_executor_digest(plan_value)?}
 }
@@ -229,10 +231,11 @@ proc execute_run_proof(
   let payload_root = fp"${fs.root_path(root_handle)?}/proof-payload"
   archive.tar_extract(payload, payload_root, 0, "auto", true)?
   let _ = fs.copy_tree(payload_root, proof_root, parents: true, overwrite: true)?
-  match pm_proof.run_artifact_proof(proof_root, pkg) {
-    Ok(_) => {}
-    Err(problem) => return Err(problem)
-  }
+  env {
+    XSH_PM_TARGET_ARCH = types.pm_target_arch(target)
+  } {
+    pm_proof.run_artifact_proof(proof_root, pkg)?
+  } ?
   pm_proof.write_artifact_receipt(proof, node, payload)?
   execute_publish_proof_cache(store_root, node, payload, proof)?
   return Ok()
@@ -443,14 +446,6 @@ proc execute_parallel_level(
   return receipts
 }
 
-# Plans may describe x86_64 artifacts, but this executor still creates
-# aarch64 receipts and roots. Reject that target before touching the store.
-proc execute_require_native_target(value: types.BuildPlan) [error] {
-  if value.target != types.target_aarch64() {
-    return Err(types.PmError.PackageContract(f"native executor does not yet support ${types.target_text(value.target)}"))
-  }
-}
-
 ## Executes one exact BuildPlan node using only verified dependency artifacts from the immutable store.
 export proc build_node(
   plan_value: types.BuildPlan,
@@ -460,8 +455,6 @@ export proc build_node(
   remote_repo: Str,
 ) [fs, net, process, env, time, error] -> Result[types.ArtifactReceipt] {
   build_plan.validate(plan_value)?
-
-  execute_require_native_target(plan_value)?
 
   if fs.exists(store.artifact_path(store_root, node.artifact_key))? {
     return execute_existing_local(plan_value, node, repo_root, store_root)
@@ -486,8 +479,6 @@ export proc build_plan(
   jobs: Int,
 ) [fs, net, process, env, time, error] -> Result[types.BuildResult] {
   build_plan.validate(plan_value)?
-
-  execute_require_native_target(plan_value)?
 
   if jobs < 1 {
     return Err(types.PmError.Usage("build jobs must be at least one"))

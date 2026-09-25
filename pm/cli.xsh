@@ -535,6 +535,9 @@ proc command_repo_show(args: RepoShowArgs) [fs, error] {
 
 proc command_repo_build(args: RepoBuildArgs) [fs, net, process, env, time, error] {
   let value = pm_plan_json.read(args.input)?
+  if value.target != types.target_aarch64() {
+    return Err(types.PmError.PackageContract(f"repo build has no configured runner for ${types.target_text(value.target)}"))
+  }
   let urls = remote.load_repo_urls()?
   let result = pm_execute.build_plan(value, execution_repo_root()?, args.store, urls.repo, args.jobs)?
   print "repo" "build" $result.plan_sha256 $result.artifacts.len() "artifacts"
