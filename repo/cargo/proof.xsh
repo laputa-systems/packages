@@ -69,6 +69,7 @@ main(@args)?
     f"""#!/bin/xsh
 proc main(...args: List[Str]) [process, error] {
   var linker_args: List[Str] = []
+  # rustc emits -m64 for a compiler driver, but direct ld.lld rejects it.
   for arg in args {
     if arg.starts_with("-Wl,") {
       let options = arg.split(",")
@@ -77,7 +78,7 @@ proc main(...args: List[Str]) [process, error] {
         linker_args = linker_args.push(options[index])
         index += 1
       }
-    } else if arg != "-nostartfiles" and arg != "-nodefaultlibs" {
+    } else if arg != "-nostartfiles" and arg != "-nodefaultlibs" and arg != "-m64" {
       linker_args = linker_args.push(arg)
     }
   }
