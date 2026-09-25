@@ -95,9 +95,9 @@ make test
 ```
 
 `make test` builds a scratch-runtime test image from pinned published XSH
-release binaries. It runs `xsht test --cov --cov-json target/coverage/pm.json
-tests/xsh/pm.xsh` against the checkout mounted at `/src/packages`. Inspect the
-coverage JSON after the run for PM source line/proc coverage by file.
+release binaries. It runs each `PM_TESTS` module through `xsht test` against
+the checkout mounted at `/src/packages` and writes per-module coverage JSON to
+`target/coverage/pm/`. Inspect those files for PM source line/proc coverage.
 
 For a host-native run on Linux, use the checked-out debug XSH without Docker:
 
@@ -109,10 +109,13 @@ This sets `XSH_PM_BUILD_CHROOT=0`, so both package builds and package proofs
 run against host tools. It is useful on Threadripper for fast PM iteration; the
 Docker suite remains the broader Linux-runtime check.
 
-Current PM coverage baseline from `make test`: `tests/xsh/pm.xsh` covers
-1600/6914 PM source lines (23.1%) and 223/401 procs (55.6%). Treat coverage as
-a refactor aid, not a metric target. Do not add trivial tests just to raise the
-percentage.
+To run the PM modules against checked-out ARM64 Linux debug binaries in XSH's
+pinned test image, use `make test-local-linux`. It keeps the package checkout
+mounted at `/src/packages`, sets `XSH_CORE_ROOT` to the checked-out applets,
+and writes coverage under `target/coverage/pm-local-linux/`.
+
+Treat coverage as a refactor aid, not a metric target. Do not add trivial tests
+just to raise the percentage.
 
 The PM suite is expected to protect broad behavior, including package loading
 and dependency ordering, local build/proof execution, remote install from

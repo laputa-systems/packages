@@ -1,4 +1,4 @@
-.PHONY: test test-native xsh-native xsh-local-bins xsh-builder-image update-checksums
+.PHONY: test test-native test-local-linux xsh-native xsh-local-bins xsh-builder-image update-checksums
 
 LAPUTA_DOCKER_PLATFORM ?= linux/arm64
 XSH_TEST_IMAGE ?= laputa-packages-test
@@ -9,7 +9,7 @@ XSH_RELEASE ?= release-d09c6c3305ab8c650043bd8d32e03f2db6509e97
 CARGO ?= $(shell command -v cargo 2>/dev/null || echo /home/josh/.cargo/bin/cargo)
 PM_XSH_MODULE_PATH ?= .:/usr/lib/pm
 PKGDIRS ?= $(sort $(patsubst %/PKGBUILD.xsh,%,$(wildcard repo/*/PKGBUILD.xsh)))
-PM_TESTS := tests/xsh/pm_recipe.xsh tests/xsh/pm_graph.xsh tests/xsh/pm_plan.xsh tests/xsh/pm_store.xsh tests/xsh/pm_root.xsh tests/xsh/pm_execute.xsh tests/xsh/pm_publish.xsh tests/xsh/pm_generation.xsh tests/xsh/pm_cli.xsh tests/xsh/laputa_fs.xsh
+PM_TESTS := tests/xsh/pm_recipe.xsh tests/xsh/pm_graph.xsh tests/xsh/pm_plan.xsh tests/xsh/pm_store.xsh tests/xsh/pm_root.xsh tests/xsh/pm_build.xsh tests/xsh/pm_execute.xsh tests/xsh/pm_publish.xsh tests/xsh/pm_generation.xsh tests/xsh/pm_cli.xsh tests/xsh/laputa_fs.xsh
 UPDATE_CHECKSUM_JOBS ?= 8
 
 ifeq ($(LAPUTA_DOCKER_PLATFORM),linux/amd64)
@@ -36,11 +36,15 @@ XSH_LOCAL_BINS := $(XSH_LOCAL_BIN_DIR)/xsh $(XSH_LOCAL_BIN_DIR)/xshi $(XSH_LOCAL
 XSH_NATIVE_BIN_DIR ?= $(XSH_ROOT)/target/debug
 
 test-native: xsh-native
-	PATH="$(abspath $(XSH_NATIVE_BIN_DIR)):$$PATH" \
-	XSH_HOST="$(abspath $(XSH_NATIVE_BIN_DIR)/xsh)" \
-	XSH_MODULE_PATH="$(CURDIR)" \
-	XSH_PM_BUILD_CHROOT=0 \
-	"$(abspath $(XSH_NATIVE_BIN_DIR)/xsht)" test --cov --cov-json target/coverage/pm-native.json $(PM_TESTS)
+	@mkdir -p target/coverage/pm-native
+	@set -eu; for suite in $(PM_TESTS); do \
+	    name=$${suite##*/}; name=$${name%.xsh}; \
+	    PATH="$(abspath $(XSH_NATIVE_BIN_DIR)):$$PATH" \
+	    XSH_HOST="$(abspath $(XSH_NATIVE_BIN_DIR)/xsh)" \
+	    XSH_MODULE_PATH="$(CURDIR)" \
+	    XSH_PM_BUILD_CHROOT=0 \
+	    "$(abspath $(XSH_NATIVE_BIN_DIR)/xsht)" test --cov --cov-json "target/coverage/pm-native/$$name.json" "$$suite"; \
+	done
 
 xsh-native:
 	$(CARGO) build --manifest-path "$(XSH_ROOT_ABS)/Cargo.toml" -p xsh -p xshi -p xsht --bin xsh --bin xshi --bin xsht
@@ -56,10 +60,15 @@ test:
 	    -t $(XSH_TEST_IMAGE) \
 	    -f Dockerfile.test \
 	    .
-	docker run --rm \
-	    --platform $(LAPUTA_DOCKER_PLATFORM) \
-	    -v "$(CURDIR)":/src/packages \
-	    $(XSH_TEST_IMAGE)
+	@mkdir -p target/coverage/pm
+	@set -eu; for suite in $(PM_TESTS); do \
+	    name=$${suite##*/}; name=$${name%.xsh}; \
+	    docker run --rm \
+	        --platform $(LAPUTA_DOCKER_PLATFORM) \
+	        -v "$(CURDIR)":/src/packages \
+	        $(XSH_TEST_IMAGE) \
+	        xsht test --cov --cov-json "target/coverage/pm/$$name.json" "$$suite"; \
+	done
 
 xsh-local-bins: xsh-builder-image
 	docker run --rm \
@@ -69,7 +78,21 @@ xsh-local-bins: xsh-builder-image
 	    -v "$(XSH_ROOT_ABS)/target/$(XSH_LOCAL_TRIPLE)":/work/target/$(XSH_LOCAL_TRIPLE) \
 	    -w /work \
 	    $(XSH_BUILD_IMAGE) \
-	    sh -c 'cargo build --target $(XSH_LOCAL_TRIPLE) -p xsh -p xshi -p xsht --no-default-features --features "xsh/native-tests xsh/tools xsht/native-tests" --bin xsh --bin xshi --bin xsht'
+	    sh -c 'cargo build --target $(XSH_LOCAL_TRIPLE) -p xsh -p xshi -p xsht --no-default-features --features "xsh/native-tests xsh/net xsh/tools xsht/native-tests" --bin xsh --bin xshi --bin xsht'
+
+test-local-linux: xsh-local-bins
+	@mkdir -p target/coverage/pm-local-linux
+	docker run --rm \
+	    --platform $(LAPUTA_DOCKER_PLATFORM) \
+	    -e XSH_HOST=/work/target/$(XSH_LOCAL_TRIPLE)/debug/xsh \
+	    -e XSH_CORE_ROOT=/work/core \
+	    -e XSH_MODULE_PATH=/src/packages \
+	    -e XSH_PM_BUILD_CHROOT=0 \
+	    -v "$(XSH_ROOT_ABS)":/work:ro \
+	    -v "$(CURDIR)":/src/packages \
+	    -w /src/packages \
+	    $(XSH_BUILD_IMAGE) \
+	    sh -c 'set -eu; export PATH="/work/target/$(XSH_LOCAL_TRIPLE)/debug:$$PATH"; for suite in $(PM_TESTS); do name=$${suite##*/}; name=$${name%.xsh}; xsht test --jobs 1 --cov --cov-json "target/coverage/pm-local-linux/$$name.json" "$$suite"; done'
 
 xsh-builder-image:
 	docker image inspect $(XSH_BUILD_IMAGE) >/dev/null 2>&1 || \

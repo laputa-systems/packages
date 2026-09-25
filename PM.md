@@ -121,3 +121,5 @@ PM behavior is covered by the focused modules under `tests/xsh/`:
 
 Run a host-native suite with `make test-native XSH_ROOT=$HOME/d/laputa-systems/xsh`.
 The Docker-backed suite is `make test`.
+Use `make test-local-linux` to test the checked-out XSH ARM64 debug binaries in
+the pinned Linux test image before updating the published release pin.
