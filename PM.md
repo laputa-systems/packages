@@ -95,6 +95,9 @@ duplicate package names and malformed recipes before resolution.
 `pm/graph.xsh` resolves stable runtime, build-host, and build-target edges.
 The graph never adds an implicit package-manager dependency. Its sorted
 topological levels and typed edge kinds are persisted in `BuildPlan`.
+The native Docker adapter passes `XSH_PM_BOOTSTRAP_LLVM_ROOT=/usr/lib/llvm23`
+for `gnu-stubs`: its LLVM edge is a bootstrap seed, so the recipe must use the
+preseeded compiler while the replacement LLVM package is built.
 
 ## Identity, store, and snapshots
 

@@ -68,12 +68,18 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   let laputa_root = fp"${env.get("LAPUTA_ROOT") ?? ""}"
-  let clang = fp"${laputa_root}/usr/lib/llvm23/bin/clang"
-  let lld = fp"${laputa_root}/usr/lib/llvm23/bin/ld.lld"
-  let llvm_ar = fp"${laputa_root}/usr/lib/llvm23/bin/llvm-ar"
-  let llvm_objcopy = fp"${laputa_root}/usr/lib/llvm23/bin/llvm-objcopy"
-  let libunwind = fp"${laputa_root}/usr/lib/llvm23/lib/libunwind.a"
-  let builtins = fp"${laputa_root}/usr/lib/llvm23/lib/clang/23/lib/linux/libclang_rt.builtins-${target_arch}.a"
+  let bootstrap_llvm = env.get("XSH_PM_BOOTSTRAP_LLVM_ROOT") ?? ""
+  let llvm_root = if bootstrap_llvm == "" { fp"${laputa_root}/usr/lib/llvm23" } else { fp"${bootstrap_llvm}" }
+  let clang = fp"${llvm_root}/bin/clang"
+  let lld = fp"${llvm_root}/bin/ld.lld"
+  let llvm_ar = fp"${llvm_root}/bin/llvm-ar"
+  let llvm_objcopy = fp"${llvm_root}/bin/llvm-objcopy"
+  let libunwind = fp"${llvm_root}/lib/libunwind.a"
+  let builtins = fp"${llvm_root}/lib/clang/23/lib/linux/libclang_rt.builtins-${target_arch}.a"
+
+  if ! fs.exists(clang)? or ! fs.exists(lld)? or ! fs.exists(llvm_ar)? or ! fs.exists(llvm_objcopy)? {
+    return Err(GnuStubsError.Failed(f"gnu-stubs bootstrap LLVM tools are missing from ${llvm_root}"))
+  }
 
   # Rust's musl target hardcodes -lgcc_s, and the prebuilt cargo binary
   # dynamically links libgcc_s.so.1 for unwinding. The prebuilt LLVM tree
@@ -129,7 +135,7 @@ __gttf2
   fs.mkdir(builtins_dir)?
 
   env {
-    LD_LIBRARY_PATH = f"${laputa_root}/usr/lib/llvm23/lib:${env.get("LD_LIBRARY_PATH") ?? ""}"
+    LD_LIBRARY_PATH = f"${llvm_root}/lib:${env.get("LD_LIBRARY_PATH") ?? ""}"
   } {
     run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${libdir}/crtbeginS.o" ?
     run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${libdir}/crtendS.o" ?
