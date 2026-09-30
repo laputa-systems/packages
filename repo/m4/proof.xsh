@@ -20,7 +20,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, error] {
   # Construct the generated operand from text.  Interpolated `fp` literals
   # resolve as the current directory in the published runner and would pass
   # `proof-m4` itself instead of this file.
-  let input = Path(f"${tmp}/test.m4")
+  let input = fp"${tmp}/test.m4"
   let out = run.text $m4 $input ?
   let trimmed = out.trim()
 

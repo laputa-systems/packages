@@ -3,29 +3,27 @@
 error FatPutError = Failed(kind: Str, message: Str)
 
 proc ceil_div(value: Int, divisor: Int) [error] -> Int {
-  return (value + divisor - 1) / divisor
+  (value + divisor - 1) / divisor
 }
 
 proc le16(value: Int) [error] -> Result[Bytes] {
-  return bytes.pack_le(value, 2)?
+  bytes.pack_le(value, 2)?
 }
 
 proc le32(value: Int) [error] -> Result[Bytes] {
-  return bytes.pack_le(value, 4)?
+  bytes.pack_le(value, 4)?
 }
 
 proc fixed_name(name: Str) [error] -> Result[Bytes] {
   let raw = bytes.from_text(name)
 
-  if raw.len() > 11 {
-    return Err(FatPutError.Failed("name-too-long", name))
-  }
+  return Err(FatPutError.Failed("name-too-long", name)) when raw.len() > 11
 
-  return bytes.concat([raw, bytes.zero(11 - raw.len())?])
+  bytes.concat([raw, bytes.zero(11 - raw.len())?])
 }
 
 proc dir_entry(name: Str, attr: Int, cluster: Int, size: Int) [error] -> Result[Bytes] {
-  return bytes.concat(
+  bytes.concat(
     [
       fixed_name(name)?,
       bytes.from_ints([attr])?,
@@ -46,8 +44,8 @@ proc dir_block(
   cluster_size: Int,
 ) [error] -> Result[Bytes] {
   var parts = [dir_entry(".          ", 16, self_cluster, 0)?, dir_entry("..         ", 16, parent_cluster, 0)?]
-  parts = parts.extend(entries)
-  return bytes.concat([bytes.concat(parts), bytes.zero(cluster_size - bytes.concat(parts).len())?])
+  parts += entries
+  bytes.concat([bytes.concat(parts), bytes.zero(cluster_size - bytes.concat(parts).len())?])
 }
 
 proc set_fat(image: Path, fat_offset: Int, fat_sectors: Int, cluster: Int, value: Int) [error] {
@@ -68,15 +66,11 @@ proc write_cluster(image: Path, data_offset: Int, cluster: Int, data: Bytes, clu
 }
 
 pure fallback_fat_name(path_value: Str) -> Result[Str] {
-  if path_value == "EFI/BOOT/BOOTAA64.EFI" {
-    return "BOOTAA64EFI"
-  }
+  return "BOOTAA64EFI" when path_value == "EFI/BOOT/BOOTAA64.EFI"
 
-  if path_value == "EFI/BOOT/BOOTX64.EFI" {
-    return "BOOTX64 EFI"
-  }
+  return "BOOTX64 EFI" when path_value == "EFI/BOOT/BOOTX64.EFI"
 
-  return Err(FatPutError.Failed("unsupported-path", path_value))
+  Err(FatPutError.Failed("unsupported-path", path_value))
 }
 
 type FatPutOptions = {operands: List[Str]}

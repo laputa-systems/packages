@@ -8,7 +8,7 @@ proc require_file(root: Path, rel: Str) [fs, error] {
   }
 }
 
-proc main(root: Path = /rootfs) [fs, error] {
+proc main(root = /rootfs) [fs, error] {
   require_file(root, "etc/inittab")?
   require_file(root, "etc/rc.conf")?
   require_file(root, "usr/lib/init/rc.boot")?

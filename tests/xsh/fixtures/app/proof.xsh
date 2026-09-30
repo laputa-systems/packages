@@ -1,6 +1,6 @@
 error ProofError = Failed(kind: Str, message: Str)
 
-proc main(root: Path = /rootfs) [fs, error] {
+proc main(root = /rootfs) [fs, error] {
   let db = fp"${root}/var/lib/xsh-pm/packages/app/metadata.json"
 
   if ! fs.exists(db)? {

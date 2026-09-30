@@ -176,11 +176,11 @@ proc wait_for_xinit_logs(rootfs: Path, chroot: Path, tries: Int) [process, time,
 }
 
 proc xinit_start(rootfs: Path, chroot: Path, port: Int, host_key: Path) [process, env, error] {
-  env {
-    XINIT_DROPBEAR_BIND = "0.0.0.0"
-    XINIT_DROPBEAR_PORT = f"${port}"
-    XINIT_DROPBEAR_HOST_KEY = host_key.display()
-  } {
+  env ( {
+    XINIT_DROPBEAR_BIND : "0.0.0.0",
+    XINIT_DROPBEAR_PORT : f"${port}",
+    XINIT_DROPBEAR_HOST_KEY : host_key.display(),
+  }) {
     run $chroot $rootfs "/usr/bin/xinit" start dropbear ?
   } ?
 }

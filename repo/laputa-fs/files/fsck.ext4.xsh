@@ -2,24 +2,22 @@
 ##! XSH module `fsck.ext4` package and build operations.
 error Ext4FsckError = Failed(kind: Str, message: Str)
 
-let BLOCK_SIZE = 4096
-let BLOCKS_PER_GROUP = 32768
-let INODES_PER_GROUP = 8192
+const BLOCK_SIZE = 4096
+const BLOCKS_PER_GROUP = 32768
+const INODES_PER_GROUP = 8192
 
 pure ceil_div(value: Int, divisor: Int) -> Int {
-  if value == 0 {
-    return 0
-  }
+  return 0 when value == 0
 
-  return (value + divisor - 1) / divisor
+  (value + divisor - 1) / divisor
 }
 
 pure min_int(left: Int, right: Int) -> Int {
-  if left < right {
+  guard left >= right else {
     return left
   }
 
-  return right
+  right
 }
 
 proc bit_value(bit: Int) [] -> Int {
@@ -31,16 +29,16 @@ proc bit_value(bit: Int) [] -> Int {
     index += 1
   }
 
-  return value
+  value
 }
 
 proc bit_set(bitmap: Bytes, bit: Int) [error] -> Result[Bool] {
   let byte = bytes.unpack_le(bitmap, 1, offset: bit / 8)?
-  return byte / bit_value(bit % 8) % 2 == 1
+  byte / bit_value(bit % 8) % 2 == 1
 }
 
 proc expect_int(kind: Str, actual: Int, expected: Int) [error] {
-  if actual != expected {
+  guard actual == expected else {
     return Err(Ext4FsckError.Failed(kind, f"expected ${expected}, found ${actual}"))
   }
 }
@@ -57,7 +55,7 @@ proc used_bits(bitmap: Bytes, limit: Int) [error] -> Result[Int] {
     bit += 1
   }
 
-  return used
+  used
 }
 
 proc check_image(image: Path) [error] {

@@ -56,7 +56,7 @@ export let filetree = [
 
 ## Exported declaration `build`.
 export proc build(dest: Path) [fs, error] {
-  for entry in fs.ls(p".")? |> where .kind == "file" and .ext == "ttf" {
+  for entry in fs.children(p".")? |> where .kind == "file" and .ext == "ttf" {
     fs.install(entry.path, fp"${dest}/usr/share/fonts/TTF/${entry.name}", 0o644, parents: true, overwrite: true)?
   }
 }

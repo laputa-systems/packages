@@ -3,17 +3,15 @@ proc runner() [fs, process, env, error] -> Result[Path] {
   let configured = (env.get("XSH_HOST") ?? "").trim()
 
   if configured != "" {
-    let selected = Path(configured)
+    let selected = fp"${configured}"
 
-    if selected.exists()? {
-      return selected
-    }
+    return selected when selected.exists()?
   }
 
   process.which("xsh")?
 }
 
-proc test_m4_proof_reads_its_file_operand_and_handles_directory_rejection(ctx: TestContext) [fs, process, env, error] {
+test test_m4_proof_reads_its_file_operand_and_handles_directory_rejection [fs, process, env, error] { |ctx|
   let root = test.temp_dir(ctx, name: "m4-proof-file-operand")?
   let m4 = fp"${root}/usr/bin/m4"
   let stderr = fp"${root}/proof.stderr"
@@ -31,7 +29,7 @@ proc test_m4_proof_reads_its_file_operand_and_handles_directory_rejection(ctx: T
     process.command_argv(
       xsh,
       [xsh.display(), "repo/m4/proof.xsh", "--", root.display()],
-      stderr: stderr,
+      stderr:,
     ),
   )?
   if ! status.ok {
@@ -39,7 +37,7 @@ proc test_m4_proof_reads_its_file_operand_and_handles_directory_rejection(ctx: T
   }
 }
 
-proc test_bison_stack_proof_passes_the_generated_m4_file_operand(ctx: TestContext) [fs, process, env, error] {
+test test_bison_stack_proof_passes_the_generated_m4_file_operand [fs, process, env, error] { |ctx|
   let root = test.temp_dir(ctx, name: "bison-stack-m4-operand")?
   let stderr = fp"${root}/proof.stderr"
   let xsh = runner()?
@@ -47,8 +45,18 @@ proc test_bison_stack_proof_passes_the_generated_m4_file_operand(ctx: TestContex
 
   let m4 = fs.read_text(p"repo/m4/files/m4.xsh")?.replace("#!/bin/xsh", f"#!${xsh.display()}")
   fs.write(fp"${root}/usr/bin/m4", m4)?
-  fs.write(fp"${root}/usr/bin/flex", f"#!${xsh.display()}\nprint \"flex 2.6 fixture\"\n")?
-  fs.write(fp"${root}/usr/bin/bison", f"#!${xsh.display()}\nprint \"GNU Bison fixture\"\n")?
+  fs.write(
+    fp"${root}/usr/bin/flex",
+    f"""#!${xsh.display()}
+print "flex 2.6 fixture"
+""",
+  )?
+  fs.write(
+    fp"${root}/usr/bin/bison",
+    f"""#!${xsh.display()}
+print "GNU Bison fixture"
+""",
+  )?
   for tool in ["m4", "flex", "bison"] {
     fs.chmod(fp"${root}/usr/bin/${tool}", 0o755)?
   }
@@ -57,7 +65,7 @@ proc test_bison_stack_proof_passes_the_generated_m4_file_operand(ctx: TestContex
     process.command_argv(
       xsh,
       [xsh.display(), "repo/bison/proof-stack.xsh", "--", root.display()],
-      stderr: stderr,
+      stderr:,
     ),
   )?
   if ! status.ok {

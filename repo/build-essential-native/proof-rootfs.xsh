@@ -2,10 +2,11 @@
 error ScriptError = Failed(kind: Str, message: Str)
 
 type RootArtifact = {package_name: Str, package_id: Str, artifact_key: Str, payload: Bool}
+
 type RootReceipt = {format: Str, target: Str, artifacts: List[RootArtifact], entries: List[Any], root_sha256: Str}
 
 proc ensure_exists(path_value: Path, label: Str) [fs, error] {
-  if ! fs.exists(path_value)? {
+  guard fs.exists(path_value)? else {
     return Err(ScriptError.Failed("proof-build-essential-native-rootfs", f"missing ${label}: ${path_value.display()}"))?
   }
 }
@@ -15,7 +16,9 @@ proc ensure_runtime_artifacts(rootfs: Path, packages: List[Str]) [fs, error] {
   let receipt = json.read(path_value)?.require(RootReceipt)?
 
   if receipt.format != "laputa-root-1" or receipt.target != "aarch64-linux-musl" {
-    return Err(ScriptError.Failed("proof-build-essential-native-rootfs", f"invalid typed root receipt: ${path_value.display()}"))
+    return Err(
+      ScriptError.Failed("proof-build-essential-native-rootfs", f"invalid typed root receipt: ${path_value.display()}"),
+    )
   }
 
   for package in packages {
@@ -28,12 +31,17 @@ proc ensure_runtime_artifacts(rootfs: Path, packages: List[Str]) [fs, error] {
     }
 
     if ! found {
-      return Err(ScriptError.Failed("proof-build-essential-native-rootfs", f"missing ${package} artifact in typed root receipt: ${path_value.display()}"))
+      return Err(
+        ScriptError.Failed(
+          "proof-build-essential-native-rootfs",
+          f"missing ${package} artifact in typed root receipt: ${path_value.display()}",
+        ),
+      )
     }
   }
 }
 
-proc main(rootfs: Path = /proof-rootfs) [fs, error] {
+proc main(rootfs = /proof-rootfs) [fs, error] {
   for tool in [
     "cc",
     "c++",
@@ -52,18 +60,21 @@ proc main(rootfs: Path = /proof-rootfs) [fs, error] {
 
   # Final roots retain the same verified immutable receipt contract as proof
   # roots; no legacy package-manager database is synthesized for validation.
-  ensure_runtime_artifacts(rootfs, [
-    "llvm-toolchain",
-    "musl",
-    "pkgconf",
-    "samurai",
-    "cmake",
-    "m4",
-    "flex",
-    "bison",
-    "linux",
-    "muon",
-  ])?
+  ensure_runtime_artifacts(
+    rootfs,
+    [
+      "llvm-toolchain",
+      "musl",
+      "pkgconf",
+      "samurai",
+      "cmake",
+      "m4",
+      "flex",
+      "bison",
+      "linux",
+      "muon",
+    ],
+  )?
 
   print "build-essential-native rootfs ok"
 }

@@ -1,5 +1,5 @@
 pure restart_policy() -> Record {
-  return {mode: "always", delay_ms: 1000, max_delay_ms: 30000, stable_after_ms: 10000}
+  {mode: "always", delay_ms: 1000, max_delay_ms: 30000, stable_after_ms: 10000}
 }
 
 pure tailscaled_argv(state: Path, socket: Path, userspace_networking: Bool) -> List[Str] {
@@ -13,15 +13,13 @@ pure tailscaled_argv(state: Path, socket: Path, userspace_networking: Bool) -> L
     "--hardware-attestation=false",
   ]
 
-  if userspace_networking {
-    return argv.push("--tun=userspace-networking")
-  }
+  return argv.push("--tun=userspace-networking") when userspace_networking
 
-  return argv
+  argv
 }
 
 pure tailscale_service(state: Path, socket: Path, userspace_networking: Bool) -> Record {
-  return {
+  {
     name: "tailscaled",
     command: process.command_argv(
       /usr/bin/tailscaled,

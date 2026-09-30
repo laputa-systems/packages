@@ -3,7 +3,7 @@
 error FatToolError = Failed(kind: Str, message: Str)
 
 pure ceil_div(value: Int, divisor: Int) -> Int {
-  return (value + divisor - 1) / divisor
+  (value + divisor - 1) / divisor
 }
 
 proc repeated_byte(value: Int, count: Int) [error] -> Result[Bytes] {
@@ -11,41 +11,35 @@ proc repeated_byte(value: Int, count: Int) [error] -> Result[Bytes] {
   var index = 0
 
   while index < count {
-    items = items.push(value)
+    items += [value]
     index += 1
   }
 
-  return bytes.from_ints(items)?
+  bytes.from_ints(items)?
 }
 
 proc fixed_text(text: Str, width: Int) [error] -> Result[Bytes] {
   let raw = bytes.from_text(text)
 
-  if raw.len() >= width {
-    return raw.slice(offset: 0, length: width)
-  }
+  return raw.slice(offset: 0, length: width) when raw.len() >= width
 
-  return bytes.concat([raw, repeated_byte(32, width - raw.len())?])
+  bytes.concat([raw, repeated_byte(32, width - raw.len())?])
 }
 
 pure total_sectors(size: Int) -> Int {
-  return size / 512
+  size / 512
 }
 
 pure sectors_per_cluster(sectors: Int) -> Int {
-  if sectors < 65536 {
+  guard sectors >= 65536 else {
     return 1
   }
 
-  if sectors < 262144 {
-    return 4
-  }
+  return 4 when sectors < 262144
 
-  if sectors < 524288 {
-    return 8
-  }
+  return 8 when sectors < 524288
 
-  return 16
+  16
 }
 
 proc fat16_sectors(sectors: Int, spc: Int, reserved: Int, fats: Int, root_dir_sectors: Int) [error] -> Int {
@@ -60,7 +54,7 @@ proc fat16_sectors(sectors: Int, spc: Int, reserved: Int, fats: Int, root_dir_se
     fat_sectors = needed
   }
 
-  return fat_sectors
+  fat_sectors
 }
 
 proc boot_sector(label: Str, sectors: Int, spc: Int, fat_sectors: Int, serial: Int) [error] -> Result[Bytes] {
@@ -91,15 +85,13 @@ proc boot_sector(label: Str, sectors: Int, spc: Int, fat_sectors: Int, serial: I
   )
 
   boot = bytes.concat([boot, bytes.zero(510 - boot.len())?, bytes.from_ints([85, 170])?])
-  return boot
+  boot
 }
 
 proc image_size(image: Path) [fs, error] -> Result[Int] {
   let size = image.metadata()?.size
 
-  if size > 0 {
-    return size
-  }
+  return size when size > 0
 
   let sectors_path = fp"/sys/class/block/${image.name}/size"
 
@@ -107,7 +99,7 @@ proc image_size(image: Path) [fs, error] -> Result[Int] {
     return fs.read_text(sectors_path)?.trim().parse_int()? * 512
   }
 
-  return size
+  size
 }
 
 proc format_fat16(image: Path, label: Str) [fs, error] {

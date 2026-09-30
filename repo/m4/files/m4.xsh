@@ -28,7 +28,7 @@ proc read_input_file(filepath: Str) [fs, error] -> Result[Str] {
   # `fp"${...}"` is a literal-path form in the pinned published runner: it
   # resolves a dynamic operand as the current directory. Convert CLI text
   # explicitly so m4 reads the requested file, never its cwd.
-  let input = Path(filepath)
+  let input = fp"${filepath}"
   let metadata = fs.metadata(input)?
 
   if metadata.kind != "file" {
@@ -40,7 +40,7 @@ proc read_input_file(filepath: Str) [fs, error] -> Result[Str] {
 
 pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {
   let re = regex.compile(pattern)?
-  return re.captures(text)
+  re.captures(text)
 }
 
 # ── state helpers ─────────────────────────────────────────────────────────────
@@ -49,26 +49,19 @@ pure sg(st: Map[Str], k: Str, d: Str) -> Str {
 }
 
 pure si(st: Map[Str], k: Str, d: Int) -> Int {
-  return sg(st, k, "").parse_int() ?? d
+  sg(st, k, "").parse_int() ?? d
 }
 
 pure take_char(text: Str) -> Result[TextRest] {
-  match regex_captures(text, "(?s)^(.)(.*)") {
-    Ok(c) => {
-      if c.len() >= 3 {
-        return {content: c[1], rest: c[2]}
-      }
-    }
-    Err(_) => {}
+  if let Ok(c) = regex_captures(text, "(?s)^(.)(.*)") {
+    return {content: c[1], rest: c[2]} when c.len() >= 3
   }
 
-  return {content: "", rest: ""}
+  {content: "", rest: ""}
 }
 
 proc drop_prefix(text: Str, prefix: Str) [error] -> Result[Str] {
-  if prefix == "" {
-    return text
-  }
+  return text when prefix == ""
 
   var remaining_text = text
   var remaining_prefix = prefix
@@ -80,7 +73,7 @@ proc drop_prefix(text: Str, prefix: Str) [error] -> Result[Str] {
     remaining_text = text_char.rest
   }
 
-  return remaining_text
+  remaining_text
 }
 
 proc preview_text(text: Str, limit: Int) [error] -> Result[Str] {
@@ -95,15 +88,15 @@ proc preview_text(text: Str, limit: Int) [error] -> Result[Str] {
     count = count + 1
   }
 
-  return out.replace("\n", "\\n")
+  out.replace("\n", "\\n")
 }
 
 pure repeat_space(count: Int) -> Str {
-  if count <= 0 {
+  guard count > 0 else {
     return ""
   }
 
-  return f" ${repeat_space(count - 1)}"
+  f" ${repeat_space(count - 1)}"
 }
 
 proc take_chars(text: Str, limit: Int) [error] -> Result[Str] {
@@ -118,66 +111,43 @@ proc take_chars(text: Str, limit: Int) [error] -> Result[Str] {
     count = count + 1
   }
 
-  return out
+  out
 }
 
 pure format_field(value: Str, width: Int, left: Bool) -> Str {
   let missing = width - value.count_chars()
 
-  if missing <= 0 {
-    return value
-  }
+  return value when missing <= 0
 
   let pad = repeat_space(missing)
 
-  if left {
-    return f"${value}${pad}"
-  }
+  return f"${value}${pad}" when left
 
-  return f"${pad}${value}"
+  f"${pad}${value}"
 }
 
 proc take_literal_chunk(text: Str, oq: Str, cs: Str) [error] -> Result[TextRest] {
   if cs == "" and oq == "[[" {
-    match regex_captures(text, "(?s)^([^A-Za-z_\\[]+)(.*)") {
-      Ok(c) => {
-        if c.len() >= 3 {
-          return {content: c[1], rest: c[2]}
-        }
-      }
-      Err(_) => {}
+    if let Ok(c) = regex_captures(text, "(?s)^([^A-Za-z_\\[]+)(.*)") {
+      return {content: c[1], rest: c[2]} when c.len() >= 3
     }
   }
 
   if cs == "" and oq == "[" {
-    match regex_captures(text, "(?s)^([^A-Za-z_\\[]+)(.*)") {
-      Ok(c) => {
-        if c.len() >= 3 {
-          return {content: c[1], rest: c[2]}
-        }
-      }
-      Err(_) => {}
+    if let Ok(c) = regex_captures(text, "(?s)^([^A-Za-z_\\[]+)(.*)") {
+      return {content: c[1], rest: c[2]} when c.len() >= 3
     }
   }
 
   if cs == "" and oq == "`" {
-    match regex_captures(text, "(?s)^([^A-Za-z_`]+)(.*)") {
-      Ok(c) => {
-        if c.len() >= 3 {
-          return {content: c[1], rest: c[2]}
-        }
-      }
-      Err(_) => {}
+    if let Ok(c) = regex_captures(text, "(?s)^([^A-Za-z_`]+)(.*)") {
+      return {content: c[1], rest: c[2]} when c.len() >= 3
     }
   }
 
   if cs == "#" and oq == "`" {
     match regex_captures(text, "(?s)^([^A-Za-z_`#]+)(.*)") {
-      Ok(c) => {
-        if c.len() >= 3 {
-          return {content: c[1], rest: c[2]}
-        }
-      }
+      Ok(c) =>       return {content: c[1], rest: c[2]} when c.len() >= 3
       Err(_) => {}
     }
   }
@@ -200,7 +170,7 @@ proc take_literal_chunk(text: Str, oq: Str, cs: Str) [error] -> Result[TextRest]
     cur = ch.rest
   }
 
-  return {content: out, rest: ""}
+  {content: out, rest: ""}
 }
 
 proc take_undefined_tail(text: Str, oq: Str, cs: Str, st: Map[Str]) [error] -> Result[TextRest] {
@@ -212,21 +182,16 @@ proc take_undefined_tail(text: Str, oq: Str, cs: Str, st: Map[Str]) [error] -> R
       return {content: out, rest: cur}
     }
 
-    match regex_captures(cur, "(?s)^([A-Za-z_][A-Za-z0-9_]*)(.*)") {
-      Ok(id) => {
-        if id.len() >= 3 {
-          let word = id[1]
+    if let Ok(id) = regex_captures(cur, "(?s)^([A-Za-z_][A-Za-z0-9_]*)(.*)") {
+      if id.len() >= 3 {
+        let word = id[1]
 
-          if mac_defined(st, word) {
-            return {content: out, rest: cur}
-          }
+        return {content: out, rest: cur} when mac_defined(st, word)
 
-          out = f"${out}${word}"
-          cur = id[2]
-          continue
-        }
+        out = f"${out}${word}"
+        cur = id[2]
+        continue
       }
-      Err(_) => {}
     }
 
     let chunk = take_literal_chunk(cur, oq, cs)?
@@ -241,7 +206,7 @@ proc take_undefined_tail(text: Str, oq: Str, cs: Str, st: Map[Str]) [error] -> R
     }
   }
 
-  return {content: out, rest: ""}
+  {content: out, rest: ""}
 }
 
 # Emit text to the current diversion (or discard if cur_div == "-1").
@@ -249,44 +214,44 @@ pure emit(chunk: Str, st: Map[Str]) -> Map[Str] {
   let cd = sg(st, "cur_div", "0")
 
   if cd == "-1" or chunk == "" {
-    return st
+    st
   } else {
     let k = f"div:${cd}"
     let prev = sg(st, k, "")
-    return st.set(k, f"${prev}${chunk}")
+    st.set(k, f"${prev}${chunk}")
   }
 }
 
 pure mac_get(st: Map[Str], name: Str) -> Str {
-  return sg(st, f"mac:${name}", "")
+  sg(st, f"mac:${name}", "")
 }
 
 pure mac_exists(st: Map[Str], name: Str) -> Bool {
-  return st.has(f"mac:${name}")
+  st.has(f"mac:${name}")
 }
 
 pure mac_set(st: Map[Str], name: Str, body: Str) -> Map[Str] {
-  return st.set(f"mac:${name}", body)
+  st.set(f"mac:${name}", body)
 }
 
 pure mac_unset(st: Map[Str], name: Str) -> Map[Str] {
   # XSH Map has no delete; overwrite with sentinel that mac_exists filters.
-  return st.set(f"mac:${name}", "\0UNDEF\0")
+  st.set(f"mac:${name}", "\0UNDEF\0")
 }
 
 pure mac_defined(st: Map[Str], name: Str) -> Bool {
-  if ! mac_exists(st, name) {
+  guard mac_exists(st, name) else {
     return false
   }
 
-  return mac_get(st, name) != "\0UNDEF\0"
+  mac_get(st, name) != "\0UNDEF\0"
 }
 
 # ── tokenizer ─────────────────────────────────────────────────────────────────
 # Collect balanced quote delimiters starting at rem.
 # Returns Map with "content" and "rest".
 proc collect_quoted(rem: Str, oq: Str, cq: Str) [error] -> Result[TextRest] {
-  if ! rem.starts_with(oq) {
+  guard rem.starts_with(oq) else {
     return Err(ScriptError.Failed("m4", f"expected ${oq}"))
   }
 
@@ -298,38 +263,30 @@ proc collect_quoted(rem: Str, oq: Str, cq: Str) [error] -> Result[TextRest] {
     if cq != "" and cur.starts_with(cq) {
       depth = depth - 1
 
-      if depth == 0 {
-        return {content: content_parts.join(""), rest: drop_prefix(cur, cq)?}
-      }
+      return {content: content_parts.join(""), rest: drop_prefix(cur, cq)?} when depth == 0
 
-      content_parts = content_parts.push(cq)
+      content_parts += [cq]
       cur = drop_prefix(cur, cq)?
     } else if oq != "" and cur.starts_with(oq) {
       depth = depth + 1
-      content_parts = content_parts.push(oq)
+      content_parts += [oq]
       cur = drop_prefix(cur, oq)?
     } else {
       if oq == "[[" or oq == "[" {
-        match regex_captures(cur, "(?s)^([^\\[\\]]+)(.*)") {
-          Ok(c) => {
-            if c.len() >= 3 {
-              content_parts = content_parts.push(c[1])
-              cur = c[2]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^([^\\[\\]]+)(.*)") {
+          if c.len() >= 3 {
+            content_parts = content_parts.push(c[1])
+            cur = c[2]
+            continue
           }
-          Err(_) => {}
         }
       } else if oq == "`" and cq == "'" {
-        match regex_captures(cur, "(?s)^([^`']+)(.*)") {
-          Ok(c) => {
-            if c.len() >= 3 {
-              content_parts = content_parts.push(c[1])
-              cur = c[2]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^([^`']+)(.*)") {
+          if c.len() >= 3 {
+            content_parts = content_parts.push(c[1])
+            cur = c[2]
+            continue
           }
-          Err(_) => {}
         }
       }
 
@@ -347,9 +304,8 @@ proc collect_quoted(rem: Str, oq: Str, cq: Str) [error] -> Result[TextRest] {
 proc collect_args_raw(rem: Str, oq: Str, cq: Str) [error] -> Result[RawRest] {
   var cur = rem
 
-  match regex_captures(cur, "(?s)^\\((.*)") {
-    Ok(c) => cur = if c.len() >= 2 { c[1] } else { "" }
-    Err(_) => {}
+  if let Ok(c) = regex_captures(cur, "(?s)^\\((.*)") {
+    cur = if c.len() >= 2 { c[1] } else { "" }
   }
 
   var pdepth = 1
@@ -359,85 +315,76 @@ proc collect_args_raw(rem: Str, oq: Str, cq: Str) [error] -> Result[RawRest] {
   while cur != "" {
     if qdepth == 0 and cur.starts_with("(") {
       pdepth = pdepth + 1
-      raw_parts = raw_parts.push("(")
+      raw_parts += ["("]
 
-      match regex_captures(cur, "(?s)^.(.*)") {
-        Ok(c) => cur = if c.len() >= 2 { c[1] } else { "" }
-        Err(_) => cur = ""
+      if let Ok(c) = regex_captures(cur, "(?s)^.(.*)") {
+        cur = if c.len() >= 2 { c[1] } else { "" }
+      } else {
+        cur = ""
       }
     } else if qdepth == 0 and cur.starts_with(")") {
       pdepth = pdepth - 1
 
       if pdepth == 0 {
-        match regex_captures(cur, "(?s)^.(.*)") {
-          Ok(c) => cur = if c.len() >= 2 { c[1] } else { "" }
-          Err(_) => cur = ""
+        if let Ok(c) = regex_captures(cur, "(?s)^.(.*)") {
+          cur = if c.len() >= 2 { c[1] } else { "" }
+        } else {
+          cur = ""
         }
 
         return {raw: raw_parts.join(""), rest: cur}
       }
 
-      raw_parts = raw_parts.push(")")
+      raw_parts += [")"]
 
-      match regex_captures(cur, "(?s)^.(.*)") {
-        Ok(c) => cur = if c.len() >= 2 { c[1] } else { "" }
-        Err(_) => cur = ""
+      if let Ok(c) = regex_captures(cur, "(?s)^.(.*)") {
+        cur = if c.len() >= 2 { c[1] } else { "" }
+      } else {
+        cur = ""
       }
     } else if oq != "" and cur.starts_with(oq) {
       qdepth = qdepth + 1
-      raw_parts = raw_parts.push(oq)
+      raw_parts += [oq]
       cur = drop_prefix(cur, oq)?
     } else if cq != "" and cur.starts_with(cq) {
       if qdepth > 0 {
         qdepth = qdepth - 1
       }
 
-      raw_parts = raw_parts.push(cq)
+      raw_parts += [cq]
       cur = drop_prefix(cur, cq)?
     } else {
       if qdepth > 0 and (oq == "[[" or oq == "[") {
-        match regex_captures(cur, "(?s)^([^\\[\\]]+)(.*)") {
-          Ok(c) => {
-            if c.len() >= 3 {
-              raw_parts = raw_parts.push(c[1])
-              cur = c[2]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^([^\\[\\]]+)(.*)") {
+          if c.len() >= 3 {
+            raw_parts = raw_parts.push(c[1])
+            cur = c[2]
+            continue
           }
-          Err(_) => {}
         }
       } else if oq == "[[" or oq == "[" {
-        match regex_captures(cur, "(?s)^([^()\\[\\]]+)(.*)") {
-          Ok(c) => {
-            if c.len() >= 3 {
-              raw_parts = raw_parts.push(c[1])
-              cur = c[2]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^([^()\\[\\]]+)(.*)") {
+          if c.len() >= 3 {
+            raw_parts = raw_parts.push(c[1])
+            cur = c[2]
+            continue
           }
-          Err(_) => {}
         }
       } else if qdepth > 0 and oq == "`" and cq == "'" {
-        match regex_captures(cur, "(?s)^([^`']+)(.*)") {
-          Ok(c) => {
-            if c.len() >= 3 {
-              raw_parts = raw_parts.push(c[1])
-              cur = c[2]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^([^`']+)(.*)") {
+          if c.len() >= 3 {
+            raw_parts = raw_parts.push(c[1])
+            cur = c[2]
+            continue
           }
-          Err(_) => {}
         }
       } else if oq == "`" and cq == "'" {
-        match regex_captures(cur, "(?s)^([^()`']+)(.*)") {
-          Ok(c) => {
-            if c.len() >= 3 {
-              raw_parts = raw_parts.push(c[1])
-              cur = c[2]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^([^()`']+)(.*)") {
+          if c.len() >= 3 {
+            raw_parts = raw_parts.push(c[1])
+            cur = c[2]
+            continue
           }
-          Err(_) => {}
         }
       }
 
@@ -461,86 +408,77 @@ proc split_args(raw: Str, oq: Str, cq: Str) [error] -> Result[List[Str]] {
   while cur != "" {
     if oq != "" and cur.starts_with(oq) {
       qdepth = qdepth + 1
-      cur_arg_parts = cur_arg_parts.push(oq)
+      cur_arg_parts += [oq]
       cur = drop_prefix(cur, oq)?
     } else if cq != "" and cur.starts_with(cq) {
       if qdepth > 0 {
         qdepth = qdepth - 1
       }
 
-      cur_arg_parts = cur_arg_parts.push(cq)
+      cur_arg_parts += [cq]
       cur = drop_prefix(cur, cq)?
     } else if qdepth == 0 and cur.starts_with("(") {
       pdepth = pdepth + 1
-      cur_arg_parts = cur_arg_parts.push("(")
+      cur_arg_parts += ["("]
 
-      match regex_captures(cur, "(?s)^.(.*)") {
-        Ok(c) => cur = if c.len() >= 2 { c[1] } else { "" }
-        Err(_) => cur = ""
+      if let Ok(c) = regex_captures(cur, "(?s)^.(.*)") {
+        cur = if c.len() >= 2 { c[1] } else { "" }
+      } else {
+        cur = ""
       }
     } else if qdepth == 0 and cur.starts_with(")") {
       if pdepth > 0 {
         pdepth = pdepth - 1
       }
 
-      cur_arg_parts = cur_arg_parts.push(")")
+      cur_arg_parts += [")"]
 
-      match regex_captures(cur, "(?s)^.(.*)") {
-        Ok(c) => cur = if c.len() >= 2 { c[1] } else { "" }
-        Err(_) => cur = ""
+      if let Ok(c) = regex_captures(cur, "(?s)^.(.*)") {
+        cur = if c.len() >= 2 { c[1] } else { "" }
+      } else {
+        cur = ""
       }
     } else if qdepth == 0 and pdepth == 0 and cur.starts_with(",") {
       margs = margs.push(cur_arg_parts.join(""))
       cur_arg_parts = []
 
-      match regex_captures(cur, "(?s)^.(.*)") {
-        Ok(c) => cur = if c.len() >= 2 { c[1] } else { "" }
-        Err(_) => cur = ""
+      if let Ok(c) = regex_captures(cur, "(?s)^.(.*)") {
+        cur = if c.len() >= 2 { c[1] } else { "" }
+      } else {
+        cur = ""
       }
     } else {
       if qdepth > 0 and (oq == "[[" or oq == "[") {
-        match regex_captures(cur, "(?s)^([^\\[\\]]+)(.*)") {
-          Ok(c) => {
-            if c.len() >= 3 {
-              cur_arg_parts = cur_arg_parts.push(c[1])
-              cur = c[2]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^([^\\[\\]]+)(.*)") {
+          if c.len() >= 3 {
+            cur_arg_parts = cur_arg_parts.push(c[1])
+            cur = c[2]
+            continue
           }
-          Err(_) => {}
         }
       } else if oq == "[[" or oq == "[" {
-        match regex_captures(cur, "(?s)^([^(),\\[\\]]+)(.*)") {
-          Ok(c) => {
-            if c.len() >= 3 {
-              cur_arg_parts = cur_arg_parts.push(c[1])
-              cur = c[2]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^([^(),\\[\\]]+)(.*)") {
+          if c.len() >= 3 {
+            cur_arg_parts = cur_arg_parts.push(c[1])
+            cur = c[2]
+            continue
           }
-          Err(_) => {}
         }
       } else if qdepth > 0 and oq == "`" and cq == "'" {
-        match regex_captures(cur, "(?s)^([^`']+)(.*)") {
-          Ok(c) => {
-            if c.len() >= 3 {
-              cur_arg_parts = cur_arg_parts.push(c[1])
-              cur = c[2]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^([^`']+)(.*)") {
+          if c.len() >= 3 {
+            cur_arg_parts = cur_arg_parts.push(c[1])
+            cur = c[2]
+            continue
           }
-          Err(_) => {}
         }
       } else if oq == "`" and cq == "'" {
-        match regex_captures(cur, "(?s)^([^(),`']+)(.*)") {
-          Ok(c) => {
-            if c.len() >= 3 {
-              cur_arg_parts = cur_arg_parts.push(c[1])
-              cur = c[2]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^([^(),`']+)(.*)") {
+          if c.len() >= 3 {
+            cur_arg_parts = cur_arg_parts.push(c[1])
+            cur = c[2]
+            continue
           }
-          Err(_) => {}
         }
       }
 
@@ -573,7 +511,7 @@ proc subst_args(body: Str, name: Str, margs: List[Str], oq: Str, cq: Str) [error
 
   for arg in margs {
     if oq == "" or cq == "" {
-      quoted = quoted.push(arg)
+      quoted += [arg]
     } else {
       quoted = quoted.push(f"${oq}${oq}${arg}${cq}${cq}")
     }
@@ -581,7 +519,7 @@ proc subst_args(body: Str, name: Str, margs: List[Str], oq: Str, cq: Str) [error
 
   r = r.replace("$@", quoted.join(","))
   r = r.replace("$*", all)
-  return r
+  r
 }
 
 pure basic_regex_to_rust(pattern: Str) -> Str {
@@ -591,7 +529,7 @@ pure basic_regex_to_rust(pattern: Str) -> Str {
   let plus = alternation.replace("\\+", "+")
   let question = plus.replace("\\?", "?")
   let braces_open = question.replace("\\{", "{")
-  return braces_open.replace("\\}", "}")
+  braces_open.replace("\\}", "}")
 }
 
 proc basic_replacement_to_rust(replacement: Str) [error] -> Result[Str] {
@@ -605,40 +543,31 @@ proc basic_replacement_to_rust(replacement: Str) [error] -> Result[Str] {
     i = i + 1
   }
 
-  return r
+  r
 }
 
 pure normalize_builtin_name(name: Str) -> Str {
-  if name.starts_with("m4_") {
-    return name.replace("m4_", "")
-  }
+  return name.replace("m4_", "") when name.starts_with("m4_")
 
-  return name
+  name
 }
 
 pure builtin_target_name(word: Str, body: Str) -> Str {
-  if body.starts_with("BUILTIN:") {
-    return body.replace("BUILTIN:", "")
-  }
+  return body.replace("BUILTIN:", "") when body.starts_with("BUILTIN:")
 
-  return normalize_builtin_name(word)
+  normalize_builtin_name(word)
 }
 
 pure strip_outer_square_quote(text: Str) -> Str {
-  match regex_captures(text, "(?s)^\\[(.*)\\]$") {
-    Ok(c) => {
-      if c.len() >= 2 {
-        return c[1]
-      }
-    }
-    Err(_) => {}
+  if let Ok(c) = regex_captures(text, "(?s)^\\[(.*)\\]$") {
+    return c[1] when c.len() >= 2
   }
 
-  return text
+  text
 }
 
 pure strip_outer_square_quotes(text: Str) -> Str {
-  return strip_outer_square_quote(strip_outer_square_quote(strip_outer_square_quote(text)))
+  strip_outer_square_quote(strip_outer_square_quote(strip_outer_square_quote(text)))
 }
 
 pure b4_percent_value(st: Map[Str], varname: Str, fallback: Str) -> Str {
@@ -646,55 +575,37 @@ pure b4_percent_value(st: Map[Str], varname: Str, fallback: Str) -> Str {
     return strip_outer_square_quotes(mac_get(st, f"b4_percent_define(${varname})"))
   }
 
-  return fallback
+  fallback
 }
 
 pure b4_symbol_field_raw(st: Map[Str], num: Str, field: Str) -> Str {
   let key = f"b4_symbol(${num}, ${field})"
 
-  if mac_defined(st, key) {
-    return strip_outer_square_quotes(mac_get(st, key))
-  }
+  return strip_outer_square_quotes(mac_get(st, key)) when mac_defined(st, key)
 
-  return ""
+  ""
 }
 
 pure b4_symbol_id_name(st: Map[Str], num: Str) -> Str {
-  if num == "0" {
-    return "YYEOF"
-  }
+  return "YYEOF" when num == "0"
 
-  if num == "1" {
-    return "YYerror"
-  }
+  return "YYerror" when num == "1"
 
-  if num == "2" {
-    return "YYUNDEF"
-  }
+  return "YYUNDEF" when num == "2"
 
   let id = b4_symbol_field_raw(st, num, "id")
 
-  if id != "" {
-    return id
-  }
+  return id when id != ""
 
   let raw_tag = b4_symbol_field_raw(st, num, "tag")
 
-  if raw_tag == "'\\n'" {
-    return "n"
-  }
+  return "n" when raw_tag == "'\\n'"
 
-  if raw_tag == "';'" {
-    return "SEMICOLON"
-  }
+  return "SEMICOLON" when raw_tag == "';'"
 
-  if raw_tag == "'{'" {
-    return "LBRACE"
-  }
+  return "LBRACE" when raw_tag == "'{'"
 
-  if raw_tag == "'}'" {
-    return "RBRACE"
-  }
+  return "RBRACE" when raw_tag == "'}'"
 
   let tag = raw_tag.replace("\"", "")
     .replace("'", "")
@@ -708,83 +619,80 @@ pure b4_symbol_id_name(st: Map[Str], num: Str) -> Str {
     .replace("}", "_")
     .replace(";", "_")
 
-  if tag == "" {
-    return f"symbol_${num}"
-  }
+  return f"symbol_${num}" when tag == ""
 
-  return tag
+  tag
 }
 
 pure b4_symbol_kind_base(st: Map[Str], num: Str) -> Str {
   let prefix = b4_percent_value(st, "api.symbol.prefix", "YYSYMBOL_")
 
-  if num == "-2" {
-    return f"${prefix}YYEMPTY"
-  }
+  return f"${prefix}YYEMPTY" when num == "-2"
 
-  return f"${prefix}${b4_symbol_id_name(st, num)}"
+  f"${prefix}${b4_symbol_id_name(st, num)}"
 }
 
 pure b4_symbol_lookup(st: Map[Str], num: Str, field: Str) -> Str {
   let n = if num == "empty" {
     "-2"
   } else {
-    if num == "eof" { "0" } else { if num == "error" { "1" } else { if num == "undef" { "2" } else { num } } }
+    if num == "eof" {
+      "0"
+    } else {
+      if num == "error" {
+        "1"
+      } else {
+        if num == "undef" {
+          "2"
+        } else {
+          num
+        }
+      }
+    }
   }
 
   if n.starts_with("orig ") and field != "number" {
     let mapped = b4_symbol_field_raw(st, n, "number")
 
-    if mapped != "" {
-      return b4_symbol_lookup(st, mapped, field)
-    }
+    return b4_symbol_lookup(st, mapped, field) when mapped != ""
   }
 
-  if field == "kind_base" or field == "kind" {
-    return b4_symbol_kind_base(st, n)
-  }
+  return b4_symbol_kind_base(st, n) when field == "kind_base" or field == "kind"
 
-  if field == "id" {
-    return b4_symbol_id_name(st, n)
-  }
+  return b4_symbol_id_name(st, n) when field == "id"
 
-  if field == "slot" {
-    return b4_symbol_field_raw(st, n, "type")
-  }
+  return b4_symbol_field_raw(st, n, "type") when field == "slot"
 
-  return b4_symbol_field_raw(st, n, field)
+  b4_symbol_field_raw(st, n, field)
 }
 
 pure b4_comment_text(text: Str) -> Str {
   let body = text.replace("/*", "/ *").replace("*/", "* /").replace("[", "").replace("]", "")
-  return f"/* ${body} */"
+  f"/* ${body} */"
 }
 
 pure b4_parse_error_kind(st: Map[Str]) -> Str {
-  return b4_percent_value(st, "parse.error", "simple")
+  b4_percent_value(st, "parse.error", "simple")
 }
 
 proc b4_pattern_matches(pattern: Str, value: Str) [error] -> Bool {
   var rest = pattern
 
   while rest != "" {
-    match regex_captures(rest, "(?s)^([^|]*)(\\|)?(.*)$") {
-      Ok(c) => {
-        if c.len() >= 4 {
-          if c[1] == value {
-            return true
-          }
+    if let Ok(c) = regex_captures(rest, "(?s)^([^|]*)(\\|)?(.*)$") {
+      if c.len() >= 4 {
+        return true when c[1] == value
 
-          rest = c[3]
-        } else {
-          rest = ""
-        }
+        rest = c[3]
+      } else {
+        rest = ""
       }
-      Err(_) => rest = ""
+    } else {
+      rest = ""
     }
   }
 
-  return false
+  false
 }
 
 proc b4_declare_symbol_enum_text(st: Map[Str]) [error] -> Result[Str] {
@@ -814,7 +722,7 @@ enum yysymbol_kind_t
     i = i + 1
   }
 
-  return f"""${out}};
+  f"""${out}};
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 """
 }
@@ -856,7 +764,7 @@ enum yytokentype
     i = i + 1
   }
 
-  return f"""${out}
+  f"""${out}
 };
 typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -876,11 +784,11 @@ proc copy_macro(st: Map[Str], src: Str, dst: Str) [error] -> Result[Map[Str]] {
     i = i + 1
   }
 
-  return s2
+  s2
 }
 
 pure native_sugar_builtin(name: Str) -> Bool {
-  return name == "m4_case" or name == "m4_bmatch" or name == "m4_copy" or name == "m4_copy_force" or name == "m4_rename" or name == "m4_rename_force" or name == "m4_define_default" or name == "m4_for" or name == "b4_define_silent" or name == "b4_divert_kill" or name == "b4_value_type_setup" or name == "b4_value_type_define" or name == "b4_token_enums" or name == "b4_token_enums_defines" or name == "b4_declare_symbol_enum" or name == "b4_symbol" or name == "_b4_symbol" or name == "__b4_symbol" or name == "b4_symbol_value" or name == "b4_lhs_value" or name == "b4_rhs_value" or name == "b4_symbol_if" or name == "b4_symbol_tag_comment" or name == "b4_header_if" or name == "b4_locations_if" or name == "b4_user_formals" or name == "b4_parse_error_case" or name == "b4_parse_error_bmatch" or name == "b4_define_flag_if" or name == "_b4_define_flag_if" or name == "b4_flag_if" or name == "b4_percent_define_default" or name == "b4_percent_define_flag_if" or name == "b4_percent_define_if_define" or name == "b4_percent_define_use" or name == "b4_percent_define_get" or name == "b4_percent_define_get_kind" or name == "b4_percent_define_get_loc" or name == "b4_percent_define_get_syncline" or name == "b4_percent_define_check_values" or name == "_b4_percent_define_check_values" or name == "b4_percent_define_check_kind" or name == "b4_percent_define_check_file" or name == "b4_percent_define_check_file_complain" or name == "_b4_percent_define_ifdef" or name == "b4_percent_define_ifdef"
+  name == "m4_case" or name == "m4_bmatch" or name == "m4_copy" or name == "m4_copy_force" or name == "m4_rename" or name == "m4_rename_force" or name == "m4_define_default" or name == "m4_for" or name == "b4_define_silent" or name == "b4_divert_kill" or name == "b4_value_type_setup" or name == "b4_value_type_define" or name == "b4_token_enums" or name == "b4_token_enums_defines" or name == "b4_declare_symbol_enum" or name == "b4_symbol" or name == "_b4_symbol" or name == "__b4_symbol" or name == "b4_symbol_value" or name == "b4_lhs_value" or name == "b4_rhs_value" or name == "b4_symbol_if" or name == "b4_symbol_tag_comment" or name == "b4_header_if" or name == "b4_locations_if" or name == "b4_user_formals" or name == "b4_parse_error_case" or name == "b4_parse_error_bmatch" or name == "b4_define_flag_if" or name == "_b4_define_flag_if" or name == "b4_flag_if" or name == "b4_percent_define_default" or name == "b4_percent_define_flag_if" or name == "b4_percent_define_if_define" or name == "b4_percent_define_use" or name == "b4_percent_define_get" or name == "b4_percent_define_get_kind" or name == "b4_percent_define_get_loc" or name == "b4_percent_define_get_syncline" or name == "b4_percent_define_check_values" or name == "_b4_percent_define_check_values" or name == "b4_percent_define_check_kind" or name == "b4_percent_define_check_file" or name == "b4_percent_define_check_file_complain" or name == "_b4_percent_define_ifdef" or name == "b4_percent_define_ifdef"
 }
 
 # ── built-ins ─────────────────────────────────────────────────────────────────
@@ -950,9 +858,7 @@ proc call_builtin(name: Str, margs: List[Str], st: Map[Str]) [fs, process, env, 
   if name == "m4_define_default" {
     let n = if margs.len() >= 1 { margs[0] } else { "" }
 
-    if mac_defined(st, n) {
-      return {text: "", st}
-    }
+    return {text: "", st} when mac_defined(st, n)
 
     let b = if margs.len() >= 2 { margs[1] } else { "" }
     return {text: "", st: mac_set(st, n, b)}
@@ -963,7 +869,15 @@ proc call_builtin(name: Str, margs: List[Str], st: Map[Str]) [fs, process, env, 
     let first = (if margs.len() >= 2 { margs[1] } else { "0" }).trim().parse_int()?
     let last = (if margs.len() >= 3 { margs[2] } else { "0" }).trim().parse_int()?
     let step_text = if margs.len() >= 4 { margs[3].trim() } else { "" }
-    let step = if step_text != "" { step_text.parse_int()? } else { if last >= first { 1 } else { -1 } }
+    let step = if step_text != "" {
+      step_text.parse_int()?
+    } else {
+      if last >= first {
+        1
+      } else {
+        -1
+      }
+    }
     let body = if margs.len() >= 5 { margs[4] } else { "" }
     var s2 = st
     var out = ""
@@ -995,18 +909,14 @@ proc call_builtin(name: Str, margs: List[Str], st: Map[Str]) [fs, process, env, 
     return {text: "", st: if n != "" { mac_set(st, n, b) } else { st }}
   }
 
-  if name == "b4_divert_kill" {
-    return {text: "", st}
-  }
+  return {text: "", st} when name == "b4_divert_kill"
 
   if name == "m4_case" {
     let value = if margs.len() >= 1 { margs[0] } else { "" }
     var i = 1
 
     while i + 1 < margs.len() {
-      if value == margs[i] {
-        return {text: margs[i + 1], st}
-      }
+      return {text: margs[i + 1], st} when value == margs[i]
 
       i = i + 2
     }
@@ -1125,9 +1035,7 @@ typedef ${kind_type} YYSTYPE;
     let num = if margs.len() >= 2 { strip_outer_square_quotes(margs[1]) } else { "" }
     let explicit_type = if margs.len() >= 3 { strip_outer_square_quotes(margs[2]) } else { "" }
 
-    if explicit_type != "" {
-      return {text: f"(${value}.${explicit_type})", st}
-    }
+    return {text: f"(${value}.${explicit_type})", st} when explicit_type != ""
 
     if num != "" and b4_symbol_lookup(st, num, "has_type") == "1" {
       let type_name = b4_symbol_lookup(st, num, "type")
@@ -1179,9 +1087,7 @@ typedef ${kind_type} YYSTYPE;
     return {text: if flag == "true" or flag == "1" { yes } else { no }, st}
   }
 
-  if name == "b4_user_formals" {
-    return {text: "", st}
-  }
+  return {text: "", st} when name == "b4_user_formals"
 
   if name == "b4_parse_error_case" {
     let current = b4_parse_error_kind(st)
@@ -1213,9 +1119,7 @@ typedef ${kind_type} YYSTYPE;
     while i + 1 < margs.len() {
       let pattern = strip_outer_square_quotes(margs[i])
 
-      if b4_pattern_matches(pattern, current) {
-        return {text: margs[i + 1], st}
-      }
+      return {text: margs[i + 1], st} when b4_pattern_matches(pattern, current)
 
       i = i + 2
     }
@@ -1226,9 +1130,17 @@ typedef ${kind_type} YYSTYPE;
   if name == "b4_define_flag_if" or name == "_b4_define_flag_if" {
     let flag = strip_outer_square_quotes(
       if name == "b4_define_flag_if" {
-        if margs.len() >= 1 { margs[0] } else { "" }
+        if margs.len() >= 1 {
+          margs[0]
+        } else {
+          ""
+        }
       } else {
-        if margs.len() >= 3 { margs[2] } else { "" }
+        if margs.len() >= 3 {
+          margs[2]
+        } else {
+          ""
+        }
       },
     )
 
@@ -1256,13 +1168,9 @@ typedef ${kind_type} YYSTYPE;
   if name == "b4_percent_define_default" {
     let varname = strip_outer_square_quotes(if margs.len() >= 1 { margs[0] } else { "" })
 
-    if varname == "api.header.include" {
-      return {text: "", st}
-    }
+    return {text: "", st} when varname == "api.header.include"
 
-    if mac_defined(st, f"b4_percent_define(${varname})") {
-      return {text: "", st}
-    }
+    return {text: "", st} when mac_defined(st, f"b4_percent_define(${varname})")
 
     let value = strip_outer_square_quotes(if margs.len() >= 2 { margs[1] } else { "" })
     let kind = strip_outer_square_quotes(if margs.len() >= 3 and margs[2] != "" { margs[2] } else { "keyword" })
@@ -1465,13 +1373,19 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
     return {text: "", st: s2}
   }
 
-  if name == "divnum" {
-    return {text: sg(st, "cur_div", "0"), st}
-  }
+  return {text: sg(st, "cur_div", "0"), st} when name == "divnum"
 
   if name == "changequote" {
     let no = if margs.len() >= 1 { margs[0] } else { "`" }
-    let nc = if no == "" { "" } else { if margs.len() >= 2 { margs[1] } else { "'" } }
+    let nc = if no == "" {
+      ""
+    } else {
+      if margs.len() >= 2 {
+        margs[1]
+      } else {
+        "'"
+      }
+    }
     let s2 = st.set("open_q", no).set("close_q", nc)
     return {text: "", st: s2}
   }
@@ -1487,12 +1401,11 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
     var r = s
 
     while r != "" {
-      match regex_captures(r, "(?s)^(.)(.*)") {
-        Ok(c) => {
-          count = count + 1
-          r = c[2]
-        }
-        Err(_) => r = ""
+      if let Ok(c) = regex_captures(r, "(?s)^(.)(.*)") {
+        count = count + 1
+        r = c[2]
+      } else {
+        r = ""
       }
     }
 
@@ -1506,12 +1419,11 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
     var r = s
 
     while r != "" {
-      match regex_captures(r, "(?s)^(.)(.*)") {
-        Ok(c) => {
-          chars = chars.push(c[1])
-          r = c[2]
-        }
-        Err(_) => r = ""
+      if let Ok(c) = regex_captures(r, "(?s)^(.)(.*)") {
+        chars = chars.push(c[1])
+        r = c[2]
+      } else {
+        r = ""
       }
     }
 
@@ -1540,12 +1452,11 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
       if r.starts_with(ndl) {
         pos = p
       } else {
-        match regex_captures(r, "(?s)^(.)(.*)") {
-          Ok(c) => {
-            p = p + 1
-            r = c[2]
-          }
-          Err(_) => r = ""
+        if let Ok(c) = regex_captures(r, "(?s)^(.)(.*)") {
+          p = p + 1
+          r = c[2]
+        } else {
+          r = ""
         }
       }
     }
@@ -1562,24 +1473,22 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
     var tmp = frm
 
     while tmp != "" {
-      match regex_captures(tmp, "(?s)^(.)(.*)") {
-        Ok(c) => {
-          from_ch = from_ch.push(c[1])
-          tmp = c[2]
-        }
-        Err(_) => tmp = ""
+      if let Ok(c) = regex_captures(tmp, "(?s)^(.)(.*)") {
+        from_ch = from_ch.push(c[1])
+        tmp = c[2]
+      } else {
+        tmp = ""
       }
     }
 
     tmp = too
 
     while tmp != "" {
-      match regex_captures(tmp, "(?s)^(.)(.*)") {
-        Ok(c) => {
-          to_ch = to_ch.push(c[1])
-          tmp = c[2]
-        }
-        Err(_) => tmp = ""
+      if let Ok(c) = regex_captures(tmp, "(?s)^(.)(.*)") {
+        to_ch = to_ch.push(c[1])
+        tmp = c[2]
+      } else {
+        tmp = ""
       }
     }
 
@@ -1587,28 +1496,27 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
     var cur = s
 
     while cur != "" {
-      match regex_captures(cur, "(?s)^(.)(.*)") {
-        Ok(c) => {
-          let ch = c[1]
-          cur = c[2]
-          var fi = 0
-          var found_i = -1
+      if let Ok(c) = regex_captures(cur, "(?s)^(.)(.*)") {
+        let ch = c[1]
+        cur = c[2]
+        var fi = 0
+        var found_i = -1
 
-          while fi < from_ch.len() and found_i == -1 {
-            if from_ch[fi] == ch {
-              found_i = fi
-            }
-
-            fi = fi + 1
+        while fi < from_ch.len() and found_i == -1 {
+          if from_ch[fi] == ch {
+            found_i = fi
           }
 
-          if found_i >= 0 and found_i < to_ch.len() {
-            result = f"${result}${to_ch[found_i]}"
-          } else if found_i < 0 {
-            result = f"${result}${ch}"
-          }
+          fi = fi + 1
         }
-        Err(_) => cur = ""
+
+        if found_i >= 0 and found_i < to_ch.len() {
+          result = f"${result}${to_ch[found_i]}"
+        } else if found_i < 0 {
+          result = f"${result}${ch}"
+        }
+      } else {
+        cur = ""
       }
     }
 
@@ -1621,9 +1529,7 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
     let pat = if margs.len() >= 2 { margs[1] } else { "" }
     let repl = if margs.len() >= 3 { margs[2] } else { "" }
 
-    if pat == "" {
-      return {text: s, st}
-    }
+    return {text: s, st} when pat == ""
 
     let re = regex.compile(basic_regex_to_rust(pat))?
     return {text: re.replace(s, basic_replacement_to_rust(repl)?), st}
@@ -1641,23 +1547,22 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
         Err(_) => return {text: "", st}
       }
 
-      match regex_captures(s, pat) {
-        Ok(c) => {
-          var t = repl
-          t = t.replace("\\&", c[0])
-          var ri = 1
+      if let Ok(c) = regex_captures(s, pat) {
+        var t = repl
+        t = t.replace("\\&", c[0])
+        var ri = 1
 
-          while ri <= 9 {
-            if ri < c.len() {
-              t = t.replace(f"\\${ri}", c[ri])
-            }
-
-            ri = ri + 1
+        while ri <= 9 {
+          if ri < c.len() {
+            t = t.replace(f"\\${ri}", c[ri])
           }
 
-          return {text: t, st}
+          ri = ri + 1
         }
-        Err(_) => return {text: "", st}
+
+        return {text: t, st}
+      } else {
+        return {text: "", st}
       }
     } else {
       let anchored_pat = f"(?s)^${pat}"
@@ -1676,12 +1581,11 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
         match regex_captures(r, anchored_pat) {
           Ok(_) => pos = p
           Err(_) => {
-            match regex_captures(r, "(?s)^(.)(.*)") {
-              Ok(c) => {
-                p = p + 1
-                r = c[2]
-              }
-              Err(_) => r = ""
+            if let Ok(c) = regex_captures(r, "(?s)^(.)(.*)") {
+              p = p + 1
+              r = c[2]
+            } else {
+              r = ""
             }
           }
         }
@@ -1707,42 +1611,33 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
         ai = ai + 2
         cur = drop_prefix(drop_prefix(drop_prefix(drop_prefix(cur, "%")?, ".")?, "*")?, "s")?
       } else {
-        match regex_captures(cur, "(?s)^%(-?)(\\*)s(.*)") {
-          Ok(c) => {
-            if c.len() >= 4 and ai + 1 < margs.len() {
-              let width = margs[ai].trim().parse_int()?
-              result = f"${result}${format_field(margs[ai + 1], width, c[1] == "-")}"
-              ai = ai + 2
-              cur = c[3]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^%(-?)(\\*)s(.*)") {
+          if c.len() >= 4 and ai + 1 < margs.len() {
+            let width = margs[ai].trim().parse_int()?
+            result = f"${result}${format_field(margs[ai + 1], width, c[1] == "-")}"
+            ai = ai + 2
+            cur = c[3]
+            continue
           }
-          Err(_) => {}
         }
 
-        match regex_captures(cur, "(?s)^%(-?)([0-9]+)s(.*)") {
-          Ok(c) => {
-            if c.len() >= 4 and ai < margs.len() {
-              let width = c[2].parse_int()?
-              result = f"${result}${format_field(margs[ai], width, c[1] == "-")}"
-              ai = ai + 1
-              cur = c[3]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^%(-?)([0-9]+)s(.*)") {
+          if c.len() >= 4 and ai < margs.len() {
+            let width = c[2].parse_int()?
+            result = f"${result}${format_field(margs[ai], width, c[1] == "-")}"
+            ai = ai + 1
+            cur = c[3]
+            continue
           }
-          Err(_) => {}
         }
 
-        match regex_captures(cur, "(?s)^%[-]?[sdiouxXeEfFgGaAcp](.*)") {
-          Ok(c) => {
-            if c.len() >= 2 and ai < margs.len() {
-              result = f"${result}${margs[ai]}"
-              ai = ai + 1
-              cur = c[1]
-              continue
-            }
+        if let Ok(c) = regex_captures(cur, "(?s)^%[-]?[sdiouxXeEfFgGaAcp](.*)") {
+          if c.len() >= 2 and ai < margs.len() {
+            result = f"${result}${margs[ai]}"
+            ai = ai + 1
+            cur = c[1]
+            continue
           }
-          Err(_) => {}
         }
 
         let ch = take_char(cur)?
@@ -1761,31 +1656,30 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
       Ok(n) => return {text: f"${n}", st}
       Err(_) => {
         # Simple binary operations only
-        match regex_captures(expr, "(?s)^\\s*(-?\\d+)\\s*([+\\-\\*\\/\\%])\\s*(-?\\d+)\\s*$") {
-          Ok(c) => {
-            if c.len() < 4 {
-              return {text: "0", st}
-            }
-
-            let a = c[1].parse_int()?
-            let op = c[2]
-            let b = c[3].parse_int()?
-
-            let result = if op == "+" {
-              a + b
-            } else if op == "-" {
-              a - b
-            } else if op == "*" {
-              a * b
-            } else if op == "/" {
-              a / b
-            } else {
-              a % b
-            }
-
-            return {text: f"${result}", st}
+        if let Ok(c) = regex_captures(expr, "(?s)^\\s*(-?\\d+)\\s*([+\\-\\*\\/\\%])\\s*(-?\\d+)\\s*$") {
+          guard c.len() >= 4 else {
+            return {text: "0", st}
           }
-          Err(_) => return {text: "0", st}
+
+          let a = c[1].parse_int()?
+          let op = c[2]
+          let b = c[3].parse_int()?
+
+          let result = if op == "+" {
+            a + b
+          } else if op == "-" {
+            a - b
+          } else if op == "*" {
+            a * b
+          } else if op == "/" {
+            a / b
+          } else {
+            a % b
+          }
+
+          return {text: f"${result}", st}
+        } else {
+          return {text: "0", st}
         }
       }
     }
@@ -1802,7 +1696,7 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
   }
 
   if name == "shift" {
-    if margs.len() <= 1 {
+    guard margs.len() > 1 else {
       return {text: "", st}
     }
 
@@ -1886,12 +1780,12 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
   if name == "include" or name == "sinclude" {
     let filepath = if margs.len() >= 1 { margs[0] } else { "" }
     let paths_str = sg(st, "include_paths", "")
-    var found_path = Path(filepath)
+    var found_path = fp"${filepath}"
     var found = false
 
     for p in paths_str.split("\n") {
       if p != "" {
-        let cand = Path(f"${p}/${filepath}")
+        let cand = fp"${p}/${filepath}"
 
         if fs.exists(cand)? and fs.metadata(cand)?.kind == "file" {
           found_path = cand
@@ -1901,7 +1795,7 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
     }
 
     if ! found {
-      let cand = Path(filepath)
+      let cand = fp"${filepath}"
 
       if fs.exists(cand)? and fs.metadata(cand)?.kind == "file" {
         found_path = cand
@@ -1910,9 +1804,7 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
     }
 
     if ! found {
-      if name == "sinclude" {
-        return {text: "", st}
-      }
+      return {text: "", st} when name == "sinclude"
 
       return Err(ScriptError.Failed("m4-include", f"cannot open: ${filepath}"))
     }
@@ -1927,63 +1819,52 @@ b4_percent_define_flag_if([${varname}], [$1], [$2])"""
   if name == "esyscmd" {
     let cmd = if margs.len() >= 1 { margs[0] } else { "" }
 
-    match run.text "sh" "-c" $cmd {
-      Ok(out) => return {text: out, st: st.set("sysval", "0")}
-      Err(_) => return {text: "", st: st.set("sysval", "1")}
+    if let Ok(out) = run.text "sh" "-c" $cmd {
+      return {text: out, st: st.set("sysval", "0")}
+    } else {
+      return {text: "", st: st.set("sysval", "1")}
     }
   }
 
   if name == "syscmd" {
     let cmd = if margs.len() >= 1 { margs[0] } else { "" }
 
-    match regex_captures(
+    if let Ok(c) = regex_captures(
       cmd,
       """(?s)^cat <<'_m4eof'
-(.*)
-_m4eof
-?$""",
+    (.*)
+    _m4eof
+    ?$""",
     ) {
-      Ok(c) => {
-        if c.len() >= 2 {
-          io.write_stdout(c[1])?
-          return {text: "", st: st.set("sysval", "0")}
-        }
+      if c.len() >= 2 {
+        io.write_stdout(c[1])?
+        return {text: "", st: st.set("sysval", "0")}
       }
-      Err(_) => {}
     }
 
-    match regex_captures(
+    if let Ok(c) = regex_captures(
       cmd,
       """(?s)^\\[(.*)\\]@
-_m4eof
-?$""",
+    _m4eof
+    ?$""",
     ) {
-      Ok(c) => {
-        if c.len() >= 2 {
-          io.write_stdout(f"""${c[1]}@
-""")?
+      if c.len() >= 2 {
+        io.write_stdout(f"""${c[1]}@
+    """)?
 
-          return {text: "", st: st.set("sysval", "0")}
-        }
+        return {text: "", st: st.set("sysval", "0")}
       }
-      Err(_) => {}
     }
 
     let status = run.status "sh" "-c" $cmd
     return {text: "", st: st.set("sysval", if status.ok { "0" } else { "1" })}
   }
 
-  if name == "sysval" {
-    return {text: sg(st, "sysval", "0"), st}
-  }
+  return {text: sg(st, "sysval", "0"), st} when name == "sysval"
 
-  if name == "__file__" {
-    return {text: sg(st, "file", ""), st}
-  }
+  return {text: sg(st, "file", ""), st} when name == "__file__"
 
-  if name == "__line__" {
-    return {text: sg(st, "line", "0"), st}
-  }
+  return {text: sg(st, "line", "0"), st} when name == "__line__"
 
   # Unknown: pass through empty
   {text: "", st}
@@ -2007,11 +1888,11 @@ proc expand_raw_arg(
   index: Int,
   st: Map[Str],
 ) [fs, process, env, error, io] -> Result[ExpandResult] {
-  if index < raw_list.len() {
+  guard index >= raw_list.len() else {
     return expand_for_arg(raw_list[index].trim(), st)
   }
 
-  return {text: "", st}
+  {text: "", st}
 }
 
 proc call_conditional_builtin(
@@ -2029,10 +1910,8 @@ proc call_conditional_builtin(
   var cur_st = st
 
   while true {
-    if cur_args.len() < 3 {
-      if cur_args.len() == 1 {
-        return expand_raw_arg(cur_args, 0, cur_st)
-      }
+    guard cur_args.len() >= 3 else {
+      return expand_raw_arg(cur_args, 0, cur_st) when cur_args.len() == 1
 
       return {text: "", st: cur_st}
     }
@@ -2042,17 +1921,11 @@ proc call_conditional_builtin(
     let right = expand_raw_arg(cur_args, 1, cur_st)?
     cur_st = right.st
 
-    if left.text == right.text {
-      return expand_raw_arg(cur_args, 2, cur_st)
-    }
+    return expand_raw_arg(cur_args, 2, cur_st) when left.text == right.text
 
-    if cur_args.len() == 3 {
-      return {text: "", st: cur_st}
-    }
+    return {text: "", st: cur_st} when cur_args.len() == 3
 
-    if cur_args.len() == 4 {
-      return expand_raw_arg(cur_args, 3, cur_st)
-    }
+    return expand_raw_arg(cur_args, 3, cur_st) when cur_args.len() == 4
 
     var rest: List[Str] = []
     var ri = 3
@@ -2065,7 +1938,7 @@ proc call_conditional_builtin(
     cur_args = rest
   }
 
-  return {text: "", st: cur_st}
+  {text: "", st: cur_st}
 }
 
 # Full expansion: process input, emit to current diversion, return updated state.
@@ -2082,33 +1955,31 @@ proc expand_full(input: Str, st: Map[Str]) [fs, process, env, error, io] -> Resu
     # Only recognized when not inside an argument list; we rely on the caller to
     # use expand_for_arg (scratch diversion) for arguments.
     if rem.starts_with("# b4_") or rem.starts_with("# m4_") {
-      match regex_captures(
+      if let Ok(c) = regex_captures(
         rem,
         """(?s)^[^
-]*
-?(.*)""",
+      ]*
+      ?(.*)""",
       ) {
-        Ok(c) => {
-          if c.len() >= 2 {
-            rem = c[1]
-          } else {
-            rem = ""
-          }
+        if c.len() >= 2 {
+          rem = c[1]
+        } else {
+          rem = ""
         }
-        Err(_) => rem = ""
+      } else {
+        rem = ""
       }
     } else if cs != "" and rem.starts_with(cs) {
-      match regex_captures(
+      if let Ok(c) = regex_captures(
         rem,
         """(?s)^([^
-]*
-?)(.*)""",
+      ]*
+      ?)(.*)""",
       ) {
-        Ok(c) => {
-          cur_st = emit(c[1], cur_st)
-          rem = c[2]
-        }
-        Err(_) => rem = ""
+        cur_st = emit(c[1], cur_st)
+        rem = c[2]
+      } else {
+        rem = ""
       }
     } else if oq != "" and rem.starts_with(oq) {
       # Quoted string: strip quotes, emit content verbatim (no re-expansion)
@@ -2125,20 +1996,19 @@ proc expand_full(input: Str, st: Map[Str]) [fs, process, env, error, io] -> Resu
 
             # dnl: discard from here to (and including) the next newline.
             if word == "dnl" or word == "m4_dnl" {
-              match regex_captures(
+              if let Ok(c) = regex_captures(
                 rem,
                 """(?s)^[^
-]*
-?(.*)""",
+              ]*
+              ?(.*)""",
               ) {
-                Ok(c) => {
-                  if c.len() >= 2 {
-                    rem = c[1]
-                  } else {
-                    rem = ""
-                  }
+                if c.len() >= 2 {
+                  rem = c[1]
+                } else {
+                  rem = ""
                 }
-                Err(_) => rem = ""
+              } else {
+                rem = ""
               }
             } else if mac_defined(cur_st, word) {
               # Collect arguments if '(' immediately follows
@@ -2204,16 +2074,15 @@ proc expand_full(input: Str, st: Map[Str]) [fs, process, env, error, io] -> Resu
               rem = tail.rest
             }
           } else {
-            match regex_captures(rem, "(?s)^(.)(.*)") {
-              Ok(c) => {
-                if c.len() >= 3 {
-                  cur_st = emit(c[1], cur_st)
-                  rem = c[2]
-                } else {
-                  rem = ""
-                }
+            if let Ok(c) = regex_captures(rem, "(?s)^(.)(.*)") {
+              if c.len() >= 3 {
+                cur_st = emit(c[1], cur_st)
+                rem = c[2]
+              } else {
+                rem = ""
               }
-              Err(_) => rem = ""
+            } else {
+              rem = ""
             }
           }
         }
@@ -2226,7 +2095,7 @@ proc expand_full(input: Str, st: Map[Str]) [fs, process, env, error, io] -> Resu
     }
   }
 
-  return {text: sg(cur_st, f"div:{sg(cur_st, 'cur_div', '0')}", ""), st: cur_st}
+  {text: sg(cur_st, f"div:{sg(cur_st, 'cur_div', '0')}", ""), st: cur_st}
 }
 
 # ── built-in registration ─────────────────────────────────────────────────────
@@ -2287,16 +2156,15 @@ proc register_builtins(st: Map[Str], prefix: Bool) [error] -> Result[Map[Str]] {
     s = mac_set(s, f"m4_${n}", "BUILTIN")
   }
 
-  return s
+  s
 }
 
 proc parse_define_arg(def: Str) [error] -> Result[List[Str]] {
-  match regex_captures(def, "^([^=]+)=(.*)") {
-    Ok(c) => return [c[1], c[2]]
-    Err(_) => {}
+  if let Ok(c) = regex_captures(def, "^([^=]+)=(.*)") {
+    return [c[1], c[2]]
   }
 
-  return [def, "1"]
+  [def, "1"]
 }
 
 # ── main ─────────────────────────────────────────────────────────────────────

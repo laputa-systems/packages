@@ -75,10 +75,10 @@ start:
 """,
   )?
 
-  env {
-    BISON_PKGDATADIR = bison_data.display()
-    PATH = f"${build_env}/usr/bin:/usr/bin:/bin"
-  } {
+  env ( {
+    BISON_PKGDATADIR : bison_data.display(),
+    PATH : f"${build_env}/usr/bin:/usr/bin:/bin",
+  }) {
     let status = run.status --timeout=10s $bison "--feature=syntax-only" $grammar > $out 2> $err
     ensure_status_ok(status, "tiny-bison", err, artifacts)?
   } ?

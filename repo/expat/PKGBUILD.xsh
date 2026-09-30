@@ -120,9 +120,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   run $cmake ${cmake_args} ?
   run $samu "-C" "build" $jobs_flag ?
 
-  env {
-    DESTDIR = dest
-  } {
+  env ( {
+    DESTDIR : dest,
+  }) {
     cd build {
       run $cmake "-P" "cmake_install.cmake" ?
     }

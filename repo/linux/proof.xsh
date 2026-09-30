@@ -2,7 +2,7 @@
 error ProofError = Failed(kind: Str, message: Str)
 
 proc ensure_file(path_value: Path, label: Str) [fs, error] {
-  if ! fs.exists(path_value)? {
+  guard fs.exists(path_value)? else {
     return Err(ProofError.Failed("proof-linux", f"missing ${label}: ${path_value.display()}"))?
   }
 
@@ -14,16 +14,14 @@ proc ensure_file(path_value: Path, label: Str) [fs, error] {
 }
 
 proc ensure_config(config_path: Path, key: Str, label: Str) [fs, error] {
-  if ! config_path.exists()? {
+  guard config_path.exists()? else {
     return Err(ProofError.Failed("proof-linux", f"missing config for ${label} check: ${config_path.display()}"))?
   }
 
   for raw in config_path.read_text()?.split("\n") {
     let line = raw.trim()
 
-    if line == f"${key}=y" {
-      return
-    }
+    return when line == f"${key}=y"
   }
 
   return Err(ProofError.Failed("proof-linux", f"${label}: expected ${key}=y not found in ${config_path.display()}"))?
@@ -40,7 +38,7 @@ proc ensure_x86_bzimage(image_path: Path) [fs, error] {
   let mz = bytes.from_text("MZ")
   let hdrs = bytes.from_text("HdrS")
 
-  if image.slice(offset: 0, length: 2) != mz {
+  if image[..2] != mz {
     return Err(
       ProofError.Failed(
         "proof-linux",
@@ -59,7 +57,7 @@ proc ensure_x86_bzimage(image_path: Path) [fs, error] {
   }
 }
 
-proc main(rootfs: Path = /rootfs) [fs, env, error] {
+proc main(rootfs = /rootfs) [fs, env, error] {
   ensure_file(fp"${rootfs}/boot/vmlinuz", "kernel image")?
   ensure_file(fp"${rootfs}/usr/share/linux/config-7.0.5", "kernel config")?
   ensure_file(fp"${rootfs}/usr/include/linux/version.h", "linux version header")?

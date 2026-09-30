@@ -3,7 +3,7 @@
 # Update CA certificate bundle from curl.se (Mozilla-derived).
 error UpdateCertdataError = Failed(message: Str)
 
-proc main(dest: Path = /etc/ssl/certs/ca-certificates.crt) [fs, net, error] {
+proc main(dest = /etc/ssl/certs/ca-certificates.crt) [fs, net, error] {
   let tmp = fp"${dest.parent}/.${dest.name}.tmp"
   fs.mkdir(dest.parent)?
   fs.remove(tmp, missing_ok: true)?

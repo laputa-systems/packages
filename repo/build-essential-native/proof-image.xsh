@@ -52,8 +52,8 @@ proc main() [fs, process, env, error] {
   let arch = os.machine
   let dynlinker = fp"/usr/lib/ld-musl-${arch}.so.1"
   let tmp_root = fs.tempdir()?
-  defer fs.close_root(tmp_root)?
-  let tmp = fs.root_path(tmp_root)?
+  defer tmp_root.close()?
+  let tmp = tmp_root.host_path()?
 
   fs.write(
     fp"${tmp}/hello.c",

@@ -1,7 +1,7 @@
 ##! XSH module `proof` package and build operations.
 error ProofError = Failed(kind: Str, message: Str)
 
-proc main(root: Path = /rootfs) [fs, error] {
+proc main(root = /rootfs) [fs, error] {
   let db = fp"${root}/var/lib/xsh-pm/packages/laputa-pm/metadata.json"
   let pm = fp"${root}/usr/bin/pm"
 

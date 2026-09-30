@@ -108,7 +108,7 @@ proc reserve_metadata_blocks(total_blocks: Int, groups: Int) [] -> Map[Bool] {
 proc collect_entries(root: Path, dir: Path, entries: List[ExtEntry]) [fs, error] -> Result[List[ExtEntry]] {
   var out = entries
 
-  for child in fs.ls(dir)? |> sort-by .path {
+  for child in fs.children(dir)? |> sort-by .path {
     continue when child.kind != "file" and child.kind != "dir" and child.kind != "symlink"
     let rel_path = child.path.strip_prefix(root)?
     let rel = rel_path.display().replace("\\", "/")

@@ -311,18 +311,18 @@ export proc build(dest: Path) [fs, process, env, error] {
   let pc = pm_env.pkg_config_context()?
   patch_generated_header_install()?
 
-  env {
-    LD_LIBRARY_PATH = pc.ld_library_path
-    PKG_CONFIG = pc.pkg_config
-    PKG_CONFIG_LIBDIR = pc.pkg_config_libdir
-    PKG_CONFIG_PATH = pc.pkg_config_path
-    PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
-  } {
+  env ( {
+    LD_LIBRARY_PATH : pc.ld_library_path,
+    PKG_CONFIG : pc.pkg_config,
+    PKG_CONFIG_LIBDIR : pc.pkg_config_libdir,
+    PKG_CONFIG_PATH : pc.pkg_config_path,
+    PKG_CONFIG_SYSROOT_DIR : pc.pkg_config_sysroot,
+  }) {
     run $muon "setup" pm_env.meson_prefix_arg() "-Dtests=false" "build" ?
 
-    env {
-      DESTDIR = dest
-    } {
+    env ( {
+      DESTDIR : dest,
+    }) {
       run $muon "-C" "build" install ?
     } ?
   } ?

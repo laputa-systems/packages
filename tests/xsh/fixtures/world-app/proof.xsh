@@ -1,6 +1,6 @@
 error ProofError = Failed(kind: Str, message: Str)
 
-proc main(root: Path = /rootfs) [fs, error] {
+proc main(root = /rootfs) [fs, error] {
   let dep = fp"${root}/usr/share/world-lib.txt"
   let payload = fp"${root}/usr/share/world-app.txt"
 

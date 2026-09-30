@@ -1,10 +1,10 @@
 ##! XSH module `proof-stack` package and build operations.
 error ScriptError = Failed(kind: Str, message: Str)
 
-proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
+proc main(rootfs = /rootfs) [fs, process, env, error] {
   let tmp_root = fs.tempdir()?
-  defer fs.close_root(tmp_root)?
-  let tmp = fs.root_path(tmp_root)?
+  defer tmp_root.close()?
+  let tmp = tmp_root.host_path()?
   let m4_bin = fp"${rootfs}/usr/bin/m4"
   let flex_bin = fp"${rootfs}/usr/bin/flex"
   let bison_bin = fp"${rootfs}/usr/bin/bison"
@@ -19,7 +19,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
   # This is a generated file path, not a literal `fp` expression: under the
   # published runner an interpolated `fp` operand resolves to the cwd and
   # would give m4 the temporary directory rather than this source file.
-  let m4_input = Path(f"${tmp}/test.m4")
+  let m4_input = fp"${tmp}/test.m4"
   let m4_out = run.text $m4_bin $m4_input ?
   let m4_result = m4_out.trim()
 
