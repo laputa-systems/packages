@@ -3,30 +3,28 @@
 export error PmError = Usage(message: Str) : Usage | MissingDependency(message: Str) : Dependency | DependencyCycle(message: Str) : Dependency | ExtensionFailed(message: Str) | LifecycleHook(message: Str) | PackageTarball(message: Str) : NotFound | PackageConflict(message: Str) : Conflict | DirtyFilesystem(message: Str) : Conflict | PackageContract(message: Str) : InvalidData | DependentPackage(message: Str) : Dependency | PackageNotInstalled(message: Str) : NotFound | RemoteRepo(message: Str) : Remote | Auth(message: Str) : PermissionDenied | RemoteFetch(message: Str) : Remote | RemoteUpload(message: Str) : Remote | RemoteIndex(message: Str) : Remote | RemotePackage(message: Str) : NotFound | SourceDestination(message: Str) : InvalidData | SourceName(message: Str) : InvalidData | DownloadFailed(message: Str) : Remote | DownloadTool(message: Str) : NotFound | SourceNotFound(message: Str) : NotFound | SourceChecksum(message: Str) : InvalidData | ChecksumField(message: Str) : InvalidData
 
 ## The package build target carried by plans, artifacts, and roots.
-export type Target = Aarch64LinuxMusl | X86_64LinuxMusl | TargetReserved
+export enum Target { Aarch64LinuxMusl, X86_64LinuxMusl, TargetReserved }
 
 ## The package payload model selected explicitly by every recipe.
-export type PackageKind = Payload | Meta
+export enum PackageKind { Payload, Meta }
 
 ## The semantic reason one package depends on another.
-export type DependencyKind = Runtime | BuildHost | BuildTarget | Bootstrap
+export enum DependencyKind { Runtime, BuildHost, BuildTarget, Bootstrap }
 
 ## The source staging strategy selected by a recipe source record.
-export type SourceKind = Auto | Archive | Zip | Cpio | SourceFile | Directory | Git
+export enum SourceKind { Auto, Archive, Zip, Cpio, SourceFile, Directory, Git }
 
 ## The expected on-disk kind for a declared package output path.
-export type FileKind = File | Binary | Symlink | Tree
+export enum FileKind { File, Binary, Symlink, Tree }
 
 ## The selected execution strategy for one durable build-plan node.
-export type PlanAction = Build(Str) | ReuseRemote(Str)
+export enum PlanAction { Build(Str), ReuseRemote(Str) }
 
 ## The immutable origin of one package artifact in the local store.
-export type ArtifactOrigin = Built | Remote
+export enum ArtifactOrigin { Built, Remote }
 
-# The pinned published XSH runner exposes imported tagged-union constructors as
-# global tags, not module-record methods.  Keep PM callers on these typed
-# accessors so a plan behaves the same under the release runner and the newer
-# host checker without relying on a shared global tag spelling.
+# Typed accessors keep package policy and persistence callers independent of
+# constructor namespace lookup while preserving nominal enum identity.
 ## Return the aarch64 build target without a qualified union-tag expression.
 export pure target_aarch64() -> Target {
   return Aarch64LinuxMusl

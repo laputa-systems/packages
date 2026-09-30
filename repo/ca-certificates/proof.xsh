@@ -10,8 +10,8 @@ proc ensure(condition: Bool, kind: Str, message: Str) [error] {
 proc verify_package_metadata(rootfs: Path) [fs, error] {
   let metadata_path = fp"${rootfs}/var/lib/xsh-pm/packages/ca-certificates/metadata.json"
   ensure(fs.exists(metadata_path)?, "ca-certificates-metadata", "missing package metadata")?
-  let metadata: Record = json.read(metadata_path)?
-  let deps: List[Str] = metadata.get("deps")?
+  let metadata = json.read(metadata_path)?.require(Record)?
+  let deps = metadata.get("deps")?.require(List[Str])?
   ensure(deps.len() == 0, "ca-certificates-deps", f"expected no runtime deps, got ${deps.join(" ")}")?
 }
 

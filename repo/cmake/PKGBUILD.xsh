@@ -921,9 +921,9 @@ set (CMAKE_INSTALL_RPATH "$ORIGIN/../lib" CACHE STRING "Runtime library search p
   let build_dir = p"cmake-build"
   fs.mkdir(build_dir)?
 
-  env {
-    LD_LIBRARY_PATH = bootstrap_ld_library_path
-  } {
+  env ({
+    LD_LIBRARY_PATH: bootstrap_ld_library_path,
+  }) {
     cd cmake-build {
       let bc = fp"../Bootstrap.cmk/cmake"
       let init_cache = fp"../Bootstrap.cmk/InitialCacheFlags.cmake"
@@ -960,9 +960,9 @@ set (CMAKE_INSTALL_RPATH "$ORIGIN/../lib" CACHE STRING "Runtime library search p
 
       run $samu $jobs_flag ?
 
-      env {
-        DESTDIR = dest
-      } {
+      env ({
+        DESTDIR: dest,
+      }) {
         run $bc "-P" "cmake_install.cmake" ?
       } ?
     } ?

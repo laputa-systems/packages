@@ -134,9 +134,9 @@ __gttf2
   fs.mkdir(libdir)?
   fs.mkdir(builtins_dir)?
 
-  env {
-    LD_LIBRARY_PATH = f"${llvm_root}/lib:${env.get("LD_LIBRARY_PATH") ?? ""}"
-  } {
+  env ({
+    LD_LIBRARY_PATH: f"${llvm_root}/lib:${env.get("LD_LIBRARY_PATH") ?? ""}",
+  }) {
     run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${libdir}/crtbeginS.o" ?
     run $clang "-target" f"${target_arch}-linux-musl" "-c" $stub_src "-o" fp"${libdir}/crtendS.o" ?
     cd builtins_dir {

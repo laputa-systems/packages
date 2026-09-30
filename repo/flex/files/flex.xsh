@@ -110,7 +110,7 @@ proc expand_definitions(pattern: Str, defs: Map[Str]) [error] -> Result[Str] {
   var out = pattern
 
   for name in defs.keys() {
-    out = out.replace(f"{${name}}", f"(${defs.get(name, "")})")
+    out = out.replace(f"{${name}}", f"(${(defs.get(name) ?? "")})")
   }
 
   return out

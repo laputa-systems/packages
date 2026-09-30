@@ -17,6 +17,8 @@ export type MakeTask = {
   stamp: Path,
 }
 
+type RunningTask = {task: MakeTask, handle: ProcessHandle}
+
 ## Exported PM declaration `CompileTasks`.
 export type CompileTasks = {
   tasks: List[MakeTask],
@@ -173,7 +175,7 @@ export pure task_deps(tasks: List[MakeTask], outputs: List[Path]) -> List[Str] {
     wanted[output.display()] = true
   }
 
-  return [task.name for task in tasks if task.outputs.len() > 0 and wanted.get(task.outputs[0].display(), false)]
+  return [task.name for task in tasks if task.outputs.len() > 0 and (wanted.get(task.outputs[0].display()) ?? false)]
 }
 
 proc pkg_config_words(
@@ -190,8 +192,11 @@ proc pkg_config_words(
   return out.words()
 }
 
+## Compiler and linker arguments returned by pkg-config.
+export type PkgConfigFlags = {cflags: List[Str], libs: List[Str]}
+
 ## Exported PM declaration `pkg_config_flags`.
-export proc pkg_config_flags(packages: List[Str]) [process, env, error] -> Result[Record] {
+export proc pkg_config_flags(packages: List[Str]) [process, env, error] -> Result[PkgConfigFlags] {
   let pc = pm_env.pkg_config_context()?
 
   return {
@@ -310,7 +315,7 @@ export proc effective_task_env(_: List[Any], task_env: Record) [error] -> Result
   task_env
 }
 
-proc check_tasks(tasks: List[Record], jobs_count: Int) [error] {
+proc check_tasks(tasks: List[MakeTask], jobs_count: Int) [error] {
   if jobs_count <= 0 {
     return Err(MakeError.InvalidJobs(message: "job count must be positive"))
   }
@@ -323,7 +328,7 @@ proc check_tasks(tasks: List[Record], jobs_count: Int) [error] {
       return Err(MakeError.InvalidTask(message: "make task name must not be empty"))
     }
 
-    if names.get(task.name, false) {
+    if (names.get(task.name) ?? false) {
       return Err(MakeError.DuplicateTask(message: f"duplicate make task '${task.name}'"))
     }
 
@@ -340,7 +345,7 @@ proc check_tasks(tasks: List[Record], jobs_count: Int) [error] {
         return Err(MakeError.InvalidTask(message: f"make task '${task.name}' has empty output path"))
       }
 
-      if outputs.get(key, false) {
+      if (outputs.get(key) ?? false) {
         return Err(MakeError.DuplicateOutput(message: f"duplicate make output '${key}'"))
       }
 
@@ -350,7 +355,7 @@ proc check_tasks(tasks: List[Record], jobs_count: Int) [error] {
 
   for task in tasks {
     for dep in task.deps {
-      if ! names.get(dep, false) {
+      if ! (names.get(dep) ?? false) {
         return Err(MakeError.MissingDependency(message: f"make task '${task.name}' depends on missing task '${dep}'"))
       }
     }
@@ -389,7 +394,7 @@ proc depfile_inputs(depfile: Path, cwd: Path) [fs, error] -> Result[List[Path]] 
   [dep_path(cwd, dep) for dep in deps_text.words() if dep != "\\"]
 }
 
-proc all_inputs(task: Record) [fs, error] -> Result[List[Path]] {
+proc all_inputs(task: MakeTask) [fs, error] -> Result[List[Path]] {
   var inputs: List[Path] = task.inputs
 
   if has_path(task.depfile) {
@@ -399,7 +404,7 @@ proc all_inputs(task: Record) [fs, error] -> Result[List[Path]] {
   return inputs
 }
 
-proc output_missing(task: Record) [fs, error] -> Result[Bool] {
+proc output_missing(task: MakeTask) [fs, error] -> Result[Bool] {
   for output in task.outputs {
     if ! output.exists()? {
       return true
@@ -423,7 +428,7 @@ proc oldest_output_mtime(outputs: List[Path]) [fs, error] -> Result[Int] {
   return oldest
 }
 
-proc input_newer(task: Record) [fs, error] -> Result[Bool] {
+proc input_newer(task: MakeTask) [fs, error] -> Result[Bool] {
   if task.outputs.len() == 0 {
     return true
   }
@@ -443,7 +448,7 @@ proc input_newer(task: Record) [fs, error] -> Result[Bool] {
   return false
 }
 
-proc command_signature(task: Record) [fs, env, error] -> Result[Str] {
+proc command_signature(task: MakeTask) [fs, env, error] -> Result[Str] {
   return json.encode({
     argv: effective_task_argv(task.argv, task.env)?,
     cwd: task.cwd.display(),
@@ -451,7 +456,7 @@ proc command_signature(task: Record) [fs, env, error] -> Result[Str] {
   })?
 }
 
-proc stamp_changed(task: Record) [fs, env, error] -> Result[Bool] {
+proc stamp_changed(task: MakeTask) [fs, env, error] -> Result[Bool] {
   if ! has_path(task.stamp) {
     return false
   }
@@ -463,7 +468,7 @@ proc stamp_changed(task: Record) [fs, env, error] -> Result[Bool] {
   return task.stamp.read_text()? != command_signature(task)?
 }
 
-proc should_run(task: Record) [fs, env, error] -> Result[Bool] {
+proc should_run(task: MakeTask) [fs, env, error] -> Result[Bool] {
   if output_missing(task)? {
     return true
   }
@@ -479,7 +484,7 @@ proc should_run(task: Record) [fs, env, error] -> Result[Bool] {
   return input_newer(task)?
 }
 
-proc prepare_task_dirs(task: Record) [fs, error] {
+proc prepare_task_dirs(task: MakeTask) [fs, error] {
   for output in task.outputs {
     output.parent.mkdir()?
   }
@@ -493,7 +498,7 @@ proc prepare_task_dirs(task: Record) [fs, error] {
   }
 }
 
-proc spawn_task(task: Record) [fs, process, env, error] -> Result[Record] {
+proc spawn_task(task: MakeTask) [fs, process, env, error] -> Result[RunningTask] {
   prepare_task_dirs(task)?
 
   for output in task.outputs {
@@ -510,12 +515,12 @@ pure completed_index_key(index: Int) -> Str {
   return f"${index}"
 }
 
-proc remove_running_indices(running: List[Record], completed_indices: Map[Bool]) [] -> List[Record] {
+proc remove_running_indices(running: List[RunningTask], completed_indices: Map[Bool]) [] -> List[RunningTask] {
   var next = []
   var index = 0
 
   for row in running {
-    if ! completed_indices.get(completed_index_key(index), false) {
+    if ! (completed_indices.get(completed_index_key(index)) ?? false) {
       next = next.push(row)
     }
 
@@ -525,11 +530,11 @@ proc remove_running_indices(running: List[Record], completed_indices: Map[Bool])
   return next
 }
 
-proc cancel_running_uncompleted(running: List[Record], completed_indices: Map[Bool]) [process] {
+proc cancel_running_uncompleted(running: List[RunningTask], completed_indices: Map[Bool]) [process] {
   var index = 0
 
   for row in running {
-    if ! completed_indices.get(completed_index_key(index), false) {
+    if ! (completed_indices.get(completed_index_key(index)) ?? false) {
       match row.handle.cancel() {
         Ok(_) => {}
         Err(_) => {}
@@ -576,17 +581,17 @@ pure should_log_dynamic_progress(tasks_count: Int, event_count: Int, running_cou
 }
 
 ## Exported PM declaration `run_tasks`.
-export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, error] -> Result[Unit] {
+export proc run_tasks(tasks: List[MakeTask], jobs_count: Int) [fs, process, env, error] -> Result[Unit] {
   check_tasks(tasks, jobs_count)?
-  var task_by_name: Map[Record] = {}
+  var task_by_name: Map[MakeTask] = {}
   var dependents: Map[List[Str]] = {}
   var remaining_deps: Map[Int] = {}
   var ready = []
   var ready_index = 0
   var done: Map[Bool] = {}
   var scheduled: Map[Bool] = {}
-  var running = []
-  var pending_stamps = []
+  var running: List[RunningTask] = []
+  var pending_stamps: List[RunningTask] = []
   let no_dependents = []
   var done_count = 0
   var spawn_count = 0
@@ -603,7 +608,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
     }
 
     for dep in task.deps {
-      dependents[dep] = dependents.get(dep, no_dependents).push(task.name)
+      dependents[dep] = (dependents.get(dep) ?? no_dependents).push(task.name)
     }
   }
 
@@ -614,7 +619,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
       let task_name = ready[ready_index]
       ready_index += 1
 
-      if ! scheduled.get(task_name, false) {
+      if ! (scheduled.get(task_name) ?? false) {
         let task = task_by_name.get(task_name)?
         scheduled[task.name] = true
 
@@ -657,8 +662,8 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
             )
           }
 
-          for dependent in dependents.get(task.name, no_dependents) {
-            let remaining = remaining_deps.get(dependent, 0) - 1
+          for dependent in (dependents.get(task.name) ?? no_dependents) {
+            let remaining = (remaining_deps.get(dependent) ?? 0) - 1
             remaining_deps[dependent] = remaining
 
             if remaining == 0 {
@@ -693,7 +698,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
     }
 
     var completed_indices: Map[Bool] = {}
-    var completed_tasks = []
+    var completed_tasks: List[RunningTask] = []
 
     for completed in completed_rows {
       let completed_index = completed.index
@@ -715,8 +720,8 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
       done[row.task.name] = true
       done_count += 1
 
-      for dependent in dependents.get(row.task.name, no_dependents) {
-        let remaining = remaining_deps.get(dependent, 0) - 1
+      for dependent in (dependents.get(row.task.name) ?? no_dependents) {
+        let remaining = (remaining_deps.get(dependent) ?? 0) - 1
         remaining_deps[dependent] = remaining
 
         if remaining == 0 {
@@ -728,7 +733,7 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
         let task_name = ready[ready_index]
         ready_index += 1
 
-        if ! scheduled.get(task_name, false) {
+        if ! (scheduled.get(task_name) ?? false) {
           let task = task_by_name.get(task_name)?
           scheduled[task.name] = true
 
@@ -771,8 +776,8 @@ export proc run_tasks(tasks: List[Record], jobs_count: Int) [fs, process, env, e
               )
             }
 
-            for dependent in dependents.get(task.name, no_dependents) {
-              let remaining = remaining_deps.get(dependent, 0) - 1
+            for dependent in (dependents.get(task.name) ?? no_dependents) {
+              let remaining = (remaining_deps.get(dependent) ?? 0) - 1
               remaining_deps[dependent] = remaining
 
               if remaining == 0 {
@@ -831,8 +836,8 @@ export proc compile_lo_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let depfile = depfile_path(out)
-  var argv = [toolchain, "-target", triple, "-c", "-fPIC", "-DPIC"]
-  argv = argv.extend(cflags).extend(defs).extend(includes)
+  var argv: List[Any] = [toolchain, "-target", triple, "-c", "-fPIC", "-DPIC"]
+  argv = [@argv, @cflags, @defs, @includes]
   argv = argv.extend([src, "-o", out, "-MMD", "-MP", "-MF", depfile])
 
   return {
@@ -886,8 +891,8 @@ export proc compile_asm_lo_task(
   out: Path,
   deps: List[Str] = [],
 ) [] -> MakeTask {
-  var argv = [toolchain, "-target", triple, "-c", "-fPIC", "-DPIC", "-Wa,--noexecstack"]
-  argv = argv.extend(includes).extend([src, "-o", out])
+  var argv: List[Any] = [toolchain, "-target", triple, "-c", "-fPIC", "-DPIC", "-Wa,--noexecstack"]
+  argv = [@argv, @includes, src, "-o", out]
 
   return {
     name: out.display(),
@@ -942,8 +947,8 @@ export proc compile_cxx_task(
 ) [] -> MakeTask {
   let _ = toolchain
   let depfile = depfile_path(out)
-  var argv = ["c++", "-target", triple, "-c"]
-  argv = argv.extend(cflags).extend(defs).extend(includes)
+  var argv: List[Any] = ["c++", "-target", triple, "-c"]
+  argv = [@argv, @cflags, @defs, @includes]
   argv = argv.extend([src, "-o", out, "-MMD", "-MP", "-MF", depfile])
 
   return {
@@ -1000,8 +1005,8 @@ export proc compile_c_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let depfile = depfile_path(out)
-  var argv = [toolchain, "-target", triple, "-c"]
-  argv = argv.extend(cflags).extend(defs).extend(includes)
+  var argv: List[Any] = [toolchain, "-target", triple, "-c"]
+  argv = [@argv, @cflags, @defs, @includes]
   argv = argv.extend([src, "-o", out, "-MMD", "-MP", "-MF", depfile])
 
   return {
@@ -1174,7 +1179,7 @@ export proc c_multi_program(spec: CMultiProgram) [] -> Result[CMultiTarget] {
   var deps = []
 
   for source_group in spec.groups {
-    if groups.has(source_group.name) {
+    if (source_group.name in groups) {
       return Err(MakeError.DuplicateTask(message: f"duplicate source group '${source_group.name}'"))
     }
 
@@ -1212,7 +1217,7 @@ export proc c_multi_program(spec: CMultiProgram) [] -> Result[CMultiTarget] {
     var needs_cxx_link = true in [source_is_cxx(src) for src in target.sources]
 
     for group_name in target.groups {
-      if ! groups.has(group_name) {
+      if ! (group_name in groups) {
         return Err(
           MakeError.MissingDependency(
             message: f"target '${target.name}' references missing source group '${group_name}'",
@@ -1220,10 +1225,10 @@ export proc c_multi_program(spec: CMultiProgram) [] -> Result[CMultiTarget] {
         )
       }
 
-      let compiled: CompileTasks = groups.get(group_name, {tasks: [], objects: [], deps: []})
+      let compiled: CompileTasks = (groups.get(group_name) ?? {tasks: [], objects: [], deps: []})
       objects = objects.extend(compiled.objects)
       target_deps = target_deps.extend(compiled.deps)
-      needs_cxx_link = needs_cxx_link or cxx_groups.get(group_name, false)
+      needs_cxx_link = needs_cxx_link or (cxx_groups.get(group_name) ?? false)
     }
 
     if target.sources.len() > 0 {
@@ -1268,8 +1273,8 @@ export proc link_shared_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let _ = toolchain
-  var argv = ["cc", "-target", triple, "-shared", f"-Wl,-soname,${soname}"]
-  argv = argv.extend(ldflags).extend(objs).extend(["-o", out])
+  var argv: List[Any] = ["cc", "-target", triple, "-shared", f"-Wl,-soname,${soname}"]
+  argv = [@argv, @ldflags, @objs, "-o", out]
 
   return {
     name: out.display(),
@@ -1297,8 +1302,8 @@ export proc link_executable_cxx_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let _ = toolchain
-  var argv = ["c++", "-target", triple]
-  argv = argv.extend(objs).extend(libs).extend(ldflags).extend(["-o", out])
+  var argv: List[Any] = ["c++", "-target", triple]
+  argv = [@argv, @objs, @libs, @ldflags, "-o", out]
 
   return {
     name: out.display(),
@@ -1328,8 +1333,8 @@ export proc link_executable_task(
   deps: List[Str] = [],
 ) [] -> MakeTask {
   let _ = toolchain
-  var argv = ["cc", "-target", triple]
-  argv = argv.extend(objs).extend(libs).extend(ldflags).extend(["-o", out])
+  var argv: List[Any] = ["cc", "-target", triple]
+  argv = [@argv, @objs, @libs, @ldflags, "-o", out]
 
   return {
     name: out.display(),
@@ -1349,8 +1354,8 @@ export proc link_executable_task(
 ## Exported PM declaration `link_archive_task`.
 export proc link_archive_task(toolchain: Path, objs: List[Path], out: Path, deps: List[Str] = []) [] -> MakeTask {
   let _ = toolchain
-  var argv = ["ar", "rcs", out]
-  argv = argv.extend(objs)
+  var argv: List[Any] = ["ar", "rcs", out]
+  argv = [@argv, @objs]
 
   return {
     name: out.display(),

@@ -197,7 +197,7 @@ export pure config_without_unavailable_menu(config: Str) -> Str {
   var lines: List[Str] = []
 
   for line in config.split("\n") {
-    if ! line.contains("menucmd") {
+    if "menucmd" not in line {
       lines = lines.push(line)
     }
   }
@@ -246,13 +246,13 @@ export proc build(dest: Path) [fs, process, env, error] {
   patch_startup()?
   write_config()?
 
-  env {
-    LD_LIBRARY_PATH = native_tools_ld
-    PKG_CONFIG = pc.pkg_config
-    PKG_CONFIG_LIBDIR = pc.pkg_config_libdir
-    PKG_CONFIG_PATH = pc.pkg_config_path
-    PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
-  } {
+  env ({
+    LD_LIBRARY_PATH: native_tools_ld,
+    PKG_CONFIG: pc.pkg_config,
+    PKG_CONFIG_LIBDIR: pc.pkg_config_libdir,
+    PKG_CONFIG_PATH: pc.pkg_config_path,
+    PKG_CONFIG_SYSROOT_DIR: pc.pkg_config_sysroot,
+  }) {
     generate_protocol_headers(pkg_config, root, scanner)?
     let pkg_cflags = pkg_config_flags(pkg_config, "--cflags", packages)?
     let pkg_libs = pkg_config_flags(pkg_config, "--libs", packages)?

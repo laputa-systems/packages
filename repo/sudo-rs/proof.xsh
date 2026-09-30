@@ -62,9 +62,9 @@ proc main(rootfs: Path = /rootfs) [fs, process, env, error] {
 
   var sudo = ""
 
-  env {
-    LD_LIBRARY_PATH = fp"${rootfs}/usr/lib".display()
-  } {
+  env ({
+    LD_LIBRARY_PATH: fp"${rootfs}/usr/lib".display(),
+  }) {
     sudo = run.text fp"${rootfs}/usr/bin/sudo" "--version" ?
   } ?
 

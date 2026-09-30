@@ -18,7 +18,7 @@ proc main(root: Path = /rootfs) [fs, process, env, error] {
     "png_init_filter_functions_neon",
   ] {
     proof.ensure(
-      !symbols.contains(f"UND ${symbol}"),
+      f"UND ${symbol}" not in symbols,
       "proof-libpng",
       f"libpng has unresolved optional ARM helper ${symbol}",
     )?

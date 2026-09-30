@@ -416,13 +416,13 @@ export proc build(dest: Path) [fs, process, env, error] {
   let builtins = f"${target_root}/usr/lib/libclang_rt.builtins-${target_arch}.a"
   patch_python_tools()?
 
-  env {
-    LD_LIBRARY_PATH = pc.ld_library_path
-    PKG_CONFIG = pc.pkg_config
-    PKG_CONFIG_LIBDIR = pc.pkg_config_libdir
-    PKG_CONFIG_PATH = pc.pkg_config_path
-    PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
-  } {
+  env ({
+    LD_LIBRARY_PATH: pc.ld_library_path,
+    PKG_CONFIG: pc.pkg_config,
+    PKG_CONFIG_LIBDIR: pc.pkg_config_libdir,
+    PKG_CONFIG_PATH: pc.pkg_config_path,
+    PKG_CONFIG_SYSROOT_DIR: pc.pkg_config_sysroot,
+  }) {
     run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Dlibexecdir=libexec" "-Ddefault_library=shared" "-Ddocumentation=false" "-Dlibwacom=false" "-Ddebug-gui=false" "-Dtests=false" "-Dinstall-tests=false" "-Dmtdev=true" "-Dzshcompletiondir=no" "-Dlua-plugins=disabled" "-Dautoload-plugins=false" "build" ?
 
     if target_root != "" and target_root != "/" {
@@ -432,9 +432,9 @@ export proc build(dest: Path) [fs, process, env, error] {
 
     run $muon "-C" "build" samu $jobs_flag ?
 
-    env {
-      DESTDIR = dest
-    } {
+    env ({
+      DESTDIR: dest,
+    }) {
       run $muon "-C" "build" install ?
     } ?
   } ?

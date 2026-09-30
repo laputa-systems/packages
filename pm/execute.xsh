@@ -72,7 +72,7 @@ proc execute_receipt_closure(store_root: Path, keys: List[Str]) [fs, error] -> R
     let key = pending[index]
     index += 1
 
-    if seen.get(key, false) {
+    if (seen.get(key) ?? false) {
       continue
     }
 
@@ -81,7 +81,7 @@ proc execute_receipt_closure(store_root: Path, keys: List[Str]) [fs, error] -> R
     receipts = receipts.push(receipt)
 
     for runtime_key in receipt.runtime_dependency_keys |> sort {
-      if ! seen.get(runtime_key, false) {
+      if ! (seen.get(runtime_key) ?? false) {
         pending = pending.push(runtime_key)
       }
     }
@@ -97,7 +97,7 @@ proc execute_mutable_root(
   artifacts: List[types.ArtifactReceipt],
   seed_executor: Bool,
 ) [fs, process, env, error] -> Result[Path] {
-  let work = fs.root_path(root_handle)?
+  let work = root_handle.host_path()?
   let immutable = fp"${work}/${label}-dependencies"
   let mutable = fp"${work}/${label}-work"
   let root_plan = pm_root.preflight(target, artifacts)?
@@ -134,19 +134,19 @@ proc execute_stage_local(
   # Package recipes may explicitly name repository-owned inputs (for example
   # laputa-pm's PM entrypoint/tree). Resolve those against the plan repository
   # while the recipe itself remains isolated under `work/recipe`.
-  env {
-    XSH_PM_REPOSITORY_ROOT = repo_root.display()
-    XSH_PM_TARGET_ARCH = types.pm_target_arch(plan_value.target)
-  } {
+  env ({
+    XSH_PM_REPOSITORY_ROOT: repo_root.display(),
+    XSH_PM_TARGET_ARCH: types.pm_target_arch(plan_value.target),
+  }) {
     sources.prepare_package_source_tree(work, work, isolated_pkg, source, false, false, false)?
   } ?
 
-  env {
-    LAPUTA_ROOT = build_root.display()
-    PATH = f"${build_root}/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}"
-    XSH_PM_BUILD_CHROOT = "0"
-    XSH_PM_TARGET_ARCH = types.pm_target_arch(plan_value.target)
-  } {
+  env ({
+    LAPUTA_ROOT: build_root.display(),
+    PATH: f"${build_root}/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}",
+    XSH_PM_BUILD_CHROOT: "0",
+    XSH_PM_TARGET_ARCH: types.pm_target_arch(plan_value.target),
+  }) {
     pm_build.build_prepared_package(recipe_dir, source, dest, payload)?
   } ?
 
@@ -221,19 +221,19 @@ proc execute_run_proof(
   let runtime_keys = [dependency.artifact_key for dependency in node.dependencies if dependency.kind == types.dependency_runtime()]
   let runtime_artifacts = execute_receipt_closure(store_root, runtime_keys)?
   let root_handle = fs.tempdir()?
-  defer fs.close_root(root_handle)?
+  defer root_handle.close()?
   let proof_root = execute_mutable_root(target, root_handle, "proof", runtime_artifacts, false)?
   # Payload archives contain their top-level directories (for example `usr`).
   # The proof root already has the executor substrate and runtime closure, so
   # extracting directly would reject that legitimate shared directory.  Extract
   # into a fresh path, then merge the verified tree with normal path-type
   # checks before the proof sees it.
-  let payload_root = fp"${fs.root_path(root_handle)?}/proof-payload"
+  let payload_root = fp"${root_handle.host_path()?}/proof-payload"
   archive.tar_extract(payload, payload_root, 0, "auto", true)?
   let _ = fs.copy_tree(payload_root, proof_root, parents: true, overwrite: true)?
-  env {
-    XSH_PM_TARGET_ARCH = types.pm_target_arch(target)
-  } {
+  env ({
+    XSH_PM_TARGET_ARCH: types.pm_target_arch(target),
+  }) {
     pm_proof.run_artifact_proof(proof_root, pkg)?
   } ?
   pm_proof.write_artifact_receipt(proof, node, payload)?
@@ -249,8 +249,8 @@ proc execute_build_local(
 ) [fs, net, process, env, time, error] -> Result[types.ArtifactReceipt] {
   let pkg = execute_load_package(plan_value, node, repo_root)?
   let root_handle = fs.tempdir()?
-  defer fs.close_root(root_handle)?
-  let work = fs.root_path(root_handle)?
+  defer root_handle.close()?
+  let work = root_handle.host_path()?
   var build_root = fp"${work}/meta-build-root"
 
   if pkg.kind == types.package_meta() {
@@ -292,8 +292,8 @@ proc execute_existing_local(
 
   let pkg = execute_load_package(plan_value, node, repo_root)?
   let root_handle = fs.tempdir()?
-  defer fs.close_root(root_handle)?
-  let work = fs.root_path(root_handle)?
+  defer root_handle.close()?
+  let work = root_handle.host_path()?
   let proof = fp"${work}/proof.json"
   execute_run_proof(plan_value.target, node, pkg, store_root, fp"${receipt.artifact_dir}/payload.tar.gz", proof)?
   receipt
@@ -310,8 +310,8 @@ proc execute_remote_node(
   }
 
   let cache_handle = fs.tempdir()?
-  defer fs.close_root(cache_handle)?
-  let cache = fs.root_path(cache_handle)?
+  defer cache_handle.close()?
+  let cache = cache_handle.host_path()?
   let receipt = store.import_remote(plan_value.target, store_root, node, remote_repo, cache)?
   execute_require_receipt(plan_value, node, receipt)?
   receipt
@@ -423,12 +423,12 @@ proc execute_parallel_level(
   jobs: Int,
 ) [fs, net, process, env, time, error] -> Result[List[types.ArtifactReceipt]] {
   let handle = fs.tempdir()?
-  defer fs.close_root(handle)?
-  let status = fp"${fs.root_path(handle)?}/parallel-level-status"
+  defer handle.close()?
+  let status = fp"${handle.host_path()?}/parallel-level-status"
   fs.mkdir(status)?
 
   let _ = nodes
-    |> par-map --jobs=jobs { |node|
+    |> par-map(jobs: jobs) { |node|
       execute_parallel_level_worker(plan_value, node, repo_root, store_root, remote_repo, status)?
       # The value is deliberately ignored: only its completion/error behavior
       # matters, and the published runner erases the par-map element schema.

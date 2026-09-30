@@ -71,7 +71,7 @@ file(WRITE "${CMAKE_BINARY_DIR}/proof-output.txt" "cmake runtime closure\n")
     let cache = fs.read_text(fp"${tmp}/build/CMakeCache.txt")?
     let marker = fs.read_text(fp"${tmp}/build/proof-output.txt")?
 
-    if ! cache.contains(proof_samu.display()) or marker != "cmake runtime closure\n" {
+    if proof_samu.display() not in cache or marker != "cmake runtime closure\n" {
       Err(ScriptError.Failed("cmake-proof", "configure did not use the isolated runtime proof inputs"))?
     }
 

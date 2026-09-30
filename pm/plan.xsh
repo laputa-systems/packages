@@ -29,7 +29,7 @@ pure plan_sorted_unique_names(names: List[Str]) -> List[Str] {
   var seen: Map[Bool] = {}
 
   for name in names |> sort {
-    if ! seen.get(name, false) {
+    if ! (seen.get(name) ?? false) {
       result = result.push(name)
       seen[name] = true
     }
@@ -183,7 +183,7 @@ pure plan_compare_version_release(left_ver: Str, left_rel: Str, right_ver: Str, 
   var index = 0
 
   while index < total {
-    let result = plan_compare_version_part(left_parts.get(index, "0"), right_parts.get(index, "0"))
+    let result = plan_compare_version_part((left_parts.get(index) ?? "0"), (right_parts.get(index) ?? "0"))
 
     if result != 0 {
       return result
@@ -229,9 +229,9 @@ proc dependency_nodes(
   var dependencies: List[types.PlanDependency] = []
 
   for edge in edges {
-    continue unless edge.from == name and edge.kind != types.dependency_bootstrap() and selected.get(edge.to, false)
+    continue unless edge.from == name and edge.kind != types.dependency_bootstrap() and (selected.get(edge.to) ?? false)
 
-    if ! keys.has(edge.to) {
+    if ! (edge.to in keys) {
       return Err(types.PmError.PackageContract(f"${name} dependency ${edge.to} was not resolved before its build-plan node"))
     }
 
@@ -250,7 +250,7 @@ proc built_dependency_names(
   var changed: List[Str] = []
 
   for edge in edges {
-    continue unless edge.from == name and edge.kind != types.dependency_bootstrap() and selected.get(edge.to, false)
+    continue unless edge.from == name and edge.kind != types.dependency_bootstrap() and (selected.get(edge.to) ?? false)
 
     if types.plan_action_is_build(actions.get(edge.to)?) {
       changed = changed.push(edge.to)
@@ -293,7 +293,7 @@ export proc resolve(
   let packages = catalog.package_map(value)
 
   for name in selected_names {
-    if ! packages.has(name) {
+    if ! (name in packages) {
       return Err(types.PmError.MissingDependency(f"build plan needs a local recipe for ${name}"))
     }
   }
@@ -308,7 +308,7 @@ export proc resolve(
 
   for names in levels {
     for name in names {
-      let pkg: types.Package = packages.get(name)?
+      let pkg: types.Package = packages.get(name)?.require(types.Package)?
       let source_pkg = absolute_recipe_package(value, pkg)?
       let recipe_dir = durable_recipe_dir(value, pkg)?
       let package_id = util.package_id(pkg.name, pkg.ver, pkg.rel)
@@ -428,7 +428,7 @@ proc validate_node(
   levels: Map[Int],
   artifact_keys: Map[Str],
 ) [error] {
-  if seen.get(node.name, false) {
+  if (seen.get(node.name) ?? false) {
     return Err(types.PmError.PackageContract(f"build plan has duplicate node ${node.name}"))
   }
 
@@ -443,7 +443,7 @@ proc validate_node(
   for dependency in node.dependencies {
     let key = dependency_key(dependency)
 
-    if dependency_seen.get(key, false) {
+    if (dependency_seen.get(key) ?? false) {
       return Err(
         types.PmError.PackageContract(
           f"build plan node ${node.name} repeats ${types.dependency_kind_text(dependency.kind)} dependency ${dependency.name}",
@@ -457,7 +457,7 @@ proc validate_node(
       }
     }
 
-    if ! levels.has(dependency.name) {
+    if ! (dependency.name in levels) {
       return Err(types.PmError.PackageContract(f"build plan node ${node.name} has unresolved dependency ${dependency.name}"))
     }
 
@@ -549,7 +549,7 @@ proc validate_structure(value: types.BuildPlan) [error] {
   var artifact_keys: Map[Str] = {}
 
   for node in value.nodes {
-    if names.get(node.name, false) {
+    if (names.get(node.name) ?? false) {
       return Err(types.PmError.PackageContract(f"build plan has duplicate node ${node.name}"))
     }
 
@@ -559,7 +559,7 @@ proc validate_structure(value: types.BuildPlan) [error] {
   }
 
   for root in value.roots {
-    if ! names.has(root) {
+    if ! (root in names) {
       return Err(types.PmError.PackageContract(f"build plan root ${root} is not a node"))
     }
   }

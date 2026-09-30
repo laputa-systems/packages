@@ -8,7 +8,7 @@ pure sorted_unique_names(names: List[Str]) -> List[Str] {
   var seen: Map[Bool] = {}
 
   for name in names |> sort {
-    if ! seen.get(name, false) {
+    if ! (seen.get(name) ?? false) {
       unique = unique.push(name)
       seen[name] = true
     }
@@ -36,7 +36,7 @@ proc make_catalog(
   }
 
   for pkg in sorted_packages {
-    if local_names.has(pkg.name) {
+    if (pkg.name in local_names) {
       return Err(types.PmError.PackageContract(f"duplicate package ${pkg.name}"))
     }
 
@@ -46,7 +46,7 @@ proc make_catalog(
 
   for pkg in sorted_packages {
     for dependency in package_dependencies(pkg) {
-      if ! available_names.has(dependency) {
+      if ! (dependency in available_names) {
         return Err(types.PmError.MissingDependency(f"${pkg.name} depends on missing ${dependency}"))
       }
     }

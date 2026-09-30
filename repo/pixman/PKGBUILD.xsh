@@ -78,9 +78,9 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   run "muon" "-C" "build" samu $jobs_flag ?
 
-  env {
-    DESTDIR = dest
-  } {
+  env ({
+    DESTDIR: dest,
+  }) {
     run "muon" "-C" "build" install ?
   } ?
 

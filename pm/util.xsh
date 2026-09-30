@@ -288,10 +288,10 @@ export pure goarch_for(arch: Str) -> Str {
 export proc source_vars(source: Str, pkg: types.Package, arch: Str) [env, error] -> Result[Str] {
   let version = pkg.ver.replace("+", ".").replace("-", ".").replace("_", ".")
   let parts = version.split(".")
-  let major = parts.get(0, "")
-  let minor = parts.get(1, "")
-  let patch_part = parts.get(2, "")
-  let ident = parts.get(3, "")
+  let major = (parts.get(0) ?? "")
+  let minor = (parts.get(1) ?? "")
+  let patch_part = (parts.get(2) ?? "")
+  let ident = (parts.get(3) ?? "")
   let goarch = goarch_for(arch)
   let build = build_arch()?
   let build_goarch = goarch_for(build)

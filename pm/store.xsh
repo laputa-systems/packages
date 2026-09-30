@@ -73,7 +73,7 @@ pure store_unique_artifact_keys(keys: List[Str]) -> List[Str] {
   var result: List[Str] = []
 
   for key in keys {
-    if ! seen.has(key) {
+    if ! (key in seen) {
       seen[key] = true
       result = result.push(key)
     }
@@ -153,11 +153,11 @@ proc validate_receipt(value: types.ArtifactReceipt, expected_key: Str) [error] {
     return Err(types.PmError.PackageContract("artifact receipt has an unsupported target"))
   }
 
-  if value.package_name == "" or value.package_name.contains("\n") {
+  if value.package_name == "" or ("\n" in value.package_name) {
     return Err(types.PmError.PackageContract("artifact receipt package_name is invalid"))
   }
 
-  if value.package_id == "" or value.package_id.contains("\n") {
+  if value.package_id == "" or ("\n" in value.package_id) {
     return Err(types.PmError.PackageContract("artifact receipt package_id is invalid"))
   }
 
@@ -173,7 +173,7 @@ proc validate_receipt(value: types.ArtifactReceipt, expected_key: Str) [error] {
   for dependency_key in value.dependency_keys {
     require_sha256(dependency_key, "artifact receipt dependency key")?
 
-    if seen.has(dependency_key) {
+    if (dependency_key in seen) {
       return Err(types.PmError.PackageContract(f"artifact receipt repeats dependency key ${dependency_key}"))
     }
 
@@ -185,11 +185,11 @@ proc validate_receipt(value: types.ArtifactReceipt, expected_key: Str) [error] {
   for dependency_key in value.runtime_dependency_keys {
     require_sha256(dependency_key, "artifact receipt runtime dependency key")?
 
-    if ! seen.has(dependency_key) {
+    if ! (dependency_key in seen) {
       return Err(types.PmError.PackageContract(f"artifact receipt runtime dependency key ${dependency_key} is not a dependency"))
     }
 
-    if seen_runtime.has(dependency_key) {
+    if (dependency_key in seen_runtime) {
       return Err(types.PmError.PackageContract(f"artifact receipt repeats runtime dependency key ${dependency_key}"))
     }
 
@@ -367,8 +367,8 @@ proc remote_executor_sha256(metadata: Path, node: types.PlanNode) [fs, error] ->
   }
 
   # Legacy package metadata did not record an executor digest. Its verified metadata digest is a stable fallback.
-  let raw: Record = json.read(metadata)?
-  let value: Str = if raw.has("executor_sha256") { raw.get("executor_sha256")? } else { hash.sha256(metadata)?.hex() }
+  let raw: Record = json.read(metadata)?.require(Record)?
+  let value: Str = if ("executor_sha256" in raw) { raw.get("executor_sha256")?.require(Str)? } else { hash.sha256(metadata)?.hex() }
   require_sha256(value, "remote metadata executor_sha256")?
   value
 }

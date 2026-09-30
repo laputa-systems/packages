@@ -6,7 +6,7 @@ proc main(root: Path = /rootfs) [fs, process, env, error] {
   let readelf = proof.readelf_tool()?
   let dynamic = run.text $readelf "-d" fp"${root}/usr/lib/libpixman-1.so.0" ?
   proof.ensure(
-    !dynamic.contains("build-work"),
+    "build-work" not in dynamic,
     "proof-pixman",
     "libpixman contains an executor-local build path",
   )?

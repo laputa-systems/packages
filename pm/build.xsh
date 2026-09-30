@@ -236,31 +236,31 @@ export proc build_prepared_package(pkg_dir: Path, src: Path, dest: Path, tarball
 
   let makeflags = env.get("MAKEFLAGS") ?? f"-s -j${cpu.count()}"
 
-  env {
-    DESTDIR = dest
-    LAPUTA_ROOT = env.get("LAPUTA_ROOT") ?? "/"
-    XSH_PM_PREFIX = pm_env.prefix
-    XSH_PM_SYSCONFDIR = pm_env.sysconfdir
-    XSH_PM_LOCALSTATEDIR = pm_env.localstatedir
-    XSH_PM_LIBDIR = pm_env.libdir
-    XSH_PM_LIBDIR_NAME = pm_env.libdir_name
-    XSH_PM_BINDIR = pm_env.bindir
-    XSH_PM_INCLUDEDIR = pm_env.includedir
-    XSH_PM_MANDIR = pm_env.mandir
-    XSH_PM_NAME = pkg.name
-    XSH_PM_VERSION = pkg.ver
-    XSH_PM_RELEASE = pkg.rel
+  env ({
+    DESTDIR: dest,
+    LAPUTA_ROOT: env.get("LAPUTA_ROOT") ?? "/",
+    XSH_PM_PREFIX: pm_env.prefix,
+    XSH_PM_SYSCONFDIR: pm_env.sysconfdir,
+    XSH_PM_LOCALSTATEDIR: pm_env.localstatedir,
+    XSH_PM_LIBDIR: pm_env.libdir,
+    XSH_PM_LIBDIR_NAME: pm_env.libdir_name,
+    XSH_PM_BINDIR: pm_env.bindir,
+    XSH_PM_INCLUDEDIR: pm_env.includedir,
+    XSH_PM_MANDIR: pm_env.mandir,
+    XSH_PM_NAME: pkg.name,
+    XSH_PM_VERSION: pkg.ver,
+    XSH_PM_RELEASE: pkg.rel,
     # Deferred dynamic builds run from the prepared source tree.  Preserve that
     # typed staging root so recipe inputs never depend on the process cwd.
-    XSH_PM_SOURCE_DIR = src.display()
+    XSH_PM_SOURCE_DIR: src.display(),
     # Dynamic recipes cannot infer their copied checkout location from the
     # source-tree working directory.  Keep it explicit for deferred build
     # programs such as the Linux Kbuild runner.
-    XSH_PM_RECIPE_DIR = pkg_dir.display()
-    XSH_PM_QUIET = "1"
-    MAKEFLAGS = makeflags
-    SHELL = "/bin/xshi"
-  } {
+    XSH_PM_RECIPE_DIR: pkg_dir.display(),
+    XSH_PM_QUIET: "1",
+    MAKEFLAGS: makeflags,
+    SHELL: "/bin/xshi",
+  }) {
     let runner = fp"${pkg_dir}/run-package-build.xsh"
     let runner_text = """use pm.recipe
 

@@ -55,9 +55,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   fs.mkdir(p"build")?
 
   if cross_build {
-    env {
-      LD_LIBRARY_PATH = host_ld_library_path
-    } {
+    env ({
+      LD_LIBRARY_PATH: host_ld_library_path,
+    }) {
       run $bootstrap_cc "-std=c99" "-O2" "-Iinclude" "src/amalgam.c" "-o" "build/muon-bootstrap" ?
     } ?
   } else {
@@ -80,9 +80,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   ]
 
   if cross_build {
-    env {
-      LD_LIBRARY_PATH = host_ld_library_path
-    } {
+    env ({
+      LD_LIBRARY_PATH: host_ld_library_path,
+    }) {
       run "build/muon-bootstrap" ${setup_args} ?
       let build_ninja = p"build/build.ninja"
       var patched_ninja = build_ninja.read_text()?

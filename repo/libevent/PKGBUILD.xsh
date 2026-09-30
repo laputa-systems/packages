@@ -317,9 +317,9 @@ export proc build(dest: Path) [fs, process, env, error] {
   run $samu "-C" "build" $jobs_flag ?
   create_unversioned_links()?
 
-  env {
-    DESTDIR = dest
-  } {
+  env ({
+    DESTDIR: dest,
+  }) {
     cd build {
       run $cmake "-P" "cmake_install.cmake" ?
     }

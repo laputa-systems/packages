@@ -3,8 +3,6 @@ error ScriptError = Failed(kind: Str, message: Str)
 
 # m4 — macro processor in pure XSH.
 #
-# Design:  See M4.md for the full spec.
-#
 # State map keys:
 #   mac:NAME           → macro body  ("BUILTIN" for built-ins)
 #   pdepth:NAME        → push depth (int as Str; absent = 0)
@@ -45,7 +43,7 @@ pure regex_captures(text: Str, pattern: Str) -> Result[List[Str]] {
 
 # ── state helpers ─────────────────────────────────────────────────────────────
 pure sg(st: Map[Str], k: Str, d: Str) -> Str {
-  return st.get(k, d)
+  return (st.get(k) ?? d)
 }
 
 pure si(st: Map[Str], k: Str, d: Int) -> Int {
@@ -227,7 +225,7 @@ pure mac_get(st: Map[Str], name: Str) -> Str {
 }
 
 pure mac_exists(st: Map[Str], name: Str) -> Bool {
-  st.has(f"mac:${name}")
+  (f"mac:${name}" in st)
 }
 
 pure mac_set(st: Map[Str], name: Str, body: Str) -> Map[Str] {

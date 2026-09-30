@@ -154,17 +154,17 @@ export proc build(dest: Path) [fs, process, env, error] {
   let current_path = env.get("PATH") ?? ""
   let cargo_path = f"${host_cc.parent.display()}:${current_path}"
 
-  env {
-    PATH = cargo_path
-    CC = host_cc.display()
-    HOST_CC = host_cc.display()
-    CARGO_HOME = fp"${fs.cwd()?}/.cargo-home".display()
-    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER = aarch64_linker
-    CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER = x86_64_linker
-    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS = aarch64_rustflags
-    CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS = x86_64_rustflags
-    SSL_CERT_FILE = "/etc/ssl/certs/ca-certificates.crt"
-  } {
+  env ({
+    PATH: cargo_path,
+    CC: host_cc.display(),
+    HOST_CC: host_cc.display(),
+    CARGO_HOME: fp"${fs.cwd()?}/.cargo-home".display(),
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: aarch64_linker,
+    CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: x86_64_linker,
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: aarch64_rustflags,
+    CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: x86_64_rustflags,
+    SSL_CERT_FILE: "/etc/ssl/certs/ca-certificates.crt",
+  }) {
     run $cargo build "--release" "--target" $triple "--bin" "sudo" "--bin" "su" ?
   } ?
 

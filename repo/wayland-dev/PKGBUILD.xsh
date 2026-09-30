@@ -239,23 +239,23 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   patch_python_generator(native_scanner)?
 
-  env {
-    LD_LIBRARY_PATH = pc.ld_library_path
-    PKG_CONFIG = pc.pkg_config
-    PKG_CONFIG_LIBDIR = pc.pkg_config_libdir
-    PKG_CONFIG_PATH = pc.pkg_config_path
-    PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
-  } {
+  env ({
+    LD_LIBRARY_PATH: pc.ld_library_path,
+    PKG_CONFIG: pc.pkg_config,
+    PKG_CONFIG_LIBDIR: pc.pkg_config_libdir,
+    PKG_CONFIG_PATH: pc.pkg_config_path,
+    PKG_CONFIG_SYSROOT_DIR: pc.pkg_config_sysroot,
+  }) {
     run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "-Ddocumentation=false" "-Ddtd_validation=false" "-Dtests=false" "build" ?
 
     if native_scanner != "" {
       let native_scanner_path = fp"${fs.cwd()?}/build/wayland-scanner-native"
       let clang = fp"${build_root}/usr/lib/llvm23/bin/clang-23"
 
-      env {
-        PATH = f"${build_root}/usr/lib/llvm-toolchain/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}"
-        LD_LIBRARY_PATH = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib"
-      } {
+      env ({
+        PATH: f"${build_root}/usr/lib/llvm-toolchain/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}",
+        LD_LIBRARY_PATH: f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib",
+      }) {
         run $clang "-o" $native_scanner_path "src/scanner.c" "src/wayland-util.c" "-Ibuild" "-Ibuild/src" "-Isrc" f"-I${build_root}/usr/include" f"-L${build_root}/usr/lib" f"-Wl,-rpath,${build_root}/usr/lib" "-lexpat" ?
       } ?
 
@@ -273,14 +273,14 @@ export proc build(dest: Path) [fs, process, env, error] {
 
     run $muon "-C" "build" samu $jobs_flag ?
 
-    env {
-      DESTDIR = dest
-    } {
+    env ({
+      DESTDIR: dest,
+    }) {
       run $muon "-C" "build" install ?
     } ?
   } ?
 
-  for entry in fs.ls(fp"${dest}/usr/lib")? {
+  for entry in fs.children(fp"${dest}/usr/lib")? {
     if entry.name.starts_with("libwayland-") {
       fs.remove(entry.path, missing_ok: true)?
     }

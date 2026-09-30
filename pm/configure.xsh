@@ -16,7 +16,7 @@ export proc config_h(in_path: Path, out_path: Path, defines: Map[Str]) [fs, erro
     if line.starts_with("#undef ") {
       let varname = line.replace("#undef ", "").trim()
 
-      if defines.has(varname) {
+      if (varname in defines) {
         let value = defines.get(varname)?
         out_lines = out_lines.push(f"#define ${varname} ${value}")
       } else {

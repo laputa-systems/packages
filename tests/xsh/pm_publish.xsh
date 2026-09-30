@@ -8,7 +8,9 @@ use pm.repo
 use pm.store
 use pm.types
 
+type AdditionalMetadataDto = {source: Str}
 type PublishedMetadataDto = {
+  additional_metadata: AdditionalMetadataDto,
   target: Str,
   artifact_key: Str,
   recipe_sha256: Str,
@@ -78,6 +80,7 @@ proc stage_plan_artifacts(
       json.write(metadata, {
         arch: "aarch64",
         name: node.name,
+        additional_metadata: {source: "recipe"},
         ver: node.ver,
         rel: node.rel,
         package_kind,
@@ -87,6 +90,7 @@ proc stage_plan_artifacts(
       json.write(metadata, {
         arch: "aarch64",
         name: node.name,
+        additional_metadata: {source: "recipe"},
         ver: node.ver,
         rel: node.rel,
         files: [],
@@ -106,11 +110,11 @@ proc stage_plan_artifacts(
 proc expect_snapshot_error(ctx: TestContext, value: types.BuildPlan, store_root: Path, expected: Str) [fs, error] {
   match repo.snapshot(value, store_root) {
     Ok(_) => test.fail(f"${expected}: snapshot unexpectedly succeeded")?
-    Err(problem) => test.contains(problem.message, expected)?
+    Err(problem) => expected in problem.message
   }
 }
 
-proc test_snapshot_defaults_only_omitted_legacy_package_kind_to_payload(ctx: TestContext) [fs, env, error] {
+test test_snapshot_defaults_only_omitted_legacy_package_kind_to_payload [fs, env, error] { |ctx|
   let value = publish_plan(ctx, "publish-legacy-package-kind-repo")?
   let legacy_store = test.temp_dir(ctx, name: "publish-legacy-package-kind-store")?
   stage_plan_artifacts(ctx, value, legacy_store, true, false)?
@@ -125,7 +129,7 @@ proc test_snapshot_defaults_only_omitted_legacy_package_kind_to_payload(ctx: Tes
   expect_snapshot_error(ctx, value, invalid_store, "invalid package kind")?
 }
 
-proc test_snapshot_rejects_missing_unproved_and_corrupt_plan_artifacts(ctx: TestContext) [fs, env, error] {
+test test_snapshot_rejects_missing_unproved_and_corrupt_plan_artifacts [fs, env, error] { |ctx|
   let value = publish_plan(ctx, "publish-missing-repo")?
   let missing_store = test.temp_dir(ctx, name: "publish-missing-store")?
   expect_snapshot_error(ctx, value, missing_store, "is missing")?
@@ -147,7 +151,7 @@ proc test_snapshot_rejects_missing_unproved_and_corrupt_plan_artifacts(ctx: Test
   expect_snapshot_error(ctx, value, corrupt_store, "payload SHA-256 does not match receipt")?
 }
 
-proc test_publish_file_snapshot_is_exact_deterministic_and_idempotent(ctx: TestContext) [fs, net, env, time, error] {
+test test_publish_file_snapshot_is_exact_deterministic_and_idempotent [fs, net, env, time, error] { |ctx|
   let value = publish_plan(ctx, "publish-file-repo")?
   let store_root = test.temp_dir(ctx, name: "publish-file-store")?
   stage_plan_artifacts(ctx, value, store_root)?
@@ -169,6 +173,7 @@ proc test_publish_file_snapshot_is_exact_deterministic_and_idempotent(ctx: TestC
   test.ok(fp"${remote_root}/${entry.metadata}".exists()?)?
   test.ok(fp"${remote_root}/${entry.proof}".exists()?)?
   let metadata = json.read(fp"${remote_root}/${entry.metadata}")?.require(PublishedMetadataDto)?
+  metadata.additional_metadata.source == "recipe"
   test.eq(metadata.target, "aarch64-linux-musl")?
   test.eq(metadata.artifact_key, app.artifact_key)?
   test.eq(metadata.recipe_sha256, app.recipe_sha256)?
@@ -181,7 +186,7 @@ proc test_publish_file_snapshot_is_exact_deterministic_and_idempotent(ctx: TestC
   test.eq(fs.read_text(fp"${remote_root}/index.json")?, first_index)?
 }
 
-proc test_publish_conflict_and_failed_object_do_not_switch_file_index(ctx: TestContext) [fs, net, env, time, error] {
+test test_publish_conflict_and_failed_object_do_not_switch_file_index [fs, net, env, time, error] { |ctx|
   let value = publish_plan(ctx, "publish-conflict-repo")?
   let store_root = test.temp_dir(ctx, name: "publish-conflict-store")?
   stage_plan_artifacts(ctx, value, store_root)?
@@ -197,7 +202,7 @@ proc test_publish_conflict_and_failed_object_do_not_switch_file_index(ctx: TestC
 
   match repo.publish(snapshot, remote_url, "", work) {
     Ok(_) => test.fail("conflicting immutable metadata unexpectedly published")?
-    Err(problem) => test.contains(problem.message, "already exists with different bytes")?
+    Err(problem) => "already exists with different bytes" in problem.message
   }
 
   let unchanged_index = fs.read_text(fp"${remote_root}/index.json")?
@@ -213,11 +218,11 @@ proc test_publish_conflict_and_failed_object_do_not_switch_file_index(ctx: TestC
 
   match repo.publish(snapshot, clean_url, "", clean_work) {
     Ok(_) => test.fail("conflicting immutable tuple unexpectedly published")?
-    Err(problem) => test.contains(problem.message, "already exists with different content")?
+    Err(problem) => "already exists with different content" in problem.message
   }
 }
 
-proc test_remote_decoder_preserves_legacy_fallback_and_new_identity(ctx: TestContext) [fs, net, env, error] {
+test test_remote_decoder_preserves_legacy_fallback_and_new_identity [fs, net, env, error] { |ctx|
   let legacy = remote.decode_remote_package({
     arch: "aarch64",
     name: "legacy",
@@ -305,7 +310,7 @@ proc test_remote_decoder_preserves_legacy_fallback_and_new_identity(ctx: TestCon
   test.eq(imported.origin, types.Remote)?
 }
 
-proc test_legacy_metadata_hash_is_fetched_into_retrieval_and_enforced_on_import(ctx: TestContext) [fs, net, env, error] {
+test test_legacy_metadata_hash_is_fetched_into_retrieval_and_enforced_on_import [fs, net, env, error] { |ctx|
   let value = publish_plan(ctx, "publish-legacy-hash-repo")?
   let node = node_named(value, "app")?
   let remote_root = test.temp_dir(ctx, name: "publish-legacy-hash-remote")?
@@ -356,11 +361,11 @@ proc test_legacy_metadata_hash_is_fetched_into_retrieval_and_enforced_on_import(
     test.temp_dir(ctx, name: "publish-legacy-hash-corrupt-cache")?,
   ) {
     Ok(_) => test.fail("changed legacy metadata unexpectedly imported")?
-    Err(problem) => test.contains(problem.message, "remote metadata SHA-256 mismatch")?
+    Err(problem) => "remote metadata SHA-256 mismatch" in problem.message
   }
 }
 
-proc test_publish_requires_token_only_for_network_remote(ctx: TestContext) [fs, net, env, time, error] {
+test test_publish_requires_token_only_for_network_remote [fs, net, env, time, error] { |ctx|
   let value = publish_plan(ctx, "publish-token-repo")?
   let store_root = test.temp_dir(ctx, name: "publish-token-store")?
   stage_plan_artifacts(ctx, value, store_root)?
@@ -369,6 +374,6 @@ proc test_publish_requires_token_only_for_network_remote(ctx: TestContext) [fs, 
 
   match repo.publish(snapshot, "https://example.invalid/repo", "", work) {
     Ok(_) => test.fail("network publication without a token unexpectedly succeeded")?
-    Err(problem) => test.contains(problem.message, "needs LAPUTA_TOKEN")?
+    Err(problem) => "needs LAPUTA_TOKEN" in problem.message
   }
 }

@@ -73,7 +73,7 @@ pure generation_sorted_unique(values: List[Str]) -> List[Str] {
   var seen: Map[Bool] = {}
 
   for value in values |> sort {
-    if ! seen.get(value, false) {
+    if ! (seen.get(value) ?? false) {
       result = result.push(value)
       seen[value] = true
     }
@@ -83,7 +83,7 @@ pure generation_sorted_unique(values: List[Str]) -> List[Str] {
 }
 
 proc generation_require_profile_name(value: Str) [error] {
-  if value == "" or value.contains("/") or value.contains("\\") or value.contains("\n") {
+  if value == "" or ("/" in value) or ("\\" in value) or ("\n" in value) {
     return Err(types.PmError.PackageContract(f"generation profile name is invalid: ${value}"))
   }
 }
@@ -202,7 +202,7 @@ proc generation_validate_plan(value: types.GenerationPlan) [error] {
 
     generation_require_sha256(artifact.artifact_key, f"generation artifact ${artifact.package_name} key")?
 
-    if names.has(artifact.package_name) or keys.has(artifact.artifact_key) {
+    if (artifact.package_name in names) or (artifact.artifact_key in keys) {
       return Err(types.PmError.PackageContract(f"generation plan repeats artifact ${artifact.package_name}"))
     }
 
@@ -216,7 +216,7 @@ proc generation_validate_plan(value: types.GenerationPlan) [error] {
   }
 
   for root in value.runtime_roots {
-    if ! names.has(root) {
+    if ! (root in names) {
       return Err(types.PmError.PackageContract(f"generation runtime root ${root} is not selected"))
     }
   }
@@ -245,21 +245,21 @@ proc generation_runtime_artifacts(
     let name = pending[pending_index]
     pending_index += 1
 
-    if selected.get(name, false) {
+    if (selected.get(name) ?? false) {
       continue
     }
 
-    if ! nodes.has(name) {
+    if ! (name in nodes) {
       return Err(types.PmError.MissingDependency(f"generation runtime root ${name} is not in the BuildPlan"))
     }
 
-    let node: types.PlanNode = nodes.get(name)?
+    let node: types.PlanNode = nodes.get(name)?.require(types.PlanNode)?
     selected[name] = true
     artifacts = artifacts.push({package_name: node.name, package_id: node.package_id, artifact_key: node.artifact_key})
 
     # BuildPlan dependencies are the typed graph projection; only Runtime edges reach a system root.
     for dependency in node.dependencies {
-      if dependency.kind == types.dependency_runtime() and ! selected.get(dependency.name, false) {
+      if dependency.kind == types.dependency_runtime() and ! (selected.get(dependency.name) ?? false) {
         pending = pending.push(dependency.name)
       }
     }
@@ -519,7 +519,7 @@ proc generation_preflight_overlay(
   }
 
   for replacement in profile.replacements {
-    if ! used_replacements.has(replacement) {
+    if ! (replacement in used_replacements) {
       return Err(types.PmError.PackageContract(f"generation profile replacement ${replacement} does not replace a package file"))
     }
   }
@@ -545,7 +545,7 @@ proc generation_store_artifacts(
 
   for receipt in receipts {
     for dependency_key in receipt.runtime_dependency_keys {
-      if ! keys.has(dependency_key) {
+      if ! (dependency_key in keys) {
         return Err(types.PmError.MissingDependency(f"generation artifact ${receipt.package_name} is missing runtime artifact ${dependency_key}"))
       }
     }

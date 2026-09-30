@@ -43,9 +43,9 @@ int main(void) {
   run $cc fp"${tmp}/proof-zlib.c" f"-I${root}/usr/include" f"-L${root}/usr/lib" "-lz" "-o" $binary ?
 
   if pm_util.build_arch()? == pm_util.target_arch()? {
-    env {
-      LD_LIBRARY_PATH = fp"${root}/usr/lib".display()
-    } {
+    env ({
+      LD_LIBRARY_PATH: fp"${root}/usr/lib".display(),
+    }) {
       run $binary ?
     } ?
   } else {

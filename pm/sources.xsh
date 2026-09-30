@@ -40,7 +40,7 @@ export proc source_checksum(source: types.UpstreamSource, arch: Str) [error] -> 
   Err(types.PmError.SourceChecksum(f"no checksum for ${source.source.display()} on ${arch}"))
 }
 
-proc sources_response_header(headers: List[Record], name: Str) [] -> Str {
+proc sources_response_header(headers: List[NetHeader], name: Str) [] -> Str {
   for header in headers {
     if header.name == name or name == "location" and header.name == "Location" {
       return header.value
@@ -412,11 +412,11 @@ proc expected_source_sha256(out: Path, pkg: types.Package, arch: Str) [fs, error
     return ""
   }
 
-  let rows: List[Record] = json.read(index)?
+  let rows: List[Record] = json.read(index)?.require(List[Record])?
 
   for row in rows {
     if row.get("arch")? == arch and row.get("name")? == pkg.name and row.get("ver")? == pkg.ver and row.get("rel")? == pkg.rel {
-      return row.get("source_sha256")?
+      return row.get("source_sha256")?.require(Str)?
     }
   }
 
@@ -481,7 +481,7 @@ export proc try_fetch_source_mirror_from_repo(out: Path, pkg: types.Package) [fs
   var seen: Map[Bool] = {}
 
   for repo in urls {
-    if repo != "" and ! seen.get(repo, false) {
+    if repo != "" and ! (seen.get(repo) ?? false) {
       seen[repo] = true
 
       if util.is_file_url(repo) {
@@ -695,7 +695,7 @@ export proc write_checksum_field(pkg: types.Package, field: Str, values: List[St
 
         let marker = "sha256: \""
         let parts = line.split(marker)
-        let old = parts.get(1, "").split("\"").get(0, "")
+        let old = ((parts.get(1) ?? "").split("\"").get(0) ?? "")
         let value = values.get(value_index)?
         output = output.push(line.replace(f"${old}\"", f"${value}\""))
         value_index += 1
@@ -735,8 +735,8 @@ export proc audit_source_mirrors(out: Path, packages: List[types.Package]) [fs, 
     }
 
     let actual = hash.sha256(mirror)?.hex()
-    let metadata: Record = json.read(manifest)?
-    let recorded: Str = metadata.get("archive_sha256")?
+    let metadata: Record = json.read(manifest)?.require(Record)?
+    let recorded: Str = metadata.get("archive_sha256")?.require(Str)?
 
     if actual != recorded {
       return Err(types.PmError.SourceChecksum(f"${pkg.name} source manifest hash mismatch"))

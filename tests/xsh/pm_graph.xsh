@@ -38,37 +38,37 @@ pure fixture_package(name: Str, deps: List[Str], mkdeps_host: List[Str], mkdeps_
 proc expect_catalog_rejection(root: Path, expected: Str) [fs, env, error] {
   match catalog.load(root) {
     Ok(_) => test.fail(f"${expected}: catalog unexpectedly loaded")?
-    Err(problem) => test.contains(problem.message, expected)?
+    Err(problem) => expected in problem.message
   }
 }
 
-proc test_catalog_loads_packages_in_name_order_with_relative_dirs() [fs, env, error] {
+test test_catalog_loads_packages_in_name_order_with_relative_dirs [fs, env, error] {
   let value = catalog.load(fixture("graph-catalog"))?
   test.eq(catalog.package_names(value), ["app", "host-tool", "runtime-lib", "target-sdk"])?
   test.eq(value.packages[0].dir.display(), "repo/app")?
 }
 
-proc test_catalog_rejects_missing_dependency() [fs, env, error] {
+test test_catalog_rejects_missing_dependency [fs, env, error] {
   expect_catalog_rejection(fixture("graph-missing"), "app depends on missing missing")?
 }
 
-proc test_catalog_rejects_duplicate_package_name() [error] {
+test test_catalog_rejects_duplicate_package_name [error] {
   let first = fixture_package("duplicate", [], [], [])
   let second = fixture_package("duplicate", [], [], [])
 
   match catalog.from_packages(p".", [first, second]) {
     Ok(_) => test.fail("duplicate package catalog unexpectedly loaded")?
-    Err(problem) => test.contains(problem.message, "duplicate package duplicate")?
+    Err(problem) => "duplicate package duplicate" in problem.message
   }
 }
 
-proc test_catalog_accepts_selected_remote_dependency_snapshot() [error] {
+test test_catalog_accepts_selected_remote_dependency_snapshot [error] {
   let app = fixture_package("app", ["remote-lib"], [], [])
   let value = catalog.from_packages(p".", [app], ["remote-lib"])?
   test.eq(value.remote_names, ["remote-lib"])?
 }
 
-proc test_graph_classifies_runtime_and_build_edges() [fs, env, error] {
+test test_graph_classifies_runtime_and_build_edges [fs, env, error] {
   let value = catalog.load(fixture("graph-catalog"))?
   let edges = graph.edges(value, policy.aarch64_docker())?
   test.ok(has_edge(edges, "app", "runtime-lib", types.Runtime))?
@@ -76,7 +76,7 @@ proc test_graph_classifies_runtime_and_build_edges() [fs, env, error] {
   test.ok(has_edge(edges, "app", "target-sdk", types.BuildTarget))?
 }
 
-proc test_graph_classifies_each_explicit_bootstrap_seed() [fs, env, error] {
+test test_graph_classifies_each_explicit_bootstrap_seed [fs, env, error] {
   let value = catalog.load(p".")?
   let edges = graph.edges(value, policy.aarch64_docker())?
   test.ok(has_edge(edges, "musl", "llvm-toolchain", types.Bootstrap))?
@@ -84,36 +84,36 @@ proc test_graph_classifies_each_explicit_bootstrap_seed() [fs, env, error] {
   test.ok(has_edge(edges, "gnu-stubs", "llvm-toolchain", types.Bootstrap))?
 }
 
-proc test_graph_reports_a_useful_cycle_path() [fs, env, error] {
+test test_graph_reports_a_useful_cycle_path [fs, env, error] {
   let value = catalog.load(fixture("graph-cycle"))?
   let edges = graph.edges(value, policy.aarch64_docker())?
 
   match graph.topological_levels(catalog.package_names(value), edges) {
     Ok(_) => test.fail("cycle unexpectedly received levels")?
-    Err(problem) => test.contains(problem.message, "alpha -> beta -> gamma -> alpha")?
+    Err(problem) => "alpha -> beta -> gamma -> alpha" in problem.message
   }
 }
 
-proc test_graph_topological_levels_are_dependency_first() [fs, env, error] {
+test test_graph_topological_levels_are_dependency_first [fs, env, error] {
   let value = catalog.load(fixture("graph-catalog"))?
   let edges = graph.edges(value, policy.aarch64_docker())?
   let levels = graph.topological_levels(catalog.package_names(value), edges)?
   test.eq(levels, [["host-tool", "runtime-lib", "target-sdk"], ["app"]])?
 }
 
-proc test_runtime_closure_excludes_host_and_target_build_dependencies() [fs, env, error] {
+test test_runtime_closure_excludes_host_and_target_build_dependencies [fs, env, error] {
   let value = catalog.load(fixture("graph-catalog"))?
   let closure = graph.runtime_closure(value, ["app"])?
   test.eq(closure, ["app", "runtime-lib"])?
 }
 
-proc test_build_closure_includes_runtime_host_and_target_edges() [fs, env, error] {
+test test_build_closure_includes_runtime_host_and_target_edges [fs, env, error] {
   let value = catalog.load(fixture("graph-catalog"))?
   let closure = graph.build_closure(value, ["app"], policy.aarch64_docker())?
   test.eq(closure, ["app", "host-tool", "runtime-lib", "target-sdk"])?
 }
 
-proc test_edge_kind_changes_the_appropriate_closure() [error] {
+test test_edge_kind_changes_the_appropriate_closure [error] {
   let dependency = fixture_package("dependency", [], [], [])
   let runtime_app = fixture_package("app", ["dependency"], [], [])
   let host_app = fixture_package("app", [], ["dependency"], [])
@@ -124,7 +124,7 @@ proc test_edge_kind_changes_the_appropriate_closure() [error] {
   test.eq(graph.build_closure(host_catalog, ["app"], policy.aarch64_docker())?, ["app", "dependency"])?
 }
 
-proc test_graph_resolution_is_repeatable() [fs, env, error] {
+test test_graph_resolution_is_repeatable [fs, env, error] {
   let first = catalog.load(fixture("graph-catalog"))?
   let second = catalog.load(fixture("graph-catalog"))?
   let value = policy.aarch64_docker()

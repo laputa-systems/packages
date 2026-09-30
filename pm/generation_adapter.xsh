@@ -186,8 +186,8 @@ export proc generation_adapter_copy_manifest_file(
   let metadata = json.read(fp"${receipt.artifact_dir}/metadata.json")?.require(GenerationAdapterMetadataDto)?
   let manifest = generation_adapter_manifest_file(metadata, package_name, relative_path)?
   let handle = fs.tempdir()?
-  defer fs.close_root(handle)?
-  let extracted = fs.root_path(handle)?
+  defer handle.close()?
+  let extracted = handle.host_path()?
   archive.tar_extract(fp"${receipt.artifact_dir}/payload.tar.gz", extracted, 0, "auto", true)?
   let source = fp"${extracted}/${relative_path.display()}"
 

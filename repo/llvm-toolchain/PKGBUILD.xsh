@@ -354,9 +354,9 @@ proc main(...argv: List[Str]) [fs, process, env, error] {
   let is_cxx = __CXX__
 
   if ! is_clang {
-env {
-      LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm23/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}"
-    } {
+env ({
+      LD_LIBRARY_PATH: f"/usr/lib:/usr/lib/llvm23/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}",
+    }) {
       run \$real @argv ?
     } ?
     return
@@ -457,9 +457,9 @@ env {
     exec_args = exec_args.push(rooted(sysroot, "usr/lib/crtn.o").display())
   }
 
-  env {
-    LD_LIBRARY_PATH = f"/usr/lib:/usr/lib/llvm23/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}"
-  } {
+  env ({
+    LD_LIBRARY_PATH: f"/usr/lib:/usr/lib/llvm23/lib:/lib:\${env.get("LD_LIBRARY_PATH") ?? ""}",
+  }) {
     run \$real @exec_args ?
   } ?
 }

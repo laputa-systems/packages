@@ -46,7 +46,7 @@ export let upstream_sources = [
     checksums: [
       {
         arch: "all",
-        sha256: "c89f4af08b5b1d24089bcf267547e541347b0bf8fa07535f0e635f55c0ad6ffb",
+        sha256: "9bc15a06958447eb5a689296407797a924277c54e07797fbe3b6544e3989c3ce",
       },
     ],
   },
@@ -189,7 +189,7 @@ export let filetree = [
 ]
 
 proc install_data_tree(src: Path, dest: Path) [fs, error] {
-  for e in fs.ls(src)? {
+  for e in fs.children(src)? {
     if e.kind == "dir" {
       install_data_tree(e.path, fp"${dest}/${e.name}")?
     } else if e.kind == "file" {

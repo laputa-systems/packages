@@ -339,8 +339,8 @@ proc write_uint_header(bits: Int, dfmt: Str, ofmt: Str, xfmt: Str, bfmt: Str, sy
   if bits == 64 {
     parts = parts.push(p"skalibs/src/headers/uint64-defs".read_text()?)
 
-    if sysdeps.get("uint64t", "") == "no" {
-      if sysdeps.get("sizeofulong", "") == "8" {
+    if (sysdeps.get("uint64t") ?? "") == "no" {
+      if (sysdeps.get("sizeofulong") ?? "") == "8" {
         parts = parts.push(p"skalibs/src/headers/uint64-ulong64".read_text()?)
       } else {
         parts = parts.push(p"skalibs/src/headers/uint64-noulong64".read_text()?)
@@ -352,7 +352,7 @@ proc write_uint_header(bits: Int, dfmt: Str, ofmt: Str, xfmt: Str, bfmt: Str, sy
     parts = parts.push(p"skalibs/src/headers/uint64-include".read_text()?)
   }
 
-  if sysdeps.get("endianness", "") != "little" {
+  if (sysdeps.get("endianness") ?? "") != "little" {
     return Err(ScriptError.Failed("skalibs-gen-bits", "unsupported non-little-endian target"))
   }
 
@@ -397,7 +397,7 @@ proc write_types_h(sysdeps: Map[Str]) [fs, error] {
   for type_name in ["size", "uid", "gid", "pid", "time", "dev", "ino"] {
     let bits = sysdep_bits(sysdeps, type_name)?
 
-    let template = if sysdeps.get(f"signed${type_name}", "") == "yes" {
+    let template = if (sysdeps.get(f"signed${type_name}") ?? "") == "yes" {
       p"skalibs/src/headers/signed-template"
     } else {
       p"skalibs/src/headers/unsigned-template"

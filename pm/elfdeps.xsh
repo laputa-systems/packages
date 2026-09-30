@@ -9,7 +9,7 @@ export type ElfDependencyFailure = {pkg: Str, file: Path, soname: Str, provider:
 pure path_basename_text(path_value: Path) -> Str {
   let text = path_value.display()
   let parts = text.split("/")
-  parts.get(parts.len() - 1, text)
+  (parts.get(parts.len() - 1) ?? text)
 }
 
 pure path_may_provide_library(rel_path: Path) -> Bool {
@@ -35,11 +35,11 @@ export pure runtime_dependency_closure(initial: List[Str], package_deps: Map[Lis
   while index < pending.len() {
     let name = pending[index]
     index += 1
-    continue when closure.get(name, false)
+    continue when (closure.get(name) ?? false)
     closure[name] = true
 
-    if package_deps.has(name) {
-      pending = pending.extend(package_deps.get(name, []))
+    if (name in package_deps) {
+      pending = pending.extend((package_deps.get(name) ?? []))
     }
   }
 
@@ -73,15 +73,15 @@ export pure missing_elf_runtime_dependencies_with_allowed(
 ) -> List[ElfDependencyFailure] {
   var failures: List[ElfDependencyFailure] = []
 
-  if elf_info_mentions_musl(needed, interpreter) and pkg_name != "musl" and ! allowed.get("musl", false) {
+  if elf_info_mentions_musl(needed, interpreter) and pkg_name != "musl" and ! (allowed.get("musl") ?? false) {
     failures = failures.push({pkg: pkg_name, file: fp"", soname: "libc.so", provider: "musl"})
   }
 
   for soname in needed {
-    continue unless providers.has(soname)
-    let provider = providers.get(soname, "")
+    continue unless (soname in providers)
+    let provider = (providers.get(soname) ?? "")
 
-    if provider != pkg_name and ! allowed.get(provider, false) {
+    if provider != pkg_name and ! (allowed.get(provider) ?? false) {
       failures = failures.push({pkg: pkg_name, file: fp"", soname, provider})
     }
   }

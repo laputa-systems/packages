@@ -249,7 +249,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   var arch_s_files = []
 
   # 1. arch/${arch}/ direct children (headers only for aarch64/x86_64 in practice).
-  for e in fs.ls(fp"arch/${arch}")? |> where .kind == "file" {
+  for e in fs.children(fp"arch/${arch}")? |> where .kind == "file" {
     if e.ext == "c" {
       arch_stems = arch_stems.push(e.name.replace(".c", ""))
       arch_c_files = arch_c_files.push(e.path)
@@ -260,11 +260,11 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   # 2. src/{subsystem}/${arch}/*.[csS] — in-source arch overrides.
-  for subsys in fs.ls(p"src")? |> where .kind == "dir" {
+  for subsys in fs.children(p"src")? |> where .kind == "dir" {
     let arch_subdir = fp"${subsys.path.display()}/${arch}"
 
     if fs.exists(arch_subdir)? {
-      for e in fs.ls(arch_subdir)? |> where .kind == "file" {
+      for e in fs.children(arch_subdir)? |> where .kind == "file" {
         if e.ext == "c" {
           arch_stems = arch_stems.push(e.name.replace(".c", ""))
           arch_c_files = arch_c_files.push(e.path)
@@ -280,12 +280,12 @@ export proc build(dest: Path) [fs, process, env, error] {
   # level deep per subsystem) plus src/malloc/mallocng (two levels, the default
   # malloc implementation). Files with stems matching any arch-override entry are
   # excluded — their arch version is compiled instead.
-  # fs.ls is non-recursive here intentionally: src/{subsystem}/{arch}/*.c files
+  # fs.children is non-recursive here intentionally: src/{subsystem}/{arch}/*.c files
   # at two levels deep must not be included (they are wrong-arch implementations).
   var libc_srcs = []
 
-  for subsys in fs.ls(p"src")? |> where .kind == "dir" {
-    for e in fs.ls(subsys.path)? |> where .ext == "c" {
+  for subsys in fs.children(p"src")? |> where .kind == "dir" {
+    for e in fs.children(subsys.path)? |> where .ext == "c" {
       if ! (e.name.replace(".c", "") in arch_stems) {
         libc_srcs = libc_srcs.push(e.path)
       }
@@ -293,7 +293,7 @@ export proc build(dest: Path) [fs, process, env, error] {
   }
 
   # src/malloc/mallocng/*.c — the default malloc implementation (two levels deep).
-  for e in fs.ls(p"src/malloc/mallocng")? |> where .ext == "c" {
+  for e in fs.children(p"src/malloc/mallocng")? |> where .ext == "c" {
     libc_srcs = libc_srcs.push(e.path)
   }
 
@@ -359,8 +359,8 @@ export proc build(dest: Path) [fs, process, env, error] {
     "-Wl,-e,_dlstart",
   ]
 
-  var so_argv = [cc, "-target", triple]
-  so_argv = so_argv.extend(so_ldflags)
+  var so_argv: List[Any] = [cc, "-target", triple]
+  so_argv = [@so_argv, @so_ldflags]
 
   for obj in all_so_objs {
     so_argv = so_argv.push(obj)

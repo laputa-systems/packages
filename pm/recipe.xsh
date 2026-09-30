@@ -1,4 +1,5 @@
 ##! Typed package-recipe loading and dynamic procedure invocation. This is the sole boundary that reads dynamic `PKGBUILD.xsh` exports; all callers receive `types.Package` records and use its call helpers rather than retaining dynamic module values.
+use recipe_hooks as hooks
 use types
 use util
 
@@ -46,7 +47,7 @@ proc validate_dependencies(name: Str, label: Str, dependencies: List[Str]) [erro
   var seen: Map[Bool] = {}
 
   for dependency in dependencies {
-    if seen.has(dependency) {
+    if (dependency in seen) {
       return package_contract_error(name, f"${label} contains duplicate dependency ${dependency}")
     }
 
@@ -64,8 +65,8 @@ proc source_is_repository_local(source: Path) [] -> Bool {
 }
 
 proc decode_source_checksum(name: Str, raw: Record) [error] -> Result[types.SourceChecksum] {
-  let arch: Str = raw.get("arch")?
-  let sha256: Str = raw.get("sha256")?
+  let arch: Str = raw.get("arch")?.require(Str)?
+  let sha256: Str = raw.get("sha256")?.require(Str)?
 
   if arch != "aarch64" and arch != "all" and arch != "x86_64" {
     return Err(types.PmError.PackageContract(f"${name}: checksum has invalid architecture ${arch}"))
@@ -79,11 +80,11 @@ proc decode_source_checksum(name: Str, raw: Record) [error] -> Result[types.Sour
 }
 
 proc decode_upstream_source(name: Str, raw: Record) [error] -> Result[types.UpstreamSource] {
-  let source: Path = raw.get("source")?
-  let raw_kind: Str = raw.get("kind")?
+  let source: Path = raw.get("source")?.require(Path)?
+  let raw_kind: Str = raw.get("kind")?.require(Str)?
   let kind = types.parse_source_kind(raw_kind)?
-  let architectures: List[Str] = raw.get("architectures")?
-  let raw_checksums: List[Record] = raw.get("checksums")?
+  let architectures: List[Str] = raw.get("architectures")?.require(List[Str])?
+  let raw_checksums: List[Record] = raw.get("checksums")?.require(List[Record])?
 
   if architectures.len() == 0 {
     return Err(types.PmError.PackageContract(f"${name}: upstream source ${source.display()} has no target architectures"))
@@ -92,7 +93,7 @@ proc decode_upstream_source(name: Str, raw: Record) [error] -> Result[types.Upst
   var architecture_seen: Map[Bool] = {}
 
   for architecture in architectures {
-    if architecture_seen.has(architecture) {
+    if (architecture in architecture_seen) {
       return Err(types.PmError.PackageContract(f"${name}: upstream source ${source.display()} repeats architecture ${architecture}"))
     }
 
@@ -113,7 +114,7 @@ proc decode_upstream_source(name: Str, raw: Record) [error] -> Result[types.Upst
   for raw_checksum in raw_checksums {
     let checksum = decode_source_checksum(name, raw_checksum)?
 
-    if checksum_seen.has(checksum.arch) {
+    if (checksum.arch in checksum_seen) {
       return Err(types.PmError.PackageContract(f"${name}: upstream source ${source.display()} repeats ${checksum.arch} checksum"))
     }
 
@@ -148,8 +149,8 @@ proc decode_upstream_source(name: Str, raw: Record) [error] -> Result[types.Upst
 }
 
 proc decode_filetree_entry(name: Str, raw: Record) [error] -> Result[types.FileTreeEntry] {
-  let path_value: Path = raw.get("path")?
-  let raw_kind: Str = raw.get("kind")?
+  let path_value: Path = raw.get("path")?.require(Path)?
+  let raw_kind: Str = raw.get("kind")?.require(Str)?
   let kind = types.parse_file_kind(raw_kind)?
   let normalized = path_value.normalize()
   let raw_path = path_value.display()
@@ -183,7 +184,7 @@ proc decode_filetree(name: Str, raw_entries: List[Record]) [error] -> Result[Lis
     let entry = decode_filetree_entry(name, raw_entry)?
     let path_text = entry.path.display()
 
-    if seen.has(path_text) {
+    if (path_text in seen) {
       return Err(types.PmError.PackageContract(f"${name}: filetree repeats ${path_text}"))
     }
 
@@ -213,47 +214,47 @@ proc is_production_recipe_directory(dir: Path) [] -> Bool {
 
 proc decode_metadata(pkgbuild: Path) [fs, error] -> Result[PackageMetadata] {
   let dynamic = module.load(pkgbuild)?
-  let name: Str = dynamic.get("name").context("package-load", pkgbuild.display())?
-  let ver: Str = dynamic.get("ver").context("package-load", pkgbuild.display())?
-  let rel: Str = dynamic.get("rel").context("package-load", pkgbuild.display())?
-  let deps: List[Str] = dynamic.get("deps").context("package-load", pkgbuild.display())?
-  let mkdeps_host: List[Str] = dynamic.get("mkdeps_host").context("package-load", pkgbuild.display())?
-  let upstream_sources: List[Record] = dynamic.get("upstream_sources").context("package-load", pkgbuild.display())?
-  let filetree: List[Record] = dynamic.get("filetree").context("package-load", pkgbuild.display())?
-  let has_build = dynamic.has("build")
+  let name: Str = dynamic.get("name").context("package-load", pkgbuild.display())?.require(Str)?
+  let ver: Str = dynamic.get("ver").context("package-load", pkgbuild.display())?.require(Str)?
+  let rel: Str = dynamic.get("rel").context("package-load", pkgbuild.display())?.require(Str)?
+  let deps: List[Str] = dynamic.get("deps").context("package-load", pkgbuild.display())?.require(List[Str])?
+  let mkdeps_host: List[Str] = dynamic.get("mkdeps_host").context("package-load", pkgbuild.display())?.require(List[Str])?
+  let upstream_sources: List[Record] = dynamic.get("upstream_sources").context("package-load", pkgbuild.display())?.require(List[Record])?
+  let filetree: List[Record] = dynamic.get("filetree").context("package-load", pkgbuild.display())?.require(List[Record])?
+  let has_build = ("build" in dynamic.keys())
   var mkdeps_target: List[Str] = []
-  let has_filetree_aarch64 = dynamic.has("filetree_aarch64")
-  let has_filetree_x86_64 = dynamic.has("filetree_x86_64")
+  let has_filetree_aarch64 = ("filetree_aarch64" in dynamic.keys())
+  let has_filetree_x86_64 = ("filetree_x86_64" in dynamic.keys())
   var filetree_aarch64: List[Record] = []
   var filetree_x86_64: List[Record] = []
 
-  if dynamic.has("mkdeps_target") {
-    mkdeps_target = dynamic.get("mkdeps_target")?
+  if ("mkdeps_target" in dynamic.keys()) {
+    mkdeps_target = dynamic.get("mkdeps_target")?.require(List[Str])?
   }
 
   if has_filetree_aarch64 {
-    filetree_aarch64 = dynamic.get("filetree_aarch64")?
+    filetree_aarch64 = dynamic.get("filetree_aarch64")?.require(List[Record])?
   }
 
   if has_filetree_x86_64 {
-    filetree_x86_64 = dynamic.get("filetree_x86_64")?
+    filetree_x86_64 = dynamic.get("filetree_x86_64")?.require(List[Record])?
   }
 
-  let has_package_kind = dynamic.has("package_kind")
+  let has_package_kind = ("package_kind" in dynamic.keys())
   var package_kind = ""
   var nostrip = false
   var source_mirror = true
 
   if has_package_kind {
-    package_kind = dynamic.get("package_kind")?
+    package_kind = dynamic.get("package_kind")?.require(Str)?
   }
 
-  if dynamic.has("nostrip") {
-    nostrip = dynamic.get("nostrip")?
+  if ("nostrip" in dynamic.keys()) {
+    nostrip = dynamic.get("nostrip")?.require(Bool)?
   }
 
-  if dynamic.has("source_mirror") {
-    source_mirror = dynamic.get("source_mirror")?
+  if ("source_mirror" in dynamic.keys()) {
+    source_mirror = dynamic.get("source_mirror")?.require(Bool)?
   }
 
   {
@@ -353,24 +354,39 @@ export proc load_package(dir: Path) [fs, env, error] -> Result[types.Package] {
   load_package_for_target(dir, types.parse_target(util.machine_arch()?)?)?
 }
 
-proc load_dynamic_recipe(pkg: types.Package) [fs, error] -> Result[Any] {
+proc dynamic_recipe_path(pkg: types.Package) [fs, error] -> Result[Path] {
   let pkgbuild = fp"${pkg.dir}/PKGBUILD.xsh"
 
   if ! fs.exists(pkgbuild)? {
     return Err(types.PmError.PackageContract(f"${pkg.name}: dynamic recipe is unavailable at ${pkgbuild.display()}"))
   }
 
-  module.load(pkgbuild)?
+  pkgbuild
 }
 
 ## Invokes the optional dynamic `prepare` procedure for a loaded package.
 export proc call_prepare(pkg: types.Package, src: Path) [fs, process, env, error] {
-  let dynamic = load_dynamic_recipe(pkg)?
+  let dynamic = module.load(dynamic_recipe_path(pkg)?)?
 
-  if dynamic.has("prepare") {
-    let prepare: Proc = dynamic.get("prepare")?
-    prepare.call(src)?
+  if ! ("prepare" in dynamic.keys()) { return }
+
+  match dynamic.require(hooks.PrepareFilesystem) {
+    Ok(filesystem_hook) => { filesystem_hook.prepare(src)?; return }
+    Err(_) => {}
   }
+
+  match dynamic.require(hooks.PrepareFilesystemEnvironment) {
+    Ok(environment_hook) => { environment_hook.prepare(src)?; return }
+    Err(_) => {}
+  }
+
+  match dynamic.require(hooks.PrepareProcessesEnvironment) {
+    Ok(process_hook) => { process_hook.prepare(src)?; return }
+    Err(_) => {}
+  }
+
+  let prepare_hook = dynamic.require(hooks.PrepareFilesystemProcessesEnvironment)?
+  prepare_hook.prepare(src)?
 }
 
 ## Invokes the required payload `build` procedure through the dynamic recipe boundary.
@@ -379,25 +395,46 @@ export proc call_build(pkg: types.Package, src: Path, dest: Path) [fs, process, 
     return
   }
 
-  let dynamic = load_dynamic_recipe(pkg)?
+  let dynamic = module.load(dynamic_recipe_path(pkg)?)?
 
-  if ! dynamic.has("build") {
+  if ! ("build" in dynamic.keys()) {
     return Err(types.PmError.PackageContract(f"${pkg.name}: payload package lost its build procedure"))
   }
 
-  let build: Proc = dynamic.get("build")?
+  match dynamic.require(hooks.BuildFilesystem) {
+    Ok(filesystem_hook) => {
+      cd src { filesystem_hook.build(dest)? } ?
+      return
+    }
+    Err(_) => {}
+  }
 
-  cd src {
-    build.call(dest)?
-  } ?
+  match dynamic.require(hooks.BuildFilesystemEnvironment) {
+    Ok(environment_hook) => {
+      cd src { environment_hook.build(dest)? } ?
+      return
+    }
+    Err(_) => {}
+  }
+
+  match dynamic.require(hooks.BuildProcessesEnvironment) {
+    Ok(process_hook) => {
+      cd src { process_hook.build(dest)? } ?
+      return
+    }
+    Err(_) => {}
+  }
+
+  let build_hook = dynamic.require(hooks.BuildFilesystemProcessesEnvironment)?
+  cd src { build_hook.build(dest)? } ?
 }
 
 ## Invokes the optional dynamic `prepare_sources` procedure for a loaded package.
 export proc call_prepare_sources(pkg: types.Package, src: Path) [fs, process, env, error] {
-  let dynamic = load_dynamic_recipe(pkg)?
+  let dynamic = module.load(dynamic_recipe_path(pkg)?)?
 
-  if dynamic.has("prepare_sources") {
-    let prepare_sources: Proc = dynamic.get("prepare_sources")?
-    prepare_sources.call(src)?
+  if ("prepare_sources" in dynamic.keys()) {
+    let sources_hook = dynamic.require(hooks.PrepareSourcesFilesystem)?
+    sources_hook.prepare_sources(src)?
   }
 }

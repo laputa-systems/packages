@@ -742,14 +742,14 @@ export proc build(dest: Path) [fs, process, env, error] {
   let root = env.get("LAPUTA_ROOT") ?? "/"
   patch_build(root)?
 
-  env {
-    CFLAGS = "-D__user="
-    LD_LIBRARY_PATH = native_tools_ld
-    PKG_CONFIG = pc.pkg_config
-    PKG_CONFIG_LIBDIR = pc.pkg_config_libdir
-    PKG_CONFIG_PATH = pc.pkg_config_path
-    PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
-  } {
+  env ({
+    CFLAGS: "-D__user=",
+    LD_LIBRARY_PATH: native_tools_ld,
+    PKG_CONFIG: pc.pkg_config,
+    PKG_CONFIG_LIBDIR: pc.pkg_config_libdir,
+    PKG_CONFIG_PATH: pc.pkg_config_path,
+    PKG_CONFIG_SYSROOT_DIR: pc.pkg_config_sysroot,
+  }) {
     run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "-Dauto_features=disabled" "-Dwerror=false" "-Dbackends=drm,libinput" "-Drenderers=gles2" "-Dallocators=gbm" "-Dsession=enabled" "-Dxwayland=disabled" "-Dcolor-management=disabled" "-Dlibliftoff=disabled" "-Dxcb-errors=disabled" "-Dexamples=false" "build" ?
 
     if native_scanner {
@@ -764,9 +764,9 @@ export proc build(dest: Path) [fs, process, env, error] {
 
     run $muon "-C" "build" samu $jobs_flag ?
 
-    env {
-      DESTDIR = dest
-    } {
+    env ({
+      DESTDIR: dest,
+    }) {
       run $muon "-C" "build" install ?
     } ?
   } ?

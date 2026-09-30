@@ -77,13 +77,13 @@ export proc build(dest: Path) [fs, process, env, error] {
   let arch = pm_util.target_arch()?
   patch_musl_math()?
 
-  env {
-    LD_LIBRARY_PATH = pc.ld_library_path
-    PKG_CONFIG = pc.pkg_config
-    PKG_CONFIG_LIBDIR = pc.pkg_config_libdir
-    PKG_CONFIG_PATH = pc.pkg_config_path
-    PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
-  } {
+  env ({
+    LD_LIBRARY_PATH: pc.ld_library_path,
+    PKG_CONFIG: pc.pkg_config,
+    PKG_CONFIG_LIBDIR: pc.pkg_config_libdir,
+    PKG_CONFIG_PATH: pc.pkg_config_path,
+    PKG_CONFIG_SYSROOT_DIR: pc.pkg_config_sysroot,
+  }) {
     if arch == "x86_64" {
       run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "-Dlibpng=disabled" "-Dgtk=disabled" "-Dtests=disabled" "-Ddemos=disabled" "build" ?
     } else {
@@ -92,14 +92,14 @@ export proc build(dest: Path) [fs, process, env, error] {
 
     run $muon "-C" "build" samu $jobs_flag ?
 
-    env {
-      DESTDIR = dest
-    } {
+    env ({
+      DESTDIR: dest,
+    }) {
       run $muon "-C" "build" install ?
     } ?
   } ?
 
-  for entry in fs.ls(fp"${dest}/usr/lib")? {
+  for entry in fs.children(fp"${dest}/usr/lib")? {
     if entry.name.starts_with("libpixman-1.so.") {
       fs.remove(entry.path, missing_ok: true)?
     }

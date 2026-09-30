@@ -89,13 +89,13 @@ main(@args)?
   )?
   fs.chmod(linker_wrapper, 0o755)?
 
-  env {
-    LD_LIBRARY_PATH = fp"${rootfs}/usr/lib".display()
-    PATH = f"${rootfs}/usr/bin:${env.get("PATH") ?? ""}"
-    CARGO_HOME = fp"${tmp}/cargo-home".display()
-    RUSTC = rustc_wrapper.display()
-    RUSTFLAGS = f"-L native=${rootfs}/usr/lib -C linker=${linker_wrapper.display()}"
-  } {
+  env ({
+    LD_LIBRARY_PATH: fp"${rootfs}/usr/lib".display(),
+    PATH: f"${rootfs}/usr/bin:${env.get("PATH") ?? ""}",
+    CARGO_HOME: fp"${tmp}/cargo-home".display(),
+    RUSTC: rustc_wrapper.display(),
+    RUSTFLAGS: f"-L native=${rootfs}/usr/lib -C linker=${linker_wrapper.display()}",
+  }) {
     cargo = run.text $dynlinker fp"${rootfs}/usr/bin/cargo" "--version" ?
     rustc = run.text $dynlinker fp"${rootfs}/usr/bin/rustc" "--version" ?
     run $dynlinker fp"${rootfs}/usr/bin/cargo" "build" "--release" "--offline" "--target" $rust_triple "--manifest-path" fp"${tmp}/Cargo.toml" ?

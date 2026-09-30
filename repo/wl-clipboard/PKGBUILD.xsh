@@ -73,13 +73,13 @@ export proc build(dest: Path) [fs, process, env, error] {
 
   patch_optional_installs()?
 
-  env {
-    LD_LIBRARY_PATH = native_tools_ld
-    PKG_CONFIG = pc.pkg_config
-    PKG_CONFIG_LIBDIR = pc.pkg_config_libdir
-    PKG_CONFIG_PATH = pc.pkg_config_path
-    PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
-  } {
+  env ({
+    LD_LIBRARY_PATH: native_tools_ld,
+    PKG_CONFIG: pc.pkg_config,
+    PKG_CONFIG_LIBDIR: pc.pkg_config_libdir,
+    PKG_CONFIG_PATH: pc.pkg_config_path,
+    PKG_CONFIG_SYSROOT_DIR: pc.pkg_config_sysroot,
+  }) {
     run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=static" "-Dprotocols=enabled" "-Dzshcompletiondir=no" "-Dfishcompletiondir=no" "build" ?
 
     if native_scanner {
@@ -94,9 +94,9 @@ export proc build(dest: Path) [fs, process, env, error] {
 
     run $muon "-C" "build" samu $jobs_flag ?
 
-    env {
-      DESTDIR = dest
-    } {
+    env ({
+      DESTDIR: dest,
+    }) {
       run $muon "-C" "build" install ?
     } ?
   } ?

@@ -52,14 +52,14 @@ set -g focus-events on
 """,
   )?
 
-  env {
-    HOME = fp"${tmp}/home"
-    LD_LIBRARY_PATH = fp"${root}usr/lib"
-    PS1 = "laputa$ "
-    SHELL = shell
-    TERM = "tmux-256color"
-    TMUX_TMPDIR = tmp
-  } {
+  env ({
+    HOME: fp"${tmp}/home",
+    LD_LIBRARY_PATH: fp"${root}usr/lib",
+    PS1: "laputa$ ",
+    SHELL: shell,
+    TERM: "tmux-256color",
+    TMUX_TMPDIR: tmp,
+  }) {
     run $dynlinker $tmux "-L" $label "-f" $config "new-session" "-d" "-s" "proof" "-x" "80" "-y" "24" $shell "--no-config" ?
     time.sleep(500ms)?
     let sessions = run.text $dynlinker $tmux "-L" $label "list-sessions" ?

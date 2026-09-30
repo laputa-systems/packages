@@ -41,11 +41,11 @@ proc package_dependency_map(root: Path) [fs, error] -> Result[Map[List[Str]]] {
     let metadata_path = fp"${entry.path}/metadata.json"
 
     if fs.exists(metadata_path)? {
-      let metadata: Record = json.read(metadata_path)?
+      let metadata: Record = json.read(metadata_path)?.require(Record)?
       var deps: List[Str] = []
 
-      if metadata.has("deps") {
-        deps = metadata.get("deps")?
+      if ("deps" in metadata) {
+        deps = metadata.get("deps")?.require(List[Str])?
       }
 
       package_deps[entry.name] = deps
@@ -59,7 +59,7 @@ proc package_dependency_map(root: Path) [fs, error] -> Result[Map[List[Str]]] {
 export proc verify_package_elf_dependencies(root: Path, name: Str) [fs, error] {
   let providers = elfdeps.collect_library_providers(root)?
   let package_deps = package_dependency_map(root)?
-  let allowed = elfdeps.runtime_dependency_closure(package_deps.get(name, []), package_deps)
+  let allowed = elfdeps.runtime_dependency_closure((package_deps.get(name) ?? []), package_deps)
   let manifest = local.load_manifest(fp"${root}/var/lib/xsh-pm/packages/${name}")?
   var failures = []
 
@@ -126,7 +126,7 @@ export proc target_elf(root: Path, rel: Path, name: Str) [fs, process, env, erro
   let readelf = readelf_tool()?
   let header = run.text $readelf "-h" $path_value ?
   let arch = pm_util.target_arch()?
-  ensure(header.contains(elf_machine_name(arch)), f"proof-${name}", f"${rel.display()} is not ${arch}")?
+  ensure((elf_machine_name(arch) in header), f"proof-${name}", f"${rel.display()} is not ${arch}")?
 }
 
 proc proof_xsh_runner() [fs, process, env, error] -> Result[Path] {
@@ -167,14 +167,14 @@ export proc run_artifact_proof(root: Path, pkg: types.Package) [fs, process, env
   var proof_exited = false
   var proof_exit_code = 0
 
-  env {
-    LAPUTA_ROOT = root.display()
-    PATH = f"${root}/bin:${root}/usr/bin:${env.get("PATH") ?? ""}"
-    XSH_MODULE_PATH = env.get("XSH_MODULE_PATH") ?? ""
-    XSH_PM_PROOF_ROOT = root.display()
-    XSH_PM_PROOF_HOST_PATH = env.get("PATH") ?? ""
-    SHELL = fp"${root}/bin/xshi"
-  } {
+  env ({
+    LAPUTA_ROOT: root.display(),
+    PATH: f"${root}/bin:${root}/usr/bin:${env.get("PATH") ?? ""}",
+    XSH_MODULE_PATH: env.get("XSH_MODULE_PATH") ?? "",
+    XSH_PM_PROOF_ROOT: root.display(),
+    XSH_PM_PROOF_HOST_PATH: env.get("PATH") ?? "",
+    SHELL: fp"${root}/bin/xshi",
+  }) {
     let status = process.run(process.command_argv(xsh, [xsh.display(), script.display(), "--", root.display()]))?
     proof_ok = status.ok
     proof_exited = status.exited()

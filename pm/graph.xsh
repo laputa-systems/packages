@@ -7,7 +7,7 @@ pure graph_sorted_unique_names(names: List[Str]) -> List[Str] {
   var seen: Map[Bool] = {}
 
   for name in names |> sort {
-    if ! seen.get(name, false) {
+    if ! (seen.get(name) ?? false) {
       unique = unique.push(name)
       seen[name] = true
     }
@@ -69,7 +69,7 @@ pure index_in_path(trail: List[Str], name: Str) -> Int {
 
 pure cycle_from(name: Str, selected: Map[Bool], edges: List[types.DependencyEdge], trail: List[Str]) -> List[Str] {
   for dependency in direct_dependencies(name, edges) {
-    continue unless selected.get(dependency, false)
+    continue unless (selected.get(dependency) ?? false)
     let cycle_index = index_in_path(trail, dependency)
 
     if cycle_index >= 0 {
@@ -123,15 +123,15 @@ proc closure_from_edges(
   while index < pending.len() {
     let name = pending[index]
 
-    if ! local_names.get(name, false) and ! remote_names.get(name, false) {
+    if ! (local_names.get(name) ?? false) and ! (remote_names.get(name) ?? false) {
       return Err(types.PmError.MissingDependency(f"graph root ${name} is unavailable"))
     }
 
-    if ! included.get(name, false) {
+    if ! (included.get(name) ?? false) {
       included[name] = true
 
       for dependency in direct_dependencies(name, selected_edges(edges, kinds)) {
-        if ! included.get(dependency, false) {
+        if ! (included.get(dependency) ?? false) {
           pending = pending.push(dependency)
         }
       }
@@ -140,7 +140,7 @@ proc closure_from_edges(
     index += 1
   }
 
-  graph_sorted_unique_names([name for name in pending if included.get(name, false)])
+  graph_sorted_unique_names([name for name in pending if (included.get(name) ?? false)])
 }
 
 ## Classifies every declared and policy-seeded dependency edge in a catalog.
@@ -161,15 +161,15 @@ export proc edges(
   }
 
   for rule in value.bootstrap_seeds {
-    continue unless (! rule.native_only or value.native_build) and local_names.get(rule.package, false)
+    continue unless (! rule.native_only or value.native_build) and (local_names.get(rule.package) ?? false)
 
-    if ! local_names.get(rule.dependency, false) and ! remote_names.get(rule.dependency, false) {
+    if ! (local_names.get(rule.dependency) ?? false) and ! (remote_names.get(rule.dependency) ?? false) {
       return Err(types.PmError.MissingDependency(f"${rule.package} bootstrap requires missing ${rule.dependency}"))
     }
 
     let key = edge_key(rule.package, rule.dependency)
 
-    if ! declared_pairs.get(key, false) {
+    if ! (declared_pairs.get(key) ?? false) {
       result = result.push({from: rule.package, to: rule.dependency, kind: types.dependency_bootstrap()})
     }
   }
@@ -196,7 +196,7 @@ export proc topological_levels(
   let local_edges = [
     edge
     for edge in edges
-    if edge.kind != types.dependency_bootstrap() and selected_map.get(edge.from, false) and selected_map.get(edge.to, false)
+    if edge.kind != types.dependency_bootstrap() and (selected_map.get(edge.from) ?? false) and (selected_map.get(edge.to) ?? false)
   ]
   var unresolved: Map[Int] = {}
   var emitted: Map[Bool] = {}
@@ -207,7 +207,7 @@ export proc topological_levels(
   }
 
   for edge in local_edges {
-    unresolved[edge.from] = unresolved.get(edge.from, 0) + 1
+    unresolved[edge.from] = (unresolved.get(edge.from) ?? 0) + 1
   }
 
   var emitted_count = 0
@@ -216,7 +216,7 @@ export proc topological_levels(
     var ready: List[Str] = []
 
     for name in selected_names {
-      if ! emitted.get(name, false) and unresolved.get(name, 0) == 0 {
+      if ! (emitted.get(name) ?? false) and (unresolved.get(name) ?? 0) == 0 {
         ready = ready.push(name)
       }
     }
@@ -235,7 +235,7 @@ export proc topological_levels(
 
       for edge in local_edges {
         if edge.to == name {
-          unresolved[edge.from] = unresolved.get(edge.from, 0) - 1
+          unresolved[edge.from] = (unresolved.get(edge.from) ?? 0) - 1
         }
       }
     }

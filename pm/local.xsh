@@ -19,7 +19,7 @@ export proc load_manifest(db: Path) [fs, error] -> Result[List[Path]] {
   var manifest = []
 
   if fs.exists(fp"${db}/manifest.json")? {
-    let stored: List[Str] = json.read(fp"${db}/manifest.json")?
+    let stored: List[Str] = json.read(fp"${db}/manifest.json")?.require(List[Str])?
 
     for rel_text in stored {
       manifest = manifest.push(fp"${rel_text}")
@@ -40,7 +40,7 @@ export proc load_etcsums(db: Path) [fs, error] -> Result[Map[Str]] {
   var mapped: Map[Str] = {}
 
   if fs.exists(fp"${db}/etcsums.json")? {
-    let rows: List[types.EtcSum] = json.read(fp"${db}/etcsums.json")?
+    let rows: List[types.EtcSum] = json.read(fp"${db}/etcsums.json")?.require(List[types.EtcSum])?
 
     for row in rows {
       mapped[row.path] = row.sha256
@@ -52,7 +52,7 @@ export proc load_etcsums(db: Path) [fs, error] -> Result[Map[Str]] {
 
 ## Exported PM declaration `load_metadata`.
 export proc load_metadata(db: Path) [fs, error] -> Result[Record] {
-  let metadata: Record = json.read(fp"${db}/metadata.json")?
+  let metadata: Record = json.read(fp"${db}/metadata.json")?.require(Record)?
   metadata
 }
 
@@ -101,7 +101,7 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
       return Err(types.PmError.PackageContract(f"${pkg.name} declares an invalid filetree path ${key}"))
     }
 
-    if declared.has(key) {
+    if (key in declared) {
       return Err(types.PmError.PackageContract(f"${pkg.name} declares ${key} more than once"))
     }
 
@@ -122,7 +122,7 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
     let key = rel_path.display()
     let path_value = fp"${dest}/${rel_path}"
     let actual_kind = fs.metadata(path_value)?.kind
-    if ! declared.has(key) {
+    if ! (key in declared) {
       var covered_by_tree = false
 
       for entry in pkg.filetree {
@@ -212,10 +212,10 @@ export proc validate_and_strip_package(pkg: types.Package, dest: Path, manifest:
 export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error] -> Result[List[types.ArtifactEntry]] {
   var files: List[types.ArtifactEntry] = []
   let root_handle = fs.open_root(root)?
-  defer fs.close_root(root_handle)
+  defer root_handle.close()
 
   for rel_path in manifest {
-    match fs.root_readlink(root_handle, rel_path) {
+    match root_handle.readlink(rel_path) {
       Ok(target) => {
         files = files.push(
           {path: rel_path.display(), kind: types.file_kind_symlink(), mode: 0o777, sha256: "", target: target.display()},
@@ -226,11 +226,11 @@ export proc collect_metadata_files(root: Path, manifest: List[Path]) [fs, error]
       Err(_) => {}
     }
 
-    let meta = fs.root_metadata(root_handle, rel_path)?
+    let meta = root_handle.metadata(rel_path)?
     var sha256 = ""
 
     if meta.kind == "file" {
-      sha256 = fs.root_read(root_handle, rel_path)?.sha256().hex()
+      sha256 = root_handle.read_bytes(rel_path)?.sha256().hex()
     }
 
     var kind = types.file_kind_file()
@@ -289,7 +289,7 @@ export proc collect_archive_paths(
   for entry in entries |> sort-by .display() {
     let key = entry.display()
 
-    if !unique.has(key) {
+    if !(key in unique) {
       unique[key] = true
       canonical = canonical.push(entry)
     }
@@ -401,7 +401,7 @@ export proc ensure_installable(
   for rel_path in manifest {
     let key = rel_path.display()
 
-    if installed_owners.has(key) {
+    if (key in installed_owners) {
       let owner = installed_owners.get(key)?
 
       if owner != pkg.name {
@@ -427,15 +427,15 @@ export proc install_etc_file(
   let new_sum = new_sums.get(key)?
   var old_sum = ""
 
-  if old_sums.has(key) {
+  if (key in old_sums) {
     let value = old_sums.get(key)?
     old_sum = value
   }
 
   var sys_sum = ""
 
-  if fs.root_exists(dest_root, dest)? {
-    sys_sum = fs.root_read(dest_root, dest)?.sha256().hex()
+  if dest_root.exists(dest)? {
+    sys_sum = dest_root.read_bytes(dest)?.sha256().hex()
   }
 
   if old_sum == new_sum and new_sum != sys_sum {
@@ -461,15 +461,15 @@ export proc install_manifest_entries(
   installed_owners: Map[Str],
 ) [fs, error] {
   let source_root = fs.open_root(stage)?
-  defer fs.close_root(source_root)
+  defer source_root.close()
   let dest_root = fs.open_root(root)?
-  defer fs.close_root(dest_root)
+  defer dest_root.close()
 
   for rel_path in manifest {
     let key = rel_path.display()
     var overwrite = false
 
-    if installed_owners.has(key) {
+    if (key in installed_owners) {
       let owner = installed_owners.get(key)?
 
       if owner == pkg.name {
@@ -477,15 +477,15 @@ export proc install_manifest_entries(
       }
     }
 
-    match fs.root_readlink(source_root, rel_path) {
+    match source_root.readlink(rel_path) {
       Ok(target) => {
-        fs.root_symlink(dest_root, target, rel_path, true, overwrite)?
+        dest_root.symlink(target, rel_path, true, overwrite)?
         continue
       }
       Err(_) => {}
     }
 
-    let metadata = fs.root_metadata(source_root, rel_path)?
+    let metadata = source_root.metadata(rel_path)?
 
     if metadata.kind == "file" {
       let file_mode = metadata.mode % 4096
@@ -501,7 +501,7 @@ export proc install_manifest_entries(
 
 ## Exported PM declaration `dir_empty`.
 export proc dir_empty(path_value: Path) [fs, error] -> Result[Bool] {
-  for _ in fs.ls(path_value)? {
+  for _ in fs.children(path_value)? {
     return false
   }
 
@@ -516,15 +516,15 @@ export proc collect_removable_manifest(
 ) [fs, error] -> Result[List[Path]] {
   var removable = []
   let root_handle = fs.open_root(root)?
-  defer fs.close_root(root_handle)
+  defer root_handle.close()
 
   for rel_path in manifest {
     let key = rel_path.display()
 
-    if util.is_etc_file(rel_path) and etcsums.has(key) and fs.root_exists(root_handle, rel_path)? {
+    if util.is_etc_file(rel_path) and (key in etcsums) and root_handle.exists(rel_path)? {
       let expected = etcsums.get(key)?
 
-      if fs.root_read(root_handle, rel_path)?.sha256().hex() == expected {
+      if root_handle.read_bytes(rel_path)?.sha256().hex() == expected {
         removable = removable.push(rel_path)
       }
     } else {
@@ -573,7 +573,7 @@ export proc load_package_dirs(dirs: List[Path]) [fs, env, error] -> Result[List[
   for dir in dirs {
     let pkg = recipe.load_package(dir)?
 
-    if seen.has(pkg.name) {
+    if (pkg.name in seen) {
       return Err(types.PmError.PackageContract(f"duplicate package ${pkg.name}"))
     }
 
@@ -599,7 +599,7 @@ export proc order_packages(
 
   for pkg in packages {
     for dependency in pkg.deps {
-      if ! local_names.get(dependency, false) {
+      if ! (local_names.get(dependency) ?? false) {
         if ! allow_installed_deps or ! fs.exists(util.package_db_path(root, dependency))? {
           return Err(types.PmError.MissingDependency(f"${pkg.name} depends on missing ${dependency}"))
         }
@@ -609,7 +609,7 @@ export proc order_packages(
     }
 
     for dependency in pkg.mkdeps_host.extend(pkg.mkdeps_target) {
-      if ! local_names.get(dependency, false) {
+      if ! (local_names.get(dependency) ?? false) {
         available_names = available_names.push(dependency)
       }
     }
@@ -624,8 +624,8 @@ export proc order_packages(
 
   for level in levels {
     for name in level {
-      if by_name.has(name) {
-        let pkg: types.Package = by_name.get(name)?
+      if (name in by_name) {
+        let pkg: types.Package = by_name.get(name)?.require(types.Package)?
         ordered = ordered.push(pkg)
       }
     }
@@ -652,8 +652,8 @@ export proc collect_upgrade_names(root: Path, packages: List[types.Package]) [fs
 
     if fs.exists(db)? {
       let metadata = load_metadata(db)?
-      let ver: Str = metadata.get("ver")?
-      let rel: Str = metadata.get("rel")?
+      let ver: Str = metadata.get("ver")?.require(Str)?
+      let rel: Str = metadata.get("rel")?.require(Str)?
 
       if ver != pkg.ver or rel != pkg.rel {
         names = names.push(pkg.name)
@@ -708,7 +708,7 @@ export proc load_built_package_from_dest(
 
   let db = util.package_db_path(dest, pkg.name)
   let manifest = load_manifest(db)?
-  let etcsums: List[types.EtcSum] = json.read(fp"${db}/etcsums.json")?
+  let etcsums: List[types.EtcSum] = json.read(fp"${db}/etcsums.json")?.require(List[types.EtcSum])?
   let metadata_files = collect_artifact_entries(dest, pkg.filetree)?
   let metadata_sha256 = metadata_files_sha256(pkg, metadata_files)?
 

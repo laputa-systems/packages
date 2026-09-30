@@ -236,8 +236,8 @@ proc nonterminals(rules: List[GrammarRule]) [error] -> Result[List[Str]] {
 }
 
 pure token_code_expr(symbol: Str, tokens: Map[Int]) -> Str {
-  if tokens.has(symbol) {
-    return f"${tokens.get(symbol, 0)}"
+  if (symbol in tokens) {
+    return f"${(tokens.get(symbol) ?? 0)}"
   }
 
   let lit = literal_code(symbol)
@@ -250,7 +250,7 @@ pure token_code_expr(symbol: Str, tokens: Map[Int]) -> Str {
 }
 
 proc generate_token_defines(tokens: Map[Int]) [error] -> Result[Str] {
-  var lines = [f"#define ${name} ${tokens.get(name, 0)}" for name in tokens.keys() if ! name.starts_with("'")]
+  var lines = [f"#define ${name} ${(tokens.get(name) ?? 0)}" for name in tokens.keys() if ! name.starts_with("'")]
   return lines.join("\n")
 }
 

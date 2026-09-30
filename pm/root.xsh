@@ -149,21 +149,21 @@ proc root_legacy_package_db_file(
   name: Str,
 ) [fs, error] -> Result[LegacyPackageDbFile] {
   let root_handle = fs.open_root(extracted)?
-  defer fs.close_root(root_handle)
+  defer root_handle.close()
   let rel = root_legacy_package_db_path(receipt, name)
 
-  match fs.root_readlink(root_handle, rel) {
+  match root_handle.readlink(rel) {
     Ok(_) => return Err(types.PmError.PackageContract(f"legacy package database ${rel.display()} must be a regular file"))
     Err(_) => {}
   }
 
-  let metadata = fs.root_metadata(root_handle, rel)?
+  let metadata = root_handle.metadata(rel)?
 
   if metadata.kind != "file" or metadata.mode % 4096 != 0o644 {
     return Err(types.PmError.PackageContract(f"legacy package database ${rel.display()} must be mode 0644 regular file"))
   }
 
-  let body = fs.root_read(root_handle, rel)?
+  let body = root_handle.read_bytes(rel)?
   {entry: {path: rel.display(), kind: types.file_kind_file(), mode: 0o644, sha256: body.sha256().hex(), target: ""}, body}
 }
 
@@ -174,8 +174,8 @@ proc root_legacy_package_db_entries(
   payload_entries: List[types.ArtifactEntry],
 ) [fs, error] -> Result[List[types.ArtifactEntry]] {
   let sandbox = fs.tempdir()?
-  defer fs.close_root(sandbox)?
-  let extracted = fp"${fs.root_path(sandbox)?}/payload"
+  defer sandbox.close()?
+  let extracted = fp"${sandbox.host_path()?}/payload"
   archive.tar_extract(fp"${receipt.artifact_dir}/payload.tar.gz", extracted)?
   let manifest_file = root_legacy_package_db_file(extracted, receipt, "manifest.json")?
   let etcsums_file = root_legacy_package_db_file(extracted, receipt, "etcsums.json")?
@@ -215,7 +215,7 @@ proc root_legacy_package_db_entries(
 }
 
 proc root_artifact_metadata(receipt: types.ArtifactReceipt) [fs, error] -> Result[DecodedArtifactMetadata] {
-  let raw: Record = json.read(fp"${receipt.artifact_dir}/metadata.json")?
+  let raw: Record = json.read(fp"${receipt.artifact_dir}/metadata.json")?.require(Record)?
   let dto = raw.require(ArtifactMetadataDto)?
   let expected_id = util.package_id(dto.name, dto.ver, dto.rel)
 
@@ -225,7 +225,7 @@ proc root_artifact_metadata(receipt: types.ArtifactReceipt) [fs, error] -> Resul
 
   var kind = types.package_payload()
 
-  if raw.has("package_kind") {
+  if ("package_kind" in raw) {
     let kind_text = raw.get("package_kind")?.require(Str)?
     kind = types.parse_package_kind(kind_text)?
   }
@@ -236,7 +236,7 @@ proc root_artifact_metadata(receipt: types.ArtifactReceipt) [fs, error] -> Resul
     let entry = root_decode_metadata_entry(raw)?
     root_validate_metadata_entry(entry)?
 
-    if seen.has(entry.path) {
+    if (entry.path in seen) {
       return Err(types.PmError.PackageContract(f"artifact metadata repeats ${entry.path} for ${receipt.package_name}"))
     }
 
@@ -244,9 +244,9 @@ proc root_artifact_metadata(receipt: types.ArtifactReceipt) [fs, error] -> Resul
     entries = entries.push(entry)
   }
 
-  if !raw.has("package_kind") {
+  if !("package_kind" in raw) {
     for entry in root_legacy_package_db_entries(receipt, raw, dto, entries)? {
-      if seen.has(entry.path) {
+      if (entry.path in seen) {
         return Err(types.PmError.PackageContract(f"legacy package database entry ${entry.path} duplicates sidecar metadata for ${receipt.package_name}"))
       }
 
@@ -264,14 +264,14 @@ proc root_artifact_metadata(receipt: types.ArtifactReceipt) [fs, error] -> Resul
 
 proc root_verify_entry_at(root: Path, entry: types.RootEntry) [fs, error] -> Result[Unit] {
   let root_handle = fs.open_root(root)?
-  defer fs.close_root(root_handle)
+  defer root_handle.close()
   let rel = fp"${entry.path}"
 
   # Root metadata follows the final path component. Inspect a declared symlink
   # first so a contained dangling or cyclic link remains a literal payload
   # entry instead of making receipt verification traverse it.
   if entry.kind == types.file_kind_symlink() {
-    let target = fs.root_readlink(root_handle, rel)?
+    let target = root_handle.readlink(rel)?
 
     if target.display() != entry.target {
       return Err(types.PmError.PackageContract(f"root symlink ${entry.path} does not match metadata"))
@@ -283,18 +283,18 @@ proc root_verify_entry_at(root: Path, entry: types.RootEntry) [fs, error] -> Res
   # Do not let an absent declaration escape as an unlabelled fs-root-stat
   # error: the caller needs the exact immutable inventory entry to diagnose a
   # malformed artifact, including from a parallel executor worker.
-  if !fs.root_exists(root_handle, rel)? {
+  if !root_handle.exists(rel)? {
     return Err(types.PmError.PackageContract(f"root entry ${entry.path} is absent or unreadable"))
   }
 
-  let meta = fs.root_metadata(root_handle, rel)?
+  let meta = root_handle.metadata(rel)?
 
   if entry.kind == types.file_kind_file() or entry.kind == types.file_kind_binary() {
     if meta.mode % 4096 != entry.mode {
       return Err(types.PmError.PackageContract(f"root entry ${entry.path} mode does not match metadata"))
     }
 
-    if meta.kind != "file" or fs.root_read(root_handle, rel)?.sha256().hex() != entry.sha256 {
+    if meta.kind != "file" or root_handle.read_bytes(rel)?.sha256().hex() != entry.sha256 {
       return Err(types.PmError.PackageContract(f"root file ${entry.path} does not match metadata"))
     }
   } else if entry.kind == types.file_kind_tree() {
@@ -319,8 +319,8 @@ pure root_same_directory_metadata(left: types.RootEntry, right: types.RootEntry)
 
 proc root_verify_payload_entries(receipt: types.ArtifactReceipt, entries: List[types.RootEntry]) [fs, error] {
   let sandbox = fs.tempdir()?
-  defer fs.close_root(sandbox)?
-  let sandbox_path = fs.root_path(sandbox)?
+  defer sandbox.close()?
+  let sandbox_path = sandbox.host_path()?
   let extracted = fp"${sandbox_path}/payload"
   archive.tar_extract(fp"${receipt.artifact_dir}/payload.tar.gz", extracted)?
   var expected: Map[Bool] = {}
@@ -346,7 +346,7 @@ proc root_verify_payload_entries(receipt: types.ArtifactReceipt, entries: List[t
     if actual.kind == "dir" and rel.display() != "." {
       var empty = true
 
-      for _ in fs.ls(actual.path)? {
+      for _ in fs.children(actual.path)? {
         empty = false
         break
       }
@@ -354,7 +354,7 @@ proc root_verify_payload_entries(receipt: types.ArtifactReceipt, entries: List[t
       owned = empty
     }
 
-    if owned and ! expected.has(rel.display()) {
+    if owned and ! (rel.display() in expected) {
       return Err(types.PmError.PackageContract(f"artifact ${receipt.package_name} payload contains undeclared ${rel.display()}"))
     }
   }
@@ -368,11 +368,11 @@ proc root_verified_artifacts(artifacts: List[types.ArtifactReceipt]) [fs, error]
   for artifact in artifacts {
     let receipt = artifact_store.verify_receipt(artifact)?
 
-    if keys.has(receipt.key) {
+    if (receipt.key in keys) {
       return Err(types.PmError.PackageContract(f"duplicate artifact key ${receipt.key}"))
     }
 
-    if names.has(receipt.package_name) {
+    if (receipt.package_name in names) {
       return Err(types.PmError.PackageContract(f"duplicate package ${receipt.package_name} in root artifacts"))
     }
 
@@ -383,7 +383,7 @@ proc root_verified_artifacts(artifacts: List[types.ArtifactReceipt]) [fs, error]
 
   for receipt in verified {
     for dependency_key in receipt.runtime_dependency_keys {
-      if ! keys.has(dependency_key) {
+      if ! (dependency_key in keys) {
         return Err(types.PmError.MissingDependency(f"${receipt.package_name} runtime dependency artifact ${dependency_key} is absent"))
       }
     }
@@ -555,8 +555,8 @@ proc root_materialize_artifact(
   entries: List[types.RootEntry],
 ) [fs, error] {
   let sandbox = fs.tempdir()?
-  defer fs.close_root(sandbox)?
-  let extracted = fp"${fs.root_path(sandbox)?}/payload"
+  defer sandbox.close()?
+  let extracted = fp"${sandbox.host_path()?}/payload"
   archive.tar_extract(fp"${receipt.artifact_dir}/payload.tar.gz", extracted)?
 
   for entry in entries {
@@ -614,7 +614,7 @@ export proc preflight(target: types.Target, artifacts: List[types.ArtifactReceip
 
       var coalesced = false
 
-      if owners.has(planned.path) {
+      if (planned.path in owners) {
         let owner = owners.get(planned.path)?
         if root_same_directory_metadata(owner, planned) {
           coalesced = true
@@ -635,7 +635,7 @@ export proc preflight(target: types.Target, artifacts: List[types.ArtifactReceip
         while index + 1 < components.len() {
           prefix = if prefix == "" { components[index] } else { f"${prefix}/${components[index]}" }
 
-          if owners.has(prefix) {
+          if (prefix in owners) {
             let owner = owners.get(prefix)?
             if owner.kind != types.file_kind_tree() {
               return Err(types.PmError.PackageConflict(f"root non-directory ${owner.path} owned by ${owner.package_name} conflicts with ${planned.path}"))
@@ -645,7 +645,7 @@ export proc preflight(target: types.Target, artifacts: List[types.ArtifactReceip
           index += 1
         }
 
-        if planned.kind != types.file_kind_tree() and first_descendants.has(planned.path) {
+        if planned.kind != types.file_kind_tree() and (planned.path in first_descendants) {
           let owner = first_descendants.get(planned.path)?
           return Err(types.PmError.PackageConflict(f"root non-directory ${planned.path} conflicts with ${owner.path} owned by ${owner.package_name}"))
         }
@@ -657,7 +657,7 @@ export proc preflight(target: types.Target, artifacts: List[types.ArtifactReceip
 
         while index + 1 < components.len() {
           prefix = if prefix == "" { components[index] } else { f"${prefix}/${components[index]}" }
-          if ! first_descendants.has(prefix) {
+          if ! (prefix in first_descendants) {
             first_descendants[prefix] = planned
           }
           index += 1

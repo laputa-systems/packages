@@ -3,6 +3,8 @@
 `pm.xsh` is the typed Laputa package manager. It turns package recipes into a
 deterministic `BuildPlan`, executes only that plan through immutable artifacts,
 publishes verified snapshots, and composes runtime-only root generations.
+Publication validates package identity before adding artifact and proof fields;
+additional recipe metadata survives that augmentation unchanged.
 
 ## Package Contract
 
@@ -23,6 +25,15 @@ Recipe loading is quarantined in `pm/recipe.xsh`. The rest of PM receives only
 typed `Package` values; runtime lifecycle hooks are not part of the package
 contract. Immutable root preflight rejects ownership conflicts before any
 generation is written.
+
+Recipe hooks take one `Path` and return `Result[Unit]`. `pm/recipe_hooks.xsh`
+validates `build` and optional `prepare` against the existing declared capability
+sets: `[fs, error]`, `[fs, env, error]`, `[process, env, error]`, or
+`[fs, process, env, error]`. Optional `prepare_sources` uses `[fs, error]`.
+Module validation compares declared effects exactly, so the boundary retains
+each recipe's capabilities. A missing optional hook remains a no-op; a present
+hook with incompatible parameters, result, export kind, or capabilities is
+rejected before invocation.
 
 `upstream_sources` selects `auto`, `archive`, `zip`, `cpio`, `file`,
 `directory`, or `git` materialization. A `SKIP` checksum is accepted only for a
@@ -108,6 +119,14 @@ The native Docker adapter passes `XSH_PM_BOOTSTRAP_LLVM_ROOT=/usr/lib/llvm23`
 for `gnu-stubs`: its LLVM edge is a bootstrap seed, so the recipe must use the
 preseeded compiler while the replacement LLVM package is built.
 
+`pm/make.xsh::check_tasks` and `run_tasks` accept `List[MakeTask]`, preserving
+the task schema from compiler helpers through scheduling and spawned process
+handles. `pkg_config_flags` preserves `PkgConfigFlags` string lists through
+compiler and linker flag assembly. `MakeTask.argv` retains the existing heterogeneous argument boundary:
+paths and strings are passed as individual process arguments rather than shell
+source. Completed-task stamps are published only after the entire graph succeeds;
+a failed command cancels unfinished peers.
+
 ## Identity, store, and snapshots
 
 `pm/fingerprint.xsh` hashes canonical sorted input lines: recipe/package
@@ -142,11 +161,31 @@ package construction itself uses typed XSH process and filesystem boundaries.
 ## Verification
 
 PM behavior is covered by the focused modules under `tests/xsh/`:
-`pm_recipe.xsh`, `pm_graph.xsh`, `pm_plan.xsh`, `pm_store.xsh`,
+`pm_recipe.xsh`, `pm_recipe_hooks.xsh`, `pm_graph.xsh`, `pm_graph_contracts.xsh`,
+`pm_make.xsh`, `pm_plan.xsh`, `pm_store.xsh`,
 `pm_root.xsh`, `pm_execute.xsh`, `pm_publish.xsh`, `pm_generation.xsh`, and
 `pm_cli.xsh`.
 
+The isolated `pm_graph_contracts.xsh` module covers nominal plan-action identity,
+dependency-first ordering, selection boundaries, and cycle errors without
+loading recipes or starting package builds. Run it against the checked-out
+debug tools with `../xsh/target/debug/xsht test --jobs 1 tests/xsh/pm_graph_contracts.xsh`.
+`pm_recipe_hooks.xsh` likewise exercises checked hook dispatch, absence, rejected
+contracts, and cwd restoration with temporary fixtures. These host checks do not
+validate the published runner pin or Linux package execution. `pm_make.xsh`
+uses temporary native child scripts to verify argument and environment preservation,
+dependency order, stamp reuse, failed-peer cancellation, and checked pkg-config
+flag lists without package builds. `ca_certificates_recipe.xsh` checks the proof
+metadata boundary using a temporary bundle and helper; `m4_recipe.xsh` checks
+literal source operands and rejection of directory inputs. `parser_generators.xsh`
+checks Bison token definitions, Flex definition expansion, generated output paths,
+and missing-input diagnostics independently of Linux build modules.
+
 Run a host-native suite with `make test-native XSH_ROOT=$HOME/d/laputa-systems/xsh`.
-The Docker-backed suite is `make test`.
+The Docker-backed suite is `make test`. The migrated enum declarations, explicit
+environment overlays, collection APIs, and checked module contracts target the
+checked-out XSH implementation. Update `XSH_RELEASE` and its binary hashes together
+to a release containing those contracts before treating the published runner gate
+as evidence for this checkout.
 Use `make test-local-linux` to test the checked-out XSH ARM64 debug binaries in
 the pinned Linux test image before updating the published release pin.

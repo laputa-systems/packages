@@ -37,6 +37,7 @@ export let upstream_sources = [
 ]
 
 type EventDef = {attr: Str, value: Int, name: Str}
+type EventDefinitions = {defs: List[EventDef], max_codes: Map[Int]}
 
 ## Exported declaration `filetree`.
 export let filetree = [
@@ -206,7 +207,7 @@ proc c_lookup_lines(
     "REP_MAX"
   }
 
-  if max_name in duplicate_defines() and max_codes.has(max_name) {
+  if max_name in duplicate_defines() and (max_name in max_codes) {
     lookups = lookups.push({name: max_name, value: max_name})
   }
 
@@ -214,7 +215,7 @@ proc c_lookup_lines(
   lines
 }
 
-proc collect_event_defs(path_value: Path) [fs, error] -> Result[Record] {
+proc collect_event_defs(path_value: Path) [fs, error] -> Result[EventDefinitions] {
   var defs = []
   var max_codes: Map[Int] = {}
 
@@ -270,7 +271,7 @@ proc write_event_names() [fs, error] {
     "INPUT_PROP_MAX",
     "MT_TOOL_MAX",
   ] {
-    if second_max.has(key) {
+    if (key in second_max) {
       max_codes[key] = second_max.get(key)?
     }
   }
@@ -321,7 +322,7 @@ proc write_event_names() [fs, error] {
   lines = lines.push("#endif")
   lines = lines.push("static const int ev_max[EV_MAX + 1] = {")
   var index = 0
-  let ev_max = max_codes.get("EV_MAX", 31)
+  let ev_max = (max_codes.get("EV_MAX") ?? 31)
 
   while index <= ev_max {
     var emitted = false
@@ -416,19 +417,19 @@ export proc build(dest: Path) [fs, process, env, error] {
   let pc = pm_env.pkg_config_context()?
   patch_python_generator()?
 
-  env {
-    LD_LIBRARY_PATH = pc.ld_library_path
-    PKG_CONFIG = pc.pkg_config
-    PKG_CONFIG_LIBDIR = pc.pkg_config_libdir
-    PKG_CONFIG_PATH = pc.pkg_config_path
-    PKG_CONFIG_SYSROOT_DIR = pc.pkg_config_sysroot
-  } {
+  env ({
+    LD_LIBRARY_PATH: pc.ld_library_path,
+    PKG_CONFIG: pc.pkg_config,
+    PKG_CONFIG_LIBDIR: pc.pkg_config_libdir,
+    PKG_CONFIG_PATH: pc.pkg_config_path,
+    PKG_CONFIG_SYSROOT_DIR: pc.pkg_config_sysroot,
+  }) {
     run $muon "setup" pm_env.meson_prefix_arg() pm_env.meson_libdir_arg() "-Ddefault_library=shared" "-Dtests=disabled" "-Dtools=disabled" "-Ddocumentation=disabled" "-Dcoverity=false" "build" ?
     run $muon "-C" "build" samu $jobs_flag ?
 
-    env {
-      DESTDIR = dest
-    } {
+    env ({
+      DESTDIR: dest,
+    }) {
       run $muon "-C" "build" install ?
     } ?
   } ?

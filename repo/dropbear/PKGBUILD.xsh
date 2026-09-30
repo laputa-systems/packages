@@ -335,7 +335,7 @@ ${default_options_guard}
 
   let ltm_sources = [
     entry.path.relative_to(ltm_root)
-    for entry in fs.ls(p"libtommath")?
+    for entry in fs.children(p"libtommath")?
     if entry.kind == "file" and entry.ext == "c"
   ]
 

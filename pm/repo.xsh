@@ -45,14 +45,14 @@ proc repo_verify_node_receipt(
 
 proc repo_package_kind(receipt: types.ArtifactReceipt, node: types.PlanNode) [fs, error] -> Result[types.PackageKind] {
   let metadata = fp"${receipt.artifact_dir}/metadata.json"
-  let raw: Record = json.read(metadata)?
+  let raw: Record = json.read(metadata)?.require(Record)?
   let core = raw.require(RepoArtifactMetadataDto)?
 
   if core.name != node.name or core.ver != node.ver or core.rel != node.rel {
     return Err(types.PmError.PackageContract(f"artifact metadata ${metadata.display()} does not match ${node.package_id}"))
   }
 
-  if raw.has("package_kind") {
+  if ("package_kind" in raw) {
     return types.parse_package_kind(raw.get("package_kind")?.require(Str)?)
   }
 
@@ -112,7 +112,7 @@ export proc snapshot(value: types.BuildPlan, store_root: Path) [fs, error] -> Re
 }
 
 proc repo_metadata_for_publication(value: types.RepoPublication, output: Path) [fs, error] -> Result[Path] {
-  let raw: Record = json.read(value.metadata)?
+  let raw = json.read(value.metadata)?.require(RepoArtifactMetadataDto)?
   let metadata = fp"${output}/${value.node.artifact_key}.json"
   fs.mkdir(metadata.parent)?
   fs.write_atomic(

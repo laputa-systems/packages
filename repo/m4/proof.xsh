@@ -39,7 +39,7 @@ proc main(rootfs: Path = /rootfs) [fs, process, error] {
     return Err(ScriptError.Failed("proof-m4", "m4 accepted a directory input"))?
   }
 
-  if ! directory_stderr.read_text()?.contains("cannot read non-file input") {
+  if "cannot read non-file input" not in directory_stderr.read_text()? {
     return Err(ScriptError.Failed("proof-m4", "m4 rejected a directory without its input diagnostic"))?
   }
 

@@ -28,7 +28,7 @@ type RootInspectArgs = {input: Path}
 type StoreVerifyArgs = {store: Path}
 type StoreExtractArgs = {input: Path, store: Path, package: Str, path: Path, output: Path}
 
-type PmCommand = Help(Str) | RepoCheck(RepoCheckArgs) | RepoPlan(RepoPlanArgs) | RepoShow(RepoShowArgs) | RepoBuild(RepoBuildArgs) | RepoPublish(RepoPublishArgs) | RepoChecksum(RepoPackagesArgs) | RepoUpdateChecksums(RepoPackagesArgs) | RepoSourceAudit(RepoPackagesArgs) | RootCompose(RootComposeArgs) | RootInspect(RootInspectArgs) | StoreVerify(StoreVerifyArgs) | StoreExtract(StoreExtractArgs)
+enum PmCommand { Help(Str), RepoCheck(RepoCheckArgs), RepoPlan(RepoPlanArgs), RepoShow(RepoShowArgs), RepoBuild(RepoBuildArgs), RepoPublish(RepoPublishArgs), RepoChecksum(RepoPackagesArgs), RepoUpdateChecksums(RepoPackagesArgs), RepoSourceAudit(RepoPackagesArgs), RootCompose(RootComposeArgs), RootInspect(RootInspectArgs), StoreVerify(StoreVerifyArgs), StoreExtract(StoreExtractArgs) }
 
 type RepoCheckOptions = {repo: Str}
 type RepoPlanOptions = {repo: Str, all: Bool, roots: List[Str], target: Str, output: Path}
@@ -256,7 +256,7 @@ proc parse_repo_command(argv: List[Str]) [fs, error] -> Result[PmCommand] {
         },
         "pm repo build",
       ) {
-        Ok(value) => parsed = value
+        Ok(value) => parsed = value.require(RepoBuildOptions)?
         Err(problem) => return Err(problem)
       }
       return RepoBuild({input: parsed.input, store: parsed.store, jobs: parsed.jobs})
@@ -485,15 +485,15 @@ proc selected_packages(repo_root: Path, names: List[Str]) [fs, env, error] -> Re
   var seen: Map[Bool] = {}
 
   for name in names {
-    if seen.has(name) {
+    if (name in seen) {
       return Err(types.PmError.Usage(f"package ${name} was selected more than once"))
     }
 
-    if ! by_name.has(name) {
+    if ! (name in by_name) {
       return Err(types.PmError.MissingDependency(f"package ${name} is not in ${repo_root.display()}"))
     }
 
-    let listed: types.Package = by_name.get(name)?
+    let listed: types.Package = by_name.get(name)?.require(types.Package)?
     selected = selected.push(recipe.load_package(fp"${repo_root}/${listed.dir}")?)
     seen[name] = true
   }
@@ -512,8 +512,8 @@ proc command_repo_plan(args: RepoPlanArgs) [fs, net, process, env, time, error] 
   let policy_value = if target == types.target_aarch64() { policy.aarch64_docker() } else { policy.x86_64_docker() }
 
   let cache_handle = fs.tempdir()?
-  defer fs.close_root(cache_handle)?
-  let cache_root = fs.root_path(cache_handle)?
+  defer cache_handle.close()?
+  let cache_root = cache_handle.host_path()?
   let value = pm_plan.resolve(
     catalog.load_for_target(args.repo, target)?,
     remote_snapshot_for_plan(cache_root, target)?,
@@ -548,16 +548,16 @@ proc command_repo_publish(args: RepoPublishArgs) [fs, net, env, time, error] {
   let snapshot = repo.snapshot(value, args.store)?
   let urls = remote.require_repo_url()?
   let work_handle = fs.tempdir()?
-  defer fs.close_root(work_handle)?
+  defer work_handle.close()?
   let token = (env.get("LAPUTA_TOKEN") ?? "").trim()
-  repo.publish(snapshot, urls.repo, token, fs.root_path(work_handle)?)?
+  repo.publish(snapshot, urls.repo, token, work_handle.host_path()?)?
   print "repo" "publish" $value.plan_sha256 $snapshot.packages.len() "artifacts"
 }
 
 proc command_repo_checksums(args: RepoPackagesArgs, update: Bool) [fs, net, process, env, time, error] {
   let work_handle = fs.tempdir()?
-  defer fs.close_root(work_handle)?
-  let work = fs.root_path(work_handle)?
+  defer work_handle.close()?
+  let work = work_handle.host_path()?
 
   for pkg in selected_packages(args.repo, args.packages)? {
     if update {
@@ -577,8 +577,8 @@ proc command_repo_source_audit(args: RepoPackagesArgs) [fs, env, error] {
 proc command_root_compose(args: RootComposeArgs) [fs, error] {
   let value = pm_plan_json.read(args.input)?
   let overlay_handle = fs.tempdir()?
-  defer fs.close_root(overlay_handle)?
-  let overlay = fs.root_path(overlay_handle)?
+  defer overlay_handle.close()?
+  let overlay = overlay_handle.host_path()?
   let generation_plan = generation.plan(value, args.runtime_roots, generation.overlay_digest(overlay)?)?
   let receipt = generation.compose(generation_plan, args.store, args.output, overlay)?
   print "root" "compose" $receipt.generation_sha256 $receipt.root_sha256

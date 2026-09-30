@@ -83,7 +83,7 @@ export let filetree = [
 ]
 
 proc rule_parts(ruleset: Str) [fs, error] -> Result[List[Path]] {
-  let entries = fs.ls(p"rules")?
+  let entries = fs.children(p"rules")?
     |> where .kind == "file"
     |> where .name.ends_with(".part")
     |> sort-by .name
@@ -115,7 +115,7 @@ proc merged_rules(ruleset: Str) [fs, error] -> Result[Str] {
     if lines.len() > 0 and lines[0].starts_with("! ") {
       let header = lines[0].split("//")[0].trim()
 
-      if ! seen_headers.get(header, false) {
+      if ! (seen_headers.get(header) ?? false) {
         output = f"""${output}
 ${lines[0]}
 """

@@ -63,10 +63,10 @@ proc compile_hello(
 
   let build_root = build_root_path()?
 
-  env {
-    LD_LIBRARY_PATH = f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib"
-    PATH = f"${build_root}/usr/lib/llvm-toolchain/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}"
-  } {
+  env ({
+    LD_LIBRARY_PATH: f"${build_root}/usr/lib:${build_root}/usr/lib/llvm23/lib",
+    PATH: f"${build_root}/usr/lib/llvm-toolchain/bin:${build_root}/usr/bin:${env.get("PATH") ?? ""}",
+  }) {
     run $cc f"--target=${triple}" f"--sysroot=${rootfs.display()}" "-fuse-ld=lld" "-nostdlib" fp"${lib_dir}/Scrt1.o" fp"${lib_dir}/crti.o" $hello_src f"-L${lib_dir.display()}" "-lc" fp"${lib_dir}/crtn.o" f"-Wl,-rpath,${lib_dir.display()}" f"-Wl,-dynamic-linker,${dynlinker.display()}" "-o" $hello ?
   } ?
 }
@@ -96,7 +96,7 @@ int main(void) { puts("hello musl"); return 0; }
   let dynlinker = fp"${rootfs}/usr/lib/${ldso}"
   compile_hello(cc, rootfs, hello_src, hello, triple, dynlinker, build_arch, arch)?
   let header = run.text $readelf "-h" $hello ?
-  ensure(header.contains(elf_machine_name(arch)), "proof-musl", f"hello binary is not ${arch}")?
+  ensure(elf_machine_name(arch) in header, "proof-musl", f"hello binary is not ${arch}")?
 
   if build_arch == arch {
     let out = run.text $dynlinker $hello ?

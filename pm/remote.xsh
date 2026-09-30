@@ -34,7 +34,7 @@ proc dotenv_lookup(body: Str, name: Str) [] -> Str {
   for raw in body.lines() {
     let stripped = raw.trim()
     continue when stripped == "" or stripped.starts_with("#")
-    let line = if stripped.starts_with("export ") { stripped.split("export ").get(1, "").trim() } else { stripped }
+    let line = if stripped.starts_with("export ") { (stripped.split("export ").get(1) ?? "").trim() } else { stripped }
 
     if line.starts_with(f"${name}=") {
       let parts = line.split("=")
@@ -123,7 +123,7 @@ export proc require_repo_url() [fs, env, error] -> Result[types.RepoUrls] {
   repo_urls
 }
 
-proc remote_response_header(headers: List[Record], name: Str) [] -> Str {
+proc remote_response_header(headers: List[NetHeader], name: Str) [] -> Str {
   for header in headers {
     if header.name == name or name == "location" and header.name == "Location" {
       return header.value
@@ -395,7 +395,7 @@ export proc upload_large_repo_file(repo: Str, rel: Path, source: Path, token: St
 ## Exported PM declaration `load_remote_index_from`.
 export proc load_remote_index_from(index_path: Path) [fs, error] -> Result[List[types.RemotePackage]] {
   if fs.exists(index_path)? {
-    let rows: List[Record] = json.read(index_path)?
+    let rows: List[Record] = json.read(index_path)?.require(List[Record])?
     return decode_remote_index(rows)
   }
 
@@ -429,7 +429,7 @@ proc try_load_remote_index_from_repo(repo: Str, out: Path) [fs, net, error] -> R
   }
 
   let body = response.body.utf8()?
-  let rows: List[Record] = json.decode(body)?
+  let rows: List[Record] = json.decode(body)?.require(List[Record])?
   let items = decode_remote_index(rows)?
   fs.mkdir(out)?
   fs.write_atomic(util.remote_index_cache_path(out), body)?
@@ -459,44 +459,44 @@ export proc decode_remote_index(rows: List[Record]) [error] -> Result[List[types
 ## Exported PM declaration `decode_remote_package`.
 export proc decode_remote_package(row: Record) [error] -> Result[types.RemotePackage] {
   var arch = "aarch64"
-  let empty_mkdeps_target = []
-  let mkdeps_host = if row.has("mkdeps_host") { row.get("mkdeps_host")? } else { row.get("mkdeps")? }
+  let empty_mkdeps_target: List[Str] = []
+  let mkdeps_host = if ("mkdeps_host" in row) { row.get("mkdeps_host")?.require(List[Str])? } else { row.get("mkdeps")?.require(List[Str])? }
 
-  let mkdeps_target = if row.has("mkdeps_target") {
-    row.get("mkdeps_target")?
-  } else if row.has("target_build_deps") {
-    row.get("target_build_deps")?
+  let mkdeps_target = if ("mkdeps_target" in row) {
+    row.get("mkdeps_target")?.require(List[Str])?
+  } else if ("target_build_deps" in row) {
+    row.get("target_build_deps")?.require(List[Str])?
   } else {
     empty_mkdeps_target
   }
 
-  if row.has("arch") {
-    let stored_arch: Str = row.get("arch")?
+  if ("arch" in row) {
+    let stored_arch: Str = row.get("arch")?.require(Str)?
     arch = util.normalize_arch(stored_arch)
   }
 
   {
     arch,
-    name: row.get("name")?,
-    ver: row.get("ver")?,
-    rel: row.get("rel")?,
-    deps: row.get("deps")?,
+    name: row.get("name")?.require(Str)?,
+    ver: row.get("ver")?.require(Str)?,
+    rel: row.get("rel")?.require(Str)?,
+    deps: row.get("deps")?.require(List[Str])?,
     mkdeps_host,
     mkdeps_target,
-    sha256: row.get("sha256")?,
-    size: row.get("size")?,
-    tarball: row.get("tarball")?,
-    metadata: if row.has("metadata") { row.get("metadata")? } else { "" },
-    metadata_sha256: if row.has("metadata_sha256") { row.get("metadata_sha256")? } else { "" },
-    artifact_key: if row.has("artifact_key") { row.get("artifact_key")? } else { "" },
-    recipe_sha256: if row.has("recipe_sha256") { row.get("recipe_sha256")? } else { "" },
-    executor_sha256: if row.has("executor_sha256") { row.get("executor_sha256")? } else { "" },
-    proof_key: if row.has("proof_key") { row.get("proof_key")? } else { "" },
-    proof_sha256: if row.has("proof_sha256") { row.get("proof_sha256")? } else { "" },
-    proof: if row.has("proof") { row.get("proof")? } else { "" },
-    proof_receipt_sha256: if row.has("proof_receipt_sha256") { row.get("proof_receipt_sha256")? } else { "" },
-    source_sha256: row.get("source_sha256")?,
-    metapackage: row.get("metapackage")?,
+    sha256: row.get("sha256")?.require(Str)?,
+    size: row.get("size")?.require(Int)?,
+    tarball: row.get("tarball")?.require(Str)?,
+    metadata: if ("metadata" in row) { row.get("metadata")?.require(Str)? } else { "" },
+    metadata_sha256: if ("metadata_sha256" in row) { row.get("metadata_sha256")?.require(Str)? } else { "" },
+    artifact_key: if ("artifact_key" in row) { row.get("artifact_key")?.require(Str)? } else { "" },
+    recipe_sha256: if ("recipe_sha256" in row) { row.get("recipe_sha256")?.require(Str)? } else { "" },
+    executor_sha256: if ("executor_sha256" in row) { row.get("executor_sha256")?.require(Str)? } else { "" },
+    proof_key: if ("proof_key" in row) { row.get("proof_key")?.require(Str)? } else { "" },
+    proof_sha256: if ("proof_sha256" in row) { row.get("proof_sha256")?.require(Str)? } else { "" },
+    proof: if ("proof" in row) { row.get("proof")?.require(Str)? } else { "" },
+    proof_receipt_sha256: if ("proof_receipt_sha256" in row) { row.get("proof_receipt_sha256")?.require(Str)? } else { "" },
+    source_sha256: row.get("source_sha256")?.require(Str)?,
+    metapackage: row.get("metapackage")?.require(Bool)?,
   }
 }
 
@@ -644,13 +644,13 @@ export proc collect_remote_packages(
     let name = pending[pending_index]
     pending_index += 1
 
-    if ! seen.get(name, false) {
+    if ! (seen.get(name) ?? false) {
       let pkg = find_remote_package(index, name)?
       packages = packages.push(pkg)
       seen[name] = true
 
       for dep in pkg.deps {
-        if ! fs.exists(util.package_db_path(root, dep))? and ! seen.get(dep, false) {
+        if ! fs.exists(util.package_db_path(root, dep))? and ! (seen.get(dep) ?? false) {
           pending = pending.push(dep)
         }
       }
@@ -680,15 +680,15 @@ export proc order_remote_packages(
     var progressed = false
 
     for pkg in packages {
-      if ! added.get(pkg.name, false) {
+      if ! (added.get(pkg.name) ?? false) {
         var ready = true
 
         for dep in pkg.deps {
-          if ! by_name.has(dep) {
+          if ! (dep in by_name) {
             if ! fs.exists(util.package_db_path(root, dep))? {
               return Err(types.PmError.MissingDependency(f"${pkg.name} depends on missing ${dep}"))
             }
-          } else if ! added.get(dep, false) {
+          } else if ! (added.get(dep) ?? false) {
             ready = false
           }
         }
