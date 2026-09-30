@@ -1,5 +1,11 @@
 use kbuild
 
+# Serialized report fields and analysis task fields checked by the native assertions.
+type ArchiveTaskReport = {argv: List[Str], outputs: List[Str]}
+type ArchivePlanReport = {task_count: Int, tasks: List[ArchiveTaskReport]}
+type ArchiveCompileTaskReport = {source: Str, flags: List[Str]}
+type ArchiveAnalysisResult = {object: Str, tasks: List[ArchiveCompileTaskReport]}
+
 proc write_fixture(root: Path) [fs, error] {
   fs.mkdir(fp"${root}/init/lib")?
   fs.mkdir(fp"${root}/block")?
@@ -143,7 +149,7 @@ pure composite_has_member(plan: kbuild.KbuildPlan, object: Str, member: Str) -> 
   return false
 }
 
-proc test_kbuild_discovers_configured_obj_y_dirs_and_objects(ctx: TestContext) [fs, error] {
+test test_kbuild_discovers_configured_obj_y_dirs_and_objects [fs, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-kbuild")?
   write_fixture(root)?
   let config = kbuild.load_config(fp"${root}/.config")?
@@ -184,7 +190,7 @@ proc test_kbuild_discovers_configured_obj_y_dirs_and_objects(ctx: TestContext) [
   test.eq(plan.unsupported.len(), 0)?
 }
 
-proc test_kbuild_local_record_graph_matches_default(ctx: TestContext) [fs, error] {
+test test_kbuild_local_record_graph_matches_default [fs, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-kbuild-local-records")?
   let default_out = test.temp_path(ctx, name: "linux-kbuild-default-plan")
   let local_out = test.temp_path(ctx, name: "linux-kbuild-local-plan")
@@ -209,7 +215,7 @@ proc test_kbuild_local_record_graph_matches_default(ctx: TestContext) [fs, error
   test.eq(default_out.read_text()?, local_out.read_text()?)?
 }
 
-proc test_kbuild_local_record_cache_reuses_and_invalidates(ctx: TestContext) [fs, error] {
+test test_kbuild_local_record_cache_reuses_and_invalidates [fs, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-kbuild-local-cache")?
   write_fixture(root)?
   let config = kbuild.load_config(fp"${root}/.config")?
@@ -236,7 +242,7 @@ proc test_kbuild_local_record_cache_reuses_and_invalidates(ctx: TestContext) [fs
   test.ok(contains_path(third.objects, "cached.o"))?
 }
 
-proc test_kbuild_writes_text_plan(ctx: TestContext) [fs, error] {
+test test_kbuild_writes_text_plan [fs, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-kbuild-text")?
   let out = test.temp_path(ctx, name: "plan.json")
   write_fixture(root)?
@@ -248,7 +254,7 @@ proc test_kbuild_writes_text_plan(ctx: TestContext) [fs, error] {
   test.ok(contains_path(loaded.objects, "init/main.o"))?
 }
 
-proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, time, error] {
+test test_kbuild_constructs_builtin_archive_tasks [fs, env, time, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-archive-tasks")?
   write_fixture(root)?
 
@@ -387,14 +393,14 @@ proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, ti
     test.ok(contains_path(archive_plan.archives, ".xsh-kbuild/init/lib/built-in.a"))?
     let report = fp"${root}/archive-plan.json"
     kbuild.write_archive_plan_report(archive_plan, report)?
-    let stored: Record = json.read(report)?
-    let task_count: Int = stored.get("task_count")?
-    let tasks: List[Record] = stored.get("tasks")?
+    let stored = json.read(report)?.require(ArchivePlanReport)?
+    let task_count = stored.task_count
+    let tasks = stored.tasks
     test.eq(task_count, archive_plan.tasks.len())?
     test.eq(tasks.len(), archive_plan.tasks.len())?
     let first = tasks[0]
-    let argv: List[Str] = first.get("argv")?
-    let outputs: List[Str] = first.get("outputs")?
+    let argv = first.argv
+    let outputs = first.outputs
     test.ok(argv.len() > 0)?
     test.ok(outputs.len() > 0)?
     var saw_asm = false
@@ -421,7 +427,7 @@ proc test_kbuild_constructs_builtin_archive_tasks(ctx: TestContext) [fs, env, ti
   } ?
 }
 
-proc test_kbuild_plans_pi_relacheck_after_objcopy(ctx: TestContext) [fs, env, time, error] {
+test test_kbuild_plans_pi_relacheck_after_objcopy [fs, env, time, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-pi-relacheck")?
   fs.mkdir(fp"${root}/arch/arm64/kernel/pi")?
   fs.write(fp"${root}/.config", "")?
@@ -495,7 +501,7 @@ proc test_kbuild_plans_pi_relacheck_after_objcopy(ctx: TestContext) [fs, env, ti
   } ?
 }
 
-proc test_kbuild_runs_archive_plan_output_from_json(ctx: TestContext) [fs, process, env, error] {
+test test_kbuild_runs_archive_plan_output_from_json [fs, process, env, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-archive-runner")?
   let first = fp"${root}/first.txt"
   let second = fp"${root}/second.txt"
@@ -557,7 +563,7 @@ proc test_kbuild_runs_archive_plan_output_from_json(ctx: TestContext) [fs, proce
   test.eq(second.read_text()?, "firstsecond")?
 }
 
-proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, env, time, error] {
+test test_kbuild_reports_missing_builtin_archive_sources [fs, env, time, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-archive-missing")?
 
   fs.write(
@@ -589,7 +595,7 @@ proc test_kbuild_reports_missing_builtin_archive_sources(ctx: TestContext) [fs, 
   } ?
 }
 
-proc test_kbuild_archive_analysis_preserves_item_order(ctx: TestContext) [fs, env, error] {
+test test_kbuild_archive_analysis_preserves_item_order [fs, env, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-archive-analysis")?
   fs.write(
     fp"${root}/first.c",
@@ -628,21 +634,21 @@ proc test_kbuild_archive_analysis_preserves_item_order(ctx: TestContext) [fs, en
           ],
         },
       ],
-    )?
+    )?.require(List[ArchiveAnalysisResult])?
     test.eq(results.len(), 2)?
-    test.eq(results[0].get("object")?, "first.o")?
-    test.eq(results[1].get("object")?, "second.o")?
+    test.eq(results[0].object, "first.o")?
+    test.eq(results[1].object, "second.o")?
 
-    let first_tasks: List[Record] = results[0].get("tasks")?
-    let second_tasks: List[Record] = results[1].get("tasks")?
-    test.eq(first_tasks[0].get("source")?, "first.c")?
-    test.eq(second_tasks[0].get("source")?, "second.c")?
-    test.eq(first_tasks[0].get("flags")?, ["-DFIRST"])?
-    test.eq(second_tasks[0].get("flags")?, ["-DSECOND"])?
+    let first_tasks = results[0].tasks
+    let second_tasks = results[1].tasks
+    test.eq(first_tasks[0].source, "first.c")?
+    test.eq(second_tasks[0].source, "second.c")?
+    test.eq(first_tasks[0].flags, ["-DFIRST"])?
+    test.eq(second_tasks[0].flags, ["-DSECOND"])?
   } ?
 }
 
-proc test_kbuild_parallel_archive_analysis_matches_serial(ctx: TestContext) [fs, process, env, time, error] {
+test test_kbuild_parallel_archive_analysis_matches_serial [fs, process, env, time, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-archive-analysis-pool")?
   let worker = path.absolute(p"kbuild-archive-analysis-worker.xsh")?
   let xsh_bin = process.which("xsh")?
@@ -716,9 +722,9 @@ proc test_kbuild_parallel_archive_analysis_matches_serial(ctx: TestContext) [fs,
       test.eq(parallel.tasks[index].deps, serial.tasks[index].deps)?
     }
 
-    env {
-      XSH_LINUX_KBUILD_ARCHIVE_ONLY = "1"
-    } {
+    env ({
+      XSH_LINUX_KBUILD_ARCHIVE_ONLY: "1",
+    }) {
       let compact_serial = kbuild.plan_builtin_archives(plan, /usr/bin/cc, "aarch64-linux-gnu", [], [], [])?
       let compact_parallel = kbuild.plan_builtin_archives_with_analysis_workers(
         plan,
@@ -744,7 +750,7 @@ proc test_kbuild_parallel_archive_analysis_matches_serial(ctx: TestContext) [fs,
   } ?
 }
 
-proc test_kbuild_adds_x86_kvm_local_include(ctx: TestContext) [fs, env, time, error] {
+test test_kbuild_adds_x86_kvm_local_include [fs, env, time, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-x86-kvm-include")?
   fs.mkdir(fp"${root}/arch/x86/kvm/mmu")?
 
@@ -790,7 +796,7 @@ int mmu(void) { return 0; }
   } ?
 }
 
-proc test_kbuild_applies_object_and_subdir_cflags(ctx: TestContext) [fs, env, time, error] {
+test test_kbuild_applies_object_and_subdir_cflags [fs, env, time, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-cflags")?
   fs.mkdir(fp"${root}/sound/hda/common")?
   fs.mkdir(fp"${root}/sound/hda/controllers")?
@@ -859,7 +865,7 @@ CFLAGS_intel.o := -I$(src)
   } ?
 }
 
-proc test_kbuild_generates_config_headers(ctx: TestContext) [fs, error] {
+test test_kbuild_generates_config_headers [fs, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-config-headers")?
   let config = fp"${root}/.config"
 
@@ -874,14 +880,14 @@ CONFIG_TEXT="value"
   kbuild.write_config_headers(config, root, "7.0.5", "arm64")?
   let autoconf = fp"${root}/include/generated/autoconf.h".read_text()?
   let auto_conf = fp"${root}/include/config/auto.conf".read_text()?
-  test.contains(autoconf, "#define CONFIG_ALPHA 1")?
-  test.contains(autoconf, "#define CONFIG_NUMBER 12")?
-  test.contains(autoconf, "#define CONFIG_TEXT \"value\"")?
-  test.contains(auto_conf, "CONFIG_ALPHA=y")?
-  test.contains(auto_conf, "CONFIG_NUMBER=12")?
+  "#define CONFIG_ALPHA 1" in autoconf
+  "#define CONFIG_NUMBER 12" in autoconf
+  "#define CONFIG_TEXT \"value\"" in autoconf
+  "CONFIG_ALPHA=y" in auto_conf
+  "CONFIG_NUMBER=12" in auto_conf
 }
 
-proc test_kbuild_generates_syscall_table(ctx: TestContext) [fs, error] {
+test test_kbuild_generates_syscall_table [fs, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-syscalls")?
   let table = fp"${root}/syscall.tbl"
   let out = fp"${root}/syscall_table.h"
@@ -908,12 +914,15 @@ __SYSCALL_NORETURN(3, sys_exit)
   )?
 
   kbuild.generate_syscall_numbers(table, numbers, "_ASM_UNISTD_H", "__NR_syscalls", "", ["common", "64"])?
-  test.contains(numbers.read_text()?, "#define __NR_read 0")?
-  test.contains(numbers.read_text()?, "#define __NR_exit 3")?
-  test.contains(numbers.read_text()?, "#define __NR_syscalls 4")?
+  let observed_output_1 = numbers.read_text()?
+  "#define __NR_read 0" in observed_output_1
+  let observed_output_2 = numbers.read_text()?
+  "#define __NR_exit 3" in observed_output_2
+  let observed_output_3 = numbers.read_text()?
+  "#define __NR_syscalls 4" in observed_output_3
 }
 
-proc test_kbuild_generates_offsets_header(ctx: TestContext) [fs, error] {
+test test_kbuild_generates_offsets_header [fs, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-offsets")?
   let asm_path = fp"${root}/asm-offsets.s"
   let out = fp"${root}/include/generated/asm-offsets.h"
@@ -947,7 +956,7 @@ proc test_kbuild_generates_offsets_header(ctx: TestContext) [fs, error] {
   )?
 }
 
-proc test_kbuild_models_final_link_tasks(ctx: TestContext) [fs, env, error] {
+test test_kbuild_models_final_link_tasks [fs, env, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-link-tasks")?
   let ar = /usr/bin/ar
   let ld = /usr/bin/ld

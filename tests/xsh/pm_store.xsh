@@ -90,18 +90,18 @@ proc store_root(ctx: TestContext, name: Str) [fs, error] -> Result[Path] {
 proc expect_store_error(ctx: TestContext, result: Result[types.ArtifactReceipt], expected: Str) [error] {
   match result {
     Ok(_) => test.fail(f"${expected}: operation unexpectedly succeeded")?
-    Err(problem) => test.contains(problem.message, expected)?
+    Err(problem) => { expected in problem.message }
   }
 }
 
-proc test_store_rejects_missing_and_invalid_keys(ctx: TestContext) [fs, error] {
+test test_store_rejects_missing_and_invalid_keys [fs, error] { |ctx|
   let root = store_root(ctx, "store-missing")?
   let key = digest("missing")
   expect_store_error(ctx, store.lookup(root, key), "is missing")?
   expect_store_error(ctx, store.lookup(root, "../not-a-key"), "artifact key must be a lowercase SHA-256 digest")?
 }
 
-proc test_store_commits_atomically_and_reuses_exact_artifact(ctx: TestContext) [fs, error] {
+test test_store_commits_atomically_and_reuses_exact_artifact [fs, error] { |ctx|
   let root = store_root(ctx, "store-commit")?
   let key = digest("commit")
   let first_stage = staged_artifact(ctx, "store-commit-first", payload: "first payload")?
@@ -118,7 +118,7 @@ proc test_store_commits_atomically_and_reuses_exact_artifact(ctx: TestContext) [
   test.eq(fp"${final_dir}/payload.tar.gz".read_text()?, "first payload")?
 }
 
-proc test_store_receipt_preserves_x86_64_target(ctx: TestContext) [fs, error] {
+test test_store_receipt_preserves_x86_64_target [fs, error] { |ctx|
   let root = store_root(ctx, "store-x86-target")?
   let key = digest("x86-target")
   let stage = staged_artifact(ctx, "store-x86-target-stage")?
@@ -129,11 +129,11 @@ proc test_store_receipt_preserves_x86_64_target(ctx: TestContext) [fs, error] {
 
   match store.commit(types.target_aarch64(), root, test_node(key), stage.staged) {
     Ok(_) => test.fail("artifact key was reused across targets")?
-    Err(problem) => test.contains(problem.message, "target does not match requested aarch64-linux-musl")?
+    Err(problem) => { "target does not match requested aarch64-linux-musl" in problem.message }
   }
 }
 
-proc test_store_receipts_deduplicate_shared_runtime_and_build_host_artifacts(ctx: TestContext) [fs, error] {
+test test_store_receipts_deduplicate_shared_runtime_and_build_host_artifacts [fs, error] { |ctx|
   let root = store_root(ctx, "store-shared-edge")?
   let key = digest("shared-edge-artifact")
   let dependency_key = digest("shared-edge-dependency")
@@ -159,7 +159,7 @@ proc test_store_receipts_deduplicate_shared_runtime_and_build_host_artifacts(ctx
   expect_store_error(ctx, store.verify_artifact(root, key), "repeats dependency key")?
 }
 
-proc test_store_discards_incomplete_temporary_artifacts(ctx: TestContext) [fs, error] {
+test test_store_discards_incomplete_temporary_artifacts [fs, error] { |ctx|
   let root = store_root(ctx, "store-temporary")?
   let key = digest("temporary")
   let temporary = fp"${root}/v1/tmp/${key}"
@@ -170,7 +170,7 @@ proc test_store_discards_incomplete_temporary_artifacts(ctx: TestContext) [fs, e
   test.eq(fs.exists(temporary)?, false)?
 }
 
-proc test_store_verify_all_ignores_temporary_state_and_checks_finals(ctx: TestContext) [fs, error] {
+test test_store_verify_all_ignores_temporary_state_and_checks_finals [fs, error] { |ctx|
   let root = store_root(ctx, "store-verify-all")?
   let key = digest("verify-all")
   let receipt = store.commit(types.target_aarch64(), root, test_node(key), staged_artifact(ctx, "store-verify-all-stage")?.staged)?
@@ -181,7 +181,7 @@ proc test_store_verify_all_ignores_temporary_state_and_checks_finals(ctx: TestCo
   test.eq(store.verify_all(root)?, [receipt])?
 }
 
-proc test_store_serializes_duplicate_concurrent_commits(ctx: TestContext) [fs, process, env, error] {
+test test_store_serializes_duplicate_concurrent_commits [fs, process, env, error] { |ctx|
   let root = store_root(ctx, "store-concurrent")?
   let key = digest("concurrent")
   let stage = staged_artifact(ctx, "store-concurrent-stage")?
@@ -232,7 +232,7 @@ main(@args)?
   test.eq(store.lookup(root, key)?.key, key)?
 }
 
-proc test_store_detects_payload_receipt_and_key_corruption(ctx: TestContext) [fs, error] {
+test test_store_detects_payload_receipt_and_key_corruption [fs, error] { |ctx|
   let root = store_root(ctx, "store-corrupt")?
   let key = digest("corrupt")
   let final_dir = store.artifact_path(root, key)
@@ -254,7 +254,7 @@ proc test_store_detects_payload_receipt_and_key_corruption(ctx: TestContext) [fs
   expect_store_error(ctx, store.verify_artifact(clean_root, key), "does not match")?
 }
 
-proc test_store_staging_failure_never_publishes_final(ctx: TestContext) [fs, error] {
+test test_store_staging_failure_never_publishes_final [fs, error] { |ctx|
   let root = store_root(ctx, "store-staging-failure")?
   let key = digest("staging-failure")
   let stage = staged_artifact(ctx, "store-staging-failure-stage")?
@@ -288,7 +288,7 @@ proc remote_fixture(ctx: TestContext, name: Str, payload: Str, metadata: Str) [f
   root
 }
 
-proc test_store_imports_verified_remote_artifact(ctx: TestContext) [fs, net, error] {
+test test_store_imports_verified_remote_artifact [fs, net, error] { |ctx|
   let payload = "remote payload"
   let metadata = json.encode({name: "demo", ver: "1.0.0", rel: "1", executor_sha256: digest("remote executor")})?
   let remote_root = remote_fixture(ctx, "store-remote", payload, metadata)?
@@ -300,7 +300,7 @@ proc test_store_imports_verified_remote_artifact(ctx: TestContext) [fs, net, err
   test.eq(store.verify_artifact(root, key)?, receipt)?
 }
 
-proc test_store_rejects_remote_hash_and_metadata_mismatches(ctx: TestContext) [fs, net, error] {
+test test_store_rejects_remote_hash_and_metadata_mismatches [fs, net, error] { |ctx|
   let payload = "actual remote payload"
   let metadata = json.encode({name: "demo", ver: "1.0.0", rel: "1", executor_sha256: digest("remote executor")})?
   let remote_root = remote_fixture(ctx, "store-remote-mismatch", payload, metadata)?

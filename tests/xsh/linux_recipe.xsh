@@ -39,7 +39,7 @@ proc linux_config_source(pkg: types.Package) [error] -> Result[types.UpstreamSou
   return Err(types.PmError.PackageContract("linux is missing its aarch64 config input"))
 }
 
-proc test_linux_kbuild_modules_parse_and_preserve_job_error_branch(ctx: TestContext) [fs, process, env, error] {
+test test_linux_kbuild_modules_parse_and_preserve_job_error_branch [fs, process, env, error] { |ctx|
   let stderr = test.temp_path(ctx, name: "linux-kbuild-jobs.err")
   let xsh = runner()?
   let modules = module_root()?
@@ -48,10 +48,11 @@ proc test_linux_kbuild_modules_parse_and_preserve_job_error_branch(ctx: TestCont
   test.ok(success.ok)?
   let failure = run.status XSH_MODULE_PATH=$modules XSH_LINUX_KBUILD_JOBS="0" $xsh $script 2> $stderr ?
   test.eq(failure.ok, false)?
-  test.contains(stderr.read_text()?, "linux-kbuild-jobs")?
+  let observed_output_1 = stderr.read_text()?
+  "linux-kbuild-jobs" in observed_output_1
 }
 
-proc test_linux_config_fragment_is_explicit_staged_fingerprinted_input(ctx: TestContext) [fs, net, process, env, time, error] {
+test test_linux_config_fragment_is_explicit_staged_fingerprinted_input [fs, net, process, env, time, error] { |ctx|
   let original = recipe.load_package(p"repo/linux")?
   let config = linux_config_source(original)?
   let stage_root = test.temp_dir(ctx, name: "linux-config-stage")?
@@ -71,7 +72,7 @@ proc test_linux_config_fragment_is_explicit_staged_fingerprinted_input(ctx: Test
   test.eq(fingerprint.package_build_input(copied_root, after, types.target_aarch64())? == first, false)?
 }
 
-proc test_linux_x86_generated_inputs_are_staged_at_build_source_root(ctx: TestContext) [fs, net, process, env, time, error] {
+test test_linux_x86_generated_inputs_are_staged_at_build_source_root [fs, net, process, env, time, error] { |ctx|
   let original = recipe.load_package(p"repo/linux")?
   let required = [
     "timeconst.h",
@@ -96,7 +97,7 @@ proc test_linux_x86_generated_inputs_are_staged_at_build_source_root(ctx: TestCo
   }
 }
 
-proc test_laputa_pm_repository_inputs_stage_and_fingerprint_from_an_isolated_recipe(ctx: TestContext) [fs, net, process, env, time, error] {
+test test_laputa_pm_repository_inputs_stage_and_fingerprint_from_an_isolated_recipe [fs, net, process, env, time, error] { |ctx|
   let root = test.temp_dir(ctx, name: "laputa-pm-repository-input")?
   let package_dir = fp"${root}/repo/laputa-pm"
   let source = fp"${root}/source"
@@ -107,9 +108,9 @@ proc test_laputa_pm_repository_inputs_stage_and_fingerprint_from_an_isolated_rec
   let pkg = recipe.load_package(package_dir)?
   let first = fingerprint.package_build_input(root, pkg, types.target_aarch64())?
 
-  env {
-    XSH_PM_REPOSITORY_ROOT = root.display()
-  } {
+  env ({
+    XSH_PM_REPOSITORY_ROOT: root.display(),
+  }) {
     # `pkg.dir` intentionally points at an isolated recipe copy. Repository
     # inputs must still stage from the explicit repository root, not parent
     # traversal from that directory.
@@ -123,7 +124,7 @@ proc test_laputa_pm_repository_inputs_stage_and_fingerprint_from_an_isolated_rec
   test.eq(second == first, false)?
 }
 
-proc test_baselayout_directory_input_stages_into_the_prepared_source_root(ctx: TestContext) [fs, net, process, env, time, error] {
+test test_baselayout_directory_input_stages_into_the_prepared_source_root [fs, net, process, env, time, error] { |ctx|
   let pkg = recipe.load_package(p"repo/baselayout")?
   let root = test.temp_dir(ctx, name: "baselayout-directory-input")?
   let source = fp"${root}/source"
@@ -135,7 +136,7 @@ proc test_baselayout_directory_input_stages_into_the_prepared_source_root(ctx: T
   test.ok(fs.exists(fp"${source}/usr/lib/init/rc.boot")?)?
 }
 
-proc test_baselayout_declares_boot_mount_directories_as_payload(ctx: TestContext) [fs, env, error] {
+test test_baselayout_declares_boot_mount_directories_as_payload [fs, env, error] { |ctx|
   let pkg = recipe.load_package(p"repo/baselayout")?
   let trees = [entry.path.display() for entry in pkg.filetree if entry.kind == types.file_kind_tree()]
 
@@ -146,7 +147,7 @@ proc test_baselayout_declares_boot_mount_directories_as_payload(ctx: TestContext
   }
 }
 
-proc test_baselayout_build_materializes_empty_boot_mount_directories(ctx: TestContext) [fs, net, process, env, time, error] {
+test test_baselayout_build_materializes_empty_boot_mount_directories [fs, net, process, env, time, error] { |ctx|
   let pkg = recipe.load_package(p"repo/baselayout")?
   let root = test.temp_dir(ctx, name: "baselayout-empty-directories")?
   let source = fp"${root}/source"
@@ -160,7 +161,7 @@ proc test_baselayout_build_materializes_empty_boot_mount_directories(ctx: TestCo
   }
 }
 
-proc test_laputa_net_hook_directories_are_empty_package_payload(ctx: TestContext) [fs, net, process, env, time, error] {
+test test_laputa_net_hook_directories_are_empty_package_payload [fs, net, process, env, time, error] { |ctx|
   let pkg = recipe.load_package(p"repo/laputa-net")?
   let root = test.temp_dir(ctx, name: "laputa-net-hook-directories")?
   let source = fp"${root}/source"
@@ -179,7 +180,7 @@ proc test_laputa_net_hook_directories_are_empty_package_payload(ctx: TestContext
   }
 }
 
-proc test_baselayout_artifact_archives_empty_boot_mount_directories(ctx: TestContext) [fs, net, process, env, time, error] {
+test test_baselayout_artifact_archives_empty_boot_mount_directories [fs, net, process, env, time, error] { |ctx|
   let root = test.temp_dir(ctx, name: "baselayout-artifact-directories")?
   let recipe_dir = fp"${root}/recipe"
   let source = fp"${root}/source"
@@ -207,7 +208,7 @@ proc test_baselayout_artifact_archives_empty_boot_mount_directories(ctx: TestCon
   }
 }
 
-proc test_xsh_proof_uses_declared_usr_bin_runners_without_baselayout(ctx: TestContext) [fs, process, env, error] {
+test test_xsh_proof_uses_declared_usr_bin_runners_without_baselayout [fs, process, env, error] { |ctx|
   let root = test.temp_dir(ctx, name: "xsh-proof-runtime-closure")?
   let stderr = fp"${root}/xsh-proof.stderr"
   let modules = module_root()?
@@ -244,12 +245,12 @@ proc test_xsh_proof_uses_declared_usr_bin_runners_without_baselayout(ctx: TestCo
   }
 }
 
-proc test_wlroots_declares_the_runtime_seatd_provider(ctx: TestContext) [fs, env, error] {
+test test_wlroots_declares_the_runtime_seatd_provider [fs, env, error] { |ctx|
   let pkg = recipe.load_package(p"repo/wlroots0.19-mesa")?
   test.ok("seatd" in pkg.deps)?
 }
 
-proc test_wlroots_plan_carries_seatd_as_a_runtime_edge(ctx: TestContext) [fs, env, error] {
+test test_wlroots_plan_carries_seatd_as_a_runtime_edge [fs, env, error] { |ctx|
   let catalog_value = catalog.load(p".")?
   let plan_value = plan.resolve(
     catalog_value,
@@ -273,7 +274,7 @@ proc test_wlroots_plan_carries_seatd_as_a_runtime_edge(ctx: TestContext) [fs, en
   test.ok(found)?
 }
 
-proc test_linux_config_resolves_staged_fragment_from_isolated_cwd_and_rejects_missing(ctx: TestContext) [fs, env, error] {
+test test_linux_config_resolves_staged_fragment_from_isolated_cwd_and_rejects_missing [fs, env, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-config-resolve")?
   let source = fp"${root}/source"
   let staged = fp"${source}/.laputa-inputs/files/config/aarch64/base-aarch64.fragment"
@@ -284,10 +285,10 @@ proc test_linux_config_resolves_staged_fragment_from_isolated_cwd_and_rejects_mi
   fs.mkdir(unrelated)?
   fs.write(staged, "CONFIG_LAPUTA_STAGE=y\n")?
 
-  env {
-    XSH_PM_SOURCE_DIR = source.display()
-    XSH_PM_RECIPE_DIR = recipe_root.display()
-  } {
+  env ({
+    XSH_PM_SOURCE_DIR: source.display(),
+    XSH_PM_RECIPE_DIR: recipe_root.display(),
+  }) {
     cd unrelated {
       let resolved = linux_config.resolve_config_fragments([p"files/config/aarch64/base-aarch64.fragment"])?
       test.eq(resolved, [staged])?
@@ -296,18 +297,18 @@ proc test_linux_config_resolves_staged_fragment_from_isolated_cwd_and_rejects_mi
 
   fs.remove(staged)?
 
-  env {
-    XSH_PM_SOURCE_DIR = source.display()
-    XSH_PM_RECIPE_DIR = recipe_root.display()
-  } {
+  env ({
+    XSH_PM_SOURCE_DIR: source.display(),
+    XSH_PM_RECIPE_DIR: recipe_root.display(),
+  }) {
     match linux_config.resolve_config_fragments([p"files/config/aarch64/base-aarch64.fragment"]) {
       Ok(_) => test.fail("missing staged Linux config fragment unexpectedly resolved")?
-      Err(error) => test.contains(error.message, "missing kernel config fragment files/config/aarch64/base-aarch64.fragment")?
+      Err(error) => { "missing kernel config fragment files/config/aarch64/base-aarch64.fragment" in error.message }
     }
   } ?
 }
 
-proc test_linux_discovery_pool_executes_worker_from_staged_recipe(ctx: TestContext) [fs, process, env, time, error] {
+test test_linux_discovery_pool_executes_worker_from_staged_recipe [fs, process, env, time, error] { |ctx|
   let root = test.temp_dir(ctx, name: "linux-staged-discovery-worker")?
   let recipe_root = fp"${root}/recipe"
   let source = fp"${root}/source"
@@ -318,11 +319,11 @@ proc test_linux_discovery_pool_executes_worker_from_staged_recipe(ctx: TestConte
   fs.write(fp"${source}/Kbuild", "obj-y += one.o\n")?
   test.ok(worker.exists()?)?
 
-  env {
-    XSH_PM_SOURCE_DIR = source.display()
-    XSH_PM_RECIPE_DIR = recipe_root.display()
-    XSH_LINUX_KBUILD_DISCOVER_JOBS = "1"
-  } {
+  env ({
+    XSH_PM_SOURCE_DIR: source.display(),
+    XSH_PM_RECIPE_DIR: recipe_root.display(),
+    XSH_LINUX_KBUILD_DISCOVER_JOBS: "1",
+  }) {
     cd source {
       let plan = linux_shared.discover_package_plan("arm64")?
       test.ok(p"one.o" in plan.objects)?

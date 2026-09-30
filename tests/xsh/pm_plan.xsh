@@ -27,7 +27,7 @@ proc build_input(pkg: types.Package) [fs, error] -> Result[Str] {
   fingerprint.package_build_input(p".", pkg, types.Aarch64LinuxMusl)?
 }
 
-proc test_package_build_fingerprint_is_repeatable_and_ignores_mtime(ctx: TestContext) [fs, env, error] {
+test test_package_build_fingerprint_is_repeatable_and_ignores_mtime [fs, env, error] { |ctx|
   let pkg = copied_package(ctx, "fingerprint-repeat")?
   let first = build_input(pkg)?
   test.eq(build_input(pkg)?, first)?
@@ -36,7 +36,7 @@ proc test_package_build_fingerprint_is_repeatable_and_ignores_mtime(ctx: TestCon
   test.eq(build_input(pkg)?, first)?
 }
 
-proc test_x86_build_fingerprint_uses_x86_source_checksum(ctx: TestContext) [fs, env, error] {
+test test_x86_build_fingerprint_uses_x86_source_checksum [fs, env, error] { |ctx|
   let pkg = copied_package(ctx, "fingerprint-x86-source")?
   let source = pkg.upstream_sources[0]
   let arm_checksum = {arch: "aarch64", sha256: "arm-source"}
@@ -50,7 +50,7 @@ proc test_x86_build_fingerprint_uses_x86_source_checksum(ctx: TestContext) [fs, 
   test.eq(fingerprint.package_build_input(p".", x86_changed, types.target_x86_64())? == baseline, false)?
 }
 
-proc test_package_build_fingerprint_changes_for_pkgbuild(ctx: TestContext) [fs, env, error] {
+test test_package_build_fingerprint_changes_for_pkgbuild [fs, env, error] { |ctx|
   let pkg = copied_package(ctx, "fingerprint-pkgbuild")?
   let first = build_input(pkg)?
   let pkgbuild = fp"${pkg.dir}/PKGBUILD.xsh"
@@ -58,28 +58,28 @@ proc test_package_build_fingerprint_changes_for_pkgbuild(ctx: TestContext) [fs, 
   test.eq(build_input(pkg)? == first, false)?
 }
 
-proc test_package_build_fingerprint_changes_for_helper_module(ctx: TestContext) [fs, env, error] {
+test test_package_build_fingerprint_changes_for_helper_module [fs, env, error] { |ctx|
   let pkg = copied_package(ctx, "fingerprint-helper")?
   let first = build_input(pkg)?
   fs.write(fp"${pkg.dir}/helper.xsh", "changed helper\n")?
   test.eq(build_input(pkg)? == first, false)?
 }
 
-proc test_package_build_fingerprint_changes_for_files_tree(ctx: TestContext) [fs, env, error] {
+test test_package_build_fingerprint_changes_for_files_tree [fs, env, error] { |ctx|
   let pkg = copied_package(ctx, "fingerprint-files")?
   let first = build_input(pkg)?
   fs.write(fp"${pkg.dir}/files/input.txt", "changed input\n")?
   test.eq(build_input(pkg)? == first, false)?
 }
 
-proc test_package_build_fingerprint_changes_for_service(ctx: TestContext) [fs, env, error] {
+test test_package_build_fingerprint_changes_for_service [fs, env, error] { |ctx|
   let pkg = copied_package(ctx, "fingerprint-service")?
   let first = build_input(pkg)?
   fs.write(fp"${pkg.dir}/service.xsh", "changed service\n")?
   test.eq(build_input(pkg)? == first, false)?
 }
 
-proc test_proof_fingerprint_is_independent_from_build_input(ctx: TestContext) [fs, env, error] {
+test test_proof_fingerprint_is_independent_from_build_input [fs, env, error] { |ctx|
   let pkg = copied_package(ctx, "fingerprint-proof")?
   let build_before = build_input(pkg)?
   let proof_before = fingerprint.package_proof_input(p".", pkg)?
@@ -88,21 +88,21 @@ proc test_proof_fingerprint_is_independent_from_build_input(ctx: TestContext) [f
   test.eq(fingerprint.package_proof_input(p".", pkg)? == proof_before, false)?
 }
 
-proc test_pm_tree_fingerprint_changes_for_implementation(ctx: TestContext) [fs, error] {
+test test_pm_tree_fingerprint_changes_for_implementation [fs, error] { |ctx|
   let root = copied_executor(ctx)?
   let first = fingerprint.pm_tree(root)?
   fs.write(fp"${root}/pm/build.xsh", "changed implementation\n")?
   test.eq(fingerprint.pm_tree(root)? == first, false)?
 }
 
-proc test_core_tree_fingerprint_changes_for_applet(ctx: TestContext) [fs, error] {
+test test_core_tree_fingerprint_changes_for_applet [fs, error] { |ctx|
   let root = copied_executor(ctx)?
   let first = fingerprint.core_tree(fp"${root}/core")?
   fs.write(fp"${root}/core/applet.xsh", "changed applet\n")?
   test.eq(fingerprint.core_tree(fp"${root}/core")? == first, false)?
 }
 
-proc test_runner_fingerprint_changes_for_runner_bytes(ctx: TestContext) [fs, error] {
+test test_runner_fingerprint_changes_for_runner_bytes [fs, error] { |ctx|
   let root = copied_executor(ctx)?
   let runners = fp"${root}/runners"
   let first = fingerprint.runners(fp"${runners}/xsh", fp"${runners}/xshi", fp"${runners}/xsht")?
@@ -110,7 +110,7 @@ proc test_runner_fingerprint_changes_for_runner_bytes(ctx: TestContext) [fs, err
   test.eq(fingerprint.runners(fp"${runners}/xsh", fp"${runners}/xshi", fp"${runners}/xsht")? == first, false)?
 }
 
-proc test_package_fingerprint_ignores_absolute_checkout_path(ctx: TestContext) [fs, env, error] {
+test test_package_fingerprint_ignores_absolute_checkout_path [fs, env, error] { |ctx|
   let first = copied_package(ctx, "fingerprint-checkout-a")?
   let second = copied_package(ctx, "fingerprint-checkout-b")?
   test.eq(build_input(first)?, build_input(second)?)
@@ -215,18 +215,18 @@ pure snapshot_replace(
 proc expect_plan_rejection(ctx: TestContext, value: types.BuildPlan, expected: Str) [fs, error] {
   let path_value = fp"${test.temp_dir(ctx, name: "invalid-plan")?}/plan.json"
   plan_json.write_plan(path_value, value)?
-  let raw: Record = json.read(path_value)?
-  let nodes: List[Record] = raw.get("nodes")?
+  let raw = json.read(path_value)?.require(plan_json.BuildPlanDto)?
+  let nodes = raw.nodes
   let duplicate = {...raw, nodes: nodes.push(nodes[0])}
   fs.write(path_value, json.encode(duplicate)?)?
 
   match plan_json.read(path_value) {
     Ok(_) => test.fail(f"${expected}: malformed plan unexpectedly loaded")?
-    Err(problem) => test.contains(problem.message, expected)?
+    Err(problem) => { expected in problem.message }
   }
 }
 
-proc test_build_plan_is_deterministic_and_has_dependency_first_order(ctx: TestContext) [fs, env, error] {
+test test_build_plan_is_deterministic_and_has_dependency_first_order [fs, env, error] { |ctx|
   let value = plan_catalog(ctx, "plan-deterministic")?
   let first = resolve_plan(value, ["app"], empty_remote_snapshot())?
   let second = resolve_plan(value, ["app"], empty_remote_snapshot())?
@@ -238,7 +238,7 @@ proc test_build_plan_is_deterministic_and_has_dependency_first_order(ctx: TestCo
   test.eq(types.plan_action_reason(node_named(first, "app")?.action), "new package")?
 }
 
-proc test_build_plan_all_roots_are_canonical(ctx: TestContext) [fs, env, error] {
+test test_build_plan_all_roots_are_canonical [fs, env, error] { |ctx|
   let value = plan_catalog(ctx, "plan-all")?
   let first = plan.resolve(value, empty_remote_snapshot(), policy.aarch64_docker(), ["target-sdk", "app"], true, plan_executor_identity())?
   let second = plan.resolve(value, empty_remote_snapshot(), policy.aarch64_docker(), ["app"], true, plan_executor_identity())?
@@ -246,13 +246,13 @@ proc test_build_plan_all_roots_are_canonical(ctx: TestContext) [fs, env, error] 
   test.eq(first.roots, ["app", "host-tool", "runtime-lib", "target-sdk"])?
 }
 
-proc test_build_plan_is_checkout_independent(ctx: TestContext) [fs, env, error] {
+test test_build_plan_is_checkout_independent [fs, env, error] { |ctx|
   let first = resolve_plan(plan_catalog(ctx, "plan-checkout-a")?, ["app"], empty_remote_snapshot())?
   let second = resolve_plan(plan_catalog(ctx, "plan-checkout-b")?, ["app"], empty_remote_snapshot())?
   test.eq(first, second)?
 }
 
-proc test_build_plan_reuses_exact_remote_and_carries_retrieval(ctx: TestContext) [fs, env, error] {
+test test_build_plan_reuses_exact_remote_and_carries_retrieval [fs, env, error] { |ctx|
   let value = plan_catalog(ctx, "plan-remote-exact")?
   let initial = resolve_plan(value, ["app"], empty_remote_snapshot())?
   let reused = resolve_plan(value, ["app"], exact_remote_snapshot(initial)?)?
@@ -263,7 +263,7 @@ proc test_build_plan_reuses_exact_remote_and_carries_retrieval(ctx: TestContext)
   test.eq(app.artifact_key, node_named(initial, "app")?.artifact_key)?
 }
 
-proc test_build_plan_marks_only_retrieval_derived_remote_keys_as_legacy(ctx: TestContext) [fs, env, error] {
+test test_build_plan_marks_only_retrieval_derived_remote_keys_as_legacy [fs, env, error] { |ctx|
   let value = plan_catalog(ctx, "plan-legacy-remote")?
   let initial = resolve_plan(value, ["app"], empty_remote_snapshot())?
   let app = node_named(initial, "app")?
@@ -291,7 +291,7 @@ proc test_build_plan_marks_only_retrieval_derived_remote_keys_as_legacy(ctx: Tes
   test.eq(plan.node_uses_legacy_remote_identity(initial, app)?, false)?
 }
 
-proc test_build_plan_reports_tuple_reasons_and_rejects_behind_remote(ctx: TestContext) [fs, env, error] {
+test test_build_plan_reports_tuple_reasons_and_rejects_behind_remote [fs, env, error] { |ctx|
   let value = plan_catalog(ctx, "plan-reasons")?
   let initial = resolve_plan(value, ["runtime-lib"], empty_remote_snapshot())?
   let snapshot = exact_remote_snapshot(initial)?
@@ -306,11 +306,11 @@ proc test_build_plan_reports_tuple_reasons_and_rejects_behind_remote(ctx: TestCo
 
   match resolve_plan(value, ["runtime-lib"], newer) {
     Ok(_) => test.fail("behind remote tuple unexpectedly planned")?
-    Err(problem) => test.contains(problem.message, "behind remote 2-1")?
+    Err(problem) => { "behind remote 2-1" in problem.message }
   }
 }
 
-proc test_build_plan_propagates_dependency_keys(ctx: TestContext) [fs, env, error] {
+test test_build_plan_propagates_dependency_keys [fs, env, error] { |ctx|
   let value = plan_catalog(ctx, "plan-propagation")?
   let initial = resolve_plan(value, ["app"], empty_remote_snapshot())?
   var changed: List[types.Package] = []
@@ -325,7 +325,7 @@ proc test_build_plan_propagates_dependency_keys(ctx: TestContext) [fs, env, erro
   test.eq(node_named(initial, "app")?.artifact_key == node_named(rebuilt, "app")?.artifact_key, false)?
 }
 
-proc test_build_plan_keeps_same_package_dependency_edges_by_kind(ctx: TestContext) [fs, env, error] {
+test test_build_plan_keeps_same_package_dependency_edges_by_kind [fs, env, error] { |ctx|
   let original = plan_catalog(ctx, "plan-edge-kinds")?
   var packages: List[types.Package] = []
 
@@ -347,14 +347,14 @@ proc test_build_plan_keeps_same_package_dependency_edges_by_kind(ctx: TestContex
 
   match plan.fingerprint(malformed) {
     Ok(_) => test.fail("same-kind duplicate dependency unexpectedly validated")?
-    Err(problem) => test.contains(
-      problem.message,
-      f"repeats ${types.dependency_kind_text(app.dependencies[0].kind)} dependency ${app.dependencies[0].name}",
-    )?
+    Err(problem) => {
+      let problem_message = problem.message
+      f"repeats ${types.dependency_kind_text(app.dependencies[0].kind)} dependency ${app.dependencies[0].name}" in problem_message
+    }
   }
 }
 
-proc test_build_plan_requires_release_bump_for_changed_dependency(ctx: TestContext) [fs, env, error] {
+test test_build_plan_requires_release_bump_for_changed_dependency [fs, env, error] { |ctx|
   let value = plan_catalog(ctx, "plan-release-bump")?
   let initial = resolve_plan(value, ["app"], empty_remote_snapshot())?
   let snapshot = exact_remote_snapshot(initial)?
@@ -373,11 +373,11 @@ proc test_build_plan_requires_release_bump_for_changed_dependency(ctx: TestConte
 
   match resolve_plan(value, ["app"], snapshot_replace(snapshot, "runtime-lib", changed_runtime)) {
     Ok(_) => test.fail("dependent without release bump unexpectedly reused")?
-    Err(problem) => test.contains(problem.message, "app dependencies changed (runtime-lib); bump PKGBUILD.xsh rel")?
+    Err(problem) => { "app dependencies changed (runtime-lib); bump PKGBUILD.xsh rel" in problem.message }
   }
 }
 
-proc test_build_plan_json_round_trip_and_detects_corruption(ctx: TestContext) [fs, env, error] {
+test test_build_plan_json_round_trip_and_detects_corruption [fs, env, error] { |ctx|
   let value = resolve_plan(plan_catalog(ctx, "plan-json")?, ["app"], empty_remote_snapshot())?
   let path_value = fp"${test.temp_dir(ctx, name: "plan-json-out")?}/basic-aarch64.json"
   let repeat_path = fp"${test.temp_dir(ctx, name: "plan-json-repeat")?}/basic-aarch64.json"
@@ -392,34 +392,34 @@ proc test_build_plan_json_round_trip_and_detects_corruption(ctx: TestContext) [f
 
   match plan_json.read(path_value) {
     Ok(_) => test.fail("unknown plan format unexpectedly loaded")?
-    Err(problem) => test.contains(problem.message, "unsupported build plan format unknown-build-plan")?
+    Err(problem) => { "unsupported build plan format unknown-build-plan" in problem.message }
   }
 
   fs.write(path_value, original.replace(value.repository_digest, "corrupt-repository-digest"))?
 
   match plan_json.read(path_value) {
     Ok(_) => test.fail("corrupt plan digest unexpectedly loaded")?
-    Err(problem) => test.contains(problem.message, "digest does not match")?
+    Err(problem) => { "digest does not match" in problem.message }
   }
 }
 
-proc test_build_plan_json_rejects_duplicate_nodes(ctx: TestContext) [fs, env, error] {
+test test_build_plan_json_rejects_duplicate_nodes [fs, env, error] { |ctx|
   expect_plan_rejection(ctx, resolve_plan(plan_catalog(ctx, "plan-duplicate")?, ["app"], empty_remote_snapshot())?, "duplicate node host-tool")?
 }
 
-proc test_build_plan_json_rejects_dependency_key_mismatch(ctx: TestContext) [fs, env, error] {
+test test_build_plan_json_rejects_dependency_key_mismatch [fs, env, error] { |ctx|
   let value = resolve_plan(plan_catalog(ctx, "plan-dependency-key")?, ["app"], empty_remote_snapshot())?
   let path_value = fp"${test.temp_dir(ctx, name: "plan-dependency-key")?}/plan.json"
   plan_json.write_plan(path_value, value)?
-  let raw: Record = json.read(path_value)?
-  let original_nodes: List[Record] = raw.get("nodes")?
-  var nodes: List[Record] = []
+  let raw = json.read(path_value)?.require(plan_json.BuildPlanDto)?
+  let original_nodes = raw.nodes
+  var nodes = []
 
   for node in original_nodes {
-    let name: Str = node.get("name")?
+    let name = node.name
 
     if name == "app" {
-      let dependencies: List[Record] = node.get("dependencies")?
+      let dependencies = node.dependencies
       let dependency = dependencies[0]
       nodes = nodes.push({...node, dependencies: [{...dependency, artifact_key: "tampered"}]})
     } else {
@@ -431,11 +431,11 @@ proc test_build_plan_json_rejects_dependency_key_mismatch(ctx: TestContext) [fs,
 
   match plan_json.read(path_value) {
     Ok(_) => test.fail("dependency key mismatch unexpectedly loaded")?
-    Err(problem) => test.contains(problem.message, "dependency host-tool artifact key does not match its referenced node")?
+    Err(problem) => { "dependency host-tool artifact key does not match its referenced node" in problem.message }
   }
 }
 
-proc test_build_plan_normalizes_target_aliases_and_rejects_reserved_target(ctx: TestContext) [fs, env, error] {
+test test_build_plan_normalizes_target_aliases_and_rejects_reserved_target [fs, env, error] { |ctx|
   test.eq(types.parse_target("arm64")?, types.Aarch64LinuxMusl)?
   test.eq(types.parse_target("amd64")?, types.X86_64LinuxMusl)?
   let value = plan_catalog(ctx, "plan-target")?
@@ -443,6 +443,6 @@ proc test_build_plan_normalizes_target_aliases_and_rejects_reserved_target(ctx: 
 
   match plan.resolve(value, empty_remote_snapshot(), unsupported, ["app"], false, plan_executor_identity()) {
     Ok(_) => test.fail("unsupported target unexpectedly planned")?
-    Err(problem) => test.contains(problem.message, "unsupported target")?
+    Err(problem) => { "unsupported target" in problem.message }
   }
 }

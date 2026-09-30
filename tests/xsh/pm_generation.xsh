@@ -150,11 +150,11 @@ proc expect_generation_error(
 ) [error] {
   match result {
     Ok(_) => test.fail(f"${expected}: generation unexpectedly succeeded")?
-    Err(problem) => test.contains(problem.message, expected)?
+    Err(problem) => { expected in problem.message }
   }
 }
 
-proc test_generation_runtime_closure_excludes_build_toolchain(ctx: TestContext) [fs, env, error] {
+test test_generation_runtime_closure_excludes_build_toolchain [fs, env, error] { |ctx|
   let build_value = generation_build_plan(ctx, "generation-runtime-plan")?
   let overlay = empty_overlay(ctx, "generation-runtime-overlay")?
   let value = generation.plan(build_value, ["app"], generation.overlay_digest(overlay)?)?
@@ -173,7 +173,7 @@ proc test_generation_runtime_closure_excludes_build_toolchain(ctx: TestContext) 
   generation.verify_generation(output, receipt)?
 }
 
-proc test_generation_x86_64_plan_and_composition_preserve_target(ctx: TestContext) [fs, env, error] {
+test test_generation_x86_64_plan_and_composition_preserve_target [fs, env, error] { |ctx|
   let target = types.target_x86_64()
   let repo_root = copied_generation_repository(ctx, "generation-x86-plan")?
   let build_value = plan.resolve(
@@ -200,7 +200,7 @@ proc test_generation_x86_64_plan_and_composition_preserve_target(ctx: TestContex
   generation.verify_generation(output, receipt)?
 }
 
-proc test_generation_plan_and_receipt_are_deterministic_for_root_order_and_duplicates(ctx: TestContext) [fs, env, error] {
+test test_generation_plan_and_receipt_are_deterministic_for_root_order_and_duplicates [fs, env, error] { |ctx|
   let build_value = generation_build_plan(ctx, "generation-deterministic-plan")?
   let overlay = empty_overlay(ctx, "generation-deterministic-overlay")?
   let overlay_sha256 = generation.overlay_digest(overlay)?
@@ -219,7 +219,7 @@ proc test_generation_plan_and_receipt_are_deterministic_for_root_order_and_dupli
   )?
 }
 
-proc test_generation_plan_json_round_trips_and_rejects_changed_identity(ctx: TestContext) [fs, env, error] {
+test test_generation_plan_json_round_trips_and_rejects_changed_identity [fs, env, error] { |ctx|
   let build_value = generation_build_plan(ctx, "generation-plan-json")?
   let overlay = empty_overlay(ctx, "generation-plan-json-overlay")?
   let planned = generation.plan_profile(
@@ -231,15 +231,15 @@ proc test_generation_plan_json_round_trips_and_rejects_changed_identity(ctx: Tes
   generation.write_generation_plan(path_value, planned)?
   test.eq(generation.read_generation_plan(path_value)?, planned)?
 
-  let dto = json.read(path_value)?.require(Record)?
+  let dto = json.read(path_value)?.require(generation.GenerationPlanDto)?
   json.write(path_value, {...dto, generation_sha256: "0000000000000000000000000000000000000000000000000000000000000000"})?
   match generation.read_generation_plan(path_value) {
     Ok(_) => test.fail("changed generation plan digest was accepted")?
-    Err(problem) => test.contains(problem.message, "digest does not match")?,
+    Err(problem) => { "digest does not match" in problem.message },
   }
 }
 
-proc test_generation_rejects_missing_and_corrupt_runtime_artifacts_before_mutation(ctx: TestContext) [fs, env, error] {
+test test_generation_rejects_missing_and_corrupt_runtime_artifacts_before_mutation [fs, env, error] { |ctx|
   let build_value = generation_build_plan(ctx, "generation-invalid-plan")?
   let overlay = empty_overlay(ctx, "generation-invalid-overlay")?
   let value = generation.plan(build_value, ["app"], generation.overlay_digest(overlay)?)?
@@ -257,7 +257,7 @@ proc test_generation_rejects_missing_and_corrupt_runtime_artifacts_before_mutati
   test.eq(fs.exists(corrupt_output)?, false)?
 }
 
-proc test_generation_profile_overlay_metadata_and_explicit_replacement(ctx: TestContext) [fs, env, error] {
+test test_generation_profile_overlay_metadata_and_explicit_replacement [fs, env, error] { |ctx|
   let build_value = generation_build_plan(ctx, "generation-overlay-plan")?
   let store_root = test.temp_dir(ctx, name: "generation-overlay-store")?
   stage_generation_artifacts(ctx, build_value, store_root)?
@@ -299,7 +299,7 @@ proc test_generation_profile_overlay_metadata_and_explicit_replacement(ctx: Test
   test.eq(fp"${replacement_output}/usr/share/app".read_text()?, "replaced app\n")?
 }
 
-proc test_generation_overlay_coalesces_matching_baselayout_directory_and_rejects_conflicts(ctx: TestContext) [fs, env, error] {
+test test_generation_overlay_coalesces_matching_baselayout_directory_and_rejects_conflicts [fs, env, error] { |ctx|
   let build_value = generation_baselayout_build_plan(ctx, "generation-baselayout-plan")?
   let store_root = test.temp_dir(ctx, name: "generation-baselayout-store")?
   stage_generation_baselayout_artifact(ctx, build_value, store_root)?

@@ -209,7 +209,7 @@ proc build_x86_vdso(cc: Path) [fs, process, env, error] {
     "arch/x86/entry/vdso/vdso64/vgetrandom-chacha.o",
   ]
 
-  if config.values.get("X86_SGX", "") == "y" {
+  if (config.values.get("X86_SGX") ?? "") == "y" {
     PKGBUILD_shared.emit_kbuild_progress("xsh-kbuild-x86-vdso compile arch/x86/entry/vdso/vdso64/vsgx.o")?
 
     PKGBUILD_shared.run_native_command(
@@ -358,7 +358,7 @@ proc x86_capflag_array(array: Str, size: Str, prefix: Str, postfix: Str, input: 
   for raw in input.read_text()?.split("\n") {
     let line = raw.replace("\t", " ").trim()
     continue unless line.starts_with(f"#define ${prefix}")
-    let rest = line.split(f"#define ${prefix}").get(1, "").trim()
+    let rest = (line.split(f"#define ${prefix}").get(1) ?? "").trim()
     let fields = rest.fields()
     continue when fields.len() == 0
     let quote_parts = line.split("\"")
@@ -464,7 +464,8 @@ proc build_x86_realmode_payload(cc: Path) [fs, process, env, error] {
   )?
 
   var realmode_objects = ["header.o", "trampoline_64.o", "stack.o", "reboot.o"]
-  let acpi_sleep = p".config".read_text()?.contains("CONFIG_ACPI_SLEEP=y")
+  let config_text = p".config".read_text()?
+  let acpi_sleep = "CONFIG_ACPI_SLEEP=y" in config_text
 
   if acpi_sleep {
     realmode_objects = realmode_objects.extend(

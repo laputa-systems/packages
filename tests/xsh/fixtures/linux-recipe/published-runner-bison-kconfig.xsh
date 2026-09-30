@@ -49,7 +49,10 @@ proc main() [fs, process, env, error] {
       stderr: missing_log,
     ),
   )?
-  if missing.ok or ! missing_log.read_text()?.contains("No such file or directory") {
+  if missing.ok or {
+    let missing_message = missing_log.read_text()?
+    "No such file or directory" not in missing_message
+  } {
     return error.fail("published bison accepted a missing Linux Kconfig grammar")
   }
 

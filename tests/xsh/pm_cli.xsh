@@ -93,36 +93,37 @@ proc pm_status(args: List[Str], err: Path) [fs, process, env, error] -> Result[S
   return run.status XSH_HOST=$xsh XSH_MODULE_PATH=$modules XSH_PM_OFFLINE=1 $xsh pm.xsh -- @args 2> $err
 }
 
-proc test_repo_help_is_explicit(ctx: TestContext) [fs, process, env, error] {
+test test_repo_help_is_explicit [fs, process, env, error] { |ctx|
   let top = pm_output(["--help"])?
   let repository = pm_output(["repo", "--help"])?
   let plan = pm_output(["repo", "plan", "--help"])?
 
-  test.contains(top, "repo plan [--repo PATH] (--all | --root PACKAGE...) [--target TARGET] --output PLAN")?
-  test.contains(plan, "x86_64-linux-musl (native Linux runner)")?
-  test.contains(top, "repo build PLAN --store STORE")?
-  test.contains(top, "root compose PLAN --store STORE --runtime-root PACKAGE... --output GENERATION")?
-  test.eq(top.contains("world-plan"), false)?
-  test.contains(repository, "checksum [--repo PATH] PACKAGE...")?
-  test.contains(plan, "repo plan [--repo PATH] (--all | --root PACKAGE...)")?
+  "repo plan [--repo PATH] (--all | --root PACKAGE...) [--target TARGET] --output PLAN" in top
+  "x86_64-linux-musl (native Linux runner)" in plan
+  "repo build PLAN --store STORE" in top
+  "root compose PLAN --store STORE --runtime-root PACKAGE... --output GENERATION" in top
+  "world-plan" not in top
+  "checksum [--repo PATH] PACKAGE..." in repository
+  "repo plan [--repo PATH] (--all | --root PACKAGE...)" in plan
 }
 
-proc test_final_cli_rejects_removed_legacy_command(ctx: TestContext) [fs, process, env, error] {
+test test_final_cli_rejects_removed_legacy_command [fs, process, env, error] { |ctx|
   let err = test.temp_path(ctx, name: "legacy-command.err")
   let status = pm_status(["build-set", "repo"], err)?
 
   test.eq(status.ok, false)?
-  test.contains(err.read_text()?, "unknown pm command build-set")?
+  let observed_output_1 = err.read_text()?
+  "unknown pm command build-set" in observed_output_1
 }
 
-proc test_store_verify_accepts_explicit_empty_store(ctx: TestContext) [fs, process, env, error] {
+test test_store_verify_accepts_explicit_empty_store [fs, process, env, error] { |ctx|
   let store_root = test.temp_dir(ctx, name: "empty-store")?
   let output = pm_output(["store", "verify", "--store", store_root.display()])?
 
-  test.contains(output, "store verify 0 artifacts")?
+  "store verify 0 artifacts" in output
 }
 
-proc test_store_extract_copies_only_manifest_declared_file_from_saved_plan(ctx: TestContext) [fs, process, env, error] {
+test test_store_extract_copies_only_manifest_declared_file_from_saved_plan [fs, process, env, error] { |ctx|
   let repository = copied_repository(ctx, "store-extract-repository")?
   let build_plan = plan.resolve(
     catalog.load(repository)?,
@@ -169,7 +170,8 @@ proc test_store_extract_copies_only_manifest_declared_file_from_saved_plan(ctx: 
     "--package", selected.name, "--path", "boot/missing", "--output", output.display(),
   ], error_output)?
   test.eq(missing.ok, false)?
-  test.contains(error_output.read_text()?, "artifact metadata does not declare boot/missing")?
+  let observed_output_2 = error_output.read_text()?
+  "artifact metadata does not declare boot/missing" in observed_output_2
   test.eq(output.read_text()?, "previous output\n")?
 
   let traversal = pm_status([
@@ -177,50 +179,55 @@ proc test_store_extract_copies_only_manifest_declared_file_from_saved_plan(ctx: 
     "--package", selected.name, "--path", "../outside", "--output", output.display(),
   ], error_output)?
   test.eq(traversal.ok, false)?
-  test.contains(error_output.read_text()?, "store extraction path must stay relative")?
+  let observed_output_3 = error_output.read_text()?
+  "store extraction path must stay relative" in observed_output_3
   test.eq(output.read_text()?, "previous output\n")?
 }
 
-proc test_root_inspect_accepts_published_generation_receipt_file(ctx: TestContext) [fs, process, env, error] {
+test test_root_inspect_accepts_published_generation_receipt_file [fs, process, env, error] { |ctx|
   let receipt = published_generation_receipt(ctx)?
   let output = pm_output(["root", "inspect", receipt.display()])?
 
-  test.contains(output, "root inspect")?
-  test.contains(output, "runtime-roots app")?
-  test.contains(output, "artifacts 2")?
+  "root inspect" in output
+  "runtime-roots app" in output
+  "artifacts 2" in output
 }
 
-proc test_repo_check_validates_catalog(ctx: TestContext) [fs, process, env, error] {
+test test_repo_check_validates_catalog [fs, process, env, error] { |ctx|
   let root = copied_repository(ctx, "repo-check")?
   let output = pm_output(["repo", "check", "--repo", root.display()])?
   let discovered = pm_output(["repo", "check"])?
-  test.contains(output, "repo check 4 packages 3 edges")?
-  test.contains(discovered, "repo check")?
+  "repo check 4 packages 3 edges" in output
+  "repo check" in discovered
 }
 
-proc test_repo_plan_requires_explicit_selection_output_and_target(ctx: TestContext) [fs, process, env, error] {
+test test_repo_plan_requires_explicit_selection_output_and_target [fs, process, env, error] { |ctx|
   let root = copied_repository(ctx, "repo-arguments")?
   let err = test.temp_path(ctx, name: "repo-arguments.err")
   let output = fp"${root}/out/plan.json"
 
   let missing_selection = pm_status(["repo", "plan", "--repo", root.display(), "--output", output.display()], err)?
   test.eq(missing_selection.ok, false)?
-  test.contains(err.read_text()?, "requires exactly one of --all or one-or-more --root")?
+  let observed_output_4 = err.read_text()?
+  "requires exactly one of --all or one-or-more --root" in observed_output_4
 
   let both = pm_status(["repo", "plan", "--repo", root.display(), "--all", "--root", "app", "--output", output.display()], err)?
   test.eq(both.ok, false)?
-  test.contains(err.read_text()?, "requires exactly one of --all or one-or-more --root")?
+  let observed_output_5 = err.read_text()?
+  "requires exactly one of --all or one-or-more --root" in observed_output_5
 
   let missing_output = pm_status(["repo", "plan", "--repo", root.display(), "--root", "app"], err)?
   test.eq(missing_output.ok, false)?
-  test.contains(err.read_text()?, "missing required argument --output")?
+  let observed_output_6 = err.read_text()?
+  "missing required argument --output" in observed_output_6
 
   let unsupported_target = pm_status(["repo", "plan", "--repo", root.display(), "--root", "app", "--output", output.display(), "--target", "sparc64-linux-musl"], err)?
   test.eq(unsupported_target.ok, false)?
-  test.contains(err.read_text()?, "unsupported target sparc64-linux-musl")?
+  let observed_output_7 = err.read_text()?
+  "unsupported target sparc64-linux-musl" in observed_output_7
 }
 
-proc test_repo_plan_does_not_infer_path_arguments(ctx: TestContext) [fs, process, env, error] {
+test test_repo_plan_does_not_infer_path_arguments [fs, process, env, error] { |ctx|
   let root = copied_repository(ctx, "repo-no-inference")?
   let err = test.temp_path(ctx, name: "repo-no-inference.err")
   let package_like = fp"${root}/looks-like-package"
@@ -233,10 +240,11 @@ proc test_repo_plan_does_not_infer_path_arguments(ctx: TestContext) [fs, process
   )?
 
   test.eq(status.ok, false)?
-  test.contains(err.read_text()?, "unexpected positional argument")?
+  let observed_output_8 = err.read_text()?
+  "unexpected positional argument" in observed_output_8
 }
 
-proc test_repo_plan_writes_and_show_renders_verified_fields(ctx: TestContext) [fs, process, env, error] {
+test test_repo_plan_writes_and_show_renders_verified_fields [fs, process, env, error] { |ctx|
   let root = copied_repository(ctx, "repo-plan")?
   let output = fp"${root}/out/plan.json"
   let planned = pm_output(["repo", "plan", "--repo", root.display(), "--root", "app", "--output", output.display()])?
@@ -245,13 +253,13 @@ proc test_repo_plan_writes_and_show_renders_verified_fields(ctx: TestContext) [f
 
   test.ok(output.exists()?)?
   test.eq(value.target, types.target_aarch64())?
-  test.contains(planned, "level 1 app build")?
-  test.contains(shown, "level 1 app build")?
-  test.contains(shown, "new package")?
-  test.contains(shown, value.nodes[0].artifact_key)?
+  "level 1 app build" in planned
+  "level 1 app build" in shown
+  "new package" in shown
+  value.nodes[0].artifact_key in shown
 }
 
-proc test_repo_plan_records_x86_64_target_and_distinct_artifact_keys(ctx: TestContext) [fs, process, env, error] {
+test test_repo_plan_records_x86_64_target_and_distinct_artifact_keys [fs, process, env, error] { |ctx|
   let root = copied_repository(ctx, "repo-x86-plan")?
   let arm_output = fp"${root}/out/arm-plan.json"
   let x86_output = fp"${root}/out/x86-plan.json"
@@ -272,11 +280,12 @@ proc test_repo_plan_records_x86_64_target_and_distinct_artifact_keys(ctx: TestCo
   let err = test.temp_path(ctx, name: "repo-x86-build.err")
   let build_status = pm_status(["repo", "build", x86_output.display(), "--store", store.display()], err)?
   test.eq(build_status.ok, false)?
-  test.contains(err.read_text()?, "repo build requires a native Linux x86_64 runner")?
+  let observed_output_9 = err.read_text()?
+  "repo build requires a native Linux x86_64 runner" in observed_output_9
   test.eq(store.exists()?, false)?
 }
 
-proc test_repo_show_rejects_corrupt_plan(ctx: TestContext) [fs, process, env, error] {
+test test_repo_show_rejects_corrupt_plan [fs, process, env, error] { |ctx|
   let root = copied_repository(ctx, "repo-corrupt")?
   let output = fp"${root}/out/plan.json"
   let _ = pm_output(["repo", "plan", "--repo", root.display(), "--root", "app", "--output", output.display()])?
@@ -286,5 +295,6 @@ proc test_repo_show_rejects_corrupt_plan(ctx: TestContext) [fs, process, env, er
   let status = pm_status(["repo", "show", output.display()], err)?
 
   test.eq(status.ok, false)?
-  test.contains(err.read_text()?, "build plan digest does not match")?
+  let observed_output_10 = err.read_text()?
+  "build plan digest does not match" in observed_output_10
 }

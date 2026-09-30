@@ -1,6 +1,7 @@
 ##! Published-runner regression for metapackage execution without payload extraction or proof code.
 use pm.catalog
 use pm.execute
+use pm.local
 use pm.generation_adapter as generation_adapter
 use pm.plan
 use pm.plan_json
@@ -285,7 +286,7 @@ proc published_parallel_level_barrier_regression(
       # The published runner leaves a failed par-map callback in-band. The
       # executor must report the worker's node-specific marker before it
       # attempts Store lookup or allows a later level to consume direct-app.
-      if !problem.message.contains("parallel executor node direct-app-1.0.0-1 failed: package proof for direct-app") {
+      if "parallel executor node direct-app-1.0.0-1 failed: package proof for direct-app" not in problem.message {
         return Err(problem)
       }
     }
@@ -338,7 +339,7 @@ proc published_legacy_package_kind_regression(
   match pm_repo.snapshot(value, invalid_store) {
     Ok(_) => return error.fail("published explicit empty package_kind unexpectedly published")
     Err(problem) => {
-      if !problem.message.contains("invalid package kind") {
+      if "invalid package kind" not in problem.message {
         return Err(problem)
       }
     }
@@ -431,10 +432,10 @@ proc main() [fs, net, process, env, time, error] {
   )?
   let result = execute.build_plan(value, workspace, store, "", 1)?
   let meta = result.artifacts[1]
-  let metadata: Record = json.read(fp"${meta.artifact_dir}/metadata.json")?
-  let files = metadata.get("files")?.require(List[Record])?
+  let metadata = json.read(fp"${meta.artifact_dir}/metadata.json")?.require(local.PackageMetadataDto)?
+  let files = metadata.files
 
-  if meta.package_name != "direct-meta" or metadata.get("package_kind")? != "meta" or files.len() != 0 {
+  if meta.package_name != "direct-meta" or metadata.package_kind != "meta" or files.len() != 0 {
     return error.fail("published metapackage did not retain an empty typed payload inventory")
   }
 

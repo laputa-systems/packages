@@ -10,7 +10,7 @@ proc run_m4(argv: List[Str]) [process, error] -> Result[Str] {
   return run.text xsh_bin() m4_script() -- @argv ?
 }
 
-proc test_prefixed_define_rescans_expansion(ctx: TestContext) [fs, process, error] {
+test test_prefixed_define_rescans_expansion [fs, process, error] { |ctx|
   let input = test.temp_file(ctx, name: "prefix.m4", contents: b"m4_define([GREETING],[hello])GREETING\n")?
   let output = run_m4(["-P", input.display()])?
 
@@ -18,7 +18,7 @@ proc test_prefixed_define_rescans_expansion(ctx: TestContext) [fs, process, erro
 """
 }
 
-proc test_include_path_and_multiple_inputs(ctx: TestContext) [fs, process, error] {
+test test_include_path_and_multiple_inputs [fs, process, error] { |ctx|
   let root = test.temp_dir(ctx, name: "bison-style")?
   let inc = fp"${root}/m4sugar"
   inc.mkdir()
@@ -40,7 +40,7 @@ proc test_include_path_and_multiple_inputs(ctx: TestContext) [fs, process, error
   "NUMBER" in output
 }
 
-proc test_prefixed_dnl_is_available_without_prefix_mode(ctx: TestContext) [fs, process, error] {
+test test_prefixed_dnl_is_available_without_prefix_mode [fs, process, error] { |ctx|
   let input = test.temp_file(
     ctx,
     name: "flex-guard.m4",
@@ -53,7 +53,7 @@ proc test_prefixed_dnl_is_available_without_prefix_mode(ctx: TestContext) [fs, p
 """
 }
 
-proc test_changequote_applies_to_remaining_stream(ctx: TestContext) [fs, process, error] {
+test test_changequote_applies_to_remaining_stream [fs, process, error] { |ctx|
   let input = test.temp_file(ctx, name: "changequote.m4", contents: b"changequote([[,]])[[ok]]\n")?
   let output = run_m4([input.display()])?
 
@@ -61,7 +61,7 @@ proc test_changequote_applies_to_remaining_stream(ctx: TestContext) [fs, process
 """
 }
 
-proc test_changecom_without_args_disables_comments(ctx: TestContext) [fs, process, error] {
+test test_changecom_without_args_disables_comments [fs, process, error] { |ctx|
   let input = test.temp_file(ctx, name: "changecom.m4", contents: b"define(`NAME',`value')changecom`'dnl\n#line NAME\n")?
   let output = run_m4([input.display()])?
 
@@ -69,7 +69,7 @@ proc test_changecom_without_args_disables_comments(ctx: TestContext) [fs, proces
 """
 }
 
-proc test_prefix_mode_leaves_bare_builtins_literal(ctx: TestContext) [fs, process, error] {
+test test_prefix_mode_leaves_bare_builtins_literal [fs, process, error] { |ctx|
   let input = test.temp_file(ctx, name: "prefix-literal.m4", contents: b"#define X 1\nm4_define([[Y]], [[ok]])Y\n")?
   let output = run_m4(["-P", input.display()])?
 
@@ -78,7 +78,7 @@ ok
 """
 }
 
-proc test_macro_arg_count_and_quoted_argv(ctx: TestContext) [fs, process, error] {
+test test_macro_arg_count_and_quoted_argv [fs, process, error] { |ctx|
   let input = test.temp_file(
     ctx,
     name: "macro-argv.m4",
@@ -91,7 +91,7 @@ proc test_macro_arg_count_and_quoted_argv(ctx: TestContext) [fs, process, error]
 """
 }
 
-proc test_indir_calls_user_macro(ctx: TestContext) [fs, process, error] {
+test test_indir_calls_user_macro [fs, process, error] { |ctx|
   let input = test.temp_file(
     ctx,
     name: "indir-user.m4",
@@ -104,7 +104,7 @@ proc test_indir_calls_user_macro(ctx: TestContext) [fs, process, error] {
 """
 }
 
-proc test_separate_define_flag_is_rescanned(ctx: TestContext) [fs, process, error] {
+test test_separate_define_flag_is_rescanned [fs, process, error] { |ctx|
   let input = test.temp_file(ctx, name: "define-flag.m4", contents: b"FEATURE\n")?
   let output = run_m4(["-P", "-D", "FEATURE=m4_define([WORD],[ok])WORD", input.display()])?
 
@@ -112,7 +112,7 @@ proc test_separate_define_flag_is_rescanned(ctx: TestContext) [fs, process, erro
 """
 }
 
-proc test_divert_undivert_and_m4wrap(ctx: TestContext) [fs, process, error] {
+test test_divert_undivert_and_m4wrap [fs, process, error] { |ctx|
   let input = test.temp_file(
     ctx,
     name: "divert.m4",

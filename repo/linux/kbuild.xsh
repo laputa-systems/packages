@@ -242,7 +242,9 @@ proc merge_plan(base: KbuildPlan, addition: KbuildPlan) [] -> KbuildPlan {
 }
 
 pure archive_owner_key(owners: Map[Str], obj: Path) -> Path {
-  return fp"${owners.get(path_key(obj), path_key(object_dir(obj)))}"
+  let object_key = path_key(obj)
+  let default_owner = path_key(object_dir(obj))
+  return fp"${owners.get(object_key) ?? default_owner}"
 }
 
 pure join_rel(dir: Path, item: Str) -> Path {
@@ -351,7 +353,7 @@ export proc load_config(path_value: Path) [fs, error] -> Result[Kconfig] {
     if line.starts_with("CONFIG_") and "=" in line {
       let parts = line.split("=")
       let name = parts[0].replace("CONFIG_", "")
-      let value = clean_config_value(parts.get(1, ""))
+      let value = clean_config_value((parts.get(1) ?? ""))
       values[name] = value
 
       if value == "y" {
@@ -396,7 +398,7 @@ export proc write_config_headers(config_path: Path, root: Path, release: Str, ar
   ]
 
   for name in config.values.keys() |> sort-by . {
-    let value = config.values.get(name, "")
+    let value = (config.values.get(name) ?? "")
     autoconf = autoconf.push(f"#define CONFIG_${name} ${config_header_value(value)}")
     auto_conf = auto_conf.push(config_auto_line(name, value))
   }
@@ -647,7 +649,7 @@ export proc generate_arm64_cpucap_defs(root: Path) [fs, error] {
 }
 
 pure config_value(config: Kconfig, name: Str) -> Str {
-  return config.values.get(name, "")
+  return (config.values.get(name) ?? "")
 }
 
 pure expand_subst(raw: Str, config: Kconfig) -> Str {
@@ -719,7 +721,7 @@ pure expand_make_vars(raw: Str, vars: Map[Str]) -> Str {
     if parts.len() == 1 {
       out = f"${out}${marker}${chunk}"
     } else {
-      out = f"${out}${vars.get(parts[0], "")}${(parts |> drop(1)).join(")")}"
+      out = f"${out}${(vars.get(parts[0]) ?? "")}${(parts |> drop(1)).join(")")}"
     }
   }
 
@@ -787,7 +789,7 @@ proc logical_lines(body: Str) [] -> List[Str] {
   var current = ""
 
   for raw in body.split("\n") {
-    let comment_index = raw.find("#")
+    let comment_index = raw.find("#") ?? -1
     let without_comment = if comment_index >= 0 { raw.byte_slice(0, comment_index) } else { raw }
     let trimmed = without_comment.trim()
 
@@ -826,7 +828,7 @@ proc included_kbuild_lines(
     return []
   }
 
-  let raw_spec = line.split("include ").get(1, "").trim()
+  let raw_spec = (line.split("include ").get(1) ?? "").trim()
 
   if "$(objtree)" in raw_spec {
     return []
@@ -851,25 +853,25 @@ pure parse_assignment_at(line: Str, marker: Str, marker_len: Int, index: Int) ->
 }
 
 pure parse_assignment(line: Str) -> Result[ParsedAssignment] {
-  let append_index = line.find("+=")
+  let append_index = line.find("+=") ?? -1
 
   if append_index >= 0 {
     return parse_assignment_at(line, "+=", 2, append_index)
   }
 
-  let simple_index = line.find(":=")
+  let simple_index = line.find(":=") ?? -1
 
   if simple_index >= 0 {
     return parse_assignment_at(line, ":=", 2, simple_index)
   }
 
-  let conditional_index = line.find("?=")
+  let conditional_index = line.find("?=") ?? -1
 
   if conditional_index >= 0 {
     return parse_assignment_at(line, "?=", 2, conditional_index)
   }
 
-  let assignment_index = line.find("=")
+  let assignment_index = line.find("=") ?? -1
 
   if assignment_index >= 0 {
     return parse_assignment_at(line, "=", 1, assignment_index)
@@ -919,7 +921,7 @@ proc eval_make_compare(line: Str, keyword: Str, vars: Map[Str], config: Kconfig,
     return Err(ScriptError.Failed("kbuild-not-conditional", line))
   }
 
-  let rest = line.split(prefix).get(1, "")
+  let rest = (line.split(prefix).get(1) ?? "")
   let parts = rest.split(",")
 
   if parts.len() < 2 {
@@ -984,13 +986,13 @@ proc composite_members(dir: Path, item: Str, vars: Map[Str]) [] -> List[Path] {
   var members: List[Path] = []
   let stem = object_stem(item)
 
-  for member in vars.get(f"${stem}-y", "").fields() {
+  for member in (vars.get(f"${stem}-y") ?? "").fields() {
     if member.ends_with(".o") {
       members = members.push(join_rel(dir, member))
     }
   }
 
-  for member in vars.get(f"${stem}-objs", "").fields() {
+  for member in (vars.get(f"${stem}-objs") ?? "").fields() {
     if member.ends_with(".o") {
       members = members.push(join_rel(dir, member))
     }
@@ -1001,8 +1003,8 @@ proc composite_members(dir: Path, item: Str, vars: Map[Str]) [] -> List[Path] {
 
 stream active_objects_for_dir(dir: Path, vars: Map[Str]) [] -> Stream[Path] {
   var objects: List[Path] = []
-  var words = vars.get("obj-y", "").fields()
-  words = words.extend(vars.get("lib-y", "").fields())
+  var words = (vars.get("obj-y") ?? "").fields()
+  words = words.extend((vars.get("lib-y") ?? "").fields())
 
   for item in words {
     let active_item = object_item_for_dir(dir, item)
@@ -1099,7 +1101,7 @@ proc vars_for_dir(root: Path, dir: Path, config: Kconfig, srcarch: Str) [fs, err
           if path_key(dir) == "arch/x86/boot/startup" and lhs == "obj-y" and assign.rhs.starts_with(
             "$(patsubst %.o,%.pi.o,$(obj-y))",
           ) {
-            var rewritten = [object_item_for_dir(dir, item) for item in vars.get("obj-y", "").fields()]
+            var rewritten = [object_item_for_dir(dir, item) for item in (vars.get("obj-y") ?? "").fields()]
             vars[lhs] = rewritten.join(" ")
             continue
           }
@@ -1107,8 +1109,8 @@ proc vars_for_dir(root: Path, dir: Path, config: Kconfig, srcarch: Str) [fs, err
           let rhs = expand_vars(assign.rhs, vars, config, srcarch)
 
           if assign.op == "+=" {
-            vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
-          } else if assign.op != "?=" or vars.get(lhs, "") == "" {
+            vars[lhs] = f"${(vars.get(lhs) ?? "")} ${rhs}".trim()
+          } else if assign.op != "?=" or (vars.get(lhs) ?? "") == "" {
             vars[lhs] = rhs
           }
         }
@@ -1212,7 +1214,7 @@ proc kbuild_compile_flags_for_dir(
 
         if object_name != "" {
           let key = path_key(join_rel(dir, object_name))
-          let current = flags.get(key, [])
+          let current = (flags.get(key) ?? [])
 
           if assign.op == "+=" {
             flags[key] = current.extend(rhs.fields())
@@ -1227,8 +1229,8 @@ proc kbuild_compile_flags_for_dir(
 
         if lhs != "" {
           if assign.op == "+=" {
-            vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
-          } else if assign.op != "?=" or vars.get(lhs, "") == "" {
+            vars[lhs] = f"${(vars.get(lhs) ?? "")} ${rhs}".trim()
+          } else if assign.op != "?=" or (vars.get(lhs) ?? "") == "" {
             vars[lhs] = rhs
           }
         }
@@ -1276,10 +1278,11 @@ pure compile_flags_cache_entries(flags: Map[Map[List[Str]]]) -> List[Record] {
   var entries: List[Record] = []
 
   for dir_key in flags.keys() {
-    let dir_flags = flags.get(dir_key, map.empty())
+    let empty_dir_flags: Map[List[Str]] = map.empty()
+    let dir_flags = (flags.get(dir_key) ?? empty_dir_flags)
 
     for object_key in dir_flags.keys() {
-      entries = entries.push({dir: dir_key, object: object_key, flags: dir_flags.get(object_key, [])})
+      entries = entries.push({dir: dir_key, object: object_key, flags: (dir_flags.get(object_key) ?? [])})
     }
   }
 
@@ -1293,7 +1296,8 @@ pure compile_flags_from_cache_entries(entries: List[Record]) -> Result[Map[Map[L
     let dir_key: Str = entry.get("dir")?
     let object_key: Str = entry.get("object")?
     let item_flags: List[Str] = entry.get("flags")?
-    let dir_flags = flags.get(dir_key, map.empty()).set(object_key, item_flags)
+    let empty_dir_flags: Map[List[Str]] = map.empty()
+    let dir_flags = (flags.get(dir_key) ?? empty_dir_flags).set(object_key, item_flags)
     flags[dir_key] = dir_flags
   }
 
@@ -1307,7 +1311,7 @@ proc compile_flags_fingerprint(
   srcarch: Str,
 ) [fs, error] -> Result[Str] {
   let dir_fingerprints = dirs
-    |> par-map --jobs=planner_jobs() { |dir|
+    |> par-map(jobs: planner_jobs()) { |dir|
       fingerprint_dir_line(root, dir)?
     }
   let config_hash = if config_path.exists()? { hash.sha256(config_path)?.hex() } else { "missing" }
@@ -1324,7 +1328,7 @@ ${dir_fingerprints.join("\n")}
 
 proc read_compile_flags_cache(path_value: Path, fingerprint: Str) [fs, error] -> Result[Map[Map[List[Str]]]] {
   let stored: Record = json.read(path_value)?
-  let format = if stored.has("format") { stored.get("format")? } else { "" }
+  let format = if "format" in stored { stored.get("format")? } else { "" }
 
   if format != compile_flags_cache_format() {
     return Err(ScriptError.Failed("kbuild-compile-flags-cache-stale", "compile flags cache has stale format"))
@@ -1414,9 +1418,11 @@ proc cached_kbuild_compile_flags_for_dirs(
 }
 
 pure kbuild_compile_flags_for_object(by_dir: Map[Map[List[Str]]], obj: Path) -> List[Str] {
-  let dir_flags = by_dir.get(path_key(object_dir(obj)), map.empty())
-  let object_flags = dir_flags.get(path_key(obj), [])
-  return dir_flags.get("*", []).extend(object_flags)
+  let dir_key = path_key(object_dir(obj))
+  let empty_dir_flags: Map[List[Str]] = map.empty()
+  let dir_flags = by_dir.get(dir_key) ?? empty_dir_flags
+  let object_flags = (dir_flags.get(path_key(obj)) ?? [])
+  return (dir_flags.get("*") ?? []).extend(object_flags)
 }
 
 ## Exported declaration `augment_missing_composites`.
@@ -1440,7 +1446,7 @@ export proc augment_missing_composites(
             Err(_) => {
               let dir = object_dir(obj)
               let dir_key = path_key(dir)
-              let current = missing_by_dir.get(dir_key, [])
+              let current = (missing_by_dir.get(dir_key) ?? [])
 
               if current.len() == 0 {
                 dirs = dirs.push(dir)
@@ -1455,11 +1461,11 @@ export proc augment_missing_composites(
   }
 
   let scans: List[CompositeScan] = dirs
-    |> par-map --jobs=planner_jobs() { |dir|
+    |> par-map(jobs: planner_jobs()) { |dir|
       let vars = vars_for_dir(root, dir, config, srcarch)?
       var found = []
 
-      for obj in missing_by_dir.get(path_key(dir), []) {
+      for obj in (missing_by_dir.get(path_key(dir)) ?? []) {
         let members = composite_members(dir, obj.name, vars)
 
         if members.len() > 0 {
@@ -1477,7 +1483,7 @@ export proc augment_missing_composites(
   }
 
   for dir in dirs {
-    composites = composites.extend(composites_by_dir.get(path_key(dir), []))
+    composites = composites.extend((composites_by_dir.get(path_key(dir)) ?? []))
   }
 
   return {...plan, composites: composites}
@@ -1493,7 +1499,7 @@ export proc prune_inactive_objects(
   var active: Map[Bool] = {}
 
   let dir_objects: List[ActiveDirObjects] = plan.dirs
-    |> par-map --jobs=planner_jobs() { |dir|
+    |> par-map(jobs: planner_jobs()) { |dir|
       let vars = vars_for_dir(root, dir, config, srcarch)?
       {dir: dir, objects: active_objects_for_dir(dir, vars).collect()}
     }
@@ -1504,9 +1510,9 @@ export proc prune_inactive_objects(
     }
   }
 
-  var objects = [obj for obj in plan.objects if active.get(path_key(obj), false)]
-  var composites = [composite for composite in plan.composites if active.get(path_key(composite.object), false)]
-  var lib_objects = [obj for obj in plan.lib_objects if active.get(path_key(obj), false)]
+  var objects = [obj for obj in plan.objects if (active.get(path_key(obj)) ?? false)]
+  var composites = [composite for composite in plan.composites if (active.get(path_key(composite.object)) ?? false)]
+  var lib_objects = [obj for obj in plan.lib_objects if (active.get(path_key(obj)) ?? false)]
   return {...plan, objects: objects, lib_objects: lib_objects, composites: composites}
 }
 
@@ -1572,8 +1578,8 @@ export proc refresh_plan_dirs(
     )?
 
     dirs_all = dirs_all.push(dir)
-    objects_all = objects_all.extend(objects_by_dir.get(path_key(dir), []))
-    composites_all = composites_all.extend(composites_by_dir.get(path_key(dir), []))
+    objects_all = objects_all.extend((objects_by_dir.get(path_key(dir)) ?? []))
+    composites_all = composites_all.extend((composites_by_dir.get(path_key(dir)) ?? []))
   }
 
   return normalize_plan({...next, dirs: dirs_all, objects: objects_all, composites: composites_all})
@@ -1883,7 +1889,7 @@ export proc refresh_plan_composite_members(
   for composite in plan.composites {
     let key = path_key(composite.object)
 
-    if refreshed.has(key) {
+    if key in refreshed {
       composites = composites.push(refreshed.get(key)?)
       seen[key] = true
     } else {
@@ -1894,12 +1900,12 @@ export proc refresh_plan_composite_members(
   for obj in objects {
     let key = path_key(obj)
 
-    if refreshed.has(key) and ! seen.get(key, false) {
+    if key in refreshed and ! (seen.get(key) ?? false) {
       composites = composites.push(refreshed.get(key)?)
     }
   }
 
-  var top_objects = [obj for obj in plan.objects if ! member_paths.get(path_key(obj), false)]
+  var top_objects = [obj for obj in plan.objects if ! (member_paths.get(path_key(obj)) ?? false)]
   return normalize_plan({...plan, objects: top_objects, composites: composites})
 }
 
@@ -2018,7 +2024,7 @@ proc apply_words(
 proc kbuild_file(dir_abs: Path) [fs, error] -> Result[Path] {
   var has_makefile = false
 
-  for entry in fs.ls(dir_abs, stat: false, ordered: false)? {
+  for entry in fs.children(dir_abs, stat: false, ordered: false)? {
     if entry.name == "Kbuild" {
       return fp"${dir_abs}/Kbuild"
     }
@@ -2169,8 +2175,8 @@ proc scan_simple_kbuild(
             }
           } else if active_var_lhs(lhs) != "" {
             if assign.op == "+=" {
-              mutable_vars[lhs] = f"${mutable_vars.get(lhs, "")} ${assign.rhs}".trim()
-            } else if assign.op != "?=" or mutable_vars.get(lhs, "") == "" {
+              mutable_vars[lhs] = f"${(mutable_vars.get(lhs) ?? "")} ${assign.rhs}".trim()
+            } else if assign.op != "?=" or (mutable_vars.get(lhs) ?? "") == "" {
               mutable_vars[lhs] = assign.rhs
             }
           }
@@ -2254,8 +2260,8 @@ proc scan_flat_kbuild(
             let rhs = expand_vars(assign.rhs, vars, config, srcarch)
 
             if assign.op == "+=" {
-              vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
-            } else if assign.op != "?=" or vars.get(lhs, "") == "" {
+              vars[lhs] = f"${(vars.get(lhs) ?? "")} ${rhs}".trim()
+            } else if assign.op != "?=" or (vars.get(lhs) ?? "") == "" {
               vars[lhs] = rhs
             }
           }
@@ -2407,8 +2413,8 @@ proc scan_discover_dir(
             let rhs = expand_vars(assign.rhs, vars, config, srcarch)
 
             if assign.op == "+=" {
-              vars[lhs] = f"${vars.get(lhs, "")} ${rhs}".trim()
-            } else if assign.op != "?=" or vars.get(lhs, "") == "" {
+              vars[lhs] = f"${(vars.get(lhs) ?? "")} ${rhs}".trim()
+            } else if assign.op != "?=" or (vars.get(lhs) ?? "") == "" {
               vars[lhs] = rhs
             }
           }
@@ -2451,7 +2457,7 @@ proc unique_unseen_paths(paths: List[Path], seen: Map[Bool]) [] -> List[Path] {
   for path_value in paths {
     let key = path_key(path_value)
 
-    if ! local_seen.get(key, false) {
+    if ! (local_seen.get(key) ?? false) {
       local_seen[key] = true
       unique = unique.push(path_value)
     }
@@ -2485,7 +2491,7 @@ proc scan_discover_batch_parallel(
   options: DiscoverOptions,
 ) [fs, error] -> Result[List[DirScan]] {
   pending
-    |> par-map --jobs=options.jobs { |dir|
+    |> par-map(jobs: options.jobs) { |dir|
       scan_discover_dir(root, dir, config, srcarch, options)?
     }
 }
@@ -2524,7 +2530,7 @@ export proc plan_from_record_values(records: List[Record]) [error] -> Result[Kbu
       let dirs: List[Str] = plan_value.get("dirs")?
       let objects: List[Str] = plan_value.get("objects")?
       let lib_objects: List[Str] = plan_value.get("lib_objects")?
-      let archive_owners = if plan_value.has("archive_owners") {
+      let archive_owners = if "archive_owners" in plan_value {
         plan_value.get("archive_owners")?
       } else {
         []
@@ -2559,7 +2565,7 @@ export proc plan_from_record_values(records: List[Record]) [error] -> Result[Kbu
       let child_dirs: List[Str] = scan.get("child_dirs")?
       for child in child_dirs {
         let child_path = fp"${child}"
-        if ! seen.get(path_key(child_path), false) {
+        if ! (seen.get(path_key(child_path)) ?? false) {
           frontier = frontier.push(child_path)
         }
       }
@@ -2703,7 +2709,7 @@ proc discover_scans(
       }
 
       for child in scan.child_dirs {
-        if ! seen.get(path_key(child), false) {
+        if ! (seen.get(path_key(child)) ?? false) {
           frontier = frontier.push(child)
         }
       }
@@ -2774,7 +2780,7 @@ proc local_record_from_record(item: Record) [error] -> Result[DirScan] {
   let lib_objects: List[Str] = plan_value.get("lib_objects")?
   let composites: List[Record] = plan_value.get("composites")?
   let unsupported: List[Str] = plan_value.get("unsupported")?
-  let archive_owners = if plan_value.has("archive_owners") {
+  let archive_owners = if "archive_owners" in plan_value {
     plan_value.get("archive_owners")?
   } else {
     []
@@ -2870,7 +2876,7 @@ proc merge_discovered_scans_with_options(
 ) [fs, error] -> Result[DiscoverState] {
   let rel_key = path_key(rel)
 
-  if state.seen.get(rel_key, false) {
+  if (state.seen.get(rel_key) ?? false) {
     return state
   }
 
@@ -2901,7 +2907,7 @@ proc merge_local_record_graph_with_options(
 ) [fs, error] -> Result[DiscoverState] {
   let rel_key = path_key(rel)
 
-  if state.seen.get(rel_key, false) {
+  if (state.seen.get(rel_key) ?? false) {
     return state
   }
 
@@ -3011,7 +3017,7 @@ proc unique_paths(paths: List[Path]) [] -> List[Path] {
   for path_value in paths {
     let key = path_key(path_value)
 
-    if ! seen.get(key, false) {
+    if ! (seen.get(key) ?? false) {
       seen[key] = true
       unique = unique.push(path_value)
     }
@@ -3027,7 +3033,7 @@ proc unique_composites(composites: List[CompositeObject]) [] -> List[CompositeOb
   for composite in composites {
     let key = path_key(composite.object)
 
-    if ! seen.get(key, false) {
+    if ! (seen.get(key) ?? false) {
       seen[key] = true
       unique = unique.push(composite)
     }
@@ -3046,7 +3052,7 @@ proc normalize_plan(plan: KbuildPlan) [] -> KbuildPlan {
 
   return {
     dirs: unique_paths(plan.dirs),
-    objects: [obj for obj in unique_paths(plan.objects) if ! lib_object_seen.get(path_key(obj), false)],
+    objects: [obj for obj in unique_paths(plan.objects) if ! (lib_object_seen.get(path_key(obj)) ?? false)],
     lib_objects: lib_objects,
     archive_owners: plan.archive_owners,
     composites: unique_composites(plan.composites),
@@ -3151,10 +3157,10 @@ export proc read_discovered_plan(path_value: Path) [fs, error] -> Result[KbuildP
   let objects: List[Str] = stored.get("objects")?
   let no_composites: List[Record] = []
   let no_strings: List[Str] = []
-  let lib_objects = if stored.has("lib_objects") { stored.get("lib_objects")? } else { no_strings }
-  let archive_owners = if stored.has("archive_owners") { stored.get("archive_owners")? } else { no_composites }
-  let composites = if stored.has("composites") { stored.get("composites")? } else { no_composites }
-  let unsupported = if stored.has("unsupported") { stored.get("unsupported")? } else { no_strings }
+  let lib_objects = if "lib_objects" in stored { stored.get("lib_objects")? } else { no_strings }
+  let archive_owners = if "archive_owners" in stored { stored.get("archive_owners")? } else { no_composites }
+  let composites = if "composites" in stored { stored.get("composites")? } else { no_composites }
+  let unsupported = if "unsupported" in stored { stored.get("unsupported")? } else { no_strings }
 
   return {
     dirs: unique_paths(paths_from_strings(dirs)?),
@@ -3183,18 +3189,18 @@ export proc parse_discovered_plan_text(text: Str) [error] -> Result[KbuildPlan] 
 
     match kind {
       "dirs" => dirs = parts |> drop(1)
-      "dir" => dirs = dirs.push(parts.get(1, ""))
+      "dir" => dirs = dirs.push((parts.get(1) ?? ""))
       "objects" => objects = parts |> drop(1)
-      "obj" => objects = objects.push(parts.get(1, ""))
+      "obj" => objects = objects.push((parts.get(1) ?? ""))
       "lib_objects" => lib_objects = parts |> drop(1)
-      "lib" => lib_objects = lib_objects.push(parts.get(1, ""))
+      "lib" => lib_objects = lib_objects.push((parts.get(1) ?? ""))
       "archive" => archive_owners = archive_owners.push(
-        {object: fp"${parts.get(1, "")}", dir: fp"${parts.get(2, ".")}"},
+        {object: fp"${(parts.get(1) ?? "")}", dir: fp"${(parts.get(2) ?? ".")}"},
       )
       "composite" => composites = composites.push(
-        {object: fp"${parts.get(1, "")}", members: paths_from_strings(parts |> drop(2))?},
+        {object: fp"${(parts.get(1) ?? "")}", members: paths_from_strings(parts |> drop(2))?},
       )
-      "unsupported" => unsupported = unsupported.push(parts.get(1, ""))
+      "unsupported" => unsupported = unsupported.push((parts.get(1) ?? ""))
       _ => {}
     }
   }
@@ -3277,7 +3283,7 @@ pure duplicate_task_outputs(tasks: List[make.MakeTask]) -> List[Path] {
       let key = path_key(output)
       continue when key == ""
 
-      if outputs.get(key, false) {
+      if (outputs.get(key) ?? false) {
         if ! has_plan_path(duplicates, output) {
           duplicates = duplicates.push(output)
         }
@@ -3372,7 +3378,7 @@ proc read_archive_plan_tasks(path_value: Path) [fs, error] -> Result[List[make.M
 ## Exported declaration `read_archive_plan_report`.
 export proc read_archive_plan_report(path_value: Path) [fs, error] -> Result[Record] {
   let stored: Record = json.read(path_value)?
-  let format = if stored.has("format") { stored.get("format")? } else { "" }
+  let format = if "format" in stored { stored.get("format")? } else { "" }
 
   if format != archive_plan_report_format() {
     return Err(ScriptError.Failed("kbuild-archive-plan-cache-stale", "archive plan cache has stale format"))
@@ -3382,8 +3388,8 @@ export proc read_archive_plan_report(path_value: Path) [fs, error] -> Result[Rec
   let link_inputs: List[Str] = stored.get("link_inputs")?
   let generated_objects: List[Str] = stored.get("generated_objects")?
   let missing_sources: List[Str] = stored.get("missing_sources")?
-  let duplicate_outputs = if stored.has("duplicate_outputs") { stored.get("duplicate_outputs")? } else { [] }
-  let task_count = if stored.has("task_count") { stored.get("task_count")? } else { 0 }
+  let duplicate_outputs = if "duplicate_outputs" in stored { stored.get("duplicate_outputs")? } else { [] }
+  let task_count = if "task_count" in stored { stored.get("task_count")? } else { 0 }
 
   return {
     tasks: read_archive_plan_tasks(path_value)?,
@@ -3399,7 +3405,7 @@ export proc read_archive_plan_report(path_value: Path) [fs, error] -> Result[Rec
 ## Exported declaration `read_archive_plan_summary`.
 export proc read_archive_plan_summary(path_value: Path) [fs, error] -> Result[Record] {
   let stored: Record = json.read(path_value)?
-  let format = if stored.has("format") { stored.get("format")? } else { "" }
+  let format = if "format" in stored { stored.get("format")? } else { "" }
 
   if format != archive_plan_report_format() {
     return Err(ScriptError.Failed("kbuild-archive-plan-cache-stale", "archive plan summary has stale format"))
@@ -3409,7 +3415,7 @@ export proc read_archive_plan_summary(path_value: Path) [fs, error] -> Result[Re
   let link_inputs: List[Str] = stored.get("link_inputs")?
   let generated_objects: List[Str] = stored.get("generated_objects")?
   let missing_sources: List[Str] = stored.get("missing_sources")?
-  let duplicate_outputs = if stored.has("duplicate_outputs") { stored.get("duplicate_outputs")? } else { [] }
+  let duplicate_outputs = if "duplicate_outputs" in stored { stored.get("duplicate_outputs")? } else { [] }
   let task_count: Int = stored.get("task_count")?
   let tasks: List[make.MakeTask] = []
 
@@ -3427,7 +3433,7 @@ export proc read_archive_plan_summary(path_value: Path) [fs, error] -> Result[Re
 ## Exported declaration `read_archive_plan_object_outputs`.
 export proc read_archive_plan_object_outputs(path_value: Path) [fs, error] -> Result[List[Path]] {
   let stored: Record = json.read(path_value)?
-  let format = if stored.has("format") { stored.get("format")? } else { "" }
+  let format = if "format" in stored { stored.get("format")? } else { "" }
 
   if format != archive_plan_report_format() {
     return Err(ScriptError.Failed("kbuild-archive-plan-cache-stale", "archive plan cache has stale format"))
@@ -3472,13 +3478,13 @@ pure find_task_name_by_output(tasks: List[Record], output: Path) -> Result[Str] 
 }
 
 proc collect_task_closure(task_deps: Map[List[Str]], target: Str, selected: Map[Bool]) [] -> Map[Bool] {
-  if selected.get(target, false) {
+  if (selected.get(target) ?? false) {
     return selected
   }
 
   var next = selected.set(target, true)
 
-  for dep in task_deps.get(target, []) {
+  for dep in (task_deps.get(target) ?? []) {
     next = collect_task_closure(task_deps, dep, next)
   }
 
@@ -3505,7 +3511,7 @@ export proc select_archive_tasks_outputs(tasks: List[Record], outputs: List[Path
     selected = collect_task_closure(task_deps, target, selected)
   }
 
-  [task for task in tasks if selected.get(task.name, false)]
+  [task for task in tasks if (selected.get(task.name) ?? false)]
 }
 
 ## Exported declaration `run_archive_tasks_output`.
@@ -4320,9 +4326,9 @@ export proc generate_syscall_table(table: Path, out: Path, abis: List[Str] = [])
           next_nr += 1
         }
 
-        let native = fields.get(3, "")
-        let compat = if fields.get(4, "") == "-" { "" } else { fields.get(4, "") }
-        let noreturn = fields.get(5, "")
+        let native = (fields.get(3) ?? "")
+        let compat = if (fields.get(4) ?? "") == "-" { "" } else { (fields.get(4) ?? "") }
+        let noreturn = (fields.get(5) ?? "")
 
         if noreturn != "" and noreturn != "noreturn" {
           return Err(ScriptError.Failed("kbuild-syscall-noreturn", f"invalid noreturn marker '${noreturn}'"))
@@ -4492,8 +4498,8 @@ export proc generate_offsets_header(asm_path: Path, out: Path, header_guard: Str
             lines = lines.push("")
           } else {
             let parts = body.fields()
-            let name = parts.get(0, "")
-            let value = parts.get(1, "").replace("$", "")
+            let name = (parts.get(0) ?? "")
+            let value = (parts.get(1) ?? "").replace("$", "")
             let comment = parts |> drop(2)
 
             if name != "" and value != "" {
@@ -6287,7 +6293,7 @@ pure archive_rerun_tasks(tasks: List[Record]) -> List[Record] {
 
   for task in tasks {
     continue unless has_archive_output(task)
-    var deps = [dep for dep in task.deps if archive_names.get(dep, false)]
+    var deps = [dep for dep in task.deps if (archive_names.get(dep) ?? false)]
     rerun = rerun.push({...task, deps})
   }
 
@@ -6380,8 +6386,9 @@ pure archive_analysis_record_for_object(
 ) -> Record {
   let key = path_key(obj)
 
-  if composites_by_object.has(key) {
-    let composite = composites_by_object.get(key, {object: obj, members: []})
+  if key in composites_by_object {
+    let default_composite: CompositeObject = {object: obj, members: []}
+    let composite = composites_by_object.get(key) ?? default_composite
     return {
       object: key,
       owner: path_key(owner),
@@ -6461,7 +6468,7 @@ proc archive_analysis_plan_context_slice(context: Record, start: Int, end: Int) 
   var archive_owners: List[Record] = []
   for owner in owner_values {
     let object: Str = owner.get("object")?
-    if selected.get(object, false) {
+    if (selected.get(object) ?? false) {
       archive_owners = archive_owners.push(owner)
     }
   }
@@ -6470,9 +6477,9 @@ proc archive_analysis_plan_context_slice(context: Record, start: Int, end: Int) 
   for composite in composite_values {
     let object: Str = composite.get("object")?
     let members: List[Str] = composite.get("members")?
-    var selected_member = selected.get(object, false)
+    var selected_member = (selected.get(object) ?? false)
     for member in members {
-      if selected.get(member, false) {
+      if (selected.get(member) ?? false) {
         selected_member = true
       }
     }
@@ -6531,8 +6538,9 @@ pure archive_analysis_raw_item(
 ) -> Record {
   let key = path_key(obj)
 
-  if composites_by_object.has(key) {
-    let composite = composites_by_object.get(key, {object: obj, members: []})
+  if key in composites_by_object {
+    let default_composite: CompositeObject = {object: obj, members: []}
+    let composite = composites_by_object.get(key) ?? default_composite
     return {
       object: key,
       owner: path_key(owner),
@@ -6579,12 +6587,12 @@ proc archive_analysis_slice_items(
     let library = index >= object_count
     let object_index = if library { index - object_count } else { index }
     let obj = if library {
-      plan.lib_objects.get(object_index, p".")
+      (plan.lib_objects.get(object_index) ?? p".")
     } else {
-      plan.objects.get(object_index, p".")
+      (plan.objects.get(object_index) ?? p".")
     }
 
-    if ! skip_planned_object(config, obj) and ! composite_members_by_object.has(path_key(obj)) {
+    if ! skip_planned_object(config, obj) and path_key(obj) not in composite_members_by_object {
       items = items.push(
         archive_analysis_raw_item(
           obj,
@@ -6649,17 +6657,19 @@ proc archive_analysis_flag_entries_for_plan_range(
     let library = index >= object_count
     let object_index = if library { index - object_count } else { index }
     let obj = if library {
-      plan.lib_objects.get(object_index, p".")
+      (plan.lib_objects.get(object_index) ?? p".")
     } else {
-      plan.objects.get(object_index, p".")
+      (plan.objects.get(object_index) ?? p".")
     }
     let flags_object = if ! library and is_pi_object(obj) { pi_base_object(obj) } else { obj }
     let flags_key = path_key(flags_object)
     dirs[path_key(object_dir(flags_object))] = true
     objects[flags_key] = true
 
-    if composites_by_object.has(path_key(obj)) {
-      let composite = composites_by_object.get(path_key(obj), {object: obj, members: []})
+    if path_key(obj) in composites_by_object {
+      let object_key = path_key(obj)
+      let default_composite: CompositeObject = {object: obj, members: []}
+      let composite = composites_by_object.get(object_key) ?? default_composite
       for member in composite.members {
         dirs[path_key(object_dir(member))] = true
         objects[path_key(member)] = true
@@ -6674,7 +6684,7 @@ proc archive_analysis_flag_entries_for_plan_range(
   for entry in flag_entries {
     let dir: Str = entry.get("dir")?
     let object: Str = entry.get("object")?
-    if object == "*" and dirs.get(dir, false) or objects.get(object, false) {
+    if object == "*" and (dirs.get(dir) ?? false) or (objects.get(object) ?? false) {
       filtered = filtered.push(entry)
     }
   }
@@ -6726,7 +6736,7 @@ proc archive_analysis_items(
 
   for obj in plan.objects {
     continue when skip_planned_object(config, obj)
-    continue when composite_members_by_object.has(path_key(obj))
+    continue when path_key(obj) in composite_members_by_object
     items = items.push(
       archive_analysis_record_for_object(
         obj,
@@ -6740,7 +6750,7 @@ proc archive_analysis_items(
   }
 
   for obj in plan.lib_objects {
-    continue when composite_members_by_object.has(path_key(obj))
+    continue when path_key(obj) in composite_members_by_object
     items = items.push(
       archive_analysis_record_for_object(
         obj,
@@ -6884,21 +6894,22 @@ proc analyze_archive_items_impl(
     var missing_sources: List[Path] = []
 
     if composite_key != "" {
-      let member_objects = if item.has("member_objects") {
+      let member_objects = if "member_objects" in item {
         item.get("member_objects")?
       } else {
         [member.get("object")? for member in item.get("members")?]
       }
-      let member_flags = if item.has("member_flags") {
+      # Record inputs erase the nested flag-list type; validate it before passing member flags as compiler arguments.
+      let member_flags: List[List[Str]] = (if "member_flags" in item {
         item.get("member_flags")?
       } else {
         [member.get("flags")? for member in item.get("members")?]
-      }
+      }).require()?
       let composite_out = obj_out_path(fp"${composite_key}")
 
       var member_index = 0
       for member_key in member_objects {
-        let member_cflags = member_flags.get(member_index, [])
+        let member_cflags = member_flags.get(member_index) ?? []
         let member = fp"${member_key}"
 
         match source_for_object(member) {
@@ -7225,7 +7236,7 @@ proc assemble_builtin_archive_plan(
 
           task_count += 3
           let input_key = path_key(out)
-          if ! link_input_seen.get(input_key, false) {
+          if ! (link_input_seen.get(input_key) ?? false) {
             link_input_seen[input_key] = true
             link_inputs = link_inputs.push(out)
           }
@@ -7241,7 +7252,7 @@ proc assemble_builtin_archive_plan(
 
           task_count += 1
           let input_key = path_key(out)
-          if ! link_input_seen.get(input_key, false) {
+          if ! (link_input_seen.get(input_key) ?? false) {
             link_input_seen[input_key] = true
             link_inputs = link_inputs.push(out)
           }
@@ -7268,7 +7279,7 @@ proc assemble_builtin_archive_plan(
       for output in result_archive_outputs {
         let output_path = fp"${output}"
         link_inputs = link_inputs.push(output_path)
-        let dep = result_archive_deps.get(output_index, "")
+        let dep = (result_archive_deps.get(output_index) ?? "")
 
         if library {
           lib_objects_by_dir = lib_objects_by_dir.push(owner_key, output_path)
@@ -7289,7 +7300,7 @@ proc assemble_builtin_archive_plan(
     for input in result_link_inputs {
       let input_path = fp"${input}"
       let input_key = path_key(input_path)
-      if ! link_input_seen.get(input_key, false) {
+      if ! (link_input_seen.get(input_key) ?? false) {
         link_input_seen[input_key] = true
         link_inputs = link_inputs.push(input_path)
       }
@@ -7348,12 +7359,12 @@ proc assemble_builtin_archive_plan(
     dir_index -= 1
     let dir = plan.dirs[dir_index]
     let dir_key = path_key(dir)
-    let needed = objects_by_dir.get(dir_key, []).len() > 0 or archive_needed.get(dir_key, false)
+    let needed = (objects_by_dir.get(dir_key) ?? []).len() > 0 or (archive_needed.get(dir_key) ?? false)
 
     archive_needed[dir_key] = needed
 
     if needed {
-      let parent_key = parent_by_dir.get(dir_key, "")
+      let parent_key = (parent_by_dir.get(dir_key) ?? "")
       if parent_key != "" {
         archive_needed[parent_key] = true
       }
@@ -7378,12 +7389,12 @@ proc assemble_builtin_archive_plan(
     }
 
     let dir_key = path_key(dir)
-    let lib_objs = lib_objects_by_dir.get(dir_key, [])
+    let lib_objs = (lib_objects_by_dir.get(dir_key) ?? [])
 
     if lib_objs.len() > 0 {
       let sorted_lib_objs = sorted_paths(lib_objs)
       let lib_archive = dir_lib_archive(dir)
-      let lib_deps = lib_deps_by_dir.get(dir_key, [])
+      let lib_deps = (lib_deps_by_dir.get(dir_key) ?? [])
       if materialize_tasks {
         tasks = tasks.push(vmlinux_archive_argv_task(["llvm-ar"], sorted_lib_objs, lib_archive, lib_deps))
       }
@@ -7392,15 +7403,15 @@ proc assemble_builtin_archive_plan(
       archives = archives.push(lib_archive)
     }
 
-    var objs = objects_by_dir.get(dir_key, [])
-    var deps = deps_by_dir.get(dir_key, [])
+    var objs = (objects_by_dir.get(dir_key) ?? [])
+    var deps = (deps_by_dir.get(dir_key) ?? [])
     var child_archives: List[Path] = []
     var marker_archive = p""
     var marker_dep = ""
     var has_marker_archive = false
 
-    for child in children_by_dir.get(dir_key, []) {
-      if archive_needed.get(path_key(child), false) {
+    for child in (children_by_dir.get(dir_key) ?? []) {
+      if (archive_needed.get(path_key(child)) ?? false) {
         let child_archive = dir_archive(child)
 
         if dir_key == "arch/arm64/kernel" and path_key(child) == "arch/arm64/kernel/pi" {
@@ -7430,7 +7441,7 @@ proc assemble_builtin_archive_plan(
       deps = deps.push(child_archive.display())
     }
 
-    if archive_needed.get(dir_key, false) {
+    if (archive_needed.get(dir_key) ?? false) {
       let built_archive = dir_archive(dir)
       if materialize_tasks {
         tasks = tasks.push(vmlinux_archive_argv_task(["llvm-ar"], objs, built_archive, deps))

@@ -9,7 +9,8 @@ use util
 
 type OverlayConfigDto = {format: Str, profile: Str, replacements: List[Str]}
 type GenerationArtifactDto = {package_name: Str, package_id: Str, artifact_key: Str}
-type GenerationPlanDto = {
+## Durable generation-plan JSON shape, validated before interpreting target strings and plan identity.
+export type GenerationPlanDto = {
   format: Str,
   target: Str,
   build_plan_sha256: Str,

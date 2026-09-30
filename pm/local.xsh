@@ -8,6 +8,25 @@ use sources
 use types
 use util
 
+type PackageFileTreeEntryDto = {path: Str, kind: Str}
+type PackageFileEntryDto = {path: Str, kind: Str, mode: Int, sha256: Str, target: Str}
+
+## JSON metadata emitted for one prepared package payload, using string wire kinds and paths.
+export type PackageMetadataDto = {
+  arch: Str,
+  name: Str,
+  ver: Str,
+  rel: Str,
+  deps: List[Str],
+  mkdeps_host: List[Str],
+  mkdeps_target: List[Str],
+  filetree: List[PackageFileTreeEntryDto],
+  manifest: List[Str],
+  metadata_sha256: Str,
+  package_kind: Str,
+  files: List[PackageFileEntryDto],
+}
+
 ## Exported PM declaration `collect_manifest_text`.
 export pure collect_manifest_text(manifest: List[Path]) -> Result[List[Str]] {
   let lines = [rel_path.display() for rel_path in manifest]
@@ -339,32 +358,30 @@ export proc write_package_metadata(path_value: Path, arch: Str, item: types.Buil
   fs.mkdir(path_value.parent)?
   let manifest = collect_manifest_text(item.manifest)?
 
-  json.write(
-    path_value,
-    {
-      arch,
-      name: item.pkg.name,
-      ver: item.pkg.ver,
-      rel: item.pkg.rel,
-      deps: item.pkg.deps,
-      mkdeps_host: item.pkg.mkdeps_host,
-      mkdeps_target: item.pkg.mkdeps_target,
-      filetree: [{path: entry.path.display(), kind: types.file_kind_text(entry.kind)} for entry in item.pkg.filetree],
-      manifest,
-      metadata_sha256: item.metadata_sha256,
-      package_kind: types.package_kind_text(item.pkg.kind),
-      files: [
-        {
-          path: entry.path,
-          kind: types.file_kind_text(entry.kind),
-          mode: entry.mode,
-          sha256: entry.sha256,
-          target: entry.target,
-        }
-        for entry in item.metadata_files
-      ],
-    },
-  )?
+  let metadata: PackageMetadataDto = {
+    arch,
+    name: item.pkg.name,
+    ver: item.pkg.ver,
+    rel: item.pkg.rel,
+    deps: item.pkg.deps,
+    mkdeps_host: item.pkg.mkdeps_host,
+    mkdeps_target: item.pkg.mkdeps_target,
+    filetree: [{path: entry.path.display(), kind: types.file_kind_text(entry.kind)} for entry in item.pkg.filetree],
+    manifest,
+    metadata_sha256: item.metadata_sha256,
+    package_kind: types.package_kind_text(item.pkg.kind),
+    files: [
+      {
+        path: entry.path,
+        kind: types.file_kind_text(entry.kind),
+        mode: entry.mode,
+        sha256: entry.sha256,
+        target: entry.target,
+      }
+      for entry in item.metadata_files
+    ],
+  }
+  json.write(path_value, metadata)?
 }
 
 ## Exported PM declaration `load_installed_owners`.

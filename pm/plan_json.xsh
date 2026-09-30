@@ -22,7 +22,8 @@ type NodeDto = {
   dependencies: List[DependencyDto],
   remote: RemoteDto?,
 }
-type BuildPlanDto = {
+## Durable build-plan JSON shape, with string wire values before conversion to domain enums and paths.
+export type BuildPlanDto = {
   format: Str,
   target: Str,
   roots: List[Str],

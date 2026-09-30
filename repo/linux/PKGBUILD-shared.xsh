@@ -658,7 +658,7 @@ export proc run_targeted_kbuild_outputs(archive_plan: Record, only: Str) [fs, pr
 
 ## Exported declaration `require_valid_archive_plan`.
 export proc require_valid_archive_plan(archive_plan: Record) [error] {
-  if archive_plan.has("duplicate_outputs") {
+  if "duplicate_outputs" in archive_plan {
     let duplicates: List[Path] = archive_plan.duplicate_outputs
 
     if duplicates.len() > 0 {
@@ -673,7 +673,7 @@ export proc require_valid_archive_plan(archive_plan: Record) [error] {
       let key = output.display()
       continue when key == ""
 
-      if outputs.get(key, false) {
+      if (outputs.get(key) ?? false) {
         return Err(
           kbuild.ScriptError.Failed("linux-native-kbuild-duplicate-output", "archive plan has duplicate output"),
         )

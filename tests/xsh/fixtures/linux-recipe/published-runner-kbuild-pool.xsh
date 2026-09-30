@@ -10,11 +10,11 @@ proc main() [fs, process, env, time, error] {
   fs.write(fp"${source}/.config", "")?
   fs.write(fp"${source}/Kbuild", "obj-y += one.o\n")?
 
-  env {
-    XSH_PM_SOURCE_DIR = source.display()
-    XSH_PM_RECIPE_DIR = recipe.display()
-    XSH_LINUX_KBUILD_DISCOVER_JOBS = "1"
-  } {
+  env ({
+    XSH_PM_SOURCE_DIR: source.display(),
+    XSH_PM_RECIPE_DIR: recipe.display(),
+    XSH_LINUX_KBUILD_DISCOVER_JOBS: "1",
+  }) {
     cd source {
       let plan = linux_shared.discover_package_plan("arm64")?
       if p"one.o" not in plan.objects {

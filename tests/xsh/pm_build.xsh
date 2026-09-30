@@ -7,7 +7,7 @@ pure fixture(name: Str) -> Path {
   fp"tests/xsh/fixtures/${name}"
 }
 
-proc test_build_prepared_metapackage_has_no_payload_or_package_database(ctx: TestContext) [fs, process, env, error] {
+test test_build_prepared_metapackage_has_no_payload_or_package_database [fs, process, env, error] { |ctx|
   let pkg_dir = fixture("recipe-valid-meta")
   let workspace = test.temp_dir(ctx, name: "prepared-meta")?
   let dest = fp"${workspace}/dest"
@@ -22,7 +22,7 @@ proc test_build_prepared_metapackage_has_no_payload_or_package_database(ctx: Tes
   test.eq(payload.read_text()?, "laputa metapackage payload marker\n")?
 }
 
-proc test_build_prepared_archives_every_empty_directory_recorded_in_metadata(ctx: TestContext) [fs, process, env, error] {
+test test_build_prepared_archives_every_empty_directory_recorded_in_metadata [fs, process, env, error] { |ctx|
   let pkg_dir = fixture("recipe-empty-parent")
   let workspace = test.temp_dir(ctx, name: "prepared-empty-parent")?
   let dest = fp"${workspace}/dest"
