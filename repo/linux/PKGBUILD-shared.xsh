@@ -241,7 +241,7 @@ export proc cached_archive_plan(
   triple: Str,
   cflags: List[Str],
   includes: List[Str],
-) [fs, process, env, time, error] -> Result[Record] {
+) [fs, process, env, time, error] -> Result[kbuild.BuiltinArchivePlan] {
   if srcarch != "arm64" and srcarch != "x86" {
     return Err(
       kbuild.ScriptError.Failed(
@@ -634,7 +634,10 @@ proc parse_kbuild_only_outputs(raw: Str) [error] -> Result[List[Path]] {
 }
 
 ## Exported declaration `run_targeted_kbuild_outputs`.
-export proc run_targeted_kbuild_outputs(archive_plan: Record, only: Str) [fs, process, env, time, error] {
+export proc run_targeted_kbuild_outputs(
+  archive_plan: kbuild.BuiltinArchivePlan,
+  only: Str,
+) [fs, process, env, time, error] {
   let outputs = parse_kbuild_only_outputs(only)?
   let jobs_count = build_jobs()?
   let selected = kbuild.select_archive_tasks_outputs(archive_plan.tasks, outputs)?
@@ -657,13 +660,9 @@ export proc run_targeted_kbuild_outputs(archive_plan: Record, only: Str) [fs, pr
 }
 
 ## Exported declaration `require_valid_archive_plan`.
-export proc require_valid_archive_plan(archive_plan: Record) [error] {
-  if "duplicate_outputs" in archive_plan {
-    let duplicates: List[Path] = archive_plan.duplicate_outputs
-
-    if duplicates.len() > 0 {
-      return Err(kbuild.ScriptError.Failed("linux-native-kbuild-duplicate-output", "archive plan has duplicate output"))
-    }
+export proc require_valid_archive_plan(archive_plan: kbuild.BuiltinArchivePlan) [error] {
+  if archive_plan.duplicate_outputs.len() > 0 {
+    return Err(kbuild.ScriptError.Failed("linux-native-kbuild-duplicate-output", "archive plan has duplicate output"))
   }
 
   var outputs: Map[Bool] = {}
@@ -685,7 +684,7 @@ export proc require_valid_archive_plan(archive_plan: Record) [error] {
 }
 
 ## Exported declaration `require_complete_x86_archive_plan`.
-export proc require_complete_x86_archive_plan(archive_plan: Record) [error] {
+export proc require_complete_x86_archive_plan(archive_plan: kbuild.BuiltinArchivePlan) [error] {
   require_valid_archive_plan(archive_plan)?
 
   if archive_plan.generated_objects.len() > 0 {

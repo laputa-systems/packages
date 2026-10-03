@@ -51,6 +51,11 @@ proc proof_root(ctx: TestContext) [fs, error] -> Result[Path] {
 """,
   )?
   fs.mkdir(fp"${root}/var/lib/laputa")?
+  write_root_receipt(root, runtime_packages())?
+  root
+}
+
+proc write_root_receipt(root: Path, packages: List[Str]) [fs, error] {
   json.write(
     fp"${root}/var/lib/laputa/root.json",
     {
@@ -63,13 +68,12 @@ proc proof_root(ctx: TestContext) [fs, error] -> Result[Path] {
           artifact_key: f"artifact-${package}",
           payload: true,
         }
-        for package in runtime_packages()
+        for package in packages
       ],
       entries: [],
       root_sha256: "typed-root-receipt",
     },
   )?
-  root
 }
 
 proc run_build_essential_proof(xsh: Path, root: Path, stderr: Path) [process, error] -> Result[Status] {
@@ -89,10 +93,7 @@ test test_build_essential_native_proof_uses_typed_root_receipt_without_legacy_db
   fs.exists(fp"${root}/var/lib/xsh-pm/packages")? == false
   test.ok(run_build_essential_proof(xsh, root, stderr)?.ok)?
 
-  let receipt: Record = json.read(fp"${root}/var/lib/laputa/root.json")?
-  let artifacts: List[Record] = receipt.get("artifacts")?
-  let without_linux = [artifact for artifact in artifacts if artifact.get("package_name")? != "linux"]
-  json.write(fp"${root}/var/lib/laputa/root.json", {...receipt, artifacts: without_linux})?
+  write_root_receipt(root, [package for package in runtime_packages() if package != "linux"])?
   let missing = run_build_essential_proof(xsh, root, stderr)?
   missing.ok == false
   "missing linux artifact in typed root receipt" in stderr.read_text()?

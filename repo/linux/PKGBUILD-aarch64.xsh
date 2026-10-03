@@ -240,7 +240,9 @@ pure native_nvhe_includes() -> List[Str] {
   )
 }
 
-pure native_nvhe_objects() -> List[Record] {
+type NvheObject = {source: Path, out: Path}
+
+pure native_nvhe_objects() -> List[NvheObject] {
   return [
     {
       source: p"arch/arm64/kvm/hyp/nvhe/timer-sr.c",
@@ -445,7 +447,7 @@ proc nvhe_ld_task(
     ],
     inputs: inputs,
     deps: deps,
-    argv: argv,
+    argv: [@argv],
     cwd: p".",
     env: {},
     depfile: p"",

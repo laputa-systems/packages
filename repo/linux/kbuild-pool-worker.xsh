@@ -9,17 +9,15 @@ proc main(...argv: List[Str]) [fs, time, error] {
   let state_path = fp"${argv[3]}"
   let lock_path = fp"${argv[4]}"
   let output_path = fp"${argv[5]}"
-  var records: List[Record] = []
+  var records: List[kbuild.ScanRecord] = []
 
   while true {
     let lock = fs.lock(lock_path)?
-    let state: Record = json.read(state_path)?
-    let done: Bool = state.get("done")?
-    let pending: List[Str] = state.get("pending")?
-    let active: Int = state.get("active")?
-    let error_message: Str = state.get("error")?
+    let state = json.read(state_path)?.require(kbuild.PoolState)?
+    let pending = state.pending
+    let active = state.active
 
-    if done or error_message != "" {
+    if state.done or state.error != "" {
       fs.unlock(lock)?
       break
     }
@@ -47,13 +45,12 @@ proc main(...argv: List[Str]) [fs, time, error] {
     match scan_result {
       Ok(scan) => {
         records = records.push(scan)
-        let child_dirs: List[Str] = scan.get("child_dirs")?
         let commit_lock = fs.lock(lock_path)?
-        let committed: Record = json.read(state_path)?
-        var seen: List[Str] = committed.get("seen")?
-        var new_pending: List[Str] = committed.get("pending")?
+        let committed = json.read(state_path)?.require(kbuild.PoolState)?
+        var seen = committed.seen
+        var new_pending = committed.pending
 
-        for child in child_dirs {
+        for child in scan.child_dirs {
           if ! (child in seen) {
             new_pending = new_pending.push(child)
             seen = seen.push(child)
@@ -62,16 +59,16 @@ proc main(...argv: List[Str]) [fs, time, error] {
 
         json.write(
           state_path,
-          {...committed, pending: new_pending, active: committed.get("active")? - 1, seen: seen},
+          {...committed, pending: new_pending, active: committed.active - 1, seen: seen},
         )?
         fs.unlock(commit_lock)?
       }
       Err(_) => {
         let error_lock = fs.lock(lock_path)?
-        let failed_state: Record = json.read(state_path)?
+        let failed_state = json.read(state_path)?.require(kbuild.PoolState)?
         json.write(
           state_path,
-          {...failed_state, active: failed_state.get("active")? - 1, done: true, error: "directory scan failed"},
+          {...failed_state, active: failed_state.active - 1, done: true, error: "directory scan failed"},
         )?
         fs.unlock(error_lock)?
         return Err(kbuild.ScriptError.Failed("kbuild-process-pool", "directory scan failed"))

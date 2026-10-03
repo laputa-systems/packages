@@ -32,7 +32,113 @@ export type BuiltinArchivePlan = {
   link_inputs: List[Path],
   missing_sources: List[Path],
   generated_objects: List[Path],
+  duplicate_outputs: List[Path],
 }
+
+## Serialized compile flags for one object, or `*` for a directory default.
+export type CompileFlagsEntry = {dir: Str, object: Str, flags: List[Str]}
+
+## Serialized archive owner shared by scan records and archive-analysis contexts.
+export type ArchiveOwnerRecord = {object: Str, dir: Str}
+
+## Serialized composite object shared by scan records and archive-analysis contexts.
+export type CompositeRecord = {object: Str, members: List[Str]}
+
+## Serialized Kbuild plan carried by directory scan records.
+export type PlanRecord = {
+  dirs: List[Str],
+  objects: List[Str],
+  lib_objects: List[Str],
+  archive_owners: List[ArchiveOwnerRecord],
+  composites: List[CompositeRecord],
+  unsupported: List[Str],
+}
+
+## Serialized directory scan exchanged with discovery workers and the local-record cache.
+export type ScanRecord = {dir: Str, file_hash: Str, plan: PlanRecord, child_dirs: List[Str], entries: List[Str]}
+
+## Shared discovery-worker pool state guarded by the pool lock file.
+export type PoolState = {pending: List[Str], active: Int, done: Bool, seen: List[Str], error: Str}
+
+## Archive-analysis plan context shared with analysis workers.
+export type ArchivePlanContext = {
+  dirs: List[Str],
+  objects: List[Str],
+  lib_objects: List[Str],
+  archive_owners: List[ArchiveOwnerRecord],
+  composites: List[CompositeRecord],
+}
+
+## Archive-analysis compile flags shared with analysis workers.
+export type ArchiveAnalysisFlags = {flags: List[CompileFlagsEntry]}
+
+## Archive-analysis worker input for one object slice.
+export type ArchiveAnalysisInput = {
+  context: Str,
+  start: Int,
+  end: Int,
+  flags: Str,
+  emit_task_specs: Bool,
+  cc: Str,
+  triple: Str,
+  cflags: List[Str],
+  defs: List[Str],
+  includes: List[Str],
+}
+
+## Archive-analysis input for one planned object or composite.
+export type ArchiveAnalysisItem = {
+  object: Str,
+  owner: Str,
+  library: Bool,
+  pi: Bool,
+  composite: Str,
+  member_objects: List[Str],
+  member_flags: List[List[Str]],
+  flags: List[Str],
+}
+
+## Archive-analysis output for one item; task specs keep their kind-specific shape.
+export type ArchiveAnalysisResult = {
+  object: Str,
+  owner: Str,
+  library: Bool,
+  tasks: List[Record],
+  task_count: Int,
+  archive_outputs: List[Str],
+  archive_deps: List[Str],
+  has_pi: Bool,
+  link_inputs: List[Str],
+  generated_objects: List[Str],
+  missing_sources: List[Str],
+}
+
+type CompileFlagsCache = {format: Str, fingerprint: Str, flags: List[CompileFlagsEntry]}
+
+type LocalRecordCache = {format: Str, key: Str, records: List[ScanRecord]}
+
+type ArchiveTaskRecord = {
+  name: Str,
+  outputs: List[Str],
+  inputs: List[Str],
+  deps: List[Str],
+  argv: List[Str],
+  env: Record,
+  cwd: Str,
+  depfile: Str,
+  stamp: Str,
+}
+
+type ArchivePlanSummaryFile = {
+  archives: List[Str],
+  link_inputs: List[Str],
+  generated_objects: List[Str],
+  missing_sources: List[Str],
+  duplicate_outputs: List[Str],
+  task_count: Int,
+}
+
+type ArchivePlanTasksFile = {tasks: List[ArchiveTaskRecord]}
 
 ## Exported declaration `DiscoverOptions`.
 export type DiscoverOptions = {
@@ -62,7 +168,8 @@ type ArchiveInputs = {objs: List[Path], deps: List[Str]}
 
 type CompositeScan = {dir: Path, composites: List[CompositeObject]}
 
-type JumpLabelPatchResult = {scanned: Int, objects: Int, patches: Int}
+## x86 jump-label patch counts reported by the helper.
+export type JumpLabelPatchResult = {scanned: Int, objects: Int, patches: Int}
 
 type ParsedAssignment = {lhs: Str, op: Str, rhs: Str}
 
@@ -1274,8 +1381,8 @@ pure compile_flags_cache_format() -> Str {
   return "linux-kbuild-compile-flags-v2"
 }
 
-pure compile_flags_cache_entries(flags: Map[Map[List[Str]]]) -> List[Record] {
-  var entries: List[Record] = []
+pure compile_flags_cache_entries(flags: Map[Map[List[Str]]]) -> List[CompileFlagsEntry] {
+  var entries: List[CompileFlagsEntry] = []
 
   for dir_key in flags.keys() {
     let empty_dir_flags: Map[List[Str]] = map.empty()
@@ -1289,16 +1396,13 @@ pure compile_flags_cache_entries(flags: Map[Map[List[Str]]]) -> List[Record] {
   return entries
 }
 
-pure compile_flags_from_cache_entries(entries: List[Record]) -> Result[Map[Map[List[Str]]]] {
+pure compile_flags_from_cache_entries(entries: List[CompileFlagsEntry]) -> Result[Map[Map[List[Str]]]] {
   var flags: Map[Map[List[Str]]] = {}
 
   for entry in entries {
-    let dir_key: Str = entry.get("dir")?
-    let object_key: Str = entry.get("object")?
-    let item_flags: List[Str] = entry.get("flags")?
     let empty_dir_flags: Map[List[Str]] = map.empty()
-    let dir_flags = (flags.get(dir_key) ?? empty_dir_flags).set(object_key, item_flags)
-    flags[dir_key] = dir_flags
+    let dir_flags = (flags.get(entry.dir) ?? empty_dir_flags).set(entry.object, entry.flags)
+    flags[entry.dir] = dir_flags
   }
 
   return flags
@@ -1327,21 +1431,20 @@ ${dir_fingerprints.join("\n")}
 }
 
 proc read_compile_flags_cache(path_value: Path, fingerprint: Str) [fs, error] -> Result[Map[Map[List[Str]]]] {
-  let stored: Record = json.read(path_value)?
-  let format = if "format" in stored { stored.get("format")? } else { "" }
+  let stored = json.read(path_value)?.require(Record)?
+  let format = if "format" in stored { stored.get("format")?.require(Str)? } else { "" }
 
   if format != compile_flags_cache_format() {
     return Err(ScriptError.Failed("kbuild-compile-flags-cache-stale", "compile flags cache has stale format"))
   }
 
-  let cached_fingerprint: Str = stored.get("fingerprint")?
+  let cache = stored.require(CompileFlagsCache)?
 
-  if fingerprint != "" and cached_fingerprint.trim() != fingerprint.trim() {
+  if fingerprint != "" and cache.fingerprint.trim() != fingerprint.trim() {
     return Err(ScriptError.Failed("kbuild-compile-flags-cache-stale", "compile flags cache fingerprint mismatch"))
   }
 
-  let entries: List[Record] = stored.get("flags")?
-  return compile_flags_from_cache_entries(entries)?
+  return compile_flags_from_cache_entries(cache.flags)?
 }
 
 proc write_compile_flags_cache(path_value: Path, fingerprint: Str, flags: Map[Map[List[Str]]]) [fs, error] {
@@ -2497,18 +2600,17 @@ proc scan_discover_batch_parallel(
 }
 
 ## Exported declaration `scan_record_for_dir`.
-export proc scan_record_for_dir(root: Path, config: Kconfig, srcarch: Str, dir: Path) [fs, error] -> Result[Record] {
+export proc scan_record_for_dir(root: Path, config: Kconfig, srcarch: Str, dir: Path) [fs, error] -> Result[ScanRecord] {
   let scan = scan_discover_dir(root, dir, config, srcarch, default_discover_options())?
   return local_record_record(scan, "")
 }
 
 ## Exported declaration `plan_from_record_values`.
-export proc plan_from_record_values(records: List[Record]) [error] -> Result[KbuildPlan] {
-  var scan_by_dir: Map[Record] = {}
+export proc plan_from_record_values(records: List[ScanRecord]) [error] -> Result[KbuildPlan] {
+  var scan_by_dir: Map[ScanRecord] = {}
 
   for item in records {
-    let dir_key: Str = item.get("dir")?
-    scan_by_dir[dir_key] = item
+    scan_by_dir[item.dir] = item
   }
 
   var seen: Map[Bool] = {}
@@ -2516,8 +2618,8 @@ export proc plan_from_record_values(records: List[Record]) [error] -> Result[Kbu
   var plan_dirs: List[Path] = []
   var planned_objects: List[Path] = []
   var plan_lib_objects: List[Path] = []
-  var plan_archive_owners: List[Record] = []
-  var plan_composites: List[Record] = []
+  var plan_archive_owners: List[ArchiveOwnerRecord] = []
+  var plan_composites: List[CompositeRecord] = []
   var plan_unsupported: List[Str] = []
 
   while frontier.len() > 0 {
@@ -2526,17 +2628,12 @@ export proc plan_from_record_values(records: List[Record]) [error] -> Result[Kbu
 
     for dir in pending {
       let scan = scan_by_dir.get(path_key(dir))?
-      let plan_value: Record = scan.get("plan")?
-      let dirs: List[Str] = plan_value.get("dirs")?
-      let objects: List[Str] = plan_value.get("objects")?
-      let lib_objects: List[Str] = plan_value.get("lib_objects")?
-      let archive_owners = if "archive_owners" in plan_value {
-        plan_value.get("archive_owners")?
-      } else {
-        []
-      }
-      let composites: List[Record] = plan_value.get("composites")?
-      let unsupported: List[Str] = plan_value.get("unsupported")?
+      let dirs = scan.plan.dirs
+      let objects = scan.plan.objects
+      let lib_objects = scan.plan.lib_objects
+      let archive_owners = scan.plan.archive_owners
+      let composites = scan.plan.composites
+      let unsupported = scan.plan.unsupported
 
       for item in dirs {
         plan_dirs = plan_dirs.push(fp"${item}")
@@ -2562,8 +2659,7 @@ export proc plan_from_record_values(records: List[Record]) [error] -> Result[Kbu
         plan_unsupported = plan_unsupported.push(item)
       }
 
-      let child_dirs: List[Str] = scan.get("child_dirs")?
-      for child in child_dirs {
+      for child in scan.child_dirs {
         let child_path = fp"${child}"
         if ! (seen.get(path_key(child_path)) ?? false) {
           frontier = frontier.push(child_path)
@@ -2600,7 +2696,7 @@ proc discover_records_process_pool(
 
   json.write(
     state_path,
-    {pending: ["."], active: 0, done: false, seen: ["."], error: ""},
+    PoolState(pending: ["."], active: 0, done: false, seen: ["."], error: ""),
   )?
 
   let worker_count = if options.jobs < 1 { 1 } else if options.jobs > 16 { 16 } else { options.jobs }
@@ -2635,16 +2731,15 @@ proc discover_records_process_pool(
     }
   }
 
-  let state: Record = json.read(state_path)?
-  let error_message: Str = state.get("error")?
+  let state = json.read(state_path)?.require(PoolState)?
 
-  if error_message != "" {
-    return Err(ScriptError.Failed("kbuild-process-pool", error_message))
+  if state.error != "" {
+    return Err(ScriptError.Failed("kbuild-process-pool", state.error))
   }
 
-  var records: List[Record] = []
+  var records: List[ScanRecord] = []
   for output_path in output_paths {
-    let batch: List[Record] = json.read(output_path)?
+    let batch = json.read(output_path)?.require(List[ScanRecord])?
     records = records.extend(batch)
   }
 
@@ -2762,7 +2857,7 @@ proc local_record_cache_key(config: Path, srcarch: Str) [fs, error] -> Result[St
   return bytes.from_text(f"linux-local-records-v1\t${srcarch}\t${config_hash}").sha256().hex()
 }
 
-pure local_record_record(scan: DirScan, file_hash: Str) -> Record {
+pure local_record_record(scan: DirScan, file_hash: Str) -> ScanRecord {
   return {
     dir: path_key(scan.dir),
     file_hash: file_hash,
@@ -2772,41 +2867,26 @@ pure local_record_record(scan: DirScan, file_hash: Str) -> Record {
   }
 }
 
-proc local_record_from_record(item: Record) [error] -> Result[DirScan] {
-  let dir_key: Str = item.get("dir")?
-  let plan_value: Record = item.get("plan")?
-  let dirs: List[Str] = plan_value.get("dirs")?
-  let objects: List[Str] = plan_value.get("objects")?
-  let lib_objects: List[Str] = plan_value.get("lib_objects")?
-  let composites: List[Record] = plan_value.get("composites")?
-  let unsupported: List[Str] = plan_value.get("unsupported")?
-  let archive_owners = if "archive_owners" in plan_value {
-    plan_value.get("archive_owners")?
-  } else {
-    []
-  }
-  let child_dirs: List[Str] = item.get("child_dirs")?
-  let entries: List[Str] = item.get("entries")?
-
+proc local_record_from_record(item: ScanRecord) [error] -> Result[DirScan] {
   return {
-    dir: fp"${dir_key}",
+    dir: fp"${item.dir}",
     plan: {
-      dirs: paths_from_strings(dirs)?,
-      objects: paths_from_strings(objects)?,
-      lib_objects: paths_from_strings(lib_objects)?,
-      archive_owners: archive_owners_from_records(archive_owners)?,
-      composites: composites_from_records(composites)?,
-      unsupported: unsupported,
+      dirs: paths_from_strings(item.plan.dirs)?,
+      objects: paths_from_strings(item.plan.objects)?,
+      lib_objects: paths_from_strings(item.plan.lib_objects)?,
+      archive_owners: archive_owners_from_records(item.plan.archive_owners)?,
+      composites: composites_from_records(item.plan.composites)?,
+      unsupported: item.plan.unsupported,
     },
-    child_dirs: paths_from_strings(child_dirs)?,
-    entries: paths_from_strings(entries)?,
+    child_dirs: paths_from_strings(item.child_dirs)?,
+    entries: paths_from_strings(item.entries)?,
   }
 }
 
 proc write_local_record_graph(root: Path, config: Path, srcarch: Str, graph: LocalRecordGraph) [fs, error] {
   let cache = local_record_cache_path(root)
   let key = local_record_cache_key(config, srcarch)?
-  var records: List[Record] = []
+  var records: List[ScanRecord] = []
 
   for dir_key in graph.records.keys() {
     let scan = graph.records.get(dir_key)?
@@ -2814,7 +2894,7 @@ proc write_local_record_graph(root: Path, config: Path, srcarch: Str, graph: Loc
     records = records.push(local_record_record(scan, hash.sha256(file)?.hex()))
   }
 
-  json.write(cache, {format: "linux-local-records-v1", key: key, records: records})?
+  json.write(cache, LocalRecordCache(format: "linux-local-records-v1", key: key, records: records))?
 }
 
 proc read_local_record_graph(root: Path, config: Path, srcarch: Str) [fs, error] -> Result[LocalRecordGraph] {
@@ -2824,30 +2904,28 @@ proc read_local_record_graph(root: Path, config: Path, srcarch: Str) [fs, error]
     return Err(ScriptError.Failed("local-record-cache-missing", "local-record cache does not exist"))
   }
 
-  let stored: Record = json.read(cache)?
-  let format: Str = stored.get("format")?
+  let stored = json.read(cache)?.require(Record)?
+  let format = stored.get("format")?.require(Str)?
 
   if format != "linux-local-records-v1" {
     return Err(ScriptError.Failed("local-record-cache-format", "unsupported local-record cache format"))
   }
 
+  let cached = stored.require(LocalRecordCache)?
   let expected_key = local_record_cache_key(config, srcarch)?
-  let actual_key: Str = stored.get("key")?
 
-  if actual_key != expected_key {
+  if cached.key != expected_key {
     return Err(ScriptError.Failed("local-record-cache-key", "local-record cache key does not match"))
   }
 
-  let records: List[Record] = stored.get("records")?
   var record_map: Map[DirScan] = {}
   var barriers: Map[AggregateBarriers] = {}
 
-  for item in records {
+  for item in cached.records {
     let scan = local_record_from_record(item)?
-    let file_hash: Str = item.get("file_hash")?
     let file = kbuild_file(join_root(root, scan.dir))?
 
-    if hash.sha256(file)?.hex() != file_hash {
+    if hash.sha256(file)?.hex() != item.file_hash {
       return Err(
         ScriptError.Failed("local-record-cache-stale", f"local-record cache is stale for ${path_key(scan.dir)}"),
       )
@@ -3064,35 +3142,31 @@ proc sorted_paths(paths: List[Path]) [] -> List[Path] {
   return paths |> sort-by .display()
 }
 
-pure composite_records(composites: List[CompositeObject]) -> List[Record] {
+pure composite_records(composites: List[CompositeObject]) -> List[CompositeRecord] {
   return [{object: path_key(item.object), members: path_strings(item.members)} for item in composites]
 }
 
-proc composites_from_records(items: List[Record]) [error] -> Result[List[CompositeObject]] {
+proc composites_from_records(items: List[CompositeRecord]) [error] -> Result[List[CompositeObject]] {
   var composites: List[CompositeObject] = []
 
   for item in items {
-    let object_key: Str = item.get("object")?
-    let members: List[Str] = item.get("members")?
-    composites = composites.push({object: fp"${object_key}", members: paths_from_strings(members)?})
+    composites = composites.push({object: fp"${item.object}", members: paths_from_strings(item.members)?})
   }
 
   return composites
 }
 
-proc archive_owners_from_records(items: List[Record]) [error] -> Result[List[ArchiveOwner]] {
+proc archive_owners_from_records(items: List[ArchiveOwnerRecord]) [error] -> Result[List[ArchiveOwner]] {
   var owners: List[ArchiveOwner] = []
 
   for item in items {
-    let object: Str = item.get("object")?
-    let dir: Str = item.get("dir")?
-    owners = owners.push({object: fp"${object}", dir: fp"${dir}"})
+    owners = owners.push({object: fp"${item.object}", dir: fp"${item.dir}"})
   }
 
   return owners
 }
 
-pure plan_record(plan: KbuildPlan) -> Record {
+pure plan_record(plan: KbuildPlan) -> PlanRecord {
   return {
     dirs: path_strings(plan.dirs),
     objects: path_strings(plan.objects),
@@ -3152,15 +3226,17 @@ export proc read_discovered_plan(path_value: Path) [fs, error] -> Result[KbuildP
     return read_discovered_plan_text(path_value)
   }
 
-  let stored: Record = json.read(path_value)?
-  let dirs: List[Str] = stored.get("dirs")?
-  let objects: List[Str] = stored.get("objects")?
-  let no_composites: List[Record] = []
-  let no_strings: List[Str] = []
-  let lib_objects = if "lib_objects" in stored { stored.get("lib_objects")? } else { no_strings }
-  let archive_owners = if "archive_owners" in stored { stored.get("archive_owners")? } else { no_composites }
-  let composites = if "composites" in stored { stored.get("composites")? } else { no_composites }
-  let unsupported = if "unsupported" in stored { stored.get("unsupported")? } else { no_strings }
+  let stored = json.read(path_value)?.require(Record)?
+  let dirs = stored.get("dirs")?.require(List[Str])?
+  let objects = stored.get("objects")?.require(List[Str])?
+  let lib_objects = if "lib_objects" in stored { stored.get("lib_objects")?.require(List[Str])? } else { [] }
+  let archive_owners = if "archive_owners" in stored {
+    stored.get("archive_owners")?.require(List[ArchiveOwnerRecord])?
+  } else {
+    []
+  }
+  let composites = if "composites" in stored { stored.get("composites")?.require(List[CompositeRecord])? } else { [] }
+  let unsupported = if "unsupported" in stored { stored.get("unsupported")?.require(List[Str])? } else { [] }
 
   return {
     dirs: unique_paths(paths_from_strings(dirs)?),
@@ -3247,7 +3323,7 @@ composites ${plan.composites.len()}
 """
 }
 
-pure task_record(task: Record) -> Record {
+pure task_record(task: make.MakeTask) -> ArchiveTaskRecord {
   return {
     name: task.name,
     outputs: path_strings(task.outputs),
@@ -3261,7 +3337,7 @@ pure task_record(task: Record) -> Record {
   }
 }
 
-pure task_records(tasks: List[make.MakeTask]) -> List[Record] {
+pure task_records(tasks: List[make.MakeTask]) -> List[ArchiveTaskRecord] {
   return [task_record(task) for task in tasks]
 }
 
@@ -3297,7 +3373,7 @@ pure duplicate_task_outputs(tasks: List[make.MakeTask]) -> List[Path] {
 }
 
 ## Exported declaration `write_archive_plan_summary`.
-export proc write_archive_plan_summary(archive_plan: Record, out: Path) [fs, env, time, error] {
+export proc write_archive_plan_summary(archive_plan: BuiltinArchivePlan, out: Path) [fs, env, time, error] {
   let encode_start = archive_plan_timing_start("report-summary-encode")
   let summary = json.encode({
     format: archive_plan_report_format(),
@@ -3313,7 +3389,7 @@ export proc write_archive_plan_summary(archive_plan: Record, out: Path) [fs, env
 }
 
 ## Exported declaration `write_archive_plan_report`.
-export proc write_archive_plan_report(archive_plan: Record, out: Path) [fs, env, time, error] {
+export proc write_archive_plan_report(archive_plan: BuiltinArchivePlan, out: Path) [fs, env, time, error] {
   let records_start = archive_plan_timing_start("report-task-records")
   let task_rows = task_records(archive_plan.tasks)
   archive_plan_timing_done("report-task-records", records_start)
@@ -3346,106 +3422,69 @@ proc path_from_string(item: Str) [error] -> Result[Path] {
   return fp"${item}"
 }
 
-proc task_from_record(item: Record) [error] -> Result[make.MakeTask] {
-  let outputs: List[Str] = item.get("outputs")?
-  let inputs: List[Str] = item.get("inputs")?
-  let deps: List[Str] = item.get("deps")?
-  let argv: List[Str] = item.get("argv")?
-  let env_record: Record = item.get("env")?
-  let cwd: Str = item.get("cwd")?
-  let depfile: Str = item.get("depfile")?
-  let stamp: Str = item.get("stamp")?
-
+proc task_from_record(item: ArchiveTaskRecord) [error] -> Result[make.MakeTask] {
   return {
-    name: item.get("name")?,
-    outputs: paths_from_strings(outputs)?,
-    inputs: paths_from_strings(inputs)?,
-    deps: deps,
-    argv: argv,
-    cwd: path_from_string(cwd)?,
-    env: env_record,
-    depfile: path_from_string(depfile)?,
-    stamp: path_from_string(stamp)?,
+    name: item.name,
+    outputs: paths_from_strings(item.outputs)?,
+    inputs: paths_from_strings(item.inputs)?,
+    deps: item.deps,
+    argv: [@item.argv],
+    cwd: path_from_string(item.cwd)?,
+    env: item.env,
+    depfile: path_from_string(item.depfile)?,
+    stamp: path_from_string(item.stamp)?,
   }
+}
+
+proc read_archive_plan_record(path_value: Path, stale_message: Str) [fs, error] -> Result[Record] {
+  let stored = json.read(path_value)?.require(Record)?
+  let format = if "format" in stored { stored.get("format")?.require(Str)? } else { "" }
+
+  if format != archive_plan_report_format() {
+    return Err(ScriptError.Failed("kbuild-archive-plan-cache-stale", stale_message))
+  }
+
+  return stored
 }
 
 proc read_archive_plan_tasks(path_value: Path) [fs, error] -> Result[List[make.MakeTask]] {
-  let stored: Record = json.read(path_value)?
-  let rows: List[Record] = stored.get("tasks")?
-  [task_from_record(row)? for row in rows]
+  let stored = json.read(path_value)?.require(ArchivePlanTasksFile)?
+  [task_from_record(row)? for row in stored.tasks]
+}
+
+proc archive_plan_from_summary(summary: ArchivePlanSummaryFile, tasks: List[make.MakeTask]) [error] -> Result[BuiltinArchivePlan] {
+  return {
+    tasks: tasks,
+    task_specs: [],
+    task_count: summary.task_count,
+    archives: paths_from_strings(summary.archives)?,
+    link_inputs: paths_from_strings(summary.link_inputs)?,
+    missing_sources: paths_from_strings(summary.missing_sources)?,
+    generated_objects: paths_from_strings(summary.generated_objects)?,
+    duplicate_outputs: paths_from_strings(summary.duplicate_outputs)?,
+  }
 }
 
 ## Exported declaration `read_archive_plan_report`.
-export proc read_archive_plan_report(path_value: Path) [fs, error] -> Result[Record] {
-  let stored: Record = json.read(path_value)?
-  let format = if "format" in stored { stored.get("format")? } else { "" }
-
-  if format != archive_plan_report_format() {
-    return Err(ScriptError.Failed("kbuild-archive-plan-cache-stale", "archive plan cache has stale format"))
-  }
-
-  let archives: List[Str] = stored.get("archives")?
-  let link_inputs: List[Str] = stored.get("link_inputs")?
-  let generated_objects: List[Str] = stored.get("generated_objects")?
-  let missing_sources: List[Str] = stored.get("missing_sources")?
-  let duplicate_outputs = if "duplicate_outputs" in stored { stored.get("duplicate_outputs")? } else { [] }
-  let task_count = if "task_count" in stored { stored.get("task_count")? } else { 0 }
-
-  return {
-    tasks: read_archive_plan_tasks(path_value)?,
-    archives: paths_from_strings(archives)?,
-    link_inputs: paths_from_strings(link_inputs)?,
-    generated_objects: paths_from_strings(generated_objects)?,
-    missing_sources: paths_from_strings(missing_sources)?,
-    duplicate_outputs: paths_from_strings(duplicate_outputs)?,
-    task_count: task_count,
-  }
+export proc read_archive_plan_report(path_value: Path) [fs, error] -> Result[BuiltinArchivePlan] {
+  let stored = read_archive_plan_record(path_value, "archive plan cache has stale format")?
+  let tasks = [task_from_record(row)? for row in stored.require(ArchivePlanTasksFile)?.tasks]
+  return archive_plan_from_summary(stored.require(ArchivePlanSummaryFile)?, tasks)?
 }
 
 ## Exported declaration `read_archive_plan_summary`.
-export proc read_archive_plan_summary(path_value: Path) [fs, error] -> Result[Record] {
-  let stored: Record = json.read(path_value)?
-  let format = if "format" in stored { stored.get("format")? } else { "" }
-
-  if format != archive_plan_report_format() {
-    return Err(ScriptError.Failed("kbuild-archive-plan-cache-stale", "archive plan summary has stale format"))
-  }
-
-  let archives: List[Str] = stored.get("archives")?
-  let link_inputs: List[Str] = stored.get("link_inputs")?
-  let generated_objects: List[Str] = stored.get("generated_objects")?
-  let missing_sources: List[Str] = stored.get("missing_sources")?
-  let duplicate_outputs = if "duplicate_outputs" in stored { stored.get("duplicate_outputs")? } else { [] }
-  let task_count: Int = stored.get("task_count")?
-  let tasks: List[make.MakeTask] = []
-
-  return {
-    tasks: tasks,
-    archives: paths_from_strings(archives)?,
-    link_inputs: paths_from_strings(link_inputs)?,
-    generated_objects: paths_from_strings(generated_objects)?,
-    missing_sources: paths_from_strings(missing_sources)?,
-    duplicate_outputs: paths_from_strings(duplicate_outputs)?,
-    task_count: task_count,
-  }
+export proc read_archive_plan_summary(path_value: Path) [fs, error] -> Result[BuiltinArchivePlan] {
+  let stored = read_archive_plan_record(path_value, "archive plan summary has stale format")?
+  return archive_plan_from_summary(stored.require(ArchivePlanSummaryFile)?, [])?
 }
 
 ## Exported declaration `read_archive_plan_object_outputs`.
 export proc read_archive_plan_object_outputs(path_value: Path) [fs, error] -> Result[List[Path]] {
-  let stored: Record = json.read(path_value)?
-  let format = if "format" in stored { stored.get("format")? } else { "" }
-
-  if format != archive_plan_report_format() {
-    return Err(ScriptError.Failed("kbuild-archive-plan-cache-stale", "archive plan cache has stale format"))
-  }
-
-  let rows: List[Record] = stored.get("tasks")?
+  let stored = read_archive_plan_record(path_value, "archive plan cache has stale format")?
   var outputs: List[Path] = []
 
-  for row in rows {
-    let items: List[Str] = row.get("outputs")?
-
-    for item in items {
+  for row in stored.require(ArchivePlanTasksFile)?.tasks {
+    for item in row.outputs {
       if item.ends_with(".o") {
         outputs = outputs.push(path_from_string(item)?)
       }
@@ -3455,7 +3494,7 @@ export proc read_archive_plan_object_outputs(path_value: Path) [fs, error] -> Re
   return outputs
 }
 
-pure task_has_output(task: Record, output: Path) -> Bool {
+pure task_has_output(task: make.MakeTask, output: Path) -> Bool {
   let key = path_key(output)
 
   for item in task.outputs {
@@ -3467,7 +3506,7 @@ pure task_has_output(task: Record, output: Path) -> Bool {
   return false
 }
 
-pure find_task_name_by_output(tasks: List[Record], output: Path) -> Result[Str] {
+pure find_task_name_by_output(tasks: List[make.MakeTask], output: Path) -> Result[Str] {
   for task in tasks {
     if task_has_output(task, output) {
       return task.name
@@ -3491,7 +3530,7 @@ proc collect_task_closure(task_deps: Map[List[Str]], target: Str, selected: Map[
   return next
 }
 
-proc archive_task_deps_by_name(tasks: List[Record]) [] -> Map[List[Str]] {
+proc archive_task_deps_by_name(tasks: List[make.MakeTask]) [] -> Map[List[Str]] {
   var by_name: Map[List[Str]] = {}
 
   for task in tasks {
@@ -3502,7 +3541,10 @@ proc archive_task_deps_by_name(tasks: List[Record]) [] -> Map[List[Str]] {
 }
 
 ## Exported declaration `select_archive_tasks_outputs`.
-export proc select_archive_tasks_outputs(tasks: List[Record], outputs: List[Path]) [error] -> Result[List[Record]] {
+export proc select_archive_tasks_outputs(
+  tasks: List[make.MakeTask],
+  outputs: List[Path],
+) [error] -> Result[List[make.MakeTask]] {
   let task_deps = archive_task_deps_by_name(tasks)
   var selected: Map[Bool] = {}
 
@@ -3515,13 +3557,17 @@ export proc select_archive_tasks_outputs(tasks: List[Record], outputs: List[Path
 }
 
 ## Exported declaration `run_archive_tasks_output`.
-export proc run_archive_tasks_output(tasks: List[Record], output: Path, jobs_count: Int = 1) [fs, process, env, error] {
+export proc run_archive_tasks_output(
+  tasks: List[make.MakeTask],
+  output: Path,
+  jobs_count: Int = 1,
+) [fs, process, env, error] {
   make.run_tasks(select_archive_tasks_outputs(tasks, [output])?, jobs_count)?
 }
 
 ## Exported declaration `run_archive_tasks_outputs`.
 export proc run_archive_tasks_outputs(
-  tasks: List[Record],
+  tasks: List[make.MakeTask],
   outputs: List[Path],
   jobs_count: Int = 1,
 ) [fs, process, env, error] {
@@ -3938,7 +3984,7 @@ proc pi_objcopy_task(cc: Path, input: Path, out: Path, deps: List[Str] = []) [en
       input,
     ],
     deps: deps,
-    argv: argv,
+    argv: [@argv],
     cwd: p".",
     env: {
       PATH: tool_path,
@@ -4540,21 +4586,20 @@ export proc image_argv_task(
       vmlinux,
     ],
     deps: deps,
-    argv: objcopy_argv.extend(
-      [
-        "-O",
-        "binary",
-        "-R",
-        ".note",
-        "-R",
-        ".note.gnu.build-id",
-        "-R",
-        ".comment",
-        "-S",
-        vmlinux.display(),
-        image.display(),
-      ],
-    ),
+    argv: [
+      @objcopy_argv,
+      "-O",
+      "binary",
+      "-R",
+      ".note",
+      "-R",
+      ".note.gnu.build-id",
+      "-R",
+      ".comment",
+      "-S",
+      vmlinux.display(),
+      image.display(),
+    ],
     cwd: p".",
     env: {
       PATH: tool_path,
@@ -4620,7 +4665,7 @@ export proc vmlinux_archive_argv_task(
     ],
     inputs: inputs,
     deps: deps,
-    argv: argv,
+    argv: [@argv],
     cwd: p".",
     env: {
       PATH: tool_path,
@@ -4679,7 +4724,7 @@ export proc vmlinux_o_argv_task(
       kernel_archive,
     ].extend(libs),
     deps: deps,
-    argv: argv,
+    argv: [@argv],
     cwd: p".",
     env: {
       PATH: tool_path,
@@ -4763,7 +4808,7 @@ export proc vmlinux_unstripped_argv_task(
       version_obj,
     ].extend(libs),
     deps: deps,
-    argv: argv,
+    argv: [@argv],
     cwd: p".",
     env: {
       PATH: tool_path,
@@ -4812,15 +4857,14 @@ export proc vmlinux_strip_argv_task(
       unstripped,
     ],
     deps: deps,
-    argv: objcopy_argv.extend(
-      [
-        "--remove-section=.modinfo",
-        "-w",
-        "--strip-unneeded-symbol=__mod_device_table__*",
-        unstripped.display(),
-        out.display(),
-      ],
-    ),
+    argv: [
+      @objcopy_argv,
+      "--remove-section=.modinfo",
+      "-w",
+      "--strip-unneeded-symbol=__mod_device_table__*",
+      unstripped.display(),
+      out.display(),
+    ],
     cwd: p".",
     env: {
       PATH: tool_path,
@@ -4855,18 +4899,17 @@ proc x86_vmlinux_strip_argv_task(
       unstripped,
     ],
     deps: deps,
-    argv: objcopy_argv.extend(
-      [
-        "--remove-section=.modinfo",
-        "--remove-section=.rel*",
-        "--remove-section=!.rel*.dyn",
-        "--remove-section=.rel.*",
-        "-w",
-        "--strip-unneeded-symbol=__mod_device_table__*",
-        unstripped.display(),
-        out.display(),
-      ],
-    ),
+    argv: [
+      @objcopy_argv,
+      "--remove-section=.modinfo",
+      "--remove-section=.rel*",
+      "--remove-section=!.rel*.dyn",
+      "--remove-section=.rel.*",
+      "-w",
+      "--strip-unneeded-symbol=__mod_device_table__*",
+      unstripped.display(),
+      out.display(),
+    ],
     cwd: p".",
     env: {},
     depfile: p"",
@@ -5973,7 +6016,7 @@ proc efi_libstub_archive_task(
     ],
     inputs: inputs,
     deps: deps,
-    argv: argv,
+    argv: [@argv],
     cwd: p".",
     env: {
       PATH: tool_path,
@@ -6192,7 +6235,7 @@ export proc build_builtin_archives(
 
 ## Exported declaration `run_builtin_archive_plan`.
 export proc run_builtin_archive_plan(
-  archive_plan: Record,
+  archive_plan: BuiltinArchivePlan,
   jobs_count: Int,
 ) [fs, process, env, error] -> Result[List[Path]] {
   if archive_plan.missing_sources.len() > 0 {
@@ -6256,7 +6299,7 @@ pure parse_jump_label_helper_summary(line: Str) -> JumpLabelPatchResult {
 }
 
 ## Exported declaration `patch_x86_jump_label_outputs`.
-export proc patch_x86_jump_label_outputs(outputs: List[Path]) [fs, process, error] -> Result[Record] {
+export proc patch_x86_jump_label_outputs(outputs: List[Path]) [fs, process, error] -> Result[JumpLabelPatchResult] {
   let helper = x86_jump_label_helper()?
   var argv = [output.display() for output in outputs if output.exists()?]
   archive_plan_progress(f"xsh-kbuild-x86-jump-label-scan start ${argv.len()} objects")?
@@ -6267,10 +6310,10 @@ export proc patch_x86_jump_label_outputs(outputs: List[Path]) [fs, process, erro
     f"xsh-kbuild-x86-jump-label-scan complete ${summary.scanned} objects ${summary.patches} patches",
   )?
 
-  return {scanned: summary.scanned, objects: summary.objects, patches: summary.patches}
+  return summary
 }
 
-pure has_archive_output(task: Record) -> Bool {
+pure has_archive_output(task: make.MakeTask) -> Bool {
   for output in task.outputs {
     if output.display().ends_with(".a") {
       return true
@@ -6280,7 +6323,7 @@ pure has_archive_output(task: Record) -> Bool {
   return false
 }
 
-pure archive_rerun_tasks(tasks: List[Record]) -> List[Record] {
+pure archive_rerun_tasks(tasks: List[make.MakeTask]) -> List[make.MakeTask] {
   var archive_names: Map[Bool] = {}
 
   for task in tasks {
@@ -6289,7 +6332,7 @@ pure archive_rerun_tasks(tasks: List[Record]) -> List[Record] {
     }
   }
 
-  var rerun: List[Record] = []
+  var rerun: List[make.MakeTask] = []
 
   for task in tasks {
     continue unless has_archive_output(task)
@@ -6300,7 +6343,7 @@ pure archive_rerun_tasks(tasks: List[Record]) -> List[Record] {
   return rerun
 }
 
-proc rerun_x86_jump_label_archives(tasks: List[Record], jobs_count: Int) [fs, process, env, error] {
+proc rerun_x86_jump_label_archives(tasks: List[make.MakeTask], jobs_count: Int) [fs, process, env, error] {
   let archive_tasks = archive_rerun_tasks(tasks)
   archive_plan_progress(f"xsh-kbuild-x86-jump-label-archive-rerun start ${archive_tasks.len()} archives")?
   make.run_tasks(archive_tasks, jobs_count)?
@@ -6308,7 +6351,10 @@ proc rerun_x86_jump_label_archives(tasks: List[Record], jobs_count: Int) [fs, pr
 }
 
 ## Exported declaration `patch_x86_jump_label_archive_plan`.
-export proc patch_x86_jump_label_archive_plan(archive_plan: Record, jobs_count: Int) [fs, process, env, error] {
+export proc patch_x86_jump_label_archive_plan(
+  archive_plan: BuiltinArchivePlan,
+  jobs_count: Int,
+) [fs, process, env, error] {
   var outputs: List[Path] = []
 
   for task in archive_plan.tasks {
@@ -6320,18 +6366,16 @@ export proc patch_x86_jump_label_archive_plan(archive_plan: Record, jobs_count: 
   }
 
   let result = patch_x86_jump_label_outputs(outputs)?
-  let objects: Int = result.get("objects")?
-  let patches: Int = result.get("patches")?
 
-  if patches > 0 {
-    print "xsh-kbuild-x86-jump-label-nops" $patches "in" $objects "objects"
+  if result.patches > 0 {
+    print "xsh-kbuild-x86-jump-label-nops" ${result.patches} "in" ${result.objects} "objects"
     rerun_x86_jump_label_archives(archive_plan.tasks, jobs_count)?
   }
 }
 
 ## Exported declaration `run_x86_builtin_archive_plan`.
 export proc run_x86_builtin_archive_plan(
-  archive_plan: Record,
+  archive_plan: BuiltinArchivePlan,
   jobs_count: Int,
 ) [fs, process, env, error] -> Result[List[Path]] {
   let archives = run_builtin_archive_plan(archive_plan, jobs_count)?
@@ -6383,7 +6427,7 @@ pure archive_analysis_record_for_object(
   pi: Bool,
   composites_by_object: Map[CompositeObject],
   compile_flags_by_dir: Map[Map[List[Str]]],
-) -> Record {
+) -> ArchiveAnalysisItem {
   let key = path_key(obj)
 
   if key in composites_by_object {
@@ -6417,7 +6461,7 @@ pure archive_analysis_record_for_object(
   }
 }
 
-pure archive_analysis_plan_context(plan: KbuildPlan) -> Record {
+pure archive_analysis_plan_context(plan: KbuildPlan) -> ArchivePlanContext {
   return {
     dirs: path_strings(plan.dirs),
     objects: path_strings(plan.objects),
@@ -6439,11 +6483,13 @@ pure archive_analysis_plan_context(plan: KbuildPlan) -> Record {
   }
 }
 
-proc archive_analysis_plan_context_slice(context: Record, start: Int, end: Int) [error] -> Result[Record] {
-  let object_values: List[Str] = context.get("objects")?
-  let lib_object_values: List[Str] = context.get("lib_objects")?
-  let owner_values: List[Record] = context.get("archive_owners")?
-  let composite_values: List[Record] = context.get("composites")?
+proc archive_analysis_plan_context_slice(
+  context: ArchivePlanContext,
+  start: Int,
+  end: Int,
+) [error] -> Result[ArchivePlanContext] {
+  let object_values = context.objects
+  let lib_object_values = context.lib_objects
   let object_count = object_values.len()
   let object_start = if start < object_count { start } else { object_count }
   let object_end = if end < object_count { end } else { object_count }
@@ -6465,20 +6511,17 @@ proc archive_analysis_plan_context_slice(context: Record, start: Int, end: Int) 
     selected[obj] = true
   }
 
-  var archive_owners: List[Record] = []
-  for owner in owner_values {
-    let object: Str = owner.get("object")?
-    if (selected.get(object) ?? false) {
+  var archive_owners: List[ArchiveOwnerRecord] = []
+  for owner in context.archive_owners {
+    if (selected.get(owner.object) ?? false) {
       archive_owners = archive_owners.push(owner)
     }
   }
 
-  var composites: List[Record] = []
-  for composite in composite_values {
-    let object: Str = composite.get("object")?
-    let members: List[Str] = composite.get("members")?
-    var selected_member = (selected.get(object) ?? false)
-    for member in members {
+  var composites: List[CompositeRecord] = []
+  for composite in context.composites {
+    var selected_member = (selected.get(composite.object) ?? false)
+    for member in composite.members {
       if (selected.get(member) ?? false) {
         selected_member = true
       }
@@ -6498,33 +6541,13 @@ proc archive_analysis_plan_context_slice(context: Record, start: Int, end: Int) 
   }
 }
 
-proc archive_analysis_plan_from_context(context: Record) [error] -> Result[KbuildPlan] {
-  let owner_records: List[Record] = context.get("archive_owners")?
-  let composite_values: List[Record] = context.get("composites")?
-  var archive_owners: List[ArchiveOwner] = []
-  var composites: List[CompositeObject] = []
-
-  for owner in owner_records {
-    archive_owners = archive_owners.push({
-      object: fp"${owner.get("object")?}",
-      dir: fp"${owner.get("dir")?}",
-    })
-  }
-
-  for composite in composite_values {
-    let member_strings: List[Str] = composite.get("members")?
-    composites = composites.push({
-      object: fp"${composite.get("object")?}",
-      members: paths_from_strings(member_strings)?,
-    })
-  }
-
+proc archive_analysis_plan_from_context(context: ArchivePlanContext) [error] -> Result[KbuildPlan] {
   return {
-    dirs: paths_from_strings(context.get("dirs")?)?,
-    objects: paths_from_strings(context.get("objects")?)?,
-    lib_objects: paths_from_strings(context.get("lib_objects")?)?,
-    archive_owners: archive_owners,
-    composites: composites,
+    dirs: paths_from_strings(context.dirs)?,
+    objects: paths_from_strings(context.objects)?,
+    lib_objects: paths_from_strings(context.lib_objects)?,
+    archive_owners: archive_owners_from_records(context.archive_owners)?,
+    composites: composites_from_records(context.composites)?,
     unsupported: [],
   }
 }
@@ -6535,7 +6558,7 @@ pure archive_analysis_raw_item(
   library: Bool,
   pi: Bool,
   composites_by_object: Map[CompositeObject],
-) -> Record {
+) -> ArchiveAnalysisItem {
   let key = path_key(obj)
 
   if key in composites_by_object {
@@ -6570,7 +6593,7 @@ proc archive_analysis_slice_items(
   config: Kconfig,
   start: Int,
   end: Int,
-) [error] -> Result[List[Record]] {
+) [error] -> Result[List[ArchiveAnalysisItem]] {
   let composites_by_object = composite_map(plan.composites)
   let composite_members_by_object = composite_member_map(plan.composites)
   var archive_owner_by_object: Map[Str] = {}
@@ -6580,7 +6603,7 @@ proc archive_analysis_slice_items(
   }
 
   let object_count = plan.objects.len()
-  var items: List[Record] = []
+  var items: List[ArchiveAnalysisItem] = []
   var index = start
 
   while index < end {
@@ -6615,25 +6638,22 @@ proc archive_analysis_slice_items(
 }
 
 proc archive_analysis_items_with_compile_flags(
-  items: List[Record],
+  items: List[ArchiveAnalysisItem],
   compile_flags_by_dir: Map[Map[List[Str]]],
-) [error] -> Result[List[Record]] {
-  var enriched: List[Record] = []
+) [error] -> Result[List[ArchiveAnalysisItem]] {
+  var enriched: List[ArchiveAnalysisItem] = []
 
   for item in items {
-    let object = fp"${item.get("object")?}"
-    let pi: Bool = item.get("pi")?
-    let composite: Str = item.get("composite")?
-    let flags_object = if pi { pi_base_object(object) } else { object }
-    let member_objects: List[Str] = item.get("member_objects")?
+    let object = fp"${item.object}"
+    let flags_object = if item.pi { pi_base_object(object) } else { object }
     let member_flags = [
       kbuild_compile_flags_for_object(compile_flags_by_dir, fp"${member}")
-      for member in member_objects
+      for member in item.member_objects
     ]
 
     enriched = enriched.push({
       ...item,
-      flags: if composite == "" { kbuild_compile_flags_for_object(compile_flags_by_dir, flags_object) } else { [] },
+      flags: if item.composite == "" { kbuild_compile_flags_for_object(compile_flags_by_dir, flags_object) } else { [] },
       member_flags: member_flags,
     })
   }
@@ -6645,8 +6665,8 @@ proc archive_analysis_flag_entries_for_plan_range(
   plan: KbuildPlan,
   start: Int,
   end: Int,
-  flag_entries: List[Record],
-) [error] -> Result[List[Record]] {
+  flag_entries: List[CompileFlagsEntry],
+) [error] -> Result[List[CompileFlagsEntry]] {
   var dirs: Map[Bool] = {}
   var objects: Map[Bool] = {}
   let object_count = plan.objects.len()
@@ -6679,12 +6699,10 @@ proc archive_analysis_flag_entries_for_plan_range(
     index += 1
   }
 
-  var filtered: List[Record] = []
+  var filtered: List[CompileFlagsEntry] = []
 
   for entry in flag_entries {
-    let dir: Str = entry.get("dir")?
-    let object: Str = entry.get("object")?
-    if object == "*" and (dirs.get(dir) ?? false) or (objects.get(object) ?? false) {
+    if entry.object == "*" and (dirs.get(entry.dir) ?? false) or (objects.get(entry.object) ?? false) {
       filtered = filtered.push(entry)
     }
   }
@@ -6694,17 +6712,17 @@ proc archive_analysis_flag_entries_for_plan_range(
 
 ## Exported declaration `analyze_archive_plan_slice`.
 export proc analyze_archive_plan_slice(
-  context: Record,
+  context: ArchivePlanContext,
   start: Int,
   end: Int,
-  flag_entries: List[Record],
+  flag_entries: List[CompileFlagsEntry],
   emit_task_specs: Bool,
   cc: Path,
   triple: Str,
   cflags: List[Str],
   defs: List[Str],
   includes: List[Str],
-) [fs, error] -> Result[List[Record]] {
+) [fs, error] -> Result[List[ArchiveAnalysisResult]] {
   let slice_context = archive_analysis_plan_context_slice(context, start, end)?
   let plan = archive_analysis_plan_from_context(slice_context)?
   let config = load_config_if_present(p".config")?
@@ -6719,7 +6737,7 @@ proc archive_analysis_items(
   plan: KbuildPlan,
   config: Kconfig,
   compile_flags_by_dir: Map[Map[List[Str]]],
-) [env, time, error] -> Result[List[Record]] {
+) [env, time, error] -> Result[List[ArchiveAnalysisItem]] {
   let maps_start = archive_plan_timing_start("item-maps")
   let composites_by_object = composite_map(plan.composites)
   let composite_members_by_object = composite_member_map(plan.composites)
@@ -6732,7 +6750,7 @@ proc archive_analysis_items(
   archive_plan_timing_done("item-maps", maps_start)
 
   let object_items_start = archive_plan_timing_start("item-objects")
-  var items: List[Record] = []
+  var items: List[ArchiveAnalysisItem] = []
 
   for obj in plan.objects {
     continue when skip_planned_object(config, obj)
@@ -6768,7 +6786,10 @@ proc archive_analysis_items(
   return items
 }
 
-proc archive_analysis_items_for_plan(plan: KbuildPlan, triple: Str) [fs, env, time, error] -> Result[List[Record]] {
+proc archive_analysis_items_for_plan(
+  plan: KbuildPlan,
+  triple: Str,
+) [fs, env, time, error] -> Result[List[ArchiveAnalysisItem]] {
   let config = load_config_if_present(p".config")?
   let compile_flags_by_dir = cached_kbuild_compile_flags_for_dirs(
     p".",
@@ -6795,7 +6816,7 @@ pure archive_analysis_result(
   link_inputs: List[Path],
   generated_objects: List[Path],
   missing_sources: List[Path],
-) -> Record {
+) -> ArchiveAnalysisResult {
   return {
     object: object,
     owner: owner,
@@ -6866,23 +6887,23 @@ proc archive_compile_task_spec(
 }
 
 proc analyze_archive_items_impl(
-  items: List[Record],
+  items: List[ArchiveAnalysisItem],
   cc: Path,
   triple: Str,
   cflags: List[Str],
   defs: List[Str],
   includes: List[Str],
   emit_task_specs: Bool,
-) [fs, error] -> Result[List[Record]] {
-  var results: List[Record] = []
+) [fs, error] -> Result[List[ArchiveAnalysisResult]] {
+  var results: List[ArchiveAnalysisResult] = []
 
   for item in items {
-    let object_key: Str = item.get("object")?
-    let owner_key: Str = item.get("owner")?
-    let library: Bool = item.get("library")?
-    let pi: Bool = item.get("pi")?
-    let composite_key: Str = item.get("composite")?
-    let flags: List[Str] = item.get("flags")?
+    let object_key = item.object
+    let owner_key = item.owner
+    let library = item.library
+    let pi = item.pi
+    let composite_key = item.composite
+    let flags = item.flags
     let obj = fp"${object_key}"
     var task_specs: List[Record] = []
     var task_count = 0
@@ -6894,17 +6915,8 @@ proc analyze_archive_items_impl(
     var missing_sources: List[Path] = []
 
     if composite_key != "" {
-      let member_objects = if "member_objects" in item {
-        item.get("member_objects")?
-      } else {
-        [member.get("object")? for member in item.get("members")?]
-      }
-      # Record inputs erase the nested flag-list type; validate it before passing member flags as compiler arguments.
-      let member_flags: List[List[Str]] = (if "member_flags" in item {
-        item.get("member_flags")?
-      } else {
-        [member.get("flags")? for member in item.get("members")?]
-      }).require()?
+      let member_objects = item.member_objects
+      let member_flags = item.member_flags
       let composite_out = obj_out_path(fp"${composite_key}")
 
       var member_index = 0
@@ -7034,20 +7046,47 @@ proc analyze_archive_items_impl(
   return results
 }
 
+# Caller-built items may use the legacy `members: [{object, flags}]` composite shape.
+proc archive_analysis_item_from_record(item: Record) [error] -> Result[ArchiveAnalysisItem] {
+  let members = if "members" in item { item.get("members")?.require(List[Record])? } else { [] }
+  let member_objects = if "member_objects" in item {
+    item.get("member_objects")?.require(List[Str])?
+  } else {
+    [member.get("object")?.require(Str)? for member in members]
+  }
+  let member_flags = if "member_flags" in item {
+    item.get("member_flags")?.require(List[List[Str]])?
+  } else {
+    [member.get("flags")?.require(List[Str])? for member in members]
+  }
+
+  return {
+    object: item.get("object")?.require(Str)?,
+    owner: item.get("owner")?.require(Str)?,
+    library: item.get("library")?.require(Bool)?,
+    pi: item.get("pi")?.require(Bool)?,
+    composite: item.get("composite")?.require(Str)?,
+    member_objects,
+    member_flags,
+    flags: item.get("flags")?.require(List[Str])?,
+  }
+}
+
 ## Exported declaration `analyze_archive_items`.
-export proc analyze_archive_items(items: List[Record]) [fs, error] -> Result[List[Record]] {
-  return analyze_archive_items_impl(items, p".", "", [], [], [], false)?
+export proc analyze_archive_items(items: List[Record]) [fs, error] -> Result[List[ArchiveAnalysisResult]] {
+  let typed_items = [archive_analysis_item_from_record(item)? for item in items]
+  return analyze_archive_items_impl(typed_items, p".", "", [], [], [], false)?
 }
 
 ## Exported declaration `analyze_archive_items_with_task_specs`.
 export proc analyze_archive_items_with_task_specs(
-  items: List[Record],
+  items: List[ArchiveAnalysisItem],
   cc: Path,
   triple: Str,
   cflags: List[Str],
   defs: List[Str],
   includes: List[Str],
-) [fs, error] -> Result[List[Record]] {
+) [fs, error] -> Result[List[ArchiveAnalysisResult]] {
   return analyze_archive_items_impl(items, cc, triple, cflags, defs, includes, true)?
 }
 
@@ -7071,7 +7110,7 @@ proc archive_analysis_process_pool(
   cflags: List[Str],
   defs: List[Str],
   includes: List[Str],
-) [fs, process, env, time, error] -> Result[List[Record]] {
+) [fs, process, env, time, error] -> Result[List[ArchiveAnalysisResult]] {
   let item_count = plan.objects.len() + plan.lib_objects.len()
   let flag_entries = compile_flags_cache_entries(compile_flags_by_dir)
   let worker_count = archive_analysis_worker_count(requested_jobs, item_count)
@@ -7088,7 +7127,7 @@ proc archive_analysis_process_pool(
   json.write(context_path, archive_analysis_plan_context(plan))?
   defer fs.remove(context_path, missing_ok: true)?
   let flags_path = fp"${prefix}-flags.json"
-  json.write(flags_path, {flags: flag_entries})?
+  json.write(flags_path, ArchiveAnalysisFlags(flags: flag_entries))?
   defer fs.remove(flags_path, missing_ok: true)?
   var handles = []
   var output_paths: List[Path] = []
@@ -7100,7 +7139,7 @@ proc archive_analysis_process_pool(
     let output_path = fp"${prefix}-output-${index}.json"
     json.write(
       input_path,
-      {
+      ArchiveAnalysisInput(
         context: context_path.display(),
         start: start,
         end: end,
@@ -7111,7 +7150,7 @@ proc archive_analysis_process_pool(
         cflags: cflags,
         defs: defs,
         includes: includes,
-      },
+      ),
     )?
     defer fs.remove(input_path, missing_ok: true)?
     defer fs.remove(output_path, missing_ok: true)?
@@ -7137,9 +7176,9 @@ proc archive_analysis_process_pool(
     }
   }
 
-  var results: List[Record] = []
+  var results: List[ArchiveAnalysisResult] = []
   for output_path in output_paths {
-    let worker_results: List[Record] = json.read(output_path)?
+    let worker_results = json.read(output_path)?.require(List[ArchiveAnalysisResult])?
     results = results.extend(worker_results)
   }
 
@@ -7149,7 +7188,7 @@ proc archive_analysis_process_pool(
 proc archive_compile_task_from_spec(spec: Record) [error] -> Result[make.MakeTask] {
   let source = fp"${spec.get("source")?}"
   let output = fp"${spec.get("output")?}"
-  let argv: List[Any] = spec.get("argv")?
+  let argv = spec.get("argv")?.require(List[Str])?
 
   return {
     name: output.display(),
@@ -7160,7 +7199,7 @@ proc archive_compile_task_from_spec(spec: Record) [error] -> Result[make.MakeTas
       source,
     ],
     deps: [],
-    argv: argv,
+    argv: [@argv],
     cwd: p".",
     env: {},
     depfile: fp"${spec.get("depfile")?}",
@@ -7171,7 +7210,7 @@ proc archive_compile_task_from_spec(spec: Record) [error] -> Result[make.MakeTas
 proc assemble_builtin_archive_plan(
   plan: KbuildPlan,
   cc: Path,
-  analysis_results: List[Record],
+  analysis_results: List[ArchiveAnalysisResult],
 ) [fs, env, time, error] -> Result[BuiltinArchivePlan] {
   let materialize_tasks = (env.get("XSH_LINUX_KBUILD_ARCHIVE_ONLY") ?? "") != "1"
   let result_merge_start = archive_plan_timing_start("merge-results")
@@ -7189,14 +7228,14 @@ proc assemble_builtin_archive_plan(
   var pi_relacheck_added = false
 
   for result in analysis_results {
-    let owner_key: Str = result.get("owner")?
-    let library: Bool = result.get("library")?
-    let result_tasks: List[Record] = result.get("tasks")?
-    let result_task_count: Int = result.get("task_count")?
-    let result_archive_outputs: List[Str] = result.get("archive_outputs")?
-    let result_archive_deps: List[Str] = result.get("archive_deps")?
-    let result_has_pi: Bool = result.get("has_pi")?
-    let result_link_inputs: List[Str] = result.get("link_inputs")?
+    let owner_key = result.owner
+    let library = result.library
+    let result_tasks = result.tasks
+    let result_task_count = result.task_count
+    let result_archive_outputs = result.archive_outputs
+    let result_archive_deps = result.archive_deps
+    let result_has_pi = result.has_pi
+    let result_link_inputs = result.link_inputs
 
     if ! materialize_tasks {
       deferred_task_specs = deferred_task_specs.extend(result_tasks)
@@ -7204,11 +7243,11 @@ proc assemble_builtin_archive_plan(
 
     if materialize_tasks {
       for spec in result_tasks {
-        let kind: Str = spec.get("kind")?
+        let kind = spec.get("kind")?.require(Str)?
 
         if kind == "pi" {
           let out = fp"${spec.get("output")?}"
-          let base_task_spec: Record = spec.get("base_task")?
+          let base_task_spec = spec.get("base_task")?.require(Record)?
           let base_out = fp"${spec.get("base")?}"
           let check_task_name = f"${out.display()}:relacheck"
 
@@ -7312,13 +7351,11 @@ proc assemble_builtin_archive_plan(
       }
     }
 
-    let result_generated: List[Str] = result.get("generated_objects")?
-    for item in result_generated {
+    for item in result.generated_objects {
       generated_objects = generated_objects.push(fp"${item}")
     }
 
-    let result_missing: List[Str] = result.get("missing_sources")?
-    for item in result_missing {
+    for item in result.missing_sources {
       missing_sources = missing_sources.push(fp"${item}")
     }
   }
@@ -7464,6 +7501,7 @@ proc assemble_builtin_archive_plan(
     link_inputs: link_inputs,
     missing_sources: missing_sources,
     generated_objects: generated_objects,
+    duplicate_outputs: if materialize_tasks { duplicate_task_outputs(tasks) } else { [] },
   }
 }
 
