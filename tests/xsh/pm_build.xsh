@@ -7,9 +7,16 @@ pure fixture(name: Str) -> Path {
   fp"tests/xsh/fixtures/${name}"
 }
 
+## Builds write a runner and trace beside the recipe, so build a copy instead of the checkout fixture.
+proc staged_fixture(workspace: Path, name: Str) [fs, error] -> Result[Path] {
+  let pkg_dir = fp"${workspace}/recipes/${name}"
+  let _ = fs.copy_tree(fixture(name), pkg_dir, parents: true, overwrite: true)?
+  pkg_dir
+}
+
 test test_build_prepared_metapackage_has_no_payload_or_package_database [fs, process, env, error] { |ctx|
-  let pkg_dir = fixture("recipe-valid-meta")
   let workspace = test.temp_dir(ctx, name: "prepared-meta")?
+  let pkg_dir = staged_fixture(workspace, "recipe-valid-meta")?
   let dest = fp"${workspace}/dest"
   let payload = fp"${workspace}/payload.tar.gz"
   build.build_prepared_package(pkg_dir, workspace, dest, payload)?
@@ -23,8 +30,8 @@ test test_build_prepared_metapackage_has_no_payload_or_package_database [fs, pro
 }
 
 test test_build_prepared_archives_every_empty_directory_recorded_in_metadata [fs, process, env, error] { |ctx|
-  let pkg_dir = fixture("recipe-empty-parent")
   let workspace = test.temp_dir(ctx, name: "prepared-empty-parent")?
+  let pkg_dir = staged_fixture(workspace, "recipe-empty-parent")?
   let dest = fp"${workspace}/dest"
   let payload = fp"${workspace}/payload.tar.gz"
   let extracted = fp"${workspace}/extracted"
