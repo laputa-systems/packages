@@ -232,8 +232,8 @@ proc root_artifact_metadata(receipt: types.ArtifactReceipt) [fs, error] -> Resul
   var entries: List[types.ArtifactEntry] = []
   var seen: Map[Bool] = {}
 
-  for raw in dto.files {
-    let entry = root_decode_metadata_entry(raw)?
+  for raw_entry in dto.files {
+    let entry = root_decode_metadata_entry(raw_entry)?
     root_validate_metadata_entry(entry)?
 
     if (entry.path in seen) {

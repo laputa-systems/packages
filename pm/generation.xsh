@@ -273,12 +273,12 @@ proc generation_runtime_artifacts(
 export proc plan(
   value: types.BuildPlan,
   runtime_roots: List[Str],
-  overlay_digest: Str,
+  overlay_sha256: Str,
 ) [error] -> Result[types.GenerationPlan] {
   plan_profile(
     value,
     runtime_roots,
-    {name: "default", overlay_sha256: overlay_digest, replacements: []},
+    {name: "default", overlay_sha256, replacements: []},
   )
 }
 
@@ -625,7 +625,7 @@ proc generation_receipt_from_dto(value: GenerationReceiptDto) [error] -> Result[
 }
 
 proc generation_validate_receipt(value: types.GenerationReceipt) [error] {
-  let plan: types.GenerationPlan = {
+  let receipt_plan: types.GenerationPlan = {
     format: generation_format(),
     target: value.target,
     build_plan_sha256: value.build_plan_sha256,
@@ -640,7 +640,7 @@ proc generation_validate_receipt(value: types.GenerationReceipt) [error] {
   }
 
   generation_require_sha256(value.root_sha256, "generation root_sha256")?
-  generation_validate_plan(plan)?
+  generation_validate_plan(receipt_plan)?
 }
 
 proc generation_receipt_for(value: types.GenerationPlan, root_receipt: types.RootReceipt) [error] -> Result[types.GenerationReceipt] {

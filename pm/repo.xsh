@@ -201,8 +201,8 @@ proc repo_publish_immutable_object(repo_url: Str, rel: Path, source: Path, token
 }
 
 ## Publishes a verified repository snapshot: immutable package objects first and the remote index last.
-export proc publish(snapshot: types.RepoSnapshot, remote_repo: Str, token: Str, work: Path) [fs, net, time, error] {
-  if snapshot.format != "laputa-repo-snapshot-1" or snapshot.target != types.target_aarch64() {
+export proc publish(repo_snapshot: types.RepoSnapshot, remote_repo: Str, token: Str, work: Path) [fs, net, time, error] {
+  if repo_snapshot.format != "laputa-repo-snapshot-1" or repo_snapshot.target != types.target_aarch64() {
     return Err(types.PmError.PackageContract("unsupported repository snapshot"))
   }
 
@@ -217,7 +217,7 @@ export proc publish(snapshot: types.RepoSnapshot, remote_repo: Str, token: Str, 
   fs.mkdir(work)?
   var stages: List[RepoPublishStage] = []
 
-  for publication in snapshot.packages {
+  for publication in repo_snapshot.packages {
     let verified = store.verify_receipt(publication.receipt)?
 
     if verified != publication.receipt {

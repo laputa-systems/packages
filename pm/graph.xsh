@@ -45,12 +45,12 @@ pure package_edges(pkg: types.Package, value: types.BuildPolicy) -> List[types.D
   result
 }
 
-pure selected_edges(edges: List[types.DependencyEdge], kinds: List[types.DependencyKind]) -> List[types.DependencyEdge] {
-  [edge for edge in edges if kind_is_selected(edge.kind, kinds)]
+pure selected_edges(dependency_edges: List[types.DependencyEdge], kinds: List[types.DependencyKind]) -> List[types.DependencyEdge] {
+  [edge for edge in dependency_edges if kind_is_selected(edge.kind, kinds)]
 }
 
-pure direct_dependencies(name: Str, edges: List[types.DependencyEdge]) -> List[Str] {
-  graph_sorted_unique_names([edge.to for edge in edges if edge.from == name])
+pure direct_dependencies(name: Str, dependency_edges: List[types.DependencyEdge]) -> List[Str] {
+  graph_sorted_unique_names([edge.to for edge in dependency_edges if edge.from == name])
 }
 
 pure index_in_path(trail: List[Str], name: Str) -> Int {
@@ -67,8 +67,8 @@ pure index_in_path(trail: List[Str], name: Str) -> Int {
   -1
 }
 
-pure cycle_from(name: Str, selected: Map[Bool], edges: List[types.DependencyEdge], trail: List[Str]) -> List[Str] {
-  for dependency in direct_dependencies(name, edges) {
+pure cycle_from(name: Str, selected: Map[Bool], dependency_edges: List[types.DependencyEdge], trail: List[Str]) -> List[Str] {
+  for dependency in direct_dependencies(name, dependency_edges) {
     continue unless (selected.get(dependency) ?? false)
     let cycle_index = index_in_path(trail, dependency)
 
@@ -84,7 +84,7 @@ pure cycle_from(name: Str, selected: Map[Bool], edges: List[types.DependencyEdge
       return cycle.push(dependency)
     }
 
-    let nested = cycle_from(dependency, selected, edges, trail.push(dependency))
+    let nested = cycle_from(dependency, selected, dependency_edges, trail.push(dependency))
 
     if nested.len() > 0 {
       return nested
@@ -94,11 +94,11 @@ pure cycle_from(name: Str, selected: Map[Bool], edges: List[types.DependencyEdge
   []
 }
 
-pure find_cycle(selected_names: List[Str], edges: List[types.DependencyEdge]) -> List[Str] {
+pure find_cycle(selected_names: List[Str], dependency_edges: List[types.DependencyEdge]) -> List[Str] {
   let selected: Map[Bool] = {name: true for name in selected_names}
 
   for name in selected_names {
-    let cycle = cycle_from(name, selected, edges, [name])
+    let cycle = cycle_from(name, selected, dependency_edges, [name])
 
     if cycle.len() > 0 {
       return cycle
@@ -112,7 +112,7 @@ proc closure_from_edges(
   catalog: types.PackageCatalog,
   roots: List[Str],
   kinds: List[types.DependencyKind],
-  edges: List[types.DependencyEdge],
+  dependency_edges: List[types.DependencyEdge],
 ) [error] -> Result[List[Str]] {
   let local_names = {pkg.name: true for pkg in catalog.packages}
   let remote_names = {name: true for name in catalog.remote_names}
@@ -130,7 +130,7 @@ proc closure_from_edges(
     if ! (included.get(name) ?? false) {
       included[name] = true
 
-      for dependency in direct_dependencies(name, selected_edges(edges, kinds)) {
+      for dependency in direct_dependencies(name, selected_edges(dependency_edges, kinds)) {
         if ! (included.get(dependency) ?? false) {
           pending = pending.push(dependency)
         }
@@ -189,13 +189,13 @@ export proc closure(
 ## Produces dependency-first lexical topological levels; bootstrap seed edges are externally provided and do not order local builds.
 export proc topological_levels(
   selected: List[Str],
-  edges: List[types.DependencyEdge],
+  dependency_edges: List[types.DependencyEdge],
 ) [error] -> Result[List[List[Str]]] {
   let selected_names = graph_sorted_unique_names(selected)
   let selected_map: Map[Bool] = {name: true for name in selected_names}
   let local_edges = [
     edge
-    for edge in edges
+    for edge in dependency_edges
     if edge.kind != types.dependency_bootstrap() and (selected_map.get(edge.from) ?? false) and (selected_map.get(edge.to) ?? false)
   ]
   var unresolved: Map[Int] = {}
