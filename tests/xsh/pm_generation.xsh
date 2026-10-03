@@ -150,7 +150,7 @@ proc expect_generation_error(
 ) [error] {
   match result {
     Ok(_) => test.fail(f"${expected}: generation unexpectedly succeeded")?
-    Err(problem) => { expected in problem.message }
+    Err(problem) => { assert expected in problem.message }
   }
 }
 
@@ -235,7 +235,7 @@ test test_generation_plan_json_round_trips_and_rejects_changed_identity [fs, env
   json.write(path_value, {...dto, generation_sha256: "0000000000000000000000000000000000000000000000000000000000000000"})?
   match generation.read_generation_plan(path_value) {
     Ok(_) => test.fail("changed generation plan digest was accepted")?
-    Err(problem) => { "digest does not match" in problem.message },
+    Err(problem) => { assert "digest does not match" in problem.message },
   }
 }
 

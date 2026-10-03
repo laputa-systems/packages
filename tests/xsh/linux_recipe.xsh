@@ -49,7 +49,7 @@ test test_linux_kbuild_modules_parse_and_preserve_job_error_branch [fs, process,
   let failure = run.status XSH_MODULE_PATH=$modules XSH_LINUX_KBUILD_JOBS="0" $xsh $script 2> $stderr ?
   test.eq(failure.ok, false)?
   let observed_output_1 = stderr.read_text()?
-  "linux-kbuild-jobs" in observed_output_1
+  assert "linux-kbuild-jobs" in observed_output_1
 }
 
 test test_linux_config_fragment_is_explicit_staged_fingerprinted_input [fs, net, process, env, time, error] { |ctx|
@@ -303,7 +303,7 @@ test test_linux_config_resolves_staged_fragment_from_isolated_cwd_and_rejects_mi
   }) {
     match linux_config.resolve_config_fragments([p"files/config/aarch64/base-aarch64.fragment"]) {
       Ok(_) => test.fail("missing staged Linux config fragment unexpectedly resolved")?
-      Err(error) => { "missing kernel config fragment files/config/aarch64/base-aarch64.fragment" in error.message }
+      Err(error) => { assert "missing kernel config fragment files/config/aarch64/base-aarch64.fragment" in error.message }
     }
   } ?
 }

@@ -21,12 +21,12 @@ test ca_certificate_proof_preserves_empty_dependencies_and_rejects_invalid_metad
   json.write(metadata, {deps: [], extension: {source: "fixture"}})?
   process.run(command)?.ok
   json.write(metadata, {deps: ["unexpected-runtime"]})?
-  ! process.run(command)?.ok
-  "expected no runtime deps" in stderr.read_text()?
+  assert ! process.run(command)?.ok
+  assert "expected no runtime deps" in stderr.read_text()?
   json.write(metadata, {deps: "invalid"})?
-  ! process.run(command)?.ok
-  "schema" in stderr.read_text()?
+  assert ! process.run(command)?.ok
+  assert "schema" in stderr.read_text()?
   json.write(metadata, {})?
-  ! process.run(command)?.ok
-  "missing" in stderr.read_text()?
+  assert ! process.run(command)?.ok
+  assert "missing" in stderr.read_text()?
 }

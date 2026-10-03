@@ -222,7 +222,7 @@ proc expect_plan_rejection(ctx: TestContext, value: types.BuildPlan, expected: S
 
   match plan_json.read(path_value) {
     Ok(_) => test.fail(f"${expected}: malformed plan unexpectedly loaded")?
-    Err(problem) => { expected in problem.message }
+    Err(problem) => { assert expected in problem.message }
   }
 }
 
@@ -306,7 +306,7 @@ test test_build_plan_reports_tuple_reasons_and_rejects_behind_remote [fs, env, e
 
   match resolve_plan(value, ["runtime-lib"], newer) {
     Ok(_) => test.fail("behind remote tuple unexpectedly planned")?
-    Err(problem) => { "behind remote 2-1" in problem.message }
+    Err(problem) => { assert "behind remote 2-1" in problem.message }
   }
 }
 
@@ -349,7 +349,7 @@ test test_build_plan_keeps_same_package_dependency_edges_by_kind [fs, env, error
     Ok(_) => test.fail("same-kind duplicate dependency unexpectedly validated")?
     Err(problem) => {
       let problem_message = problem.message
-      f"repeats ${types.dependency_kind_text(app.dependencies[0].kind)} dependency ${app.dependencies[0].name}" in problem_message
+      assert f"repeats ${types.dependency_kind_text(app.dependencies[0].kind)} dependency ${app.dependencies[0].name}" in problem_message
     }
   }
 }
@@ -373,7 +373,7 @@ test test_build_plan_requires_release_bump_for_changed_dependency [fs, env, erro
 
   match resolve_plan(value, ["app"], snapshot_replace(snapshot, "runtime-lib", changed_runtime)) {
     Ok(_) => test.fail("dependent without release bump unexpectedly reused")?
-    Err(problem) => { "app dependencies changed (runtime-lib); bump PKGBUILD.xsh rel" in problem.message }
+    Err(problem) => { assert "app dependencies changed (runtime-lib); bump PKGBUILD.xsh rel" in problem.message }
   }
 }
 
@@ -392,14 +392,14 @@ test test_build_plan_json_round_trip_and_detects_corruption [fs, env, error] { |
 
   match plan_json.read(path_value) {
     Ok(_) => test.fail("unknown plan format unexpectedly loaded")?
-    Err(problem) => { "unsupported build plan format unknown-build-plan" in problem.message }
+    Err(problem) => { assert "unsupported build plan format unknown-build-plan" in problem.message }
   }
 
   fs.write(path_value, original.replace(value.repository_digest, "corrupt-repository-digest"))?
 
   match plan_json.read(path_value) {
     Ok(_) => test.fail("corrupt plan digest unexpectedly loaded")?
-    Err(problem) => { "digest does not match" in problem.message }
+    Err(problem) => { assert "digest does not match" in problem.message }
   }
 }
 
@@ -431,7 +431,7 @@ test test_build_plan_json_rejects_dependency_key_mismatch [fs, env, error] { |ct
 
   match plan_json.read(path_value) {
     Ok(_) => test.fail("dependency key mismatch unexpectedly loaded")?
-    Err(problem) => { "dependency host-tool artifact key does not match its referenced node" in problem.message }
+    Err(problem) => { assert "dependency host-tool artifact key does not match its referenced node" in problem.message }
   }
 }
 
@@ -443,6 +443,6 @@ test test_build_plan_normalizes_target_aliases_and_rejects_reserved_target [fs, 
 
   match plan.resolve(value, empty_remote_snapshot(), unsupported, ["app"], false, plan_executor_identity()) {
     Ok(_) => test.fail("unsupported target unexpectedly planned")?
-    Err(problem) => { "unsupported target" in problem.message }
+    Err(problem) => { assert "unsupported target" in problem.message }
   }
 }

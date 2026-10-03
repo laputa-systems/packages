@@ -43,14 +43,14 @@ export proc build(dest: Path) [${effects}] -> Result[Unit] {
 """)?
     match recipe.call_prepare(pkg, dir) {
       Ok(_) => test.fail("preparation hook did not execute")?
-      Err(problem) => problem.message == dir.display()
+      Err(problem) => assert problem.message == dir.display()
     }
     let dest = fp"${dir}/output"
     match recipe.call_build(pkg, dir, dest) {
       Ok(_) => test.fail("build hook did not execute")?
-      Err(problem) => problem.message == dest.display()
+      Err(problem) => assert problem.message == dest.display()
     }
-    fs.cwd()? == original_cwd
+    assert fs.cwd()? == original_cwd
   }
 }
 
@@ -62,7 +62,7 @@ test recipe_hooks_preserve_optional_absence_and_required_build_error [fs, proces
   recipe.call_prepare_sources(pkg, dir)?
   match recipe.call_build(pkg, dir, dir) {
     Ok(_) => test.fail("payload without a build hook unexpectedly built")?
-    Err(problem) => problem == types.PmError.PackageContract("hook-probe: payload package lost its build procedure")
+    Err(problem) => assert problem == types.PmError.PackageContract("hook-probe: payload package lost its build procedure")
   }
   recipe.call_build({...pkg, kind: types.package_meta()}, dir, dir)?
 }
@@ -94,5 +94,5 @@ export proc prepare_sources(src: Path) [fs, error] -> Result[Unit] {
 }
 """)?
   recipe.call_prepare_sources(hook_package(dir), dir)?
-  fp"${dir}/prepared".read_text()? == "source prepared"
+  assert fp"${dir}/prepared".read_text()? == "source prepared"
 }

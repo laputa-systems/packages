@@ -209,12 +209,12 @@ test test_execute_metadata_wire_schema_preserves_extensions_and_rejects_invalid_
   }
   local.write_package_metadata(metadata, "x86_64", built)?
   let wire = json.read(metadata)?.require(local.PackageMetadataDto)?
-  wire.arch == "x86_64"
-  wire.package_kind == "payload"
-  wire.filetree[0].kind == "file"
-  wire.files[0].kind == "file"
-  wire.files[0].mode == 0o644
-  wire.manifest == ["usr/share/wire-package"]
+  assert wire.arch == "x86_64"
+  assert wire.package_kind == "payload"
+  assert wire.filetree[0].kind == "file"
+  assert wire.files[0].kind == "file"
+  assert wire.files[0].mode == 0o644
+  assert wire.manifest == ["usr/share/wire-package"]
 
   json.write(metadata, {...wire, future_package_metadata: "retained"})?
   let extended = json.read(metadata)?.require(local.PackageMetadataDto)?
@@ -222,8 +222,8 @@ test test_execute_metadata_wire_schema_preserves_extensions_and_rejects_invalid_
   let forwarded = json.read(metadata)?.require(Record)?
   let extension: Str = forwarded.get("future_package_metadata")?.require()?
   let executor_hash: Str = forwarded.get("executor_sha256")?.require()?
-  extension == "retained"
-  executor_hash == payload_hash
+  assert extension == "retained"
+  assert executor_hash == payload_hash
 
   json.write(metadata, {...extended, files: [{...extended.files[0], mode: "invalid"}]})?
   match json.read(metadata)?.require(local.PackageMetadataDto) {
@@ -335,7 +335,7 @@ main(@args)?
   # with an absent-artifact error.
   match execute.build_plan(value, repo_root, object_store, "", 2) {
     Ok(_) => test.fail("parallel executor advanced past a failed dependency level")?
-    Err(problem) => { "package proof for execute-app" in problem.message }
+    Err(problem) => { assert "package proof for execute-app" in problem.message }
   }
 
   test.eq(fs.exists(store.artifact_path(object_store, app.artifact_key))?, false)?
@@ -435,7 +435,7 @@ main(@args)?
 
   match execute.build_plan(failed_plan, repo_root, object_store, "", 1) {
     Ok(_) => test.fail("failed proof unexpectedly published an application artifact")?
-    Err(problem) => { "package proof for execute-app" in problem.message }
+    Err(problem) => { assert "package proof for execute-app" in problem.message }
   }
 
   test.eq(fs.exists(store.artifact_path(object_store, failed_app.artifact_key))?, false)?
@@ -450,7 +450,7 @@ main(@args)?
 
   match execute.build_plan(healthy_plan, healthy_repo, healthy_store, "", 1) {
     Ok(_) => test.fail("corrupt final artifact unexpectedly reused or overwritten")?
-    Err(problem) => { "payload SHA-256 does not match receipt" in problem.message }
+    Err(problem) => { assert "payload SHA-256 does not match receipt" in problem.message }
   }
 
   test.eq(fs.read_text(fp"${final_dir}/payload.tar.gz")?, "corrupt final payload")?

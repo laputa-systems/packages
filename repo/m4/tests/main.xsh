@@ -14,7 +14,7 @@ test test_prefixed_define_rescans_expansion [fs, process, error] { |ctx|
   let input = test.temp_file(ctx, name: "prefix.m4", contents: b"m4_define([GREETING],[hello])GREETING\n")?
   let output = run_m4(["-P", input.display()])?
 
-  output == """hello
+  assert output == """hello
 """
 }
 
@@ -37,7 +37,7 @@ test test_include_path_and_multiple_inputs [fs, process, error] { |ctx|
 
   let grammar = test.temp_file(ctx, name: "grammar.m4", contents: b"m4_define([GRAMMAR],[ok])\n")?
   let output = run_m4(["-P", "-I", inc.display(), skeleton.display(), grammar.display()])?
-  "NUMBER" in output
+  assert "NUMBER" in output
 }
 
 test test_prefixed_dnl_is_available_without_prefix_mode [fs, process, error] { |ctx|
@@ -49,7 +49,7 @@ test test_prefixed_dnl_is_available_without_prefix_mode [fs, process, error] { |
 
   let output = run_m4([input.display()])?
 
-  output == """ok
+  assert output == """ok
 """
 }
 
@@ -57,7 +57,7 @@ test test_changequote_applies_to_remaining_stream [fs, process, error] { |ctx|
   let input = test.temp_file(ctx, name: "changequote.m4", contents: b"changequote([[,]])[[ok]]\n")?
   let output = run_m4([input.display()])?
 
-  output == """ok
+  assert output == """ok
 """
 }
 
@@ -65,7 +65,7 @@ test test_changecom_without_args_disables_comments [fs, process, error] { |ctx|
   let input = test.temp_file(ctx, name: "changecom.m4", contents: b"define(`NAME',`value')changecom`'dnl\n#line NAME\n")?
   let output = run_m4([input.display()])?
 
-  output == """#line value
+  assert output == """#line value
 """
 }
 
@@ -73,7 +73,7 @@ test test_prefix_mode_leaves_bare_builtins_literal [fs, process, error] { |ctx|
   let input = test.temp_file(ctx, name: "prefix-literal.m4", contents: b"#define X 1\nm4_define([[Y]], [[ok]])Y\n")?
   let output = run_m4(["-P", input.display()])?
 
-  output == """#define X 1
+  assert output == """#define X 1
 ok
 """
 }
@@ -87,7 +87,7 @@ test test_macro_arg_count_and_quoted_argv [fs, process, error] { |ctx|
 
   let output = run_m4([input.display()])?
 
-  output == """#2 star:a,b,c at:[a],[b,c]
+  assert output == """#2 star:a,b,c at:[a],[b,c]
 """
 }
 
@@ -100,7 +100,7 @@ test test_indir_calls_user_macro [fs, process, error] { |ctx|
 
   let output = run_m4([input.display()])?
 
-  output == """ok:value
+  assert output == """ok:value
 """
 }
 
@@ -108,7 +108,7 @@ test test_separate_define_flag_is_rescanned [fs, process, error] { |ctx|
   let input = test.temp_file(ctx, name: "define-flag.m4", contents: b"FEATURE\n")?
   let output = run_m4(["-P", "-D", "FEATURE=m4_define([WORD],[ok])WORD", input.display()])?
 
-  output == """ok
+  assert output == """ok
 """
 }
 
@@ -120,7 +120,7 @@ test test_divert_undivert_and_m4wrap [fs, process, error] { |ctx|
   )?
 
   let output = run_m4(["-P", input.display()])?
-  "main" in output
-  "side" in output
-  "tail" in output
+  assert "main" in output
+  assert "side" in output
+  assert "tail" in output
 }

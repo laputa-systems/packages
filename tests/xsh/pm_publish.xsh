@@ -110,7 +110,7 @@ proc stage_plan_artifacts(
 proc expect_snapshot_error(ctx: TestContext, value: types.BuildPlan, store_root: Path, expected: Str) [fs, error] {
   match repo.snapshot(value, store_root) {
     Ok(_) => test.fail(f"${expected}: snapshot unexpectedly succeeded")?
-    Err(problem) => expected in problem.message
+    Err(problem) => assert expected in problem.message
   }
 }
 
@@ -173,7 +173,7 @@ test test_publish_file_snapshot_is_exact_deterministic_and_idempotent [fs, net, 
   test.ok(fp"${remote_root}/${entry.metadata}".exists()?)?
   test.ok(fp"${remote_root}/${entry.proof}".exists()?)?
   let metadata = json.read(fp"${remote_root}/${entry.metadata}")?.require(PublishedMetadataDto)?
-  metadata.additional_metadata.source == "recipe"
+  assert metadata.additional_metadata.source == "recipe"
   test.eq(metadata.target, "aarch64-linux-musl")?
   test.eq(metadata.artifact_key, app.artifact_key)?
   test.eq(metadata.recipe_sha256, app.recipe_sha256)?
@@ -202,7 +202,7 @@ test test_publish_conflict_and_failed_object_do_not_switch_file_index [fs, net, 
 
   match repo.publish(snapshot, remote_url, "", work) {
     Ok(_) => test.fail("conflicting immutable metadata unexpectedly published")?
-    Err(problem) => "already exists with different bytes" in problem.message
+    Err(problem) => assert "already exists with different bytes" in problem.message
   }
 
   let unchanged_index = fs.read_text(fp"${remote_root}/index.json")?
@@ -218,7 +218,7 @@ test test_publish_conflict_and_failed_object_do_not_switch_file_index [fs, net, 
 
   match repo.publish(snapshot, clean_url, "", clean_work) {
     Ok(_) => test.fail("conflicting immutable tuple unexpectedly published")?
-    Err(problem) => "already exists with different content" in problem.message
+    Err(problem) => assert "already exists with different content" in problem.message
   }
 }
 
@@ -361,7 +361,7 @@ test test_legacy_metadata_hash_is_fetched_into_retrieval_and_enforced_on_import 
     test.temp_dir(ctx, name: "publish-legacy-hash-corrupt-cache")?,
   ) {
     Ok(_) => test.fail("changed legacy metadata unexpectedly imported")?
-    Err(problem) => "remote metadata SHA-256 mismatch" in problem.message
+    Err(problem) => assert "remote metadata SHA-256 mismatch" in problem.message
   }
 }
 
@@ -374,6 +374,6 @@ test test_publish_requires_token_only_for_network_remote [fs, net, env, time, er
 
   match repo.publish(snapshot, "https://example.invalid/repo", "", work) {
     Ok(_) => test.fail("network publication without a token unexpectedly succeeded")?
-    Err(problem) => "needs LAPUTA_TOKEN" in problem.message
+    Err(problem) => assert "needs LAPUTA_TOKEN" in problem.message
   }
 }

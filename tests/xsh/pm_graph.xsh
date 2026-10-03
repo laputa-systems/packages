@@ -38,7 +38,7 @@ pure fixture_package(name: Str, deps: List[Str], mkdeps_host: List[Str], mkdeps_
 proc expect_catalog_rejection(root: Path, expected: Str) [fs, env, error] {
   match catalog.load(root) {
     Ok(_) => test.fail(f"${expected}: catalog unexpectedly loaded")?
-    Err(problem) => expected in problem.message
+    Err(problem) => assert expected in problem.message
   }
 }
 
@@ -58,7 +58,7 @@ test test_catalog_rejects_duplicate_package_name [error] {
 
   match catalog.from_packages(p".", [first, second]) {
     Ok(_) => test.fail("duplicate package catalog unexpectedly loaded")?
-    Err(problem) => "duplicate package duplicate" in problem.message
+    Err(problem) => assert "duplicate package duplicate" in problem.message
   }
 }
 
@@ -90,7 +90,7 @@ test test_graph_reports_a_useful_cycle_path [fs, env, error] {
 
   match graph.topological_levels(catalog.package_names(value), edges) {
     Ok(_) => test.fail("cycle unexpectedly received levels")?
-    Err(problem) => "alpha -> beta -> gamma -> alpha" in problem.message
+    Err(problem) => assert "alpha -> beta -> gamma -> alpha" in problem.message
   }
 }
 

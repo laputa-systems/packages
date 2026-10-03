@@ -45,7 +45,7 @@ test test_bison_parses_linux_kconfig_argv_and_rejects_missing_grammar [fs, proce
   test.ok(success.ok)?
   test.ok(output.exists()?)?
   test.ok(header.exists()?)?
-  "#define WORD 258" in header.read_text()?
+  assert "#define WORD 258" in header.read_text()?
 
   let missing = process.run(
     process.command_argv(
@@ -67,7 +67,7 @@ test test_bison_parses_linux_kconfig_argv_and_rejects_missing_grammar [fs, proce
     ),
   )?
   test.eq(missing.ok, false)?
-  "No such file or directory" in stderr.read_text()?
+  assert "No such file or directory" in stderr.read_text()?
 }
 
 test test_flex_parses_linux_kconfig_argv_and_rejects_missing_input [fs, process, env, error] { |ctx|
@@ -101,7 +101,7 @@ test test_flex_parses_linux_kconfig_argv_and_rejects_missing_input [fs, process,
     test.fail(stderr.read_text()?)?
   }
   test.ok(output.exists()?)?
-  "([a-z]+)" in output.read_text()?
+  assert "([a-z]+)" in output.read_text()?
 
   let missing = process.run(
     process.command_argv(
@@ -120,5 +120,5 @@ test test_flex_parses_linux_kconfig_argv_and_rejects_missing_input [fs, process,
     ),
   )?
   test.eq(missing.ok, false)?
-  "No such file or directory" in stderr.read_text()?
+  assert "No such file or directory" in stderr.read_text()?
 }

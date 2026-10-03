@@ -188,7 +188,7 @@ proc commit_artifact(
 proc expect_root_error(ctx: TestContext, result: Result[types.RootPlan], expected: Str) [error] {
   match result {
     Ok(_) => test.fail(f"${expected}: root preflight unexpectedly succeeded")?
-    Err(problem) => { expected in problem.message }
+    Err(problem) => { assert expected in problem.message }
   }
 }
 
@@ -386,7 +386,7 @@ test test_root_rejects_collisions_and_same_owner_duplicate_entries_before_mutati
 
   match root.compose_artifacts(collision_output, empty_plan, [left, right]) {
     Ok(_) => test.fail("colliding artifacts unexpectedly composed")?
-    Err(problem) => { "owned by both" in problem.message }
+    Err(problem) => { assert "owned by both" in problem.message }
   }
 
   test.eq(fs.exists(collision_output)?, false)?
@@ -517,7 +517,7 @@ test test_root_failed_composition_leaves_completed_output_untouched [fs, error] 
 
   match root.compose_artifacts(output, plan, [artifact]) {
     Ok(_) => test.fail("completed root was overwritten")?
-    Err(problem) => { "already exists" in problem.message }
+    Err(problem) => { assert "already exists" in problem.message }
   }
 
   test.eq(fp"${output}/marker".read_text()?, "previous root")?

@@ -20,8 +20,8 @@ test test_ext4_uses_inline_storage_only_below_sixty_byte_symlink_boundary [fs, p
   let image = fp"${root}/rootfs.ext4"
   let fast_target = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   let block_target = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-  fast_target.byte_len() == 59
-  block_target.byte_len() == 60
+  assert fast_target.byte_len() == 59
+  assert block_target.byte_len() == 60
   fs.mkdir(source)?
   fs.symlink(fp"${fast_target}", fp"${source}/fast")?
   fs.symlink(fp"${block_target}", fp"${source}/block")?
@@ -42,16 +42,16 @@ test test_ext4_uses_inline_storage_only_below_sixty_byte_symlink_boundary [fs, p
       ],
     ),
   )?
-  status.ok
+  assert status.ok
 
   # Entries are ordered lexically: block is inode 11 and fast is inode 12.
   let block_inode = inode_offset(11)
   let fast_inode = inode_offset(12)
-  bytes.unpack_le(bytes.read_at(image, block_inode + 28, 4)?, 4)? == 8
-  bytes.unpack_le(bytes.read_at(image, fast_inode + 28, 4)?, 4)? == 0
-  bytes.read_at(image, fast_inode + 40, 59)? == bytes.from_text(fast_target)
+  assert bytes.unpack_le(bytes.read_at(image, block_inode + 28, 4)?, 4)? == 8
+  assert bytes.unpack_le(bytes.read_at(image, fast_inode + 28, 4)?, 4)? == 0
+  assert bytes.read_at(image, fast_inode + 40, 59)? == bytes.from_text(fast_target)
 
   let block = bytes.unpack_le(bytes.read_at(image, block_inode + 40, 4)?, 4)?
-  block > 0
-  bytes.read_at(image, block * block_size, 60)? == bytes.from_text(block_target)
+  assert block > 0
+  assert bytes.read_at(image, block * block_size, 60)? == bytes.from_text(block_target)
 }

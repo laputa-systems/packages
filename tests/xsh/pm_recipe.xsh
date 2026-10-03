@@ -66,9 +66,9 @@ test test_recipe_selects_target_filetree_variant [fs, env, error] {
   let arm = recipe.load_package_for_target(p"repo/musl", types.target_aarch64())?
   let x86_filetree = [entry.path.display() for entry in x86.filetree].join("\n")
   let arm_filetree = [entry.path.display() for entry in arm.filetree].join("\n")
-  "usr/lib/ld-musl-x86_64.so.1" in x86_filetree
-  "usr/lib/ld-musl-aarch64.so.1" not in x86_filetree
-  "usr/lib/ld-musl-aarch64.so.1" in arm_filetree
+  assert "usr/lib/ld-musl-x86_64.so.1" in x86_filetree
+  assert "usr/lib/ld-musl-aarch64.so.1" not in x86_filetree
+  assert "usr/lib/ld-musl-aarch64.so.1" in arm_filetree
 }
 
 test test_recipe_rejects_invalid_package_name [fs, env, error] {

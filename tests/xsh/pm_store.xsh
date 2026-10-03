@@ -90,7 +90,7 @@ proc store_root(ctx: TestContext, name: Str) [fs, error] -> Result[Path] {
 proc expect_store_error(ctx: TestContext, result: Result[types.ArtifactReceipt], expected: Str) [error] {
   match result {
     Ok(_) => test.fail(f"${expected}: operation unexpectedly succeeded")?
-    Err(problem) => { expected in problem.message }
+    Err(problem) => { assert expected in problem.message }
   }
 }
 
@@ -129,7 +129,7 @@ test test_store_receipt_preserves_x86_64_target [fs, error] { |ctx|
 
   match store.commit(types.target_aarch64(), root, test_node(key), stage.staged) {
     Ok(_) => test.fail("artifact key was reused across targets")?
-    Err(problem) => { "target does not match requested aarch64-linux-musl" in problem.message }
+    Err(problem) => { assert "target does not match requested aarch64-linux-musl" in problem.message }
   }
 }
 

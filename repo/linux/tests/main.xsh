@@ -880,11 +880,11 @@ CONFIG_TEXT="value"
   kbuild.write_config_headers(config, root, "7.0.5", "arm64")?
   let autoconf = fp"${root}/include/generated/autoconf.h".read_text()?
   let auto_conf = fp"${root}/include/config/auto.conf".read_text()?
-  "#define CONFIG_ALPHA 1" in autoconf
-  "#define CONFIG_NUMBER 12" in autoconf
-  "#define CONFIG_TEXT \"value\"" in autoconf
-  "CONFIG_ALPHA=y" in auto_conf
-  "CONFIG_NUMBER=12" in auto_conf
+  assert "#define CONFIG_ALPHA 1" in autoconf
+  assert "#define CONFIG_NUMBER 12" in autoconf
+  assert "#define CONFIG_TEXT \"value\"" in autoconf
+  assert "CONFIG_ALPHA=y" in auto_conf
+  assert "CONFIG_NUMBER=12" in auto_conf
 }
 
 test test_kbuild_generates_syscall_table [fs, error] { |ctx|
@@ -915,11 +915,11 @@ __SYSCALL_NORETURN(3, sys_exit)
 
   kbuild.generate_syscall_numbers(table, numbers, "_ASM_UNISTD_H", "__NR_syscalls", "", ["common", "64"])?
   let observed_output_1 = numbers.read_text()?
-  "#define __NR_read 0" in observed_output_1
+  assert "#define __NR_read 0" in observed_output_1
   let observed_output_2 = numbers.read_text()?
-  "#define __NR_exit 3" in observed_output_2
+  assert "#define __NR_exit 3" in observed_output_2
   let observed_output_3 = numbers.read_text()?
-  "#define __NR_syscalls 4" in observed_output_3
+  assert "#define __NR_syscalls 4" in observed_output_3
 }
 
 test test_kbuild_generates_offsets_header [fs, error] { |ctx|

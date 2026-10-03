@@ -90,11 +90,11 @@ test test_build_essential_native_proof_uses_typed_root_receipt_without_legacy_db
   let root = proof_root(ctx)?
   let stderr = fp"${root}/proof.stderr"
   let xsh = runner()?
-  fs.exists(fp"${root}/var/lib/xsh-pm/packages")? == false
+  assert fs.exists(fp"${root}/var/lib/xsh-pm/packages")? == false
   test.ok(run_build_essential_proof(xsh, root, stderr)?.ok)?
 
   write_root_receipt(root, [package for package in runtime_packages() if package != "linux"])?
   let missing = run_build_essential_proof(xsh, root, stderr)?
-  missing.ok == false
-  "missing linux artifact in typed root receipt" in stderr.read_text()?
+  assert missing.ok == false
+  assert "missing linux artifact in typed root receipt" in stderr.read_text()?
 }

@@ -42,13 +42,13 @@ json.write(output, {arguments: args, environment: env.get("TASK_LABEL") ?? ""})?
   let second = task("second", root, [runner, script, "--", second_output, payload, second_counter, first_output], [second_output], [script, first_output], ["first"])
   make.run_tasks([second, first], 2)?
   let observed = json.read(second_output)?.require(TaskOutput)?
-  observed.arguments == [second_output.display(), payload, second_counter.display(), first_output.display()]
-  observed.environment == "literal environment value"
-  first_counter.read_text()? == "x"
-  second_counter.read_text()? == "x"
+  assert observed.arguments == [second_output.display(), payload, second_counter.display(), first_output.display()]
+  assert observed.environment == "literal environment value"
+  assert first_counter.read_text()? == "x"
+  assert second_counter.read_text()? == "x"
   make.run_tasks([second, first], 2)?
-  first_counter.read_text()? == "x"
-  second_counter.read_text()? == "x"
+  assert first_counter.read_text()? == "x"
+  assert second_counter.read_text()? == "x"
 }
 
 test make_tasks_cancel_running_peers_and_do_not_publish_failed_stamps [fs, process, env, time, error] { |ctx|
@@ -70,15 +70,15 @@ error.fail("task fixture failed")?
   match make.run_tasks([peer, failure], 2) {
     Ok(_) => test.fail("failed command unexpectedly completed its task graph")?
     Err(problem) => {
-      problem is ProcessFailure
-      problem.message == "make task 'failure' failed"
+      assert problem is ProcessFailure
+      assert problem.message == "make task 'failure' failed"
     }
   }
-  started.exists()?
+  assert started.exists()?
   time.sleep(1100ms)?
-  ! late_output.exists()?
-  ! peer.stamp.exists()?
-  ! failure.stamp.exists()?
+  assert ! late_output.exists()?
+  assert ! peer.stamp.exists()?
+  assert ! failure.stamp.exists()?
 }
 
 test make_pkg_config_flags_preserve_checked_compiler_and_linker_lists [fs, process, env, error] { |ctx|
@@ -97,7 +97,7 @@ if args == ["--cflags", "libone", "libtwo"] {
   tool.chmod(0o755)?
   env ({PATH: f"${root}:${env.get("PATH") ?? ""}", XSH_PM_TARGET_ROOT: ""}) {
     let flags = make.pkg_config_flags(["libone", "libtwo"])?
-    flags.cflags == ["-I/usr/include/example", "-DEXAMPLE=1"]
-    flags.libs == ["-L/usr/lib/example", "-lexample"]
+    assert flags.cflags == ["-I/usr/include/example", "-DEXAMPLE=1"]
+    assert flags.libs == ["-L/usr/lib/example", "-lexample"]
   } ?
 }

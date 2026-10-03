@@ -11,7 +11,7 @@ static const Key keys[] = {
 """
   let configured = dwl_recipe.config_without_unavailable_menu(upstream)
 
-  "menucmd" not in configured
-  "termcmd" in configured
-  "XKB_KEY_Return" in configured
+  assert "menucmd" not in configured
+  assert "termcmd" in configured
+  assert "XKB_KEY_Return" in configured
 }
