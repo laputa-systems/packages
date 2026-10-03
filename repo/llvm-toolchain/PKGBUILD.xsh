@@ -166,7 +166,7 @@ pure bool_literal(value: Bool) -> Str {
 }
 
 pure xsh_wrapper_source(real: Path, clang: Bool, cxx: Bool) -> Str {
-  let template = """#!/bin/xsh
+  let wrapper_template = """#!/bin/xsh
 proc has_option_prefix(argv: List[Str], prefix: Str) [] -> Bool {
   for arg in argv {
     if arg.starts_with(prefix) {
@@ -467,7 +467,7 @@ env ({
 main(@args)?
 """
 
-  return template.replace("__REAL__", real.display())
+  return wrapper_template.replace("__REAL__", real.display())
     .replace("__CLANG__", bool_literal(clang))
     .replace(
       "__CXX__",

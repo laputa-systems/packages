@@ -369,12 +369,12 @@ proc sysdep_bits(sysdeps: Map[Str], type_name: Str) [error] -> Result[Int] {
 
 proc append_type_template(
   parts: List[Str],
-  template: Path,
+  header_template: Path,
   type_name: Str,
   type_caps: Str,
   bits: Int,
 ) [fs, error] -> Result[List[Str]] {
-  return parts.push(gen_types_internal(template.read_text()?, type_name, type_caps, bits))
+  return parts.push(gen_types_internal(header_template.read_text()?, type_name, type_caps, bits))
 }
 
 proc write_types_h(sysdeps: Map[Str]) [fs, error] {
@@ -397,13 +397,13 @@ proc write_types_h(sysdeps: Map[Str]) [fs, error] {
   for type_name in ["size", "uid", "gid", "pid", "time", "dev", "ino"] {
     let bits = sysdep_bits(sysdeps, type_name)?
 
-    let template = if (sysdeps.get(f"signed${type_name}") ?? "") == "yes" {
+    let header_template = if (sysdeps.get(f"signed${type_name}") ?? "") == "yes" {
       p"skalibs/src/headers/signed-template"
     } else {
       p"skalibs/src/headers/unsigned-template"
     }
 
-    parts = append_type_template(parts, template, type_name, upper_ascii(type_name), bits)?
+    parts = append_type_template(parts, header_template, type_name, upper_ascii(type_name), bits)?
   }
 
   parts = parts.push(p"skalibs/src/headers/types-footer".read_text()?)
