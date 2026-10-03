@@ -99,6 +99,22 @@ release binaries. It runs each `PM_TESTS` module through `xsht test` against
 the checkout mounted at `/src/packages` and writes per-module coverage JSON to
 `target/coverage/pm/`. Inspect those files for PM source line/proc coverage.
 
+For a quick host run of every native test module (including macOS), put
+`xsh` and `xsht` on `PATH` (or set `XSH_HOST`) and run:
+
+```sh
+make test-host
+```
+
+It runs `xsht test` with `XSH_MODULE_PATH` set to this checkout. That variable
+is required: PM loads `PKGBUILD.xsh` modules with `module.load` and spawns XSH
+runners, and both resolve `pm.*` imports only through `XSH_MODULE_PATH`;
+`module_path` in `xsht-config.ini` covers static test imports only. A bare
+`xsht test` without it fails module loads in `pm_execute`, `pm_recipe`,
+`pm_build`, `pm_graph`, `pm_store`, and `linux_recipe`. Tests that need a Linux
+executable skip on other hosts with a reason. Fixture scripts under
+`tests/xsh/fixtures/` are excluded from discovery by `xsht-config.ini`.
+
 For a host-native run on Linux, use the checked-out debug XSH without Docker:
 
 ```sh

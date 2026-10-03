@@ -1,10 +1,11 @@
-.PHONY: test test-native test-local-linux xsh-native xsh-local-bins xsh-builder-image update-checksums
+.PHONY: test test-host test-native test-local-linux xsh-native xsh-local-bins xsh-builder-image update-checksums
 
 LAPUTA_DOCKER_PLATFORM ?= linux/arm64
 XSH_TEST_IMAGE ?= laputa-packages-test
 XSH_BUILD_IMAGE ?= xsh-test
 XSH_ROOT ?= ../xsh
 XSH ?= xsh
+XSHT ?= xsht
 XSH_RELEASE ?= release-d09c6c3305ab8c650043bd8d32e03f2db6509e97
 CARGO ?= $(shell command -v cargo 2>/dev/null || echo /home/josh/.cargo/bin/cargo)
 PM_XSH_MODULE_PATH ?= .:/usr/lib/pm
@@ -34,6 +35,11 @@ XSH_ROOT_ABS := $(abspath $(XSH_ROOT))
 XSH_LOCAL_BIN_DIR ?= $(XSH_ROOT)/target/$(XSH_LOCAL_TRIPLE)/debug
 XSH_LOCAL_BINS := $(XSH_LOCAL_BIN_DIR)/xsh $(XSH_LOCAL_BIN_DIR)/xshi $(XSH_LOCAL_BIN_DIR)/xsht
 XSH_NATIVE_BIN_DIR ?= $(XSH_ROOT)/target/debug
+
+# PM loads PKGBUILD modules and spawns XSH runners at runtime; those resolve
+# `pm.*` imports through XSH_MODULE_PATH, which xsht-config.ini cannot provide.
+test-host:
+	XSH_MODULE_PATH="$(CURDIR)" $(XSHT) test
 
 test-native: xsh-native
 	@mkdir -p target/coverage/pm-native
