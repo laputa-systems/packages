@@ -2702,11 +2702,16 @@ proc discover_records_process_pool(
   let worker_count = if options.jobs < 1 { 1 } else if options.jobs > 16 { 16 } else { options.jobs }
   var handles = []
   var output_paths: List[Path] = []
+  # Loop-body defers run per iteration; remove worker outputs after the merge instead.
+  defer {
+    for output_path in output_paths {
+      fs.remove(output_path, missing_ok: true)?
+    }
+  }
 
   for index in range(worker_count) {
     let output_path = fp"${prefix}-output-${index}.json"
     output_paths = output_paths.push(output_path)
-    defer fs.remove(output_path, missing_ok: true)?
     let command = process.command_argv(
       xsh_bin,
       [
@@ -7131,6 +7136,13 @@ proc archive_analysis_process_pool(
   defer fs.remove(flags_path, missing_ok: true)?
   var handles = []
   var output_paths: List[Path] = []
+  var input_paths: List[Path] = []
+  # Loop-body defers run per iteration, before workers read their inputs.
+  defer {
+    for temp_path in [@input_paths, @output_paths] {
+      fs.remove(temp_path, missing_ok: true)?
+    }
+  }
 
   for index in range(worker_count) {
     let start = index * item_count / worker_count
@@ -7152,8 +7164,7 @@ proc archive_analysis_process_pool(
         includes: includes,
       ),
     )?
-    defer fs.remove(input_path, missing_ok: true)?
-    defer fs.remove(output_path, missing_ok: true)?
+    input_paths = input_paths.push(input_path)
     output_paths = output_paths.push(output_path)
 
     let command = process.command_argv(
